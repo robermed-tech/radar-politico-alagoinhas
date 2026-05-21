@@ -1,0 +1,50 @@
+name: Radar Politico — Pipeline Diario
+
+on:
+  schedule:
+    # Roda todo dia às 08:00 BRT (= 11:00 UTC, pois BRT = UTC-3)
+    - cron: '0 11 * * *'
+
+  # Permite rodar manualmente pelo GitHub (botão "Run workflow")
+  workflow_dispatch:
+
+jobs:
+  pipeline:
+    name: Coletar → Analisar → Atualizar Sheets
+    runs-on: ubuntu-latest
+    timeout-minutes: 90        # limite de segurança: 1h30
+
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Criar service_account.json a partir do Secret
+        # O conteudo completo do service_account.json fica no Secret GOOGLE_SA_JSON
+        run: echo '${{ secrets.GOOGLE_SA_JSON }}' > service_account.json
+
+      - name: Criar arquivo .env
+        run: |
+          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}"         > .env
+          echo "APIFY_API_TOKEN=${{ secrets.APIFY_API_TOKEN }}"             >> .env
+          echo "APIFY_DATASET_ID=sera_preenchido_pelo_pipeline"             >> .env
+          echo "GOOGLE_SERVICE_ACCOUNT_FILE=service_account.json"           >> .env
+          echo "GOOGLE_SHEET_ID=${{ secrets.GOOGLE_SHEET_ID }}"             >> .env
+          echo "GOOGLE_SHEET_NAME=Radar"                                    >> .env
+
+      - name: Executar pipeline completo (Apify + Claude + Sheets)
+        run: python run_pipeline.py
+
+      - name: Resumo
+        if: always()
+        run: |
+          echo "Horario: $(date -u '+%Y-%m-%d %H:%M UTC')"
+          echo "Acesse o Google Sheets para ver os novos dados."

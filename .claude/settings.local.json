@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(pip install *)",
+      "Bash(npx skills *)",
+      "Bash(python3 -c \"import base64; data=open\\('C:/Users/rober/radar-politico/prefeito.jpg','rb'\\).read\\(\\); print\\(base64.b64encode\\(data\\).decode\\(\\)[:50], '...', len\\(base64.b64encode\\(data\\)\\)\\)\")",
+      "Bash(python3)",
+      "Bash(python radar.py --reanalizar)",
+      "Bash(python -c \"import json; sa=json.load\\(open\\('service_account.json'\\)\\); print\\('type:', sa.get\\('type'\\)\\); print\\('email:', sa.get\\('client_email'\\)\\); print\\('project:', sa.get\\('project_id'\\)\\)\")",
+      "Bash(python -c \"from datetime import datetime; print\\('Python time:', datetime.utcnow\\(\\)\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(pip show *)",
+      "Bash(python run_pipeline.py --sem-apify)",
+      "Bash(python)",
+      "Bash(python run_kpi_redesign.py)",
+      "Bash(python patch_dashboard.py)",
+      "Bash(pip install *)",
+      "Bash(python -c \"import sys; data=sys.stdin.buffer.read\\(\\); print\\(data.decode\\('utf-8','replace'\\)\\)\")",
+      "Bash(python -c \"import ast, sys; ast.parse\\(open\\('radar.py'\\).read\\(\\)\\); print\\('radar.py: syntax OK'\\)\")"
+    ]
+  }
+}
