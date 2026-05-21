@@ -16,7 +16,9 @@
       "Bash(python patch_dashboard.py)",
       "Bash(pip install *)",
       "Bash(python -c \"import sys; data=sys.stdin.buffer.read\\(\\); print\\(data.decode\\('utf-8','replace'\\)\\)\")",
-      "Bash(python -c \"import ast, sys; ast.parse\\(open\\('radar.py'\\).read\\(\\)\\); print\\('radar.py: syntax OK'\\)\")"
+      "Bash(python -c \"import ast, sys; ast.parse\\(open\\('radar.py'\\).read\\(\\)\\); print\\('radar.py: syntax OK'\\)\")",
+      "Bash(n.env)",
+      "Bash(Add-Content .gitignore \"`n.env`nservice_account.json\")"
     ]
   }
 }
