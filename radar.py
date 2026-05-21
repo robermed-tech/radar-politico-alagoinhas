@@ -4,9 +4,11 @@ import json
 import requests
 import gspread
 import anthropic
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 load_dotenv()
 
@@ -18,9 +20,12 @@ GOOGLE_SHEET_ID = os.environ["GOOGLE_SHEET_ID"]
 GOOGLE_SHEET_NAME = os.environ.get("GOOGLE_SHEET_NAME", "Radar")
 GOOGLE_SHEET_PERFIS = "Perfis"
 
+# Workers paralelos para chamadas ao Claude (limitado pela quota da API)
+MAX_WORKERS = 8
+
 # ── PERFIS MONITORADOS ────────────────────────────────────────────────────────
-# Inclui todos os perfis presentes no dataset Apify.
-# Para adicionar um novo perfil basta incluir aqui.
+# Fonte única de verdade: run_pipeline.py gera directUrls a partir deste dict.
+# Para adicionar um novo perfil: adicione aqui APENAS.
 PROFILES_META = {
     # Portais de notícias locais
     "alagoinhas24h":         {"categoria": "Portal de noticias", "influencia": "alta"},
@@ -160,6 +165,58 @@ Estatisticas do periodo:
 Escreva apenas o resumo analitico. Tom tecnico e objetivo. Sem titulos, sem marcadores."""
 
 
+# ── VALIDAÇÃO DE SAÍDA DO CLAUDE ──────────────────────────────────────────────
+# Garante que valores fora do schema não entrem na planilha.
+
+VALID_CATEGORIAS = {
+    "saude", "educacao", "infraestrutura_urbana", "limpeza_urbana",
+    "seguranca_publica", "transporte_publico", "saneamento_agua",
+    "assistencia_social", "tributos_servicos", "cultura_esporte_lazer",
+    "servidores_municipais", "imagem_gestao", "meio_ambiente", "zona_rural",
+}
+VALID_ATRIBUICOES = {
+    "prefeito_pessoal", "prefeitura_instituicao", "secretaria_saude",
+    "secretaria_educacao", "secretaria_obras", "secretaria_outra",
+    "vereadores", "governo_estadual", "governo_federal",
+    "gestao_anterior", "propria_populacao", "empresas_concessionarias", "indefinido",
+}
+VALID_URGENCIAS    = {"alta", "media", "baixa"}
+VALID_INTENSIDADES = {"leve", "moderada", "alta"}
+VALID_SENTIMENTOS  = {"positivo", "negativo", "neutro", "misto"}
+
+
+def validate_analysis(analysis):
+    """Normaliza e valida os campos do JSON retornado pelo Claude.
+    Valores fora do enum recebem o default mais conservador.
+    """
+    if not analysis.get("relevante", True):
+        return analysis
+
+    def _norm(val, valid_set, default):
+        v = str(val or "").strip().lower()
+        return v if v in valid_set else default
+
+    analysis["categoria_tematica"] = _norm(
+        analysis.get("categoria_tematica"), VALID_CATEGORIAS, "imagem_gestao"
+    )
+    analysis["atribuicao"] = _norm(
+        analysis.get("atribuicao"), VALID_ATRIBUICOES, "indefinido"
+    )
+    analysis["urgencia"] = _norm(
+        analysis.get("urgencia"), VALID_URGENCIAS, "baixa"
+    )
+    analysis["intensidade"] = _norm(
+        analysis.get("intensidade"), VALID_INTENSIDADES, "leve"
+    )
+    analysis["sentimento_post"] = _norm(
+        analysis.get("sentimento_post"), {"positivo", "negativo", "neutro"}, "neutro"
+    )
+    analysis["sentimento_comentarios"] = _norm(
+        analysis.get("sentimento_comentarios"), VALID_SENTIMENTOS, "neutro"
+    )
+    return analysis
+
+
 # ── UTILITÁRIOS ───────────────────────────────────────────────────────────────
 
 def clean_text(text):
@@ -183,7 +240,6 @@ def format_date(timestamp):
 
 def extract_username_from_url(url):
     """Tenta extrair o username do Instagram a partir da URL do post."""
-    # https://www.instagram.com/p/CODE/ or https://www.instagram.com/USERNAME/p/CODE/
     m = re.search(r'instagram\.com/([^/]+)/p/', url or '')
     if m:
         candidate = m.group(1)
@@ -232,6 +288,22 @@ def build_comments_block(comments):
     return "\n".join(lines)
 
 
+# ── CHAMADA AO CLAUDE COM RETRY ───────────────────────────────────────────────
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    reraise=True,
+)
+def _call_haiku(client, messages, max_tokens):
+    """Chama o Claude Haiku com retry automático para erros transitórios de rede/rate-limit."""
+    return client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=max_tokens,
+        messages=messages,
+    )
+
+
 # ── ANÁLISE COM CLAUDE ─────────────────────────────────────────────────────────
 
 def analyse_post(client, item):
@@ -244,7 +316,6 @@ def analyse_post(client, item):
     caption = clean_text(item.get("caption") or item.get("text") or "")
     comments = extract_comments(item)
     comments_block = build_comments_block(comments)
-
     influencia = PROFILES_META.get(username, {}).get("influencia", "desconhecida")
 
     prompt = ANALYSIS_PROMPT.format(
@@ -256,11 +327,7 @@ def analyse_post(client, item):
         comments_block=comments_block,
     )
 
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=900,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    message = _call_haiku(client, [{"role": "user", "content": prompt}], 900)
     raw = message.content[0].text.strip()
 
     # Extrai JSON mesmo que o modelo adicione texto extra
@@ -327,11 +394,7 @@ def analyse_profile(client, perfil, meta, posts_data):
         temas_freq=temas_freq,
     )
 
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=450,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    message = _call_haiku(client, [{"role": "user", "content": prompt}], 450)
     return message.content[0].text.strip()
 
 
@@ -352,25 +415,21 @@ def get_or_create_ws(spreadsheet, name, headers):
         ws = spreadsheet.worksheet(name)
         first_row = ws.row_values(1)
         if not first_row:
-            # Planilha vazia — insere cabeçalho
             ws.insert_row(headers, index=1)
         elif first_row == headers:
             pass  # Schema correto, nada a fazer
         else:
-            # Verifica se as colunas novas precisam ser adicionadas ao final
             existing = set(first_row)
             new_cols = [h for h in headers if h not in existing]
             if new_cols:
-                # Adiciona colunas novas ao final SEM apagar dados existentes
                 next_col = len(first_row) + 1
                 for col_name in new_cols:
                     ws.update_cell(1, next_col, col_name)
                     next_col += 1
                 print(f"  Schema migrado: colunas adicionadas: {new_cols}")
             elif set(headers) == set(first_row):
-                pass  # Mesmas colunas, ordem diferente — aceitamos
+                pass
             else:
-                # Colunas foram removidas: limpa e recria (perda de dados é intencional)
                 print(f"  Schema incompativel — recriando planilha '{name}'")
                 ws.clear()
                 ws.insert_row(headers, index=1)
@@ -397,8 +456,8 @@ def append_post(ws, url, analysis, item):
         analysis.get("urgencia", ""),
         analysis.get("resumo", ""),
         analysis.get("atribuicao", ""),
-        item.get("likesCount", 0),             # curtidas (coluna 10)
-        comments_count,                         # comentarios_count (coluna 11)
+        item.get("likesCount", 0),
+        comments_count,
         # Framework v1.0 — novas dimensões (colunas 12-14)
         analysis.get("categoria_tematica", ""),
         analysis.get("intensidade", ""),
@@ -407,7 +466,11 @@ def append_post(ws, url, analysis, item):
     ws.append_row(row, value_input_option="RAW")
 
 
-def update_profile_row(ws_perfis, perfil, meta, posts_data, resumo_geral):
+def update_profile_row(ws_perfis, perfil, meta, posts_data, resumo_geral, all_values_cache):
+    """
+    Atualiza ou insere a linha do perfil na aba Perfis.
+    Recebe e retorna o cache de all_values para evitar múltiplas leituras da planilha.
+    """
     total = len(posts_data)
     positivos = sum(1 for p in posts_data if p["sentimento"] == "positivo")
     negativos = sum(1 for p in posts_data if p["sentimento"] == "negativo")
@@ -424,25 +487,49 @@ def update_profile_row(ws_perfis, perfil, meta, posts_data, resumo_geral):
         resumo_geral, now,
     ]
 
-    all_values = ws_perfis.get_all_values()
-    for i, r in enumerate(all_values[1:], start=2):
+    for i, r in enumerate(all_values_cache[1:], start=2):
         if r and r[0] == perfil:
             ws_perfis.update(range_name=f"A{i}:L{i}", values=[row])
-            return
+            all_values_cache[i - 1] = row  # mantém cache consistente
+            return all_values_cache
+
     ws_perfis.append_row(row, value_input_option="RAW")
+    all_values_cache.append(row)
+    return all_values_cache
 
 
-# ── MAIN ──────────────────────────────────────────────────────────────────────
+# ── WORKERS PARA EXECUÇÃO PARALELA ────────────────────────────────────────────
+
+def _analyse_item(args):
+    """Worker para ThreadPoolExecutor: analisa um post e retorna resultado."""
+    client, item = args
+    url = item.get("url") or item.get("postUrl") or item.get("link") or ""
+    analysis = analyse_post(client, item)
+    return item, url, validate_analysis(analysis)
+
+
+def _analyse_profile_worker(args):
+    """Worker para ThreadPoolExecutor: gera resumo analítico de um perfil."""
+    client, perfil, meta, posts_data = args
+    resumo = analyse_profile(client, perfil, meta, posts_data)
+    return perfil, meta, posts_data, resumo
+
+
+# ── COLETA DO DATASET APIFY ───────────────────────────────────────────────────
 
 def fetch_apify_items():
     url = (
-        "https://api.apify.com/v2/datasets/" + APIFY_DATASET_ID
-        + "/items?token=" + APIFY_API_TOKEN + "&format=json&clean=true"
+        f"https://api.apify.com/v2/datasets/{APIFY_DATASET_ID}"
+        "/items?format=json&clean=true"
     )
-    response = requests.get(url, timeout=60)
+    # Bearer header é mais seguro que token em query param (não aparece em logs de acesso)
+    headers = {"Authorization": f"Bearer {APIFY_API_TOKEN}"}
+    response = requests.get(url, headers=headers, timeout=60)
     response.raise_for_status()
     return response.json()
 
+
+# ── MAIN ──────────────────────────────────────────────────────────────────────
 
 def main(force_reanalyze=False, dry_run=False):
     if dry_run:
@@ -477,13 +564,13 @@ def main(force_reanalyze=False, dry_run=False):
     profile_posts = {p: [] for p in ALLOWED_PROFILES}
     unknown_profiles = {}
 
+    # ── FASE 1: Filtrar itens válidos (rápido, sem API) ──────────────────────
+    to_analyse = []
     for item in items:
-        # ── URL ──
         url = item.get("url") or item.get("postUrl") or item.get("link") or ""
         if not url:
             continue
 
-        # ── USERNAME ──
         username = (item.get("ownerUsername") or "").lower().strip()
         if not username:
             username = extract_username_from_url(url)
@@ -492,59 +579,76 @@ def main(force_reanalyze=False, dry_run=False):
             print(f"  SEM_USERNAME: {url[:80]}")
             continue
 
-        # ── DUPLICATA ──
         if url in existing_urls:
             counters["duplicatas"] += 1
             continue
 
-        # ── PERFIL NÃO AUTORIZADO ──
         if username not in ALLOWED_PROFILES:
             counters["perfil_ignorado"] += 1
             unknown_profiles[username] = unknown_profiles.get(username, 0) + 1
             continue
 
-        # ── ANÁLISE ──
-        n_comments = len(item.get("latestComments") or [])
-        print(f"Analisando @{username}: {url[-40:]}  [{n_comments} comentarios]")
-        try:
-            analysis = analyse_post(client, item)
-        except Exception as exc:
-            print(f"  ERRO na analise: {exc}")
-            counters["erros"] += 1
-            continue
+        to_analyse.append(item)
 
+    print(f"{len(to_analyse)} posts novos para analisar (workers={MAX_WORKERS})...")
+
+    # ── FASE 2: Análise paralela com Claude ──────────────────────────────────
+    # gspread não é thread-safe, então só chamamos o Claude em paralelo aqui;
+    # a escrita na planilha acontece sequencialmente na Fase 3.
+    analysed = []  # lista de (item, url, analysis)
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        future_map = {
+            executor.submit(_analyse_item, (client, item)): item
+            for item in to_analyse
+        }
+        for future in as_completed(future_map):
+            item = future_map[future]
+            username = (item.get("ownerUsername") or "").lower().strip()
+            n_comments = len(item.get("latestComments") or [])
+            try:
+                result_item, url, analysis = future.result()
+                analysed.append((result_item, url, analysis))
+                print(
+                    f"  OK @{username} | cat={analysis.get('categoria_tematica')} "
+                    f"| sent={analysis.get('sentimento_post')} "
+                    f"| urg={analysis.get('urgencia')} "
+                    f"[{n_comments} comentarios]"
+                )
+            except Exception as exc:
+                url = item.get("url") or item.get("postUrl") or "?"
+                print(f"  ERRO @{username} {url[-40:]}: {exc}")
+                counters["erros"] += 1
+
+    # ── FASE 3: Gravar resultados sequencialmente (gspread não é thread-safe) ─
+    for item, url, analysis in analysed:
         if not analysis.get("relevante", True):
             print(f"  Ignorado — sem relacao com a gestao de Alagoinhas.")
             counters["irrelevantes"] += 1
             continue
 
-        # ── GRAVA ──
-        append_post(ws_radar, url, analysis, item)
+        if not dry_run:
+            append_post(ws_radar, url, analysis, item)
         existing_urls.add(url)
         counters["novos"] += 1
 
-        profile_posts[username].append({
-            "sentimento": analysis.get("sentimento_post", "neutro"),
-            "tema": analysis.get("tema", ""),
-            "resumo": analysis.get("resumo", ""),
-            "urgencia": analysis.get("urgencia", "baixa"),
-            "categoria_tematica": analysis.get("categoria_tematica", ""),
-            "intensidade": analysis.get("intensidade", ""),
-            "atribuicao": analysis.get("atribuicao", ""),
-            "localizacao": analysis.get("localizacao", ""),
-        })
+        username = (item.get("ownerUsername") or "").lower().strip()
+        if not username:
+            username = extract_username_from_url(url)
 
-        print(
-            f"  OK cat={analysis.get('categoria_tematica')} | "
-            f"tema={analysis.get('tema')} | "
-            f"sent={analysis.get('sentimento_post')} | "
-            f"intens={analysis.get('intensidade')} | "
-            f"urg={analysis.get('urgencia')} | "
-            f"atrib={analysis.get('atribuicao')} | "
-            f"local={analysis.get('localizacao')}"
-        )
+        if username in profile_posts:
+            profile_posts[username].append({
+                "sentimento": analysis.get("sentimento_post", "neutro"),
+                "tema": analysis.get("tema", ""),
+                "resumo": analysis.get("resumo", ""),
+                "urgencia": analysis.get("urgencia", "baixa"),
+                "categoria_tematica": analysis.get("categoria_tematica", ""),
+                "intensidade": analysis.get("intensidade", ""),
+                "atribuicao": analysis.get("atribuicao", ""),
+                "localizacao": analysis.get("localizacao", ""),
+            })
 
-    # ── RESUMO ──
+    # ── RESUMO ────────────────────────────────────────────────────────────────
     print(
         f"\nConcluido: {counters['novos']} novos | "
         f"{counters['duplicatas']} duplicatas | "
@@ -558,22 +662,46 @@ def main(force_reanalyze=False, dry_run=False):
         for p, n in sorted(unknown_profiles.items(), key=lambda x: -x[1]):
             print(f"  @{p}: {n} posts")
 
-    # ── ANÁLISE POR PERFIL ──
+    # ── ANÁLISE POR PERFIL (paralela + escrita sequencial) ───────────────────
     profiles_with_posts = {k: v for k, v in profile_posts.items() if v}
-    if profiles_with_posts:
-        print(f"\nGerando resumo por perfil ({len(profiles_with_posts)} perfis)...")
-        for perfil, posts_data in profiles_with_posts.items():
-            meta = PROFILES_META[perfil]
-            print(f"  @{perfil} ({len(posts_data)} posts)...")
+    if not profiles_with_posts:
+        print("\nNenhum post novo para analise por perfil.")
+        return
+
+    print(f"\nGerando resumo por perfil ({len(profiles_with_posts)} perfis, workers={MAX_WORKERS})...")
+
+    # Lê a planilha de perfis UMA vez e reutiliza como cache em todas as atualizações
+    all_perfis_cache = ws_perfis.get_all_values()
+
+    # Análise de perfis em paralelo (cada chamada é independente)
+    profile_results = []
+    profile_args = [
+        (client, perfil, PROFILES_META[perfil], posts_data)
+        for perfil, posts_data in profiles_with_posts.items()
+    ]
+    with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(profile_args))) as executor:
+        future_map = {
+            executor.submit(_analyse_profile_worker, args): args[1]
+            for args in profile_args
+        }
+        for future in as_completed(future_map):
+            perfil = future_map[future]
             try:
-                resumo = analyse_profile(client, perfil, meta, posts_data)
-                update_profile_row(ws_perfis, perfil, meta, posts_data, resumo)
-                print(f"  @{perfil} atualizado.")
+                perfil_r, meta, posts_data, resumo = future.result()
+                profile_results.append((perfil_r, meta, posts_data, resumo))
+                print(f"  @{perfil_r} resumo gerado.")
             except Exception as e:
                 print(f"  ERRO @{perfil}: {e}")
-        print("Analise por perfil concluida!")
-    else:
-        print("\nNenhum post novo para analise por perfil.")
+
+    # Escrita sequencial usando cache (evita get_all_values() por perfil)
+    for perfil, meta, posts_data, resumo in profile_results:
+        if not dry_run:
+            all_perfis_cache = update_profile_row(
+                ws_perfis, perfil, meta, posts_data, resumo, all_perfis_cache
+            )
+        print(f"  @{perfil} atualizado.")
+
+    print("Analise por perfil concluida!")
 
 
 if __name__ == "__main__":

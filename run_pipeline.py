@@ -23,28 +23,16 @@ load_dotenv(override=True)   # override=True: .env tem prioridade sobre vars de 
 APIFY_API_TOKEN = os.environ["APIFY_API_TOKEN"]
 ACTOR_ID = "shu8hvrXbJbY3Eb9W"  # apify/instagram-scraper
 
-# Perfis monitorados — adicione novos aqui e em radar.py > PROFILES_META
+# Importa PROFILES_META como fonte única de verdade para os perfis monitorados.
+# Elimina a necessidade de manter duas listas sincronizadas manualmente.
+from radar import PROFILES_META  # noqa: E402 (import após load_dotenv é intencional)
+
 ACTOR_INPUT = {
     "addParentData": False,
+    # directUrls gerado dinamicamente a partir de PROFILES_META
     "directUrls": [
-        "https://www.instagram.com/seligaalagoinhas/",
-        "https://www.instagram.com/gustavoascarmo/",
-        "https://www.instagram.com/portalalagoinhasnews/",
-        "https://www.instagram.com/oficialjoaquimneto/",
-        "https://www.instagram.com/prefeituraalagoinhas/",
-        "https://www.instagram.com/soulucianoalmeida",
-        "https://www.instagram.com/jornalalagoinhas",
-        "https://www.instagram.com/suacidade",
-        "https://www.instagram.com/paulocezar_oficial",
-        "https://www.instagram.com/jaldicenunes",
-        "https://www.instagram.com/eulumamenezes",
-        "https://www.instagram.com/alagoinhas24h",
-        "https://www.instagram.com/alagonews",
-        "https://www.instagram.com/gleysersoares",
-        "https://www.instagram.com/aloalagoinhas",
-        "https://www.instagram.com/noticiasalagoinhas_",
-        "https://www.instagram.com/regiao_pauta",
-        "https://www.instagram.com/alvoradaruadocatu",
+        f"https://www.instagram.com/{username}/"
+        for username in PROFILES_META
     ],
     "onlyPostsNewerThan": "2 days",   # buffer de 2 dias (duplicatas são ignoradas)
     "resultsLimit": 200,
@@ -59,9 +47,11 @@ ACTOR_INPUT = {
 def trigger_apify():
     """Dispara o actor Apify e retorna o run_id."""
     print("Iniciando coleta Apify...")
+    headers = {"Authorization": f"Bearer {APIFY_API_TOKEN}"}
     r = requests.post(
-        f"https://api.apify.com/v2/acts/{ACTOR_ID}/runs?token={APIFY_API_TOKEN}",
+        f"https://api.apify.com/v2/acts/{ACTOR_ID}/runs",
         json=ACTOR_INPUT,
+        headers=headers,
         timeout=30,
     )
     r.raise_for_status()
@@ -77,9 +67,11 @@ def wait_for_run(run_id, timeout=2700, interval=30):
     """
     print(f"Aguardando coleta (max {timeout // 60} min)...")
     elapsed = 0
+    headers = {"Authorization": f"Bearer {APIFY_API_TOKEN}"}
     while elapsed < timeout:
         r = requests.get(
-            f"https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}",
+            f"https://api.apify.com/v2/actor-runs/{run_id}",
+            headers=headers,
             timeout=15,
         )
         r.raise_for_status()
@@ -124,12 +116,10 @@ def main(sem_apify=False):
     print()
     print("Iniciando analise de sentimento...")
 
-    # Importa radar aqui (depois de definir APIFY_DATASET_ID no environment)
+    # radar já foi importado no topo (para PROFILES_META); apenas sincroniza vars
     import radar as _radar
 
     # Sincroniza variáveis do módulo com os valores corretos do .env
-    # (necessário porque o ambiente do sistema pode ter vars vazias que
-    #  load_dotenv(override=False) não sobrescreveria dentro do módulo)
     _radar.APIFY_DATASET_ID   = dataset_id
     _radar.APIFY_API_TOKEN    = os.environ["APIFY_API_TOKEN"]
     _radar.ANTHROPIC_API_KEY  = os.environ["ANTHROPIC_API_KEY"]

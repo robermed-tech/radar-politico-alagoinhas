@@ -43,8 +43,27 @@ jobs:
       - name: Executar pipeline completo (Apify + Claude + Sheets)
         run: python run_pipeline.py
 
-      - name: Resumo
-        if: always()
+      - name: Resumo de sucesso
+        if: success()
         run: |
-          echo "Horario: $(date -u '+%Y-%m-%d %H:%M UTC')"
-          echo "Acesse o Google Sheets para ver os novos dados."
+          echo "## Pipeline concluido com sucesso" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Data:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Acesse o Google Sheets para ver os novos dados." >> $GITHUB_STEP_SUMMARY
+
+      - name: Alertar falha no pipeline
+        if: failure()
+        run: |
+          echo "## Pipeline FALHOU" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Data:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> Posts do periodo podem ter sido perdidos." >> $GITHUB_STEP_SUMMARY
+          echo "> Para recuperar: acesse Actions, clique em 'Run workflow' manualmente." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Horario:** $(date -u '+%Y-%m-%d %H:%M UTC')"
+          echo "**Acoes:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          exit 1
