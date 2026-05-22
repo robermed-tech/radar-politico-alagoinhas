@@ -23,7 +23,10 @@ GOOGLE_SHEET_NAME          = os.environ.get("GOOGLE_SHEET_NAME", "Radar")
 SHEET_HEADERS = [
     "url", "data_post", "autor",
     "sentimento_post", "sentimento_comentarios",
-    "tema", "urgencia", "resumo", "atribuicao"
+    "comentarios_negativos_pct", "comentarios_positivos_pct",
+    "tema", "tema_sensivel", "urgencia",
+    "risco_crise", "tendencia", "engajamento",
+    "resumo", "atribuicao", "sugestao_acao"
 ]
 
 # ── Filtro de relevância ─────────────────────────────────────────────────────
@@ -34,8 +37,9 @@ KEYWORDS = [
 
 # ── Prompt de análise ────────────────────────────────────────────────────────
 ANALYSIS_PROMPT = """\
-Você é um analista político da Prefeitura de Alagoinhas/BA.
-Analise o post abaixo e retorne SOMENTE um JSON válido, sem texto extra, sem markdown.
+Você é um analista político sênior da Prefeitura de Alagoinhas/BA, especializado em monitoramento de redes sociais e gestão de crises de comunicação.
+
+Analise o post e os comentários abaixo com profundidade estratégica e retorne SOMENTE um JSON válido, sem texto extra, sem markdown.
 
 Post:
 {texto}
@@ -47,11 +51,25 @@ Retorne exatamente este JSON:
 {{
   "sentimento_post": "Positivo" | "Negativo" | "Neutro",
   "sentimento_comentarios": "Positivo" | "Negativo" | "Neutro" | "Sem comentários",
-  "tema": "Saúde" | "Obras" | "Educação" | "Segurança" | "Política" | "Social" | "Outro",
+  "comentarios_negativos_pct": "<percentual estimado de comentários negativos, ex: 35%>",
+  "comentarios_positivos_pct": "<percentual estimado de comentários positivos, ex: 45%>",
+  "tema": "Saúde" | "Obras" | "Educação" | "Segurança" | "Política" | "Social" | "Transporte" | "Meio Ambiente" | "Outro",
+  "tema_sensivel": "Sim" | "Não",
   "urgencia": "Alta" | "Média" | "Baixa",
-  "resumo": "<resumo em até 10 palavras>",
-  "atribuicao": "<a quem o post se refere, ex: Prefeitura, Gustavo Carmo, Oposição>"
-}}"""
+  "risco_crise": "Alto" | "Médio" | "Baixo",
+  "tendencia": "Crescendo" | "Estável" | "Diminuindo",
+  "engajamento": "Alto" | "Médio" | "Baixo",
+  "resumo": "<resumo objetivo do post em até 15 palavras>",
+  "atribuicao": "<a quem o post se refere, ex: Prefeitura, Gustavo Carmo, Oposição, Câmara Municipal>",
+  "sugestao_acao": "Monitorar" | "Responder publicamente" | "Acionar assessoria" | "Conter crise" | "Ampliar positivo"
+}}
+
+Critérios importantes:
+- "tema_sensivel": marque Sim quando o tema pode gerar repercussão negativa ampla (saúde, segurança, corrupção, obras atrasadas)
+- "risco_crise": Alto quando há comentários negativos crescentes + tema sensível + urgência alta
+- "tendencia": avalie se o tom dos comentários está piorando, estável ou melhorando
+- "engajamento": Alto acima de 50 comentários/curtidas, Médio entre 10-50, Baixo abaixo de 10
+- "sugestao_acao": baseie na combinação de sentimento + risco + tendência""""""
 
 
 # ── Utilitários ──────────────────────────────────────────────────────────────
@@ -92,9 +110,8 @@ def obter_ultimo_dataset_id() -> str:
         )
 
     url = (
-       f"https://api.apify.com/v2/actor-runs"
-    f"?token={APIFY_API_TOKEN}&status=SUCCEEDED&limit=1"
-    f"&actorId={APIFY_ACTOR_ID}"
+        f"https://api.apify.com/v2/acts/{APIFY_ACTOR_ID}/runs"
+        f"?token={APIFY_API_TOKEN}&status=SUCCEEDED&limit=1"
     )
     resp = requests.get(url, timeout=30)
     resp.raise_for_status()
@@ -153,7 +170,7 @@ def analisar_post(texto: str, comentarios: str) -> dict:
     prompt = ANALYSIS_PROMPT.format(texto=texto, comentarios=comentarios)
     msg = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=400,
+        max_tokens=600,
         messages=[{"role": "user", "content": prompt}],
     )
     raw = msg.content[0].text.strip()
@@ -219,10 +236,17 @@ def processar(dataset_id: str | None = None):
             autor,
             analise.get("sentimento_post", ""),
             analise.get("sentimento_comentarios", ""),
+            analise.get("comentarios_negativos_pct", ""),
+            analise.get("comentarios_positivos_pct", ""),
             analise.get("tema", ""),
+            analise.get("tema_sensivel", ""),
             analise.get("urgencia", ""),
+            analise.get("risco_crise", ""),
+            analise.get("tendencia", ""),
+            analise.get("engajamento", ""),
             analise.get("resumo", ""),
             analise.get("atribuicao", ""),
+            analise.get("sugestao_acao", ""),
         ]
         linhas.append(linha)
         existentes.add(url)
