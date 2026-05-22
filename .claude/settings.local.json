@@ -18,7 +18,10 @@
       "Bash(python -c \"import sys; data=sys.stdin.buffer.read\\(\\); print\\(data.decode\\('utf-8','replace'\\)\\)\")",
       "Bash(python -c \"import ast, sys; ast.parse\\(open\\('radar.py'\\).read\\(\\)\\); print\\('radar.py: syntax OK'\\)\")",
       "Bash(n.env)",
-      "Bash(Add-Content .gitignore \"`n.env`nservice_account.json\")"
+      "Bash(Add-Content .gitignore \"`n.env`nservice_account.json\")",
+      "Bash(python -m pytest test_radar.py -v)",
+      "Bash(git -C \"C:\\\\Users\\\\rober\\\\radar-politico\" add radar.py run_pipeline.py requirements.txt .github/workflows/radar.yml test_radar.py RESEARCH.md)",
+      "Bash(git -C \"C:\\\\Users\\\\rober\\\\radar-politico\" diff --cached --stat)"
     ]
   }
 }
