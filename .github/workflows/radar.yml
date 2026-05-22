@@ -3,11 +3,10 @@ name: Radar Politico — Pipeline Diario
 on:
   schedule:
    # Roda 4x ao dia: 6h, 12h, 18h e 23h BRT
-      - cron: '0 6   * * *'
-      - cron: '0 12 * * *'
-      - cron: '0 18 * * *'
-      - cron: '0 23 * * *'
-
+      - cron: '0 0  * * *'
+      - cron: '0 8 * * *'
+      - cron: '0 14 * * *'
+      - cron: '0 19 * * *'
   # Permite rodar manualmente pelo GitHub (botão "Run workflow")
   workflow_dispatch:
 
