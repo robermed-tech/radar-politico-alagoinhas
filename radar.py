@@ -69,7 +69,7 @@ Critérios importantes:
 - "risco_crise": Alto quando há comentários negativos crescentes + tema sensível + urgência alta
 - "tendencia": avalie se o tom dos comentários está piorando, estável ou melhorando
 - "engajamento": Alto acima de 50 comentários/curtidas, Médio entre 10-50, Baixo abaixo de 10
-- "sugestao_acao": baseie na combinação de sentimento + risco + tendência""""""
+- "sugestao_acao": baseie na combinação de sentimento + risco + tendência"""
 
 
 # ── Utilitários ──────────────────────────────────────────────────────────────
