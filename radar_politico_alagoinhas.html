@@ -4,847 +4,870 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Radar Político — Alagoinhas</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #FFF8F1;
-    --bg2: #FFF3E8;
-    --surface: #FFFFFF;
-    --surface2: #FFF9F5;
-    --border: #FDDCBC;
-    --border-strong: #FBBA8C;
-    --accent: #E05A1A;
-    --accent-dark: #C44A10;
-    --accent-light: rgba(224,90,26,0.08);
-    --accent-mid: rgba(224,90,26,0.16);
-    --green: #10B981;
-    --green-bg: rgba(16,185,129,0.08);
-    --red: #EF4444;
-    --red-bg: rgba(239,68,68,0.08);
-    --yellow: #F59E0B;
-    --yellow-bg: rgba(245,158,11,0.10);
-    --blue: #3B82F6;
-    --purple: #8B5CF6;
-    --orange: #F97316;
-    --orange-bg: rgba(249,115,22,0.10);
-    --text: #1E2A4A;
-    --text-2: #3D4F73;
-    --muted: #6B7E9C;
-    --muted-light: #A8B8D0;
-    --radius: 16px;
-    --shadow: 0 2px 16px rgba(100,50,10,0.07), 0 1px 4px rgba(100,50,10,0.04);
-    --shadow-md: 0 4px 24px rgba(100,50,10,0.10), 0 2px 8px rgba(100,50,10,0.06);
-    --shadow-lg: 0 8px 48px rgba(100,50,10,0.14), 0 4px 16px rgba(100,50,10,0.08);
-  }
+:root {
+  --bg:       #F4F2EC;
+  --surface:  #FFFFFF;
+  --border:   rgba(0,0,0,0.07);
+  --border2:  rgba(0,0,0,0.12);
+  --text:     #111111;
+  --text2:    #444444;
+  --muted:    #888888;
+  --muted-lt: #BBBBBB;
+  --amber:    #C99A2E;
+  --amber-bg: rgba(201,154,46,0.10);
+  --amber-glow: rgba(230,185,60,0.18);
+  --green:    #16A34A;
+  --green-bg: rgba(22,163,74,0.09);
+  --red:      #DC2626;
+  --red-bg:   rgba(220,38,38,0.09);
+  --blue:     #2563EB;
+  --purple:   #7C3AED;
+  --nav-pill: #151515;
+  --radius:   14px;
+  --radius-sm:8px;
+  --shadow:   0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.05);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'Figtree',sans-serif;
+  background:var(--bg);
+  background-image:
+    radial-gradient(ellipse 55% 60% at 100% 0%, var(--amber-glow) 0%, transparent 60%),
+    radial-gradient(ellipse 35% 40% at 0% 100%, rgba(201,154,46,0.07) 0%, transparent 55%);
+  color:var(--text);
+  min-height:100vh;
+}
 
-  * { margin:0; padding:0; box-sizing:border-box; }
+/* ── TOP NAV ─────────────────────────────────────────────── */
+.topnav{
+  position:sticky;top:0;z-index:200;
+  display:flex;align-items:center;
+  background:rgba(244,242,236,0.85);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:0 28px;
+  height:60px;
+  gap:16px;
+}
+.nav-brand{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.nav-logo{
+  width:34px;height:34px;border-radius:9px;
+  background:var(--nav-pill);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#fff;
+  letter-spacing:-0.5px;
+}
+.nav-brand-text{
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:700;
+  color:var(--text);letter-spacing:-0.3px;
+}
+.nav-center{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:2px;
+}
+.nav-tabs{
+  display:flex;align-items:center;gap:2px;
+  background:rgba(0,0,0,0.05);
+  border-radius:100px;padding:4px;
+}
+.nav-tab{
+  padding:6px 16px;border-radius:100px;border:none;cursor:pointer;
+  font-family:'Figtree',sans-serif;font-size:13px;font-weight:500;
+  color:var(--muted);background:transparent;
+  transition:all 180ms ease;white-space:nowrap;
+}
+.nav-tab:hover{color:var(--text2);}
+.nav-tab.active{
+  background:var(--nav-pill);color:#fff;font-weight:600;
+  box-shadow:0 2px 8px rgba(0,0,0,0.18);
+}
+.nav-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.btn-period{
+  padding:6px 14px;border-radius:100px;border:1.5px solid var(--border2);
+  background:transparent;cursor:pointer;
+  font-family:'Figtree',sans-serif;font-size:12px;font-weight:600;
+  color:var(--muted);transition:all 150ms ease;white-space:nowrap;
+}
+.btn-period:hover{color:var(--text);border-color:rgba(0,0,0,0.25);}
+.btn-period.active{
+  background:var(--nav-pill);border-color:var(--nav-pill);color:#fff;
+}
+.btn-sync{
+  display:flex;align-items:center;gap:6px;
+  padding:7px 16px;border-radius:100px;
+  background:var(--amber);border:none;cursor:pointer;
+  font-family:'Figtree',sans-serif;font-size:12px;font-weight:700;
+  color:#fff;letter-spacing:0.2px;
+  transition:all 150ms ease;
+  box-shadow:0 2px 10px rgba(201,154,46,0.30);
+}
+.btn-sync:hover{background:#B8891F;transform:translateY(-1px);box-shadow:0 4px 14px rgba(201,154,46,0.40);}
+.btn-settings{
+  width:34px;height:34px;border-radius:9px;border:1.5px solid var(--border2);
+  background:transparent;cursor:pointer;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+  transition:all 150ms ease;
+}
+.btn-settings:hover{background:var(--surface);color:var(--text);}
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    background-image:
-      radial-gradient(ellipse 70% 50% at 85% 5%, rgba(224,90,26,0.09) 0%, transparent 65%),
-      radial-gradient(ellipse 50% 40% at 5% 90%, rgba(245,158,11,0.07) 0%, transparent 55%);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-  }
+/* ── MAIN ─────────────────────────────────────────────────── */
+main{
+  max-width:1200px;margin:0 auto;
+  padding:28px 28px 60px;
+}
 
-  /* ── SIDEBAR ── */
-  aside {
-    width: 90px;
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; align-items: center;
-    padding: 20px 0; gap: 2px;
-    position: sticky; top: 0; height: 100vh; z-index: 100;
-    box-shadow: 2px 0 20px rgba(100,50,10,0.06);
-  }
+/* ── LOADING ─────────────────────────────────────────────── */
+#loading-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:80px 0;color:var(--muted);font-size:13px;
+}
+.spinner{
+  width:28px;height:28px;border:2.5px solid rgba(0,0,0,0.08);
+  border-top-color:var(--amber);border-radius:50%;
+  animation:spin 0.7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
 
-  .logo {
-    width: 42px; height: 42px;
-    background: linear-gradient(135deg, var(--accent), #F97316);
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-weight: 800; font-size: 17px; color: #fff;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 16px rgba(224,90,26,0.40);
-    letter-spacing: -0.5px;
-  }
+/* ── PAGE HEADER ─────────────────────────────────────────── */
+.page-header{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  margin-bottom:24px;
+}
+.page-header h1{
+  font-family:'Syne',sans-serif;font-size:28px;font-weight:800;
+  color:var(--text);letter-spacing:-0.7px;line-height:1.1;
+}
+.page-header h1 span{color:var(--amber);}
+.sync-status{
+  display:flex;align-items:center;gap:7px;
+  font-size:12px;color:var(--muted);margin-top:5px;
+}
+.dot-live{
+  width:6px;height:6px;border-radius:50%;background:var(--green);
+  flex-shrink:0;animation:livepulse 2.5s ease infinite;
+}
+@keyframes livepulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.page-header-right{
+  display:flex;align-items:center;gap:10px;
+  font-size:12px;color:var(--muted);
+}
+.header-badge{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:100px;padding:5px 12px;
+  font-size:11px;font-weight:600;color:var(--text2);
+}
 
-  .nav-item {
-    width: 72px; height: 56px; border-radius: 12px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 3px;
-    cursor: pointer; transition: all 200ms cubic-bezier(0.4,0,0.2,1);
-    color: var(--muted); font-size: 17px;
-    border: none; background: transparent; position: relative;
-  }
-  .nav-item:hover { background: var(--bg); color: var(--text-2); }
-  .nav-item.active { background: var(--accent-light); color: var(--accent); }
-  .nav-item.active::before {
-    content: ''; position: absolute; left: -16px;
-    width: 3px; height: 28px; background: var(--accent);
-    border-radius: 0 3px 3px 0;
-  }
-  .nav-label {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 9px; font-weight: 700;
-    letter-spacing: 0.4px; text-transform: uppercase;
-    color: inherit; line-height: 1; transition: color 200ms;
-  }
-  .nav-item .tooltip { display: none; }
-  .nav-spacer { flex: 1; }
+/* ── CARDS ───────────────────────────────────────────────── */
+.card{
+  background:var(--surface);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:20px;
+  animation:fadeUp 320ms ease both;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.card-title{
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+  color:var(--text);letter-spacing:-0.2px;
+  margin-bottom:16px;display:flex;align-items:center;gap:8px;
+}
+.card-title .dot{
+  width:7px;height:7px;border-radius:50%;flex-shrink:0;
+}
+.card-sub{font-size:11px;font-weight:500;color:var(--muted);margin-left:auto;}
 
-  /* ── MAIN ── */
-  main {
-    flex: 1; overflow-y: auto;
-    padding: 28px 32px 40px; max-width: 1180px;
-  }
+/* ── SECTION LABEL ───────────────────────────────────────── */
+.section-label{
+  font-family:'Syne',sans-serif;font-size:10px;font-weight:800;
+  letter-spacing:1.8px;text-transform:uppercase;color:var(--muted);
+  margin-bottom:12px;margin-top:28px;
+  display:flex;align-items:center;gap:10px;
+}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border);}
 
-  /* ── HEADER ── */
-  .header {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    margin-bottom: 20px;
-  }
-  .header-left h1 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 26px; font-weight: 800; color: var(--text);
-    letter-spacing: -0.5px; line-height: 1.2;
-  }
-  .header-left h1 span {
-    background: linear-gradient(135deg, var(--accent), #F97316);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .header-sub {
-    font-size: 13px; color: var(--muted); margin-top: 4px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .dot-live {
-    width: 7px; height: 7px; background: var(--green);
-    border-radius: 50%; animation: pulse 2.5s infinite; flex-shrink: 0;
-  }
-  @keyframes pulse {
-    0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
-    50% { opacity:.8; box-shadow: 0 0 0 5px rgba(16,185,129,0); }
-  }
-  .header-right { display: flex; align-items: center; gap: 10px; }
-  .btn-sync {
-    background: var(--accent); color: #fff; border: none; cursor: pointer;
-    padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600;
-    font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 6px;
-    transition: all 200ms; box-shadow: 0 4px 14px rgba(224,90,26,0.35);
-  }
-  .btn-sync:hover { background: var(--accent-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(224,90,26,0.45); }
+/* ── ROW 1: PROFILE + KPI ────────────────────────────────── */
+.row-hero{
+  display:grid;
+  grid-template-columns:200px 1fr;
+  gap:14px;
+  margin-bottom:14px;
+}
+/* Profile card */
+.profile-card{
+  background:var(--nav-pill);border-radius:var(--radius);
+  overflow:hidden;position:relative;
+  aspect-ratio:4/5;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  box-shadow:0 6px 24px rgba(0,0,0,0.20);
+}
+.profile-card img{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;opacity:0.85;
+}
+.profile-overlay{
+  position:relative;z-index:2;
+  background:linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 70%);
+  padding:16px;
+}
+.profile-name-badge{
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:800;
+  color:#fff;line-height:1.2;
+}
+.profile-role{font-size:10px;color:rgba(255,255,255,0.60);margin-top:2px;font-weight:500;}
+.profile-tag{
+  display:inline-flex;align-items:center;margin-top:8px;
+  background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);
+  border-radius:100px;padding:3px 10px;
+  font-size:9px;font-weight:700;color:rgba(255,255,255,0.85);
+  letter-spacing:0.5px;text-transform:uppercase;
+}
 
-  /* ── PERIOD BUTTONS ── */
-  .period-group { display: flex; align-items: center; gap: 5px; }
-  .btn-period {
-    background: transparent;
-    border: 1.5px solid var(--border);
-    cursor: pointer;
-    padding: 7px 18px;
-    border-radius: 100px;
-    font-size: 12px; font-weight: 700;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    letter-spacing: 0.3px;
-    color: var(--muted);
-    transition: all 200ms cubic-bezier(0.4,0,0.2,1);
-    white-space: nowrap;
-  }
-  .btn-period:hover {
-    color: var(--text-2);
-    border-color: var(--border-strong);
-    background: rgba(255,255,255,0.85);
-    transform: translateY(-1px);
-  }
-  .btn-period.active {
-    background: linear-gradient(135deg, var(--accent) 0%, #F97316 100%);
-    border-color: transparent;
-    color: #fff;
-    box-shadow: 0 3px 14px rgba(224,90,26,0.38), 0 1px 4px rgba(224,90,26,0.20);
-    transform: translateY(-1px);
-  }
-  .btn-period.active:hover {
-    box-shadow: 0 5px 20px rgba(224,90,26,0.45), 0 2px 6px rgba(224,90,26,0.25);
-    transform: translateY(-2px);
-  }
+/* KPI grid */
+.kpi-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  grid-template-rows:auto auto;
+  gap:14px;
+}
+.kpi-card{
+  background:var(--surface);border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:18px 20px;
+  cursor:pointer;
+  transition:all 180ms ease;
+  border-top:3px solid transparent;
+  animation:fadeUp 320ms ease both;
+  position:relative;overflow:hidden;
+}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
+.kpi-card.total{border-top-color:var(--amber);}
+.kpi-card.positivo{border-top-color:var(--green);}
+.kpi-card.negativo{border-top-color:var(--red);}
+.kpi-card.urgente{border-top-color:#EA580C;}
+.kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+.kpi-number{
+  font-family:'Syne',sans-serif;font-size:38px;font-weight:800;
+  color:var(--text);letter-spacing:-1.5px;line-height:1;
+  margin:4px 0;
+}
+.kpi-card.positivo .kpi-number{color:var(--green);}
+.kpi-card.negativo .kpi-number{color:var(--red);}
+.kpi-card.urgente  .kpi-number{color:#EA580C;}
+.kpi-footer{display:flex;align-items:center;justify-content:space-between;}
+.kpi-pct{
+  font-size:11px;font-weight:700;color:var(--muted-lt);
+}
+.kpi-bar-track{
+  height:3px;background:rgba(0,0,0,0.06);border-radius:2px;
+  margin-top:10px;overflow:hidden;
+}
+.kpi-bar-fill{height:100%;border-radius:2px;transition:width 800ms cubic-bezier(0.4,0,0.2,1);}
+.kpi-card.total   .kpi-bar-fill{background:var(--amber);}
+.kpi-card.positivo .kpi-bar-fill{background:var(--green);}
+.kpi-card.negativo .kpi-bar-fill{background:var(--red);}
+.kpi-card.urgente  .kpi-bar-fill{background:#EA580C;}
 
-  /* ── SECTION TITLE ── */
-  .section-title {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
-    color: var(--muted); margin-bottom: 14px;
-    display: flex; align-items: center; gap: 10px;
-  }
-  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+/* ── ROW 2: SENTIMENT RING + COMMENT ANALYSIS + ATTR ─────── */
+.row-three{
+  display:grid;
+  grid-template-columns:1fr 1.4fr 1fr;
+  gap:14px;
+  margin-bottom:14px;
+}
 
-  /* ── FILTRO ATIVO ── */
-  .filtro-ativo-wrap {
-    display: flex; align-items: center; gap: 7px;
-    margin-bottom: 20px; flex-wrap: wrap; font-size: 12px; color: var(--muted);
-  }
-  .filtro-kw-tag {
-    background: var(--accent-light); border: 1px solid rgba(224,90,26,0.20);
-    padding: 3px 10px; border-radius: 100px;
-    font-size: 11px; color: var(--accent); font-weight: 500;
-  }
-  .filtro-count-tag {
-    margin-left: auto; font-size: 12px; color: var(--muted);
-    background: var(--surface); padding: 3px 10px; border-radius: 100px;
-    border: 1px solid var(--border);
-  }
+/* Ring */
+.ring-wrap{
+  display:flex;flex-direction:column;align-items:center;
+  position:relative;margin:8px 0;
+}
+.ring-center{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  text-align:center;
+}
+.ring-big{
+  font-family:'Syne',sans-serif;font-size:28px;font-weight:800;
+  color:var(--text);letter-spacing:-1px;line-height:1;
+}
+.ring-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-top:2px;}
+.legend-row{display:flex;gap:14px;margin-top:12px;justify-content:center;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.legend-val{font-weight:700;}
 
-  /* ── HERO SECTION ── */
-  .hero-section {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
-    margin-bottom: 22px;
-  }
-  .profile-column {
-    display: flex; flex-direction: column;
-    gap: 10px; flex-shrink: 0; width: 220px;
-  }
-  .kpi-area {
-    flex: 1; min-width: 0;
-    display: flex; flex-direction: column; gap: 12px;
-  }
-  .kpi-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  }
-  .profile-stats-card {
-    background: var(--surface);
-    border-radius: 14px; padding: 14px 16px;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-    display: flex; align-items: center; justify-content: space-around;
-  }
-  .profile-stat-item { text-align: center; flex: 1; }
-  .profile-stat-num {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 20px; font-weight: 800; line-height: 1;
-    letter-spacing: -0.8px;
-  }
-  .profile-stat-label {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.6px;
-    color: var(--muted); margin-top: 4px;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    text-transform: uppercase;
-  }
-  .profile-stat-divider {
-    width: 1px; height: 28px; background: var(--border); flex-shrink: 0;
-  }
+/* Comment analysis */
+.comment-stacked-bar{
+  height:10px;border-radius:100px;overflow:hidden;
+  display:flex;margin-bottom:16px;
+  background:rgba(0,0,0,0.05);
+}
+.comment-bar-seg{height:100%;transition:width 700ms cubic-bezier(0.4,0,0.2,1);}
+.comment-stat-row{
+  display:flex;align-items:center;gap:8px;margin-bottom:8px;
+}
+.comment-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.comment-stat-label{font-size:12px;color:var(--text2);flex:1;}
+.comment-stat-pct{font-size:12px;font-weight:700;color:var(--text);}
+.comment-stat-count{font-size:10px;color:var(--muted);margin-left:2px;}
 
-  /* ── PROFILE CARD ── */
-  .profile-mayor-card {
-    width: 220px; height: 220px;
-    flex-shrink: 0;
-    background-color: #3D1200;
-    background-image:
-      linear-gradient(to top, rgba(30,6,0,0.90) 0%, rgba(30,6,0,0.25) 50%, transparent 100%),
-      url('data:image/jpeg;base64,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EnByaW50T3V0cHV0T3B0aW9ucwAAABcAAAAAQ3B0bmJvb2wAAAAAAENsYnJib29sAAAAAABSZ3NNYm9vbAAAAAAAQ3JuQ2Jvb2wAAAAAAENudENib29sAAAAAABMYmxzYm9vbAAAAAAATmd0dmJvb2wAAAAAAEVtbERib29sAAAAAABJbnRyYm9vbAAAAAAAQmNrZ09iamMAAAABAAAAAAAAUkdCQwAAAAMAAAAAUmQgIGRvdWJAb+AAAAAAAAAAAABHcm4gZG91YkBv4AAAAAAAAAAAAEJsICBkb3ViQG/gAAAAAAAAAAAAQnJkVFVudEYjUmx0AAAAAAAAAAAAAAAAQmxkIFVudEYjUmx0AAAAAAAAAAAAAAAAUnNsdFVudEYjUHhsQFIAAAAAAAAAAAAKdmVjdG9yRGF0YWJvb2wBAAAAAFBnUHNlbnVtAAAAAFBnUHMAAAAAUGdQQwAAAABMZWZ0VW50RiNSbHQAAAAAAAAAAAAAAABUb3AgVW50RiNSbHQAAAAAAAAAAAAAAABTY2wgVW50RiNQcmNAWQAAAAAAAAAAABBjcm9wV2hlblByaW50aW5nYm9vbAAAAAAOY3JvcFJlY3RCb3R0b21sb25nAAAAAAAAAAxjcm9wUmVjdExlZnRsb25nAAAAAAAAAA1jcm9wUmVjdFJpZ2h0bG9uZwAAAAAAAAALY3JvcFJlY3RUb3Bsb25nAAAAAAA4QklNA+0AAAAAABAASAAAAAEAAgBIAAAAAQACOEJJTQQmAAAAAAAOAAAAAAAAAAAAAD+AAAA4QklNBA0AAAAAAAQAAAAeOEJJTQQZAAAAAAAEAAAAHjhCSU0D8wAAAAAACQAAAAAAAAAAAQA4QklNJxAAAAAAAAoAAQAAAAAAAAACOEJJTQP1AAAAAABIAC9mZgABAGxmZgAGAAAAAAABAC9mZgABAKGZmgAGAAAAAAABADIAAAABAFoAAAAGAAAAAAABADUAAAABAC0AAAAGAAAAAAABOEJJTQP4AAAAAABwAAD/////////////////////////////A+gAAAAA/////////////////////////////wPoAAAAAP////////////////////////////8D6AAAAAD/////////////////////////////A+gAADhCSU0EAAAAAAAAAgAAOEJJ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YXRlbnVtAAAACkZpbGVGb3JtYXQAAAAASlBFRwAAAAxub01hdHRlQ29sb3Jib29sAQAAAAtwcm9ncmVzc2l2ZWJvb2wBAAAADHpvbmVkUXVhbGl0eU9iamMAAAABAAAAAAAJWm9uZWRJbmZvAAAABAAAAAljaGFubmVsSURsb25n/////wAAAA1lbXBoYXNpemVUZXh0Ym9vbAAAAAAQZW1waGFzaXplVmVjdG9yc2Jvb2wAAAAABWZsb29ybG9uZwAAAAA4QklND6EAAAAAAC1tc2V0AAAAEAAAAAEAAAAAAARudWxsAAAAAQAAAAdWZXJzaW9ubG9uZwAAAAAAOEJJTQ+iAAAAAAAIbXM0dwAAAAQ4QklNBAYAAAAAAAcACAAAAAEBAP/hDnpodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDEwLjAtYzAwMCAyNS5HLmQyMGU0NjYsIDIwMjUvMTIvMDgtMjA6NTA6MjEgICAgICAgICI+IDxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+IDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiIHhtbG5zOnhtcD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLyIgeG1sbnM6ZGM9Imh0dHA6Ly9wdXJsLm9yZy9kYy9lbGVtZW50cy8xLjEvIiB4bWxuczpwaG90b3Nob3A9Imh0dHA6Ly9ucy5hZG9iZS5jb20vcGhvdG9zaG9wLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdEV2dD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlRXZlbnQjIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCAyNy43ICgyMDI2MDQyOS5tLjM1MjEgZDEwZDUwOSkgIChXaW5kb3dzKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjYtMDUtMTlUMjE6NDk6MjYtMDM6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDI2LTA1LTE5VDIyOjQ0OjA3LTAzOjAwIiB4bXA6TWV0YWRhdGFEYXRlPSIyMDI2LTA1LTE5VDIyOjQ0OjA3LTAzOjAwIiBkYzpmb3JtYXQ9ImltYWdlL2pwZWciIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6Y2IwOTNmYzMtYzE3ZC1jNTQzLWIwNzctMDFmNTJiMWUxZDM5IiB4bXBNTTpEb2N1bWVudElEPSJhZG9iZTpkb2NpZDpwaG90b3Nob3A6NThmYmU3ZjEtNzI0Mi1lNDRlLTllYzktMTU0ODVhYmEwN2I3IiB4bXBNTTpPcmlnaW5hbERvY3VtZW50SUQ9InhtcC5kaWQ6Mjg0MDI3NjYtMmZjYi03NzQ4LTlmOTYtNmYxOTkwZjllNTdkIj4gPHhtcE1NOkhpc3Rvcnk+IDxyZGY6U2VxPiA8cmRmOmxpIHN0RXZ0OmFjdGlvbj0iY3JlYXRlZCIgc3RFdnQ6aW5zdGFuY2VJRD0ieG1wLmlpZDoyODQwMjc2Ni0yZmNiLTc3NDgtOWY5Ni02ZjE5OTBmOWU1N2QiIHN0RXZ0OndoZW49IjIwMjYtMDUtMTlUMjE6NDk6MjYtMDM6MDAiIHN0RXZ0OnNvZnR3YXJlQWdlbnQ9IkFkb2JlIFBob3Rvc2hvcCAyNy43ICgyMDI2MDQyOS5tLjM1MjEgZDEwZDUwOSkgIChXaW5kb3dzKSIvPiA8cmRmOmxpIHN0RXZ0OmFjdGlvbj0iY29udmVydGVkIiBzdEV2dDpwYXJhbWV0ZXJzPSJmcm9tIGltYWdlL3BuZyB0byBpbWFnZS9qcGVnIi8+IDxyZGY6bGkgc3RFdnQ6YWN0aW9uPSJzYXZlZCIgc3RFdnQ6aW5zdGFuY2VJRD0ieG1wLmlpZDpjYjA5M2ZjMy1jMTdkLWM1NDMtYjA3Ny0wMWY1MmIxZTFkMzkiIHN0RXZ0OndoZW49IjIwMjYtMDUtMTlUMjI6NDQ6MDctMDM6MDAiIHN0RXZ0OnNvZnR3YXJlQWdlbnQ9IkFkb2JlIFBob3Rvc2hvcCAyNy43ICgyMDI2MDQyOS5tLjM1MjEgZDEwZDUwOSkgIChXaW5kb3dzKSIgc3RFdnQ6Y2hhbmdlZD0iLyIvPiA8L3JkZjpTZXE+IDwveG1wTU06SGlzdG9yeT4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPD94cGFja2V0IGVuZD0idyI/Pv/uAA5BZG9iZQBkQAAAAAH/2wCEAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQECAgICAgICAgICAgMDAwMDAwMDAwMBAQEBAQEBAQEBAQICAQICAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA//AABEIAG4AbgMBEQACEQEDEQH/3QAEAA7/xAGiAAAABgIDAQAAAAAAAAAAAAAHCAYFBAkDCgIBAAsBAAAGAwEBAQAAAAAAAAAAAAYFBAMHAggBCQAKCxAAAgEDBAEDAwIDAwMCBgl1AQIDBBEFEgYhBxMiAAgxFEEyIxUJUUIWYSQzF1JxgRhikSVDobHwJjRyChnB0TUn4VM2gvGSokRUc0VGN0djKFVWVxqywtLi8mSDdJOEZaOzw9PjKThm83UqOTpISUpYWVpnaGlqdnd4eXqFhoeIiYqUlZaXmJmapKWmp6ipqrS1tre4ubrExcbHyMnK1NXW19jZ2uTl5ufo6er09fb3+Pn6EQACAQMCBAQDBQQEBAYGBW0BAgMRBCESBTEGACITQVEHMmEUcQhCgSORFVKhYhYzCbEkwdFDcvAX4YI0JZJTGGNE8aKyJjUZVDZFZCcKc4OT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');
-    background-size: auto, cover;
-    background-position: center, center 15%;
-    background-repeat: no-repeat, no-repeat;
-    border-radius: 20px; position: relative; overflow: hidden;
-    box-shadow: 0 8px 32px rgba(60,15,0,0.45), 0 2px 8px rgba(60,15,0,0.30);
-    display: flex; flex-direction: column; justify-content: flex-end;
-  }
-  .profile-initials-bg { display: none; }
-  .profile-info-overlay {
-    position: relative; z-index: 2;
-    padding: 28px 14px 14px;
-  }
-  .profile-name {
-    color: #FFFFFF; font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 14px; font-weight: 800; line-height: 1.2;
-    text-shadow: 0 1px 6px rgba(0,0,0,0.80);
-  }
-  .profile-title { color: rgba(255,220,190,0.90); font-size: 9.5px; margin-top: 2px; font-weight: 600; letter-spacing: 0.3px; text-shadow: 0 1px 4px rgba(0,0,0,0.70); }
-  .profile-badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    background: rgba(255,120,40,0.35); backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,160,80,0.55);
-    border-radius: 100px; padding: 3px 9px;
-    font-size: 9px; color: #FFDEC0; margin-top: 6px;
-    font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.50);
-  }
+/* Profile comment bars */
+.comm-profile-row{
+  display:flex;align-items:center;gap:8px;margin-bottom:10px;
+}
+.comm-profile-avatar{
+  width:26px;height:26px;border-radius:7px;
+  background:var(--nav-pill);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:800;color:#fff;flex-shrink:0;
+}
+.comm-profile-name{font-size:11px;font-weight:600;color:var(--text2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.comm-mini-bar{
+  display:flex;height:6px;border-radius:100px;overflow:hidden;width:60px;flex-shrink:0;background:rgba(0,0,0,0.05);
+}
+.comm-mini-pos{height:100%;background:var(--green);transition:width 600ms ease;}
+.comm-mini-neg{height:100%;background:var(--red);}
+.comm-mini-pct{font-size:10px;font-weight:700;color:var(--text2);width:28px;text-align:right;flex-shrink:0;}
 
-  /* ── KPI CARDS — DESIGN 2.0 ── */
-  .kpi-card {
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: 20px;
-    padding: 18px 20px 14px;
-    position: relative; overflow: hidden;
-    cursor: pointer;
-    display: flex; flex-direction: column;
-    transition: transform 130ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 130ms ease;
-    will-change: transform, box-shadow;
-    animation: cardIn 380ms cubic-bezier(0.34,1.56,0.64,1) both;
-  }
-  @keyframes cardIn {
-    from { opacity:0; transform:translateY(18px) scale(0.94); }
-    to   { opacity:1; transform:translateY(0) scale(1); }
-  }
-  .kpi-card.total    { background: linear-gradient(150deg,rgba(59,130,246,0.08) 0%,var(--surface) 55%); }
-  .kpi-card.positivo { background: linear-gradient(150deg,rgba(16,185,129,0.08) 0%,var(--surface) 55%); }
-  .kpi-card.negativo { background: linear-gradient(150deg,rgba(239,68,68,0.09) 0%,var(--surface) 55%); }
-  .kpi-card.neutro   { background: linear-gradient(150deg,rgba(148,163,184,0.07) 0%,var(--surface) 55%); }
-  .kpi-card.urgente  { background: linear-gradient(150deg,rgba(224,90,26,0.09) 0%,var(--surface) 55%); }
+/* Attribution bars */
+.attr-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.attr-label{font-size:11px;color:var(--text2);width:110px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.attr-track{flex:1;height:6px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden;}
+.attr-fill{height:100%;background:var(--purple);border-radius:3px;transition:width 700ms cubic-bezier(0.4,0,0.2,1);}
+.attr-count{font-size:10px;font-weight:700;color:var(--muted);width:20px;text-align:right;}
 
-  /* Sombra neutra quente no repouso — distinção vem das bordas e números */
-  .kpi-card.total    { box-shadow: 0 6px 0 rgba(80,40,10,0.13), 0 2px 14px rgba(80,40,10,0.07); border-color:rgba(59,130,246,0.28); }
-  .kpi-card.positivo { box-shadow: 0 6px 0 rgba(80,40,10,0.13), 0 2px 14px rgba(80,40,10,0.07); border-color:rgba(16,185,129,0.28); }
-  .kpi-card.negativo { box-shadow: 0 6px 0 rgba(80,40,10,0.13), 0 2px 14px rgba(80,40,10,0.07); border-color:rgba(239,68,68,0.28);  }
-  .kpi-card.neutro   { box-shadow: 0 6px 0 rgba(80,40,10,0.13), 0 2px 14px rgba(80,40,10,0.07); border-color:rgba(148,163,184,0.22);}
-  .kpi-card.urgente  { box-shadow: 0 6px 0 rgba(80,40,10,0.13), 0 2px 14px rgba(80,40,10,0.07); border-color:rgba(224,90,26,0.30);  }
+/* ── ROW 3: TREND CHART ───────────────────────────────────── */
+.trend-card{margin-bottom:14px;}
+.chart-tendencia-wrap{
+  width:100%;overflow-x:auto;
+  display:flex;align-items:flex-end;
+  gap:0;min-height:90px;
+}
+.trend-day-group{
+  display:flex;flex-direction:column;align-items:center;
+  flex:1;min-width:36px;
+}
+.trend-bars{display:flex;gap:2px;align-items:flex-end;height:70px;}
+.trend-bar{
+  width:10px;border-radius:3px 3px 0 0;min-height:4px;
+  transition:height 600ms cubic-bezier(0.4,0,0.2,1);
+}
+.trend-day-label{font-size:9px;color:var(--muted);margin-top:5px;white-space:nowrap;}
 
-  .kpi-card.total:hover    { transform:translateY(-5px); box-shadow:0 12px 0 rgba(59,130,246,0.28), 0 12px 36px rgba(59,130,246,0.18); }
-  .kpi-card.positivo:hover { transform:translateY(-5px); box-shadow:0 12px 0 rgba(16,185,129,0.28), 0 12px 36px rgba(16,185,129,0.18); }
-  .kpi-card.negativo:hover { transform:translateY(-5px); box-shadow:0 12px 0 rgba(239,68,68,0.28),  0 12px 36px rgba(239,68,68,0.18);  }
-  .kpi-card.neutro:hover   { transform:translateY(-5px); box-shadow:0 12px 0 rgba(148,163,184,0.24),0 12px 36px rgba(148,163,184,0.14);}
-  .kpi-card.urgente:hover  { transform:translateY(-5px); box-shadow:0 12px 0 rgba(224,90,26,0.36),  0 12px 36px rgba(224,90,26,0.22);  }
+/* ── ROW 4: RANKING ──────────────────────────────────────── */
+.row-ranking{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-bottom:14px;
+}
+.ranking-list{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
+.ranking-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:10px;
+  background:rgba(0,0,0,0.025);
+  transition:all 150ms ease;cursor:pointer;
+}
+.ranking-item:hover{background:rgba(0,0,0,0.05);}
+.ranking-pos-num{
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:800;
+  color:var(--muted-lt);width:18px;flex-shrink:0;
+}
+.ranking-avatar{
+  width:30px;height:30px;border-radius:8px;
+  background:var(--nav-pill);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;color:#fff;flex-shrink:0;
+}
+.ranking-info{flex:1;min-width:0;}
+.ranking-name{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ranking-meta{font-size:10px;color:var(--muted);margin-top:1px;}
+.ranking-pct{
+  font-family:'Syne',sans-serif;font-size:16px;font-weight:800;
+  flex-shrink:0;letter-spacing:-0.5px;
+}
+.ranking-pct.pos{color:var(--green);}
+.ranking-pct.neg{color:var(--red);}
+.ranking-sub-bar{height:3px;border-radius:2px;margin-top:5px;width:100%;background:rgba(0,0,0,0.06);overflow:hidden;}
+.ranking-sub-fill{height:100%;border-radius:2px;}
 
-  .kpi-card:active { transform:translateY(4px) !important; transition-duration:60ms !important; }
-  .kpi-card.total:active    { box-shadow:0 2px 0 rgba(59,130,246,0.35),  0 1px 6px rgba(59,130,246,0.10)  !important; }
-  .kpi-card.positivo:active { box-shadow:0 2px 0 rgba(16,185,129,0.35),  0 1px 6px rgba(16,185,129,0.10)  !important; }
-  .kpi-card.negativo:active { box-shadow:0 2px 0 rgba(239,68,68,0.35),   0 1px 6px rgba(239,68,68,0.10)   !important; }
-  .kpi-card.neutro:active   { box-shadow:0 2px 0 rgba(148,163,184,0.28), 0 1px 6px rgba(148,163,184,0.08) !important; }
-  .kpi-card.urgente:active  { box-shadow:0 2px 0 rgba(224,90,26,0.40),   0 1px 6px rgba(224,90,26,0.12)   !important; }
+/* ── THEMES ──────────────────────────────────────────────── */
+.topic-cloud{display:flex;flex-wrap:wrap;gap:8px;}
+.topic-tag{
+  padding:6px 14px;border-radius:100px;
+  font-size:12px;font-weight:600;
+  border:1.5px solid;cursor:pointer;
+  transition:all 150ms ease;
+}
+.topic-tag:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.10);}
 
-  .kpi-card::after {
-    content:''; position:absolute; top:0; left:0; right:0; height:4px;
-    border-radius:20px 20px 0 0;
-  }
-  .kpi-card.total::after    { background:linear-gradient(90deg,#3B82F6,#60A5FA); }
-  .kpi-card.positivo::after { background:linear-gradient(90deg,#10B981,#34D399); }
-  .kpi-card.negativo::after { background:linear-gradient(90deg,#EF4444,#FC8181); }
-  .kpi-card.neutro::after   { background:linear-gradient(90deg,#94A3B8,#CBD5E1); }
-  .kpi-card.urgente::after  { background:linear-gradient(90deg,var(--accent),#F97316); }
+/* ── NARRATIVA ───────────────────────────────────────────── */
+.narrativa-box{
+  background:linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%);
+  border-radius:var(--radius);
+  padding:20px 24px;
+  color:rgba(255,255,255,0.85);
+  font-size:13px;line-height:1.75;
+  margin-bottom:14px;
+}
+.narrativa-box b{color:#fff;}
 
-  .kpi-top { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
-  .kpi-icon-wrap {
-    width:36px; height:36px; border-radius:11px;
-    display:flex; align-items:center; justify-content:center; font-size:17px;
-    flex-shrink:0;
-  }
-  .kpi-card.total .kpi-icon-wrap    { background:rgba(59,130,246,0.12); }
-  .kpi-card.positivo .kpi-icon-wrap { background:rgba(16,185,129,0.12); }
-  .kpi-card.negativo .kpi-icon-wrap { background:rgba(239,68,68,0.12);  }
-  .kpi-card.neutro .kpi-icon-wrap   { background:rgba(148,163,184,0.14);}
-  .kpi-card.urgente .kpi-icon-wrap  { background:rgba(224,90,26,0.12);  }
+/* ── FILTER TABS ─────────────────────────────────────────── */
+.filter-tabs{display:flex;gap:4px;margin-bottom:16px;}
+.filter-tab{
+  padding:5px 14px;border-radius:100px;border:1.5px solid var(--border2);
+  background:transparent;cursor:pointer;
+  font-size:11px;font-weight:600;color:var(--muted);
+  transition:all 150ms ease;
+}
+.filter-tab.active{background:var(--nav-pill);border-color:var(--nav-pill);color:#fff;}
 
-  .kpi-tipo-tag {
-    font-size:10px; font-weight:700; letter-spacing:0.7px; text-transform:uppercase;
-    padding:3px 9px; border-radius:100px; line-height:1.4;
-  }
-  .kpi-card.total .kpi-tipo-tag    { background:rgba(59,130,246,0.10); color:#3B82F6; }
-  .kpi-card.positivo .kpi-tipo-tag { background:rgba(16,185,129,0.10); color:var(--green); }
-  .kpi-card.negativo .kpi-tipo-tag { background:rgba(239,68,68,0.10);  color:var(--red);   }
-  .kpi-card.neutro .kpi-tipo-tag   { background:rgba(148,163,184,0.12);color:var(--muted); }
-  .kpi-card.urgente .kpi-tipo-tag  { background:rgba(224,90,26,0.10);  color:var(--accent);}
+/* ── POST CARDS ──────────────────────────────────────────── */
+.post-list{display:flex;flex-direction:column;gap:10px;}
+.post-card{
+  background:var(--surface);border-radius:12px;
+  padding:16px;box-shadow:var(--shadow);
+  animation:fadeUp 300ms ease both;
+  transition:all 150ms ease;
+}
+.post-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
+.post-card.urgente{border-left:3px solid var(--red);padding-left:13px;}
+.post-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.post-autor{font-size:12px;font-weight:700;color:var(--text);}
+.post-data{font-size:11px;color:var(--muted);}
+.badge{
+  display:inline-flex;align-items:center;
+  padding:2px 9px;border-radius:100px;
+  font-size:10px;font-weight:700;letter-spacing:0.2px;
+}
+.badge-positivo,.badge-positivo.txt{background:var(--green-bg);color:var(--green);}
+.badge-negativo,.badge-negativo.txt{background:var(--red-bg);color:var(--red);}
+.badge-neutro,.badge-neutro.txt{background:rgba(0,0,0,0.06);color:var(--muted);}
+.badge-alta{background:rgba(234,88,12,0.10);color:#EA580C;}
+.badge-media,.badge-média{background:var(--amber-bg);color:var(--amber);}
+.badge-baixa{background:rgba(0,0,0,0.05);color:var(--muted);}
+.badge-sens{background:rgba(220,38,38,0.08);color:var(--red);}
+.badge-attr{background:rgba(124,58,237,0.09);color:var(--purple);}
+.post-resumo{font-size:13px;color:var(--text2);margin-bottom:6px;line-height:1.5;}
+.post-tema{font-size:11px;color:var(--muted);font-weight:500;}
+.post-stats{
+  display:flex;align-items:center;gap:8px;margin-top:10px;
+  font-size:11px;color:var(--muted);
+}
+.btn-ver{
+  margin-left:auto;font-size:11px;font-weight:600;
+  color:var(--amber);text-decoration:none;
+  padding:3px 10px;border-radius:100px;
+  border:1px solid var(--amber-bg);
+  transition:all 150ms ease;
+}
+.btn-ver:hover{background:var(--amber);color:#fff;}
+.post-action{
+  margin-top:8px;display:inline-flex;align-items:center;gap:4px;
+  padding:3px 10px;border-radius:100px;
+  font-size:10px;font-weight:700;
+  background:rgba(0,0,0,0.04);color:var(--text2);
+}
 
-  .kpi-arrow { margin-left:auto; font-size:16px; color:var(--muted); opacity:0; transform:translateX(-7px); transition:all 220ms; }
-  .kpi-card:hover .kpi-arrow { opacity:1; transform:translateX(0); }
+/* ── PERFIS ──────────────────────────────────────────────── */
+.perfil-grid{display:flex;flex-direction:column;gap:10px;}
+.perfil-row{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;border-radius:12px;background:var(--surface);
+  box-shadow:var(--shadow);cursor:pointer;
+  transition:all 150ms ease;
+}
+.perfil-row:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
+.perfil-avatar{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--nav-pill);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#fff;
+  flex-shrink:0;
+}
+.perfil-name{font-size:13px;font-weight:700;color:var(--text);}
+.perfil-cat{font-size:11px;color:var(--muted);margin-top:1px;}
+.perfil-bar-wrap{width:100px;flex-shrink:0;}
+.perfil-bar-bg{height:5px;background:rgba(0,0,0,0.07);border-radius:3px;overflow:hidden;}
+.perfil-bar-fill{height:100%;border-radius:3px;transition:width 700ms ease;}
+.perfil-pct{font-size:13px;font-weight:800;width:36px;text-align:right;flex-shrink:0;}
 
-  .kpi-num {
-    font-family:'Plus Jakarta Sans', sans-serif;
-    font-size:56px; font-weight:900;
-    line-height:1; letter-spacing:-3px;
-  }
-  .kpi-num.pop { animation: numPop 320ms cubic-bezier(0.34,1.56,0.64,1); }
-  @keyframes numPop {
-    0%  { transform:scale(1);    }
-    45% { transform:scale(1.14); }
-    100%{ transform:scale(1);    }
-  }
-  .kpi-card.total .kpi-num    { color:#3B82F6; }
-  .kpi-card.positivo .kpi-num { color:var(--green); }
-  .kpi-card.negativo .kpi-num { color:var(--red);   }
-  .kpi-card.neutro .kpi-num   { color:var(--muted); }
-  .kpi-card.urgente .kpi-num  { color:var(--accent);}
+/* ── CONFIG ──────────────────────────────────────────────── */
+.config-group{margin-bottom:20px;}
+.config-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:7px;}
+.config-input{
+  width:100%;padding:10px 14px;border-radius:10px;
+  border:1.5px solid var(--border2);background:var(--surface);
+  font-family:'Figtree',sans-serif;font-size:13px;color:var(--text);
+  transition:border-color 150ms ease;
+}
+.config-input:focus{outline:none;border-color:var(--amber);}
+.btn-save{
+  padding:10px 22px;border-radius:10px;
+  background:var(--nav-pill);border:none;cursor:pointer;
+  font-family:'Figtree',sans-serif;font-size:13px;font-weight:700;color:#fff;
+  transition:all 150ms ease;
+}
+.btn-save:hover{background:#333;transform:translateY(-1px);}
+#cfg-status{display:none;margin-top:10px;font-size:12px;color:var(--green);}
+.kw-row{display:flex;gap:7px;}
+.kw-input{flex:1;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border2);font-family:'Figtree',sans-serif;font-size:12px;}
+.kw-add-btn{padding:8px 14px;border-radius:8px;border:none;background:var(--nav-pill);color:#fff;font-size:12px;font-weight:700;cursor:pointer;}
+.kw-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.kw-tag{
+  display:flex;align-items:center;gap:4px;
+  background:var(--nav-pill);color:#fff;
+  padding:3px 10px;border-radius:100px;font-size:11px;font-weight:600;
+}
+.kw-remove{cursor:pointer;opacity:0.6;font-size:13px;}
+.kw-remove:hover{opacity:1;}
 
-  .kpi-bottom { display:flex; align-items:center; justify-content:space-between; margin-top:6px; gap:6px; }
-  .kpi-label  { font-size:11px; color:var(--muted); font-weight:500; }
-  .kpi-pct-badge {
-    font-size:11px; font-weight:700; padding:2px 9px; border-radius:100px; flex-shrink:0;
-  }
-  .kpi-card.total .kpi-pct-badge    { background:rgba(59,130,246,0.10); color:#3B82F6; }
-  .kpi-card.positivo .kpi-pct-badge { background:rgba(16,185,129,0.10); color:var(--green); }
-  .kpi-card.negativo .kpi-pct-badge { background:rgba(239,68,68,0.10);  color:var(--red);   }
-  .kpi-card.neutro .kpi-pct-badge   { background:rgba(148,163,184,0.12);color:var(--muted); }
-  .kpi-card.urgente .kpi-pct-badge  { background:rgba(224,90,26,0.10);  color:var(--accent);}
+/* ── MODAL ───────────────────────────────────────────────── */
+#modal-overlay{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);
+  padding:20px;
+}
+#modal-overlay.open{display:flex;align-items:flex-start;justify-content:center;}
+#modal-box{
+  background:var(--surface);border-radius:18px;
+  width:100%;max-width:680px;max-height:90vh;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 20px 80px rgba(0,0,0,0.20);
+  animation:fadeUp 250ms ease both;
+}
+#modal-header{
+  display:flex;align-items:center;gap:10px;
+  padding:20px 24px;border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+#modal-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text);}
+#modal-count{font-size:11px;color:var(--muted);margin-left:auto;}
+#modal-close{
+  width:28px;height:28px;border-radius:8px;
+  border:1.5px solid var(--border2);background:transparent;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:var(--muted);transition:all 150ms ease;
+}
+#modal-close:hover{background:var(--nav-pill);color:#fff;border-color:var(--nav-pill);}
+#modal-body{
+  flex:1;overflow-y:auto;padding:20px 24px;
+  display:flex;flex-direction:column;gap:10px;
+}
 
-  .kpi-mini-bar  { height:5px; border-radius:3px; margin-top:10px; background:var(--border); overflow:hidden; }
-  .kpi-mini-fill { height:100%; border-radius:3px; width:0%; transition:width 1.4s cubic-bezier(0.4,0,0.2,1) 300ms; }
+/* ── EMPTY STATE ─────────────────────────────────────────── */
+.empty{
+  text-align:center;color:var(--muted);font-size:13px;
+  padding:40px;grid-column:1/-1;
+}
 
-  /* urgente wide */
-  .kpi-hero-wide {
-    flex-direction:row !important; align-items:center; gap:20px; padding:20px 26px;
-    width:100%;
-  }
-  .kpi-hero-wide .kpi-top    { margin-bottom:0; flex-shrink:0; flex-direction:column; gap:6px; align-items:flex-start; }
-  .kpi-hero-wide .kpi-num    { font-size:62px; letter-spacing:-4px; }
-  .kpi-hero-wide .kpi-bottom { flex-direction:column; align-items:flex-start; gap:4px; flex:1; }
-  .kpi-hero-wide .kpi-mini-bar { display:none; }
-  .kpi-urgente-gauge { display:flex; align-items:center; justify-content:flex-end; }
+/* ── URGÊNCIA BANNER ─────────────────────────────────────── */
+.urgencia-items{display:flex;flex-direction:column;gap:8px;}
+.urgencia-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-radius:10px;
+  background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.12);
+}
+.urg-dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;animation:livepulse 1.5s ease infinite;}
+.urg-text{flex:1;font-size:12px;color:var(--text2);line-height:1.4;}
+.urg-link{font-size:11px;color:var(--amber);font-weight:600;text-decoration:none;flex-shrink:0;}
+.urg-link:hover{text-decoration:underline;}
 
-  /* ── NARRATIVA ── */
-  .narrativa-card {
-    background: linear-gradient(135deg, #FFF0E4 0%, #FCEEDE 100%);
-    border: 1.5px solid #FBBA8C;
-    border-left: 5px solid var(--accent);
-    border-radius: var(--radius);
-    padding: 20px 24px; margin-bottom: 22px;
-    font-size: 13.5px; line-height: 1.85; color: var(--text);
-    box-shadow: 0 4px 20px rgba(224,90,26,0.12), inset 0 1px 0 rgba(255,255,255,0.70);
-  }
-  .narrativa-label {
-    font-size: 10px; font-weight: 800; letter-spacing: 2px;
-    text-transform: uppercase; color: var(--accent);
-    display: block; margin-bottom: 10px; font-family: 'Plus Jakarta Sans', sans-serif;
-  }
+/* ── RISK/TREND BADGES ───────────────────────────────────── */
+.badge-risk-alto{background:rgba(220,38,38,0.08);color:var(--red);}
+.badge-risk-medio,.badge-risk-médio{background:var(--amber-bg);color:var(--amber);}
+.badge-risk-baixo{background:rgba(0,0,0,0.05);color:var(--muted);}
+.badge-trend-crescendo{background:rgba(220,38,38,0.08);color:var(--red);}
+.badge-trend-estável,.badge-trend-estavel{background:rgba(0,0,0,0.05);color:var(--muted);}
+.badge-trend-diminuindo{background:var(--green-bg);color:var(--green);}
 
-  /* ── URGÊNCIA ALTA ── */
-  .urgencia-banner {
-    background: linear-gradient(135deg, rgba(239,68,68,0.10) 0%, rgba(239,68,68,0.04) 100%);
-    border: 1px solid rgba(239,68,68,0.28);
-    border-left: 4px solid var(--red);
-    border-radius: var(--radius);
-    padding: 20px 24px; margin-bottom: 22px;
-    box-shadow: 0 2px 16px rgba(239,68,68,0.08);
-  }
-  .urgencia-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-  .urgencia-badge {
-    background: var(--red); color: #fff;
-    padding: 5px 13px; border-radius: 100px; font-size: 11px; font-weight: 700;
-    letter-spacing: 0.5px; text-transform: uppercase;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    animation: urgPulse 2s ease-in-out infinite;
-    box-shadow: 0 0 0 0 rgba(239,68,68,0.4);
-  }
-  @keyframes urgPulse {
-    0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.50); }
-    60%  { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
-    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
-  }
-  .urgencia-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 700; color: var(--red); }
-  .urgencia-count {
-    margin-left: auto; font-size: 12px; color: var(--red); font-weight: 700;
-    background: rgba(239,68,68,0.08); padding: 3px 12px; border-radius: 100px;
-    border: 1px solid rgba(239,68,68,0.22);
-  }
+/* ── FILTRO ATIVO ────────────────────────────────────────── */
+.filtro-wrap{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  margin-bottom:16px;font-size:11px;color:var(--muted);
+}
+.filtro-kw-tag{
+  background:var(--amber-bg);border:1px solid rgba(201,154,46,0.20);
+  padding:2px 9px;border-radius:100px;font-size:10px;color:var(--amber);font-weight:600;
+}
+.filtro-count{margin-left:auto;font-size:11px;color:var(--muted);}
 
-  /* ── BOTTOM GRID ── */
-  .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 22px; }
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow);
-  }
-  .card-title {
-    font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700;
-    margin-bottom: 16px; color: var(--text); display: flex; align-items: center; gap: 8px;
-  }
-  .card-title-dot { width: 8px; height: 8px; border-radius: 2px; }
+/* ── ANIMATIONS ──────────────────────────────────────────── */
+@keyframes countUp{from{opacity:0;transform:scale(0.85);}to{opacity:1;transform:scale(1);}}
+.count-pop{animation:countUp 400ms cubic-bezier(0.34,1.56,0.64,1) both;}
 
-  /* ── GRÁFICO: SENTIMENTO RING ── */
-  .sentimento-wrap { display: flex; align-items: center; justify-content: center; gap: 28px; }
-  .ring-wrap { position: relative; width: 130px; height: 130px; flex-shrink: 0; }
-  .ring-wrap svg { transform: rotate(-90deg); }
-  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .ring-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 28px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
-  .ring-label { font-size: 10px; color: var(--muted); margin-top: 2px; font-weight: 500; }
-  .legend-list { display: flex; flex-direction: column; gap: 10px; flex: 1; }
-  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
-  .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-  .legend-val { margin-left: auto; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; }
-  .legend-pct { font-size: 11px; color: var(--muted); margin-left: 4px; }
-
-  /* ── GRÁFICO: ATTR BARS ── */
-  .attr-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .attr-label { font-size: 12px; color: var(--muted); min-width: 80px; font-weight: 500; }
-  .attr-bar-wrap { flex: 1; height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; position: relative; }
-  .attr-fill { height: 100%; border-radius: 5px; transition: width 1.2s cubic-bezier(0.4,0,0.2,1); }
-  .attr-num { font-size: 12px; font-weight: 700; min-width: 24px; text-align: right; font-family: 'Plus Jakarta Sans', sans-serif; }
-
-  /* ── GRÁFICO: TENDÊNCIA (barras diárias) ── */
-  .chart-tendencia-wrap { display: flex; align-items: flex-end; gap: 6px; height: 90px; margin-top: 4px; }
-  .bar-day-group { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
-  .bar-stacked { display: flex; flex-direction: column-reverse; align-items: stretch; gap: 1px; flex: 1; min-height: 4px; border-radius: 4px; overflow: hidden; }
-  .bar-segment { transition: height 0.8s cubic-bezier(0.4,0,0.2,1); }
-  .bar-day-label { font-size: 9px; color: var(--muted); font-weight: 600; margin-top: 4px; font-family: 'Plus Jakarta Sans', sans-serif; }
-
-  /* ── GRÁFICO: GAUGE ── */
-  .gauge-wrap { position: relative; width: 100px; height: 60px; }
-  .gauge-wrap svg { overflow: visible; }
-  .gauge-value-label { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 800; white-space: nowrap; }
-
-  /* ── TEMAS ── */
-  .topic-cloud { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-  .topic-tag {
-    background: var(--surface2); border: 1px solid var(--border); color: var(--text-2);
-    padding: 5px 14px; border-radius: 100px; font-size: 12px; cursor: pointer; font-weight: 500;
-    transition: all 180ms;
-  }
-  .topic-tag:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
-
-  /* ── PERFIS ── */
-  .perfil-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: all 150ms; }
-  .perfil-row:last-child { border-bottom: none; }
-  .perfil-row:hover { padding-left: 4px; }
-  .perfil-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #F97316); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
-  .perfil-name { font-size: 13px; font-weight: 600; flex: 1; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text); }
-  .perfil-cat { font-size: 11px; color: var(--muted); margin-top: 1px; }
-  .perfil-bar-wrap { width: 72px; }
-  .perfil-bar-bg { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
-  .perfil-bar-fill { height: 100%; border-radius: 3px; }
-  .perfil-pct { font-size: 12px; font-weight: 700; min-width: 32px; text-align: right; font-family: 'Plus Jakarta Sans', sans-serif; }
-
-  /* ── POST CARDS ── */
-  .post-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; transition: all 180ms; }
-  .post-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow); }
-  .post-card.urgente { border-left: 3px solid var(--red); }
-  .post-meta { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; flex-wrap: wrap; }
-  .post-autor { font-size: 13px; font-weight: 600; color: var(--accent); font-family: 'Plus Jakarta Sans', sans-serif; }
-  .post-data { font-size: 11px; color: var(--muted); }
-  .badge { padding: 3px 9px; border-radius: 100px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; font-family: 'Plus Jakarta Sans', sans-serif; }
-  .badge-positivo { background: var(--green-bg); color: var(--green); }
-  .badge-negativo { background: var(--red-bg); color: var(--red); }
-  .badge-neutro { background: rgba(124,143,174,0.10); color: var(--muted); }
-  .badge-alta { background: var(--red-bg); color: var(--red); }
-  .badge-media { background: var(--yellow-bg); color: var(--yellow); }
-  .badge-baixa { background: rgba(148,163,184,0.10); color: var(--muted-light); }
-  .badge-prefeitura { background: rgba(59,130,246,0.10); color: #3B82F6; }
-  .badge-imprensa { background: rgba(139,92,246,0.10); color: var(--purple); }
-  .badge-oposicao { background: rgba(239,68,68,0.10); color: var(--red); }
-  .badge-attr { background: rgba(59,130,246,0.10); color: #3B82F6; text-transform: none; letter-spacing: 0; }
-  .post-resumo { font-size: 13px; line-height: 1.65; color: var(--text-2); margin-bottom: 10px; }
-  .post-tema { font-size: 11px; color: var(--muted); font-style: italic; margin-bottom: 10px; }
-  .post-stats { display: flex; align-items: center; gap: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
-  .stat-item { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 500; }
-  .stat-item.likes { color: var(--red); }
-  .stat-item.comments { color: #3B82F6; }
-  .btn-ver { margin-left: auto; background: transparent; border: 1px solid var(--border); color: var(--muted); cursor: pointer; padding: 4px 12px; border-radius: 7px; font-size: 11px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; transition: all 150ms; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
-  .btn-ver:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
-
-  /* ── FILTER TABS ── */
-  .filter-row { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; flex-wrap: wrap; }
-  .filter-tab { padding: 6px 16px; border-radius: 100px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 180ms; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: var(--shadow); }
-  .filter-tab:hover { border-color: var(--border-strong); color: var(--text); }
-  .filter-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 10px rgba(224,90,26,0.30); }
-
-  /* ── CONFIG ── */
-  .config-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 26px; margin-bottom: 20px; box-shadow: var(--shadow); }
-  .config-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
-  .config-desc { font-size: 13px; color: var(--muted); }
-  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
-  .config-field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 7px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; }
-  .config-field input { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 9px; padding: 10px 14px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: all 150ms; }
-  .config-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(224,90,26,0.10); }
-  .keywords-wrap { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
-  .kw-tag { background: var(--accent-light); border: 1px solid rgba(224,90,26,0.20); color: var(--accent); padding: 5px 12px; border-radius: 100px; font-size: 12px; display: flex; align-items: center; gap: 7px; font-weight: 500; }
-  .kw-remove { cursor: pointer; color: rgba(224,90,26,0.5); font-size: 15px; transition: color 150ms; }
-  .kw-remove:hover { color: var(--red); }
-  .kw-input-row { display: flex; gap: 8px; margin-top: 10px; }
-  .kw-input-row input { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 9px; padding: 9px 14px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: all 150ms; }
-  .kw-input-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(224,90,26,0.10); }
-  .btn-add { background: var(--accent); border: none; color: #fff; padding: 9px 18px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; transition: all 150ms; box-shadow: 0 2px 8px rgba(224,90,26,0.25); }
-  .btn-add:hover { background: var(--accent-dark); }
-  .btn-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text-2); padding: 9px 18px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; transition: all 150ms; }
-  .btn-secondary:hover { border-color: var(--border-strong); background: var(--bg2); }
-
-  /* ── MODAL ── */
-  .overlay { position: fixed; inset: 0; background: rgba(30,10,0,0.45); z-index: 200; display: none; align-items: flex-start; justify-content: center; padding: 40px 20px; backdrop-filter: blur(6px); }
-  .overlay.open { display: flex; }
-  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 780px; max-height: 82vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); animation: slideUp 200ms cubic-bezier(0.4,0,0.2,1); }
-  @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-  .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
-  .modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; color: var(--text); }
-  .modal-count { background: var(--bg); padding: 3px 12px; border-radius: 100px; font-size: 12px; color: var(--muted); border: 1px solid var(--border); }
-  .modal-close { margin-left: auto; background: var(--bg); border: 1px solid var(--border); color: var(--muted); cursor: pointer; width: 32px; height: 32px; border-radius: 8px; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 150ms; }
-  .modal-close:hover { color: var(--text); border-color: var(--border-strong); }
-  .modal-body { overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; }
-
-  /* ── MISC ── */
-  .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px; color: var(--muted); gap: 16px; }
-  .spinner { width: 34px; height: 34px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; font-weight: 500; }
-  .hidden { display: none !important; }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: var(--bg2); }
-  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
-
-  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes scaleIn { from { opacity:0; transform:scale(0.88); } to { opacity:1; transform:scale(1); } }
-  @keyframes slideInLeft { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
-  .card { animation: fadeIn 350ms ease both; }
-  .narrativa-card { animation: slideInLeft 400ms cubic-bezier(0.4,0,0.2,1) both; }
-  .ring-wrap { animation: scaleIn 600ms cubic-bezier(0.34,1.56,0.64,1) both 250ms; }
-  .kpi-urgente-gauge svg { animation: scaleIn 700ms cubic-bezier(0.34,1.56,0.64,1) both 400ms; }
-  /* attr bars draw-in */
-  @keyframes barSlide { from { width:0 !important; } }
+.hidden{display:none!important;}
 </style>
 </head>
 <body>
 
-<!-- SIDEBAR -->
-<aside>
-  <div class="logo">R</div>
-  <button class="nav-item active" onclick="showSection('resumo')">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-    <span class="nav-label">Resumo</span>
-  </button>
-  <button class="nav-item" onclick="showSection('positivos')">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
-    <span class="nav-label">Positivos</span>
-  </button>
-  <button class="nav-item" onclick="showSection('negativos')">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
-    <span class="nav-label">Negativos</span>
-  </button>
-  <button class="nav-item" onclick="showSection('perfis')">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    <span class="nav-label">Perfis</span>
-  </button>
-  <div class="nav-spacer"></div>
-  <button class="nav-item" onclick="showSection('config')">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg>
-    <span class="nav-label">Config</span>
-  </button>
-</aside>
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="nav-brand">
+    <div class="nav-logo">R</div>
+    <span class="nav-brand-text">Radar Político</span>
+  </div>
+
+  <div class="nav-center">
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showSection('resumo')">Resumo</button>
+      <button class="nav-tab" onclick="showSection('positivos')">Positivos</button>
+      <button class="nav-tab" onclick="showSection('negativos')">Negativos</button>
+      <button class="nav-tab" onclick="showSection('perfis')">Perfis</button>
+    </div>
+  </div>
+
+  <div class="nav-right">
+    <div style="display:flex;gap:4px;">
+      <button class="btn-period" id="btn-diario"  onclick="setPeriodo(1)">Diário</button>
+      <button class="btn-period active" id="btn-semanal" onclick="setPeriodo(7)">Semanal</button>
+      <button class="btn-period" id="btn-mensal"  onclick="setPeriodo(30)">Mensal</button>
+    </div>
+    <button class="btn-sync" id="sync-btn" onclick="carregarDados()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+      <span id="sync-label">Sincronizar</span>
+    </button>
+    <button class="btn-settings" onclick="showSection('config')" title="Configurações">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg>
+    </button>
+  </div>
+</nav>
 
 <!-- MAIN -->
 <main id="main-content">
-  <div class="loading" id="loading-state">
+  <div id="loading-state">
     <div class="spinner"></div>
-    <div>Carregando dados do Radar...</div>
+    <span>Carregando dados do Radar...</span>
   </div>
 
   <div id="dashboard" class="hidden">
 
-    <!-- HEADER -->
-    <div class="header">
-      <div class="header-left">
-        <h1>Bem-vindo ao <span>Radar Político</span></h1>
-        <div class="header-sub">
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <div>
+        <h1>Bem-vindo ao <span>Radar</span></h1>
+        <div class="sync-status">
           <div class="dot-live"></div>
-          <span id="sync-label">carregando...</span>
+          <span id="sync-time">carregando...</span>
         </div>
       </div>
-      <div class="header-right">
-        <div class="period-group">
-          <button class="btn-period" id="btn-diario"  onclick="setPeriodo(1)">Diário</button>
-          <button class="btn-period active" id="btn-semanal" onclick="setPeriodo(7)">Semanal</button>
-          <button class="btn-period" id="btn-mensal"  onclick="setPeriodo(30)">Mensal</button>
-        </div>
-        <button class="btn-sync" onclick="carregarDados()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-          Sincronizar
-        </button>
+      <div class="page-header-right">
+        <span class="header-badge">🏛 Alagoinhas — BA</span>
+        <span class="header-badge" id="periodo-badge">7 dias</span>
       </div>
     </div>
 
-    <!-- FILTROS ATIVOS -->
-    <div class="filtro-ativo-wrap" id="filtro-ativo">
-      <span>Filtros ativos:</span>
+    <!-- FILTROS -->
+    <div class="filtro-wrap" id="filtro-ativo">
+      <span>Filtros:</span>
     </div>
 
     <!-- ═══ SEÇÃO: RESUMO ═══ -->
     <div id="section-resumo">
 
-      <!-- HERO: FOTO + KPI CARDS -->
-      <div class="hero-section">
-
-        <!-- LEFT COLUMN: Foto quadrada + stats abaixo -->
-        <div class="profile-column">
-          <div class="profile-mayor-card">
-            <div class="profile-info-overlay">
-              <div class="profile-name">Gustavo Carmo</div>
-              <div class="profile-title">Prefeito de Alagoinhas</div>
-              <div class="profile-badge">🏛 Mandato 2025–2028</div>
-            </div>
-          </div>
-
-          <!-- Stats abaixo da foto -->
-          <div class="profile-stats-card">
-            <div class="profile-stat-item">
-              <div class="profile-stat-num" id="profile-total-posts" style="color:var(--text)">—</div>
-              <div class="profile-stat-label">Posts</div>
-            </div>
-            <div class="profile-stat-divider"></div>
-            <div class="profile-stat-item">
-              <div class="profile-stat-num" id="profile-pos-pct" style="color:var(--green)">—</div>
-              <div class="profile-stat-label">Positivo</div>
-            </div>
-            <div class="profile-stat-divider"></div>
-            <div class="profile-stat-item">
-              <div class="profile-stat-num" id="profile-neg-pct" style="color:var(--red)">—</div>
-              <div class="profile-stat-label">Negativo</div>
-            </div>
+      <!-- ROW 1: PROFILE + KPI -->
+      <div class="row-hero">
+        <div class="profile-card">
+          <img src="prefeito.jpg" alt="Gustavo Carmo" onerror="this.style.display='none'">
+          <div class="profile-overlay">
+            <div class="profile-name-badge">Gustavo Carmo</div>
+            <div class="profile-role">Prefeito de Alagoinhas</div>
+            <div class="profile-tag">🏛 Mandato 2025–2028</div>
           </div>
         </div>
 
-        <!-- RIGHT AREA: KPIs -->
-        <div class="kpi-area">
-          <div class="kpi-grid">
-            <div class="kpi-card total" onclick="abrirModal('todos')" style="animation-delay:0ms">
-              <div class="kpi-top"><div class="kpi-icon-wrap">📡</div><span class="kpi-tipo-tag">Total</span><span class="kpi-arrow">→</span></div>
-              <div class="kpi-num" id="kpi-total">—</div>
-              <div class="kpi-bottom"><span class="kpi-label">Posts coletados</span><span class="kpi-pct-badge" id="kpi-total-badge">100%</span></div>
-              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="bar-total" style="width:100%;background:linear-gradient(90deg,#3B82F6,#60A5FA)"></div></div>
+        <div class="kpi-grid">
+          <div class="kpi-card total" onclick="abrirModal('todos')" title="Ver todos os posts">
+            <div class="kpi-label">Total monitorado</div>
+            <div class="kpi-number" id="kpi-total">—</div>
+            <div class="kpi-footer">
+              <span class="kpi-pct">posts</span>
+              <span class="kpi-pct" id="kpi-total-pct"></span>
             </div>
-            <div class="kpi-card positivo" onclick="abrirModal('positivo')" style="animation-delay:70ms">
-              <div class="kpi-top"><div class="kpi-icon-wrap">👍</div><span class="kpi-tipo-tag">Positivo</span><span class="kpi-arrow">→</span></div>
-              <div class="kpi-num" id="kpi-pos">—</div>
-              <div class="kpi-bottom"><span class="kpi-label">Posts positivos</span><span class="kpi-pct-badge" id="kpi-pos-badge">0%</span></div>
-              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="bar-pos" style="width:0%;background:linear-gradient(90deg,#10B981,#34D399)"></div></div>
-            </div>
-            <div class="kpi-card negativo" onclick="abrirModal('negativo')" style="animation-delay:140ms">
-              <div class="kpi-top"><div class="kpi-icon-wrap">👎</div><span class="kpi-tipo-tag">Negativo</span><span class="kpi-arrow">→</span></div>
-              <div class="kpi-num" id="kpi-neg">—</div>
-              <div class="kpi-bottom"><span class="kpi-label">Posts negativos</span><span class="kpi-pct-badge" id="kpi-neg-badge">0%</span></div>
-              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="bar-neg" style="width:0%;background:linear-gradient(90deg,#EF4444,#FC8181)"></div></div>
-            </div>
-            <div class="kpi-card neutro" onclick="abrirModal('neutro')" style="animation-delay:210ms">
-              <div class="kpi-top"><div class="kpi-icon-wrap">➖</div><span class="kpi-tipo-tag">Neutro</span><span class="kpi-arrow">→</span></div>
-              <div class="kpi-num" id="kpi-neu">—</div>
-              <div class="kpi-bottom"><span class="kpi-label">Posts neutros</span><span class="kpi-pct-badge" id="kpi-neu-badge">0%</span></div>
-              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="bar-neu" style="width:0%;background:linear-gradient(90deg,#94A3B8,#CBD5E1)"></div></div>
-            </div>
+            <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-total" style="width:100%"></div></div>
           </div>
 
-          <!-- Urgente (largura total da área KPI) -->
-          <div class="kpi-card urgente kpi-hero-wide" onclick="abrirModal('urgente')" style="animation-delay:280ms">
-            <div class="kpi-top"><div class="kpi-icon-wrap">🔥</div><span class="kpi-tipo-tag">Urgente</span></div>
-            <div style="flex:1">
-              <div class="kpi-num" id="kpi-urg">—</div>
-              <div class="kpi-bottom">
-                <span class="kpi-label">Posts de alta urgência</span>
-                <span class="kpi-pct-badge" id="kpi-urg-badge">0%</span>
-              </div>
+          <div class="kpi-card positivo" onclick="abrirModal('positivo')" title="Ver posts positivos">
+            <div class="kpi-label">Positivos</div>
+            <div class="kpi-number" id="kpi-pos">—</div>
+            <div class="kpi-footer">
+              <span class="kpi-pct" id="kpi-pos-pct"></span>
             </div>
-            <div class="kpi-urgente-gauge">
-              <svg class="gauge-wrap" width="100" height="56" viewBox="0 0 100 56">
-                <path d="M10,50 A40,40 0 0,1 90,50" fill="none" stroke="#FDDCBC" stroke-width="10" stroke-linecap="round"/>
-                <path id="gauge-arc" d="M10,50 A40,40 0 0,1 90,50" fill="none" stroke="#E05A1A" stroke-width="10" stroke-linecap="round"
-                      stroke-dasharray="0 125.6" style="transition:stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1)"/>
-              </svg>
+            <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-pos" style="width:0%"></div></div>
+          </div>
+
+          <div class="kpi-card negativo" onclick="abrirModal('negativo')" title="Ver posts negativos">
+            <div class="kpi-label">Negativos</div>
+            <div class="kpi-number" id="kpi-neg">—</div>
+            <div class="kpi-footer">
+              <span class="kpi-pct" id="kpi-neg-pct"></span>
             </div>
-            <div class="kpi-arrow">→</div>
+            <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-neg" style="width:0%"></div></div>
+          </div>
+
+          <div class="kpi-card urgente" onclick="abrirModal('urgente')" title="Ver posts urgentes">
+            <div class="kpi-label">Urgência Alta</div>
+            <div class="kpi-number" id="kpi-urg">—</div>
+            <div class="kpi-footer">
+              <span class="kpi-pct" id="kpi-urg-pct"></span>
+            </div>
+            <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-urg" style="width:0%"></div></div>
           </div>
         </div>
-
-      </div><!-- /hero-section -->
+      </div>
 
       <!-- NARRATIVA -->
-      <div class="narrativa-card">
-        <span class="narrativa-label">⚡ Resumo Executivo — Últimos <span id="rex-dias">7</span> dias</span>
-        <span id="rex-narrativa">Carregando análise...</span>
+      <div class="narrativa-box" id="narrativa-box">
+        <span style="color:rgba(255,255,255,0.4)">Aguardando dados...</span>
       </div>
 
-      <!-- URGÊNCIA ALTA -->
-      <div class="urgencia-banner" id="urgencia-banner">
-        <div class="urgencia-header">
-          <span class="urgencia-badge">🚨 Urgência Alta</span>
-          <span class="urgencia-title">Posts que exigem atenção imediata</span>
-          <span class="urgencia-count" id="urgencia-count"></span>
-        </div>
-        <div id="urgencia-posts"></div>
-      </div>
+      <!-- ROW 2: RING + COMMENT ANALYSIS + ATTRIBUTION -->
+      <div class="section-label">Análise de Sentimentos</div>
+      <div class="row-three">
 
-      <!-- ANÁLISE TEMÁTICA (Framework Dimensão 1) -->
-      <div class="card" id="card-tematico" style="margin-bottom:22px;display:none">
-        <div class="card-title" style="margin-bottom:16px">
-          <div class="card-title-dot" style="background:var(--purple)"></div>
-          Distribuição Temática
-          <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:500">Top categorias do período</span>
-        </div>
-        <div id="tema-framework-bars"></div>
-      </div>
-
-      <!-- GRÁFICOS: SENTIMENTO + ATRIBUIÇÃO -->
-      <div class="bottom-grid">
+        <!-- Sentimento dos Posts (Ring) -->
         <div class="card">
           <div class="card-title">
-            <div class="card-title-dot" style="background:var(--accent)"></div>
-            Distribuição de Sentimentos
+            <div class="dot" style="background:var(--amber)"></div>
+            Sentimento dos Posts
           </div>
-          <div class="sentimento-wrap">
-            <div class="ring-wrap">
-              <svg width="130" height="130" viewBox="0 0 130 130">
-                <circle cx="65" cy="65" r="52" fill="none" stroke="var(--border)" stroke-width="13"/>
-                <circle id="ring-neu" cx="65" cy="65" r="52" fill="none" stroke="#CBD5E1" stroke-width="13"
-                  stroke-dasharray="0 326.7" stroke-linecap="round" style="transition:stroke-dasharray 1s ease"/>
-                <circle id="ring-neg" cx="65" cy="65" r="52" fill="none" stroke="#EF4444" stroke-width="13"
-                  stroke-dasharray="0 326.7" stroke-linecap="round" style="transition:stroke-dasharray 1s ease"/>
-                <circle id="ring-pos" cx="65" cy="65" r="52" fill="none" stroke="#10B981" stroke-width="13"
-                  stroke-dasharray="0 326.7" stroke-linecap="round" style="transition:stroke-dasharray 1s ease"/>
-              </svg>
-              <div class="ring-center">
-                <div class="ring-num" id="ring-pct" style="color:var(--green)">—%</div>
-                <div class="ring-label">positivo</div>
-              </div>
+          <div class="ring-wrap" id="ring-wrap">
+            <svg width="130" height="130" viewBox="0 0 130 130">
+              <circle cx="65" cy="65" r="50" fill="none" stroke="rgba(0,0,0,0.05)" stroke-width="14"/>
+              <circle id="ring-neg" cx="65" cy="65" r="50" fill="none" stroke="var(--red)"
+                stroke-width="14" stroke-linecap="round" stroke-dasharray="0 314.16"
+                transform="rotate(-90 65 65)" style="transition:stroke-dasharray 800ms ease"/>
+              <circle id="ring-neu" cx="65" cy="65" r="50" fill="none" stroke="rgba(0,0,0,0.10)"
+                stroke-width="14" stroke-linecap="round" stroke-dasharray="0 314.16"
+                transform="rotate(-90 65 65)" style="transition:stroke-dasharray 800ms ease 100ms"/>
+              <circle id="ring-pos" cx="65" cy="65" r="50" fill="none" stroke="var(--green)"
+                stroke-width="14" stroke-linecap="round" stroke-dasharray="0 314.16"
+                transform="rotate(-90 65 65)" style="transition:stroke-dasharray 800ms ease 200ms"/>
+            </svg>
+            <div class="ring-center">
+              <div class="ring-big" id="ring-pct">—</div>
+              <div class="ring-lbl">positivo</div>
             </div>
-            <div class="legend-list">
-              <div class="legend-item">
-                <div class="legend-dot" style="background:#10B981"></div>
-                <span>Positivo</span>
-                <span class="legend-val" id="leg-pos" style="color:#10B981">—</span>
-                <span class="legend-pct" id="leg-pos-pct"></span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-dot" style="background:#EF4444"></div>
-                <span>Negativo</span>
-                <span class="legend-val" id="leg-neg" style="color:#EF4444">—</span>
-                <span class="legend-pct" id="leg-neg-pct"></span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-dot" style="background:#94A3B8"></div>
-                <span>Neutro</span>
-                <span class="legend-val" id="leg-neu" style="color:#94A3B8">—</span>
-                <span class="legend-pct" id="leg-neu-pct"></span>
-              </div>
+          </div>
+          <div class="legend-row">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--green)"></div>
+              <span>Pos</span><span class="legend-val" id="leg-pos">—</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--red)"></div>
+              <span>Neg</span><span class="legend-val" id="leg-neg">—</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:rgba(0,0,0,0.15)"></div>
+              <span>Neu</span><span class="legend-val" id="leg-neu">—</span>
             </div>
           </div>
         </div>
 
+        <!-- Análise de Comentários -->
         <div class="card">
           <div class="card-title">
-            <div class="card-title-dot" style="background:var(--purple)"></div>
-            Atribuição de Responsabilidade
-            <span style="margin-left:auto;font-size:10px;color:var(--muted);font-weight:500" title="A quem a população atribui cada problema">Framework Dim. 2</span>
+            <div class="dot" style="background:var(--blue)"></div>
+            Sentimento dos Comentários
+            <span class="card-sub">por perfil de origem</span>
+          </div>
+
+          <!-- Stacked bar geral -->
+          <div class="comment-stacked-bar" id="comment-stacked-bar">
+            <div class="comment-bar-seg" id="cseg-pos" style="width:0%;background:var(--green)"></div>
+            <div class="comment-bar-seg" id="cseg-neg" style="width:0%;background:var(--red)"></div>
+            <div class="comment-bar-seg" id="cseg-neu" style="width:0%;background:rgba(0,0,0,0.08)"></div>
+          </div>
+          <div class="comment-stat-row">
+            <div class="comment-dot" style="background:var(--green)"></div>
+            <div class="comment-stat-label">Comentários positivos</div>
+            <div class="comment-stat-pct" id="cstat-pos">—</div>
+          </div>
+          <div class="comment-stat-row">
+            <div class="comment-dot" style="background:var(--red)"></div>
+            <div class="comment-stat-label">Comentários negativos</div>
+            <div class="comment-stat-pct" id="cstat-neg">—</div>
+          </div>
+          <div class="comment-stat-row" style="margin-bottom:14px">
+            <div class="comment-dot" style="background:rgba(0,0,0,0.12)"></div>
+            <div class="comment-stat-label">Neutros / sem comentários</div>
+            <div class="comment-stat-pct" id="cstat-neu">—</div>
+          </div>
+
+          <!-- Por perfil de origem -->
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px">Origem por perfil</div>
+          <div id="comm-by-profile"></div>
+        </div>
+
+        <!-- Atribuição -->
+        <div class="card">
+          <div class="card-title">
+            <div class="dot" style="background:var(--purple)"></div>
+            Atribuição
           </div>
           <div id="attr-bars"></div>
         </div>
       </div>
 
-      <!-- GRÁFICO: TENDÊNCIA DIÁRIA -->
-      <div class="card" style="margin-bottom:22px">
+      <!-- ROW 3: TREND CHART -->
+      <div class="section-label">Tendência</div>
+      <div class="card trend-card">
         <div class="card-title">
-          <div class="card-title-dot" style="background:var(--yellow)"></div>
-          Tendência de Publicações
-          <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:500" id="tendencia-legenda">
-            <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:#10B981;display:inline-block"></span>Positivo</span>
-            <span style="display:inline-flex;align-items:center;gap:4px;margin-left:10px"><span style="width:8px;height:8px;border-radius:2px;background:#EF4444;display:inline-block"></span>Negativo</span>
-            <span style="display:inline-flex;align-items:center;gap:4px;margin-left:10px"><span style="width:8px;height:8px;border-radius:2px;background:#94A3B8;display:inline-block"></span>Neutro</span>
+          <div class="dot" style="background:var(--amber)"></div>
+          Evolução de Publicações
+          <span class="card-sub" style="display:flex;gap:10px;align-items:center">
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--green);display:inline-block"></span>Positivo</span>
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--red);display:inline-block"></span>Negativo</span>
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:rgba(0,0,0,0.12);display:inline-block"></span>Neutro</span>
           </span>
         </div>
         <div class="chart-tendencia-wrap" id="chart-tendencia">
-          <div style="color:var(--muted);font-size:12px;text-align:center;width:100%">Carregando gráfico...</div>
+          <div class="empty">Carregando gráfico...</div>
+        </div>
+      </div>
+
+      <!-- ROW 4: PROFILE RANKING -->
+      <div class="section-label">Ranking de Perfis</div>
+      <div class="row-ranking">
+
+        <!-- Mais Positivos -->
+        <div class="card">
+          <div class="card-title">
+            <div class="dot" style="background:var(--green)"></div>
+            Mais Notícias Positivas
+            <span class="card-sub">por % de posts positivos</span>
+          </div>
+          <div class="ranking-list" id="ranking-pos"></div>
+        </div>
+
+        <!-- Mais Negativos -->
+        <div class="card">
+          <div class="card-title">
+            <div class="dot" style="background:var(--red)"></div>
+            Mais Notícias Negativas
+            <span class="card-sub">por % de posts negativos</span>
+          </div>
+          <div class="ranking-list" id="ranking-neg"></div>
+        </div>
+      </div>
+
+      <!-- URGÊNCIAS -->
+      <div class="section-label">Atenção Imediata</div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">
+          <div class="dot" style="background:var(--red)"></div>
+          Posts com Urgência Alta
+        </div>
+        <div id="urgencia-items" class="urgencia-items">
+          <div class="empty">Nenhuma urgência no período.</div>
         </div>
       </div>
 
       <!-- TEMAS -->
-      <div class="card" style="margin-bottom:22px">
+      <div class="section-label">Temas em Destaque</div>
+      <div class="card" style="margin-bottom:14px">
         <div class="card-title">
-          <div class="card-title-dot" style="background:var(--orange)"></div>
-          Temas em Destaque
+          <div class="dot" style="background:var(--amber)"></div>
+          Nuvem de Temas
         </div>
         <div class="topic-cloud" id="topic-cloud"></div>
       </div>
@@ -853,75 +876,71 @@
 
     <!-- ═══ SEÇÃO: POSITIVOS ═══ -->
     <div id="section-positivos" class="hidden">
-      <div class="section-title">Posts Positivos</div>
-      <div class="filter-row" id="filter-pos">
-        <button class="filter-tab active" onclick="filtrarLista('pos','todos',this)">Todos</button>
-        <button class="filter-tab" onclick="filtrarLista('pos','prefeitura',this)">Prefeitura</button>
-        <button class="filter-tab" onclick="filtrarLista('pos','imprensa',this)">Imprensa</button>
+      <div class="page-header" style="margin-bottom:16px">
+        <h1>Posts <span>Positivos</span></h1>
       </div>
-      <div id="lista-positivos"></div>
+      <div id="filter-pos" class="filter-tabs">
+        <button class="filter-tab active" onclick="filtrarLista('pos','todos',this)">Todos</button>
+        <button class="filter-tab" onclick="filtrarLista('pos','alta',this)">Urgência Alta</button>
+        <button class="filter-tab" onclick="filtrarLista('pos','media',this)">Urgência Média</button>
+      </div>
+      <div class="post-list" id="lista-positivos">
+        <div class="empty">Nenhum post positivo no período.</div>
+      </div>
     </div>
 
     <!-- ═══ SEÇÃO: NEGATIVOS ═══ -->
     <div id="section-negativos" class="hidden">
-      <div class="section-title">Posts Negativos</div>
-      <div class="filter-row" id="filter-neg">
+      <div class="page-header" style="margin-bottom:16px">
+        <h1>Posts <span style="color:var(--red)">Negativos</span></h1>
+      </div>
+      <div id="filter-neg" class="filter-tabs">
         <button class="filter-tab active" onclick="filtrarLista('neg','todos',this)">Todos</button>
         <button class="filter-tab" onclick="filtrarLista('neg','alta',this)">Urgência Alta</button>
-        <button class="filter-tab" onclick="filtrarLista('neg','oposicao',this)">Oposição</button>
+        <button class="filter-tab" onclick="filtrarLista('neg','crise',this)">Risco Alto</button>
       </div>
-      <div id="lista-negativos"></div>
+      <div class="post-list" id="lista-negativos">
+        <div class="empty">Nenhum post negativo no período.</div>
+      </div>
     </div>
 
     <!-- ═══ SEÇÃO: PERFIS ═══ -->
     <div id="section-perfis" class="hidden">
-      <div class="section-title">Ranking de Perfis</div>
-      <div class="card"><div id="lista-perfis"></div></div>
+      <div class="page-header" style="margin-bottom:16px">
+        <h1>Perfis <span>Monitorados</span></h1>
+      </div>
+      <div class="perfil-grid" id="lista-perfis">
+        <div class="empty">Nenhum perfil encontrado.</div>
+      </div>
     </div>
 
     <!-- ═══ SEÇÃO: CONFIG ═══ -->
     <div id="section-config" class="hidden">
-      <div class="section-title">Configurações</div>
-      <div class="config-section">
-        <div class="config-title">Conexão com Google Sheets</div>
-        <div class="config-desc">Configure a URL do Apps Script Web App</div>
-        <div class="config-grid">
-          <div class="config-field" style="grid-column:1/-1">
-            <label>URL do Google Apps Script (Web App)</label>
-            <input type="text" id="cfg-url" placeholder="https://script.google.com/macros/s/SEU_ID/exec">
-          </div>
-          <div class="config-field">
-            <label>Período padrão (dias)</label>
-            <input type="number" id="cfg-dias" value="7" min="1" max="30">
-          </div>
-          <div class="config-field">
-            <label>Auto-refresh</label>
-            <input type="text" id="cfg-refresh" value="10 min" readonly>
-          </div>
-        </div>
-        <div style="margin-top:16px;display:flex;gap:10px">
-          <button class="btn-sync" onclick="salvarConfig()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Salvar e Conectar
-          </button>
-        </div>
-        <div id="cfg-status" style="margin-top:10px;font-size:13px;color:var(--green);display:none"></div>
+      <div class="page-header" style="margin-bottom:16px">
+        <h1>Configurações</h1>
       </div>
-      <div class="config-section">
-        <div class="config-title">Palavras-chave de Relevância</div>
-        <div class="config-desc">Somente posts com ao menos uma dessas palavras serão analisados</div>
-        <div class="keywords-wrap" id="kw-tags"></div>
-        <div class="kw-input-row">
-          <input type="text" id="kw-input" placeholder="Ex: Gustavo Carmo" onkeydown="if(event.key==='Enter')addKeyword()">
-          <button class="btn-add" onclick="addKeyword()">+ Adicionar</button>
+      <div class="card" style="max-width:600px">
+        <div class="config-group">
+          <div class="config-label">URL do Google Apps Script</div>
+          <input class="config-input" id="cfg-url" type="url" placeholder="https://script.google.com/macros/s/...">
         </div>
-        <div style="margin-top:14px;display:flex;gap:10px">
-          <button class="btn-sync" onclick="salvarKeywords()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Salvar Palavras-chave
-          </button>
-          <button class="btn-secondary" onclick="restaurarKeywords()">↺ Restaurar Padrão</button>
+        <div class="config-group">
+          <div class="config-label">Período padrão (dias)</div>
+          <input class="config-input" id="cfg-dias" type="number" min="1" max="90" value="7" style="width:120px">
         </div>
+        <div class="config-group">
+          <div class="config-label">Palavras-chave de filtro</div>
+          <div class="kw-row">
+            <input class="kw-input" id="kw-input" placeholder="ex: prefeito, obras..." onkeydown="if(event.key==='Enter')addKeyword()">
+            <button class="kw-add-btn" onclick="addKeyword()">+ Adicionar</button>
+          </div>
+          <div class="kw-tags" id="kw-tags"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn-save" onclick="salvarConfig()">Salvar configuração</button>
+          <button class="btn-save" onclick="salvarKeywords()" style="background:var(--surface);color:var(--text);border:1.5px solid var(--border2)">Salvar palavras-chave</button>
+        </div>
+        <div id="cfg-status"></div>
       </div>
     </div>
 
@@ -929,56 +948,108 @@
 </main>
 
 <!-- MODAL -->
-<div class="overlay" id="modal-overlay" onclick="fecharModal(event)">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title" id="modal-title">Posts</div>
-      <div class="modal-count" id="modal-count">0 posts</div>
-      <button class="modal-close" onclick="fecharModal()">✕</button>
+<div id="modal-overlay" onclick="fecharModal(event)">
+  <div id="modal-box">
+    <div id="modal-header">
+      <span id="modal-title">Posts</span>
+      <span id="modal-count"></span>
+      <button id="modal-close" onclick="fecharModal()">✕</button>
     </div>
-    <div class="modal-body" id="modal-body"></div>
+    <div id="modal-body"></div>
   </div>
 </div>
 
 <script>
-var DADOS = [];
-var PERFIS_DATA = [];
-var KWS = ['prefeitura','gustavo','gustavo carmo','prefeito','gestao','municipio','alagoinhas','secom','secretaria'];
+/* ── ESTADO GLOBAL ─────────────────────────────────────────── */
 var SCRIPT_URL = localStorage.getItem('radar_url') || '';
-var DIAS = parseInt(localStorage.getItem('radar_dias') || '7');
-var SECTION = 'resumo';
+var DIAS       = parseInt(localStorage.getItem('radar_dias') || '7');
+var DADOS      = [];
+var PERFIS_DATA = [];
+var KWS        = [];
+var SECTION    = 'resumo';
+
+/* ── UTILS ─────────────────────────────────────────────────── */
+function norm(s) {
+  if (!s) return '';
+  return s.toString().toLowerCase().trim()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function setText(id, v) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = v;
+}
+function setBarWidth(id, pct) {
+  var el = document.getElementById(id);
+  if (el) el.style.width = Math.min(100, pct) + '%';
+}
+
+function animateCounter(id, target, suffix, dur) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('count-pop');
+  void el.offsetWidth;
+  el.classList.add('count-pop');
+  var start = 0, t0 = null;
+  function step(ts) {
+    if (!t0) t0 = ts;
+    var p = Math.min((ts - t0) / (dur||700), 1);
+    var ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(start + (target - start) * ease) + (suffix||'');
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function parseDataPost(str) {
+  if (!str) return null;
+  var m = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  try { return new Date(str); } catch(e){ return null; }
+}
+
+/* ── PERÍODO ────────────────────────────────────────────────── */
+function filtrarPorPeriodo(dados) {
+  if (!dados || !dados.length) return [];
+  var cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - DIAS);
+  cutoff.setHours(0,0,0,0);
+  var filtered = dados.filter(function(d) {
+    var dt = parseDataPost(d.data_post);
+    return dt ? dt >= cutoff : true;
+  });
+  // Apply keyword filter if any
+  if (KWS.length) {
+    filtered = filtered.filter(function(d) {
+      var hay = ((d.resumo||'')+(d.tema||'')+(d.atribuicao||'')).toLowerCase();
+      return KWS.some(function(kw){ return hay.includes(kw); });
+    });
+  }
+  return filtered;
+}
 
 function setPeriodo(dias) {
   DIAS = dias;
   localStorage.setItem('radar_dias', DIAS);
   document.getElementById('cfg-dias').value = DIAS;
-  // Update button active states
-  var map = {30:'btn-mensal', 7:'btn-semanal', 1:'btn-diario'};
-  ['btn-mensal','btn-semanal','btn-diario'].forEach(function(id){
+  var map = {1:'btn-diario',7:'btn-semanal',30:'btn-mensal'};
+  ['btn-diario','btn-semanal','btn-mensal'].forEach(function(id){
     var el = document.getElementById(id);
-    if (el) el.classList.remove('active');
+    if (el) el.classList.toggle('active', id === map[dias]);
   });
-  var activeId = map[dias];
-  if (activeId) {
-    var el2 = document.getElementById(activeId);
-    if (el2) el2.classList.add('active');
-  }
-  carregarDados();
+  if (DADOS.length) renderDashboard();
 }
-
 function syncPeriodButtons() {
-  var map = {30:'btn-mensal', 7:'btn-semanal', 1:'btn-diario'};
-  ['btn-mensal','btn-semanal','btn-diario'].forEach(function(id){
+  var map = {1:'btn-diario',7:'btn-semanal',30:'btn-mensal'};
+  ['btn-diario','btn-semanal','btn-mensal'].forEach(function(id){
     var el = document.getElementById(id);
-    if (el) el.classList.remove('active');
+    if (el) el.classList.toggle('active', id === map[DIAS]);
   });
-  var activeId = map[DIAS];
-  if (activeId) {
-    var el2 = document.getElementById(activeId);
-    if (el2) el2.classList.add('active');
-  }
 }
 
+/* ── CARREGAR DADOS ─────────────────────────────────────────── */
 window.onload = function() {
   var savedKws = localStorage.getItem('radar_kws');
   if (savedKws) KWS = JSON.parse(savedKws);
@@ -986,7 +1057,6 @@ window.onload = function() {
   if (SCRIPT_URL) {
     document.getElementById('cfg-url').value = SCRIPT_URL;
     carregarDados();
-    // Auto-refresh: recarrega dados a cada 30 minutos
     setInterval(carregarDados, 30 * 60 * 1000);
   } else {
     showSection('config');
@@ -995,33 +1065,26 @@ window.onload = function() {
   }
   renderKwTags();
   document.getElementById('cfg-dias').value = DIAS;
-
-  // Recarrega ao voltar para esta aba (ex: após rodar o pipeline)
   document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible' && SCRIPT_URL) {
       var agora = Date.now();
       var ultima = parseInt(localStorage.getItem('radar_last_sync') || '0');
-      if (agora - ultima > 5 * 60 * 1000) {  // só se passaram +5 min
-        carregarDados();
-      }
+      if (agora - ultima > 5 * 60 * 1000) carregarDados();
     }
   });
 };
 
 function carregarDados() {
   if (!SCRIPT_URL) { showSection('config'); return; }
-  document.getElementById('sync-label').textContent = 'Sincronizando...';
-  // Feedback visual no botão durante o loading
-  var syncBtn = document.querySelector('.btn-sync');
-  if (syncBtn) {
-    syncBtn.disabled = true;
-    syncBtn.style.opacity = '0.7';
-    syncBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 0.8s linear infinite"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg> Aguarde...';
-  }
+  var btn = document.getElementById('sync-btn');
+  var lbl = document.getElementById('sync-label');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
+  if (lbl) lbl.textContent = 'Sincronizando...';
+
   fetch(SCRIPT_URL + '?action=list')
     .then(function(r){ return r.json(); })
     .then(function(json) {
-      if (!json.ok) throw new Error(json.error);
+      if (!json.ok) throw new Error(json.error || 'Erro no servidor');
       DADOS = json.data || [];
       return fetch(SCRIPT_URL + '?action=perfis');
     })
@@ -1031,666 +1094,597 @@ function carregarDados() {
       document.getElementById('loading-state').classList.add('hidden');
       document.getElementById('dashboard').classList.remove('hidden');
       renderDashboard();
-      var now = new Date();
       localStorage.setItem('radar_last_sync', Date.now());
-      document.getElementById('sync-label').textContent = 'Atualizado às ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-      // Restaura botão sync
-      var btn = document.querySelector('.btn-sync');
-      if (btn) {
-        btn.disabled = false; btn.style.opacity = '';
-        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg> Sincronizar';
-      }
+      var now = new Date();
+      if (lbl) lbl.textContent = 'Atualizado às ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      if (btn) { btn.disabled = false; btn.style.opacity = ''; }
     })
     .catch(function(e) {
       document.getElementById('loading-state').innerHTML =
-        '<div style="color:var(--red);text-align:center">❌ Erro: ' + e.message + '<br><small style="color:var(--muted)">Verifique a URL nas Configurações</small></div>';
-      // Restaura botão em caso de erro também
-      var btn = document.querySelector('.btn-sync');
-      if (btn) {
-        btn.disabled = false; btn.style.opacity = '';
-        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg> Tentar novamente';
-      }
+        '<div style="color:var(--red);text-align:center">❌ '+escHtml(e.message)+'<br><small style="color:var(--muted)">Verifique a URL nas Configurações</small></div>';
+      if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+      if (lbl) lbl.textContent = 'Tentar novamente';
     });
 }
 
+/* ── RENDER DASHBOARD ────────────────────────────────────────── */
 function renderDashboard() {
   var dados = filtrarPorPeriodo(DADOS);
-  var pos = dados.filter(function(d){ return norm(d.sentimento_post)==='positivo'; });
-  var neg = dados.filter(function(d){ return norm(d.sentimento_post)==='negativo'; });
-  var neu = dados.filter(function(d){ return norm(d.sentimento_post)==='neutro'; });
-  var urg = dados.filter(function(d){ return norm(d.urgencia)==='alta'; });
-  var total = dados.length || 1;
+  var total = dados.length;
+  var pos   = dados.filter(function(d){ return norm(d.sentimento_post) === 'positivo'; });
+  var neg   = dados.filter(function(d){ return norm(d.sentimento_post) === 'negativo'; });
+  var neu   = dados.filter(function(d){ return norm(d.sentimento_post) !== 'positivo' && norm(d.sentimento_post) !== 'negativo'; });
+  var urg   = dados.filter(function(d){ return norm(d.urgencia) === 'alta'; });
+  var t     = total || 1;
 
-  setText('rex-dias', DIAS);
+  // Período badge
+  setText('periodo-badge', DIAS === 1 ? 'Últimas 24h' : 'Últimos ' + DIAS + ' dias');
 
-  // Counter animations com pop effect
-  function popNum(id, target, sfx, dur) {
-    animateCounter(id, target, sfx, dur);
-    var el = document.getElementById(id);
-    if (el) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
-  }
-  popNum('kpi-total', dados.length, '',  820);
-  popNum('kpi-pos',   pos.length,   '',  870);
-  popNum('kpi-neg',   neg.length,   '',  920);
-  popNum('kpi-neu',   neu.length,   '',  970);
-  popNum('kpi-urg',   urg.length,   '',  750);
+  // KPI numbers
+  animateCounter('kpi-total', total, '', 700);
+  animateCounter('kpi-pos',   pos.length, '', 750);
+  animateCounter('kpi-neg',   neg.length, '', 800);
+  animateCounter('kpi-urg',   urg.length, '', 650);
 
-  // Badges de percentual
-  var pPosNum = dados.length > 0 ? Math.round(pos.length/dados.length*100) : 0;
-  var pNegNum = dados.length > 0 ? Math.round(neg.length/dados.length*100) : 0;
-  var pNeuNum = dados.length > 0 ? Math.round(neu.length/dados.length*100) : 0;
-  var pUrgNum = dados.length > 0 ? Math.round(urg.length/dados.length*100) : 0;
-  setText('kpi-total-badge', '100%');
-  setText('kpi-pos-badge',   pPosNum + '%');
-  setText('kpi-neg-badge',   pNegNum + '%');
-  setText('kpi-neu-badge',   pNeuNum + '%');
-  setText('kpi-urg-badge',   pUrgNum + '%');
+  // KPI pcts
+  var pPos = Math.round(pos.length/t*100);
+  var pNeg = Math.round(neg.length/t*100);
+  var pUrg = Math.round(urg.length/t*100);
+  setText('kpi-pos-pct', pPos + '%');
+  setText('kpi-neg-pct', pNeg + '%');
+  setText('kpi-urg-pct', pUrg + '%');
 
-  // Profile card stats
-  animateCounter('profile-total-posts', dados.length, '',  800);
-  animateCounter('profile-pos-pct',     pPosNum,      '%', 900);
-  animateCounter('profile-neg-pct',     pNegNum,      '%', 950);
+  // Bars
+  setTimeout(function(){
+    setBarWidth('bar-pos', pPos);
+    setBarWidth('bar-neg', pNeg);
+    setBarWidth('bar-urg', pUrg);
+  }, 300);
 
-  // Mini bars com delay para aparecer apos animacao do card
-  setTimeout(function() {
-    setBarWidth('bar-pos', Math.round(pos.length/total*100));
-    setBarWidth('bar-neg', Math.round(neg.length/total*100));
-    setBarWidth('bar-neu', Math.round(neu.length/total*100));
-  }, 380);
+  // Filtro ativo
+  renderFiltroAtivo(total);
 
-  // Gauge urgente
-  var urgPct = Math.round(urg.length/total*100);
-  setTimeout(function() {
-    var arc = (urgPct/100) * 125.6;
-    var gaugeEl = document.getElementById('gauge-arc');
-    if (gaugeEl) gaugeEl.setAttribute('stroke-dasharray', arc + ' 125.6');
-  }, 420);
+  // Ring chart
+  renderRing(pos.length, neg.length, neu.length, t);
 
-  // ── NARRATIVA EXECUTIVA (Framework 4 dimensões) ──
-  var pPos = Math.round(pos.length/total*100);
-  var pNeg = Math.round(neg.length/total*100);
-  var pNeu = Math.round(neu.length/total*100);
-  var engTotal = dados.reduce(function(s,d){ return s+(parseInt(d.curtidas)||0)+(parseInt(d.comentarios_count)||parseInt(d.comentarios)||0); }, 0);
-  var tomGeral = pPos>=60?'predominantemente positivo':pPos<=35?'predominantemente negativo':'equilibrado';
-  var corTom = pPos>=60?'var(--green)':pPos<=35?'var(--red)':'var(--yellow)';
+  // Comment analysis (NEW)
+  renderComentarios(dados);
 
-  // Top categorias temáticas
-  var catCount = {};
-  dados.forEach(function(d){
-    var c = norm(d.categoria_tematica||'');
-    if (c) catCount[c] = (catCount[c]||0)+1;
-  });
-  var catLabels = {
-    saude:'Saúde', educacao:'Educação', infraestrutura_urbana:'Infraestrutura',
-    limpeza_urbana:'Limpeza Urbana', seguranca_publica:'Segurança',
-    transporte_publico:'Transporte', saneamento_agua:'Saneamento/Água',
-    assistencia_social:'Assist. Social', tributos_servicos:'Tributos/Serv.',
-    cultura_esporte_lazer:'Cultura/Esporte', servidores_municipais:'Servidores',
-    imagem_gestao:'Imagem/Gestão', meio_ambiente:'Meio Ambiente', zona_rural:'Zona Rural'
-  };
-  var topCats = Object.entries(catCount).sort(function(a,b){return b[1]-a[1];}).slice(0,3);
-
-  // Atribuição dominante
-  var legMap2={'prefeitura':'prefeitura_instituicao','prefeito':'prefeito_pessoal','secretaria':'secretaria_outra',
-    'estado':'governo_estadual','federal':'governo_federal','populacao':'propria_populacao',
-    'imprensa':'indefinido','oposicao':'vereadores','neutro':'indefinido'};
-  var atribLabels={'prefeito_pessoal':'Prefeito diretamente','prefeitura_instituicao':'Prefeitura (instituição)',
-    'secretaria_saude':'Sec. Saúde','secretaria_educacao':'Sec. Educação','secretaria_obras':'Sec. Obras',
-    'secretaria_outra':'Secretaria específica','vereadores':'Câmara/Vereadores',
-    'governo_estadual':'Governo do Estado','governo_federal':'Governo Federal',
-    'gestao_anterior':'Gestão anterior','propria_populacao':'Própria população',
-    'empresas_concessionarias':'Concessionárias','indefinido':'Indefinido'};
-  var atribCount2 = {};
-  dados.forEach(function(d){
-    var a = norm(d.atribuicao||'indefinido');
-    a = legMap2[a]||a;
-    atribCount2[a]=(atribCount2[a]||0)+1;
-  });
-  var topAtrib = Object.entries(atribCount2).sort(function(a,b){return b[1]-a[1];})[0];
-
-  // Intensidade alta
-  var altaIntens = dados.filter(function(d){return norm(d.intensidade)==='alta';}).length;
-
-  // Localidades mencionadas
-  var locais = {};
-  dados.forEach(function(d){
-    var l = (d.localizacao||'').trim();
-    if (l && l!=='nao_identificado' && l!=='') locais[l]=(locais[l]||0)+1;
-  });
-  var topLocal = Object.entries(locais).sort(function(a,b){return b[1]-a[1];})[0];
-
-  var narrativa = '<div style="display:flex;flex-direction:column;gap:7px;line-height:1.7">';
-
-  // Linha 1: visão geral
-  narrativa += '<span>📊 <b>'+total+' posts</b> monitorados'+
-    (DIAS===1?' nas últimas 24h':' nos últimos '+DIAS+' dias')+
-    ' — sentimento <span style="color:'+corTom+';font-weight:700">'+tomGeral+'</span>'+
-    ' ('+pPos+'% positivo · '+pNeg+'% negativo · '+pNeu+'% neutro).'+
-    (engTotal>0?' Engajamento total: <b>'+engTotal.toLocaleString('pt-BR')+'</b> interações.':'')+
-    '</span>';
-
-  // Linha 2: temas mais recorrentes
-  if (topCats.length) {
-    narrativa += '<span>🏷️ <b>Temas dominantes:</b> ';
-    narrativa += topCats.map(function(e){
-      return '<span style="font-weight:600">'+(catLabels[e[0]]||e[0])+'</span> ('+e[1]+')';
-    }).join(' · ');
-    narrativa += '.</span>';
-  }
-
-  // Linha 3: atribuição
-  if (topAtrib) {
-    var atribPct = Math.round(topAtrib[1]/total*100);
-    narrativa += '<span>🎯 <b>Atribuição dominante:</b> '+
-      '<span style="font-weight:600">'+(atribLabels[topAtrib[0]]||topAtrib[0])+'</span>'+
-      ' aparece em '+atribPct+'% das menções relevantes.'+
-      (altaIntens>0?' <span style="color:var(--red)">'+altaIntens+' com intensidade emocional <b>alta</b> nos comentários.</span>':'')+
-      '</span>';
-  }
-
-  // Linha 4: urgências e território
-  if (urg.length>0) {
-    narrativa += '<span>⚠️ <span style="color:var(--red);font-weight:700">'+urg.length+
-      ' post'+(urg.length>1?'s':'')+(urg.length>1?' requerem':' requer')+' atenção imediata.</span>'+
-      (topLocal?' Região mais citada: <b>'+topLocal[0]+'</b> ('+topLocal[1]+' menções).':'')+
-      '</span>';
-  } else if (topLocal) {
-    narrativa += '<span>📍 Localidade mais citada: <b>'+topLocal[0]+'</b> ('+topLocal[1]+' menções).</span>';
-  }
-
-  // Linha 5: situação geral da gestão
-  var recomend = pNeg>=50?
-    'Situação demanda <b>postura ativa</b> da gestão — resposta comunicacional e ação operacional urgentes.' :
-    pNeg>=30?
-    'Monitorar evolução dos temas negativos. Preparar respostas padrão para as secretarias envolvidas.' :
-    'Cenário favorável à gestão. Manter engajamento positivo e antecipar temas sazonais.';
-  narrativa += '<span style="font-style:italic;color:var(--text-2)">💡 '+recomend+'</span>';
-
-  narrativa += '</div>';
-  document.getElementById('rex-narrativa').innerHTML = narrativa;
-
-  renderFiltroAtivo(dados.length);
-  renderUrgencia(urg);
-  renderRing(pos.length, neg.length, neu.length, total);
+  // Attribution
   renderAtribuicao(dados);
-  renderTematico(dados);
+
+  // Trend
   renderTendencia(dados);
+
+  // Profile ranking (NEW)
+  renderRanking(dados);
+
+  // Urgências
+  renderUrgencias(urg);
+
+  // Temas
   renderTemas(dados);
-  renderLista('lista-positivos', pos, 'todos');
-  renderLista('lista-negativos', neg, 'todos');
+
+  // Narrativa
+  renderNarrativa(dados, pos.length, neg.length, neu.length, urg.length, t);
+
+  // Section lists
+  if (SECTION === 'positivos') renderLista('lista-positivos', pos, 'todos');
+  if (SECTION === 'negativos') renderLista('lista-negativos', neg, 'todos');
   renderPerfis();
 }
 
-function parseDataPost(s) {
-  if (!s) return null;
-  // Formato DD/MM/YYYY HH:MM (vindo do Google Sheets pt-BR)
-  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:[T\s]+(\d{2}):(\d{2}))?/);
-  if (m) return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
-  // ISO ou qualquer outro formato reconhecível
-  var d = new Date(s);
-  return isNaN(d) ? null : d;
-}
-
-function filtrarPorPeriodo(dados) {
-  var cutoff = new Date(); cutoff.setDate(cutoff.getDate()-DIAS);
-  return dados.filter(function(d) {
-    if (!d.data_post) return true;
-    var dt = parseDataPost(String(d.data_post));
-    if (!dt) return true;           // data inválida → inclui por segurança
-    return dt >= cutoff;
-  });
-}
-
+/* ── FILTRO ATIVO ────────────────────────────────────────────── */
 function renderFiltroAtivo(n) {
   var wrap = document.getElementById('filtro-ativo');
-  wrap.innerHTML = '<span>Filtros ativos:</span>';
-  KWS.forEach(function(kw){ var t=document.createElement('span'); t.className='filtro-kw-tag'; t.textContent=kw; wrap.appendChild(t); });
-  var info=document.createElement('span'); info.className='filtro-count-tag'; info.textContent=n+' relevantes'; wrap.appendChild(info);
-}
-
-function renderUrgencia(posts) {
-  var container = document.getElementById('urgencia-posts');
-  document.getElementById('urgencia-count').textContent = posts.length+' post(s)';
-  if (!posts.length) { container.innerHTML='<div class="empty" style="color:var(--green);padding:14px">✅ Nenhum post de urgência alta</div>'; return; }
-  container.innerHTML='';
-  posts.slice(0,5).forEach(function(p){ container.appendChild(criarPostCard(p,true)); });
-  if (posts.length>5) {
-    var btn=document.createElement('button'); btn.className='btn-ver'; btn.style.cssText='margin-top:10px;padding:8px 16px;font-size:13px';
-    btn.textContent='Ver todos os '+posts.length+' posts →'; btn.onclick=function(){ abrirModal('urgente'); }; container.appendChild(btn);
+  wrap.innerHTML = '<span>Filtros:</span>';
+  if (KWS.length) {
+    KWS.forEach(function(kw){ wrap.innerHTML += '<span class="filtro-kw-tag">'+escHtml(kw)+'</span>'; });
   }
+  wrap.innerHTML += '<span class="filtro-count">'+n+' posts</span>';
 }
 
+/* ── RING CHART ──────────────────────────────────────────────── */
 function renderRing(posN, negN, neuN, total) {
-  var circ = 326.7;
-  var posArc = (posN/total)*circ;
-  var negArc = (negN/total)*circ;
-  var neuArc = (neuN/total)*circ;
-  var pPos = Math.round(posN/total*100);
-  var pNeg = Math.round(negN/total*100);
-  var pNeu = Math.round(neuN/total*100);
-  // Reset para 0 para criar efeito draw-in
-  ['ring-pos','ring-neg','ring-neu'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) { el.style.transition='none'; el.setAttribute('stroke-dasharray','0 326.7'); }
-  });
+  var circ = 314.16;
+  var pPos = posN / total;
+  var pNeg = negN / total;
+  var pNeu = neuN / total;
+  var arcPos = pPos * circ;
+  var arcNeg = pNeg * circ;
+  var arcNeu = pNeu * circ;
 
-  setTimeout(function() {
-    setAttr('ring-pos', 'stroke-dasharray', posArc+' '+circ);
-    setAttr('ring-pos', 'stroke-dashoffset', '0');
-    setAttr('ring-neg', 'stroke-dasharray', negArc+' '+circ);
-    setAttr('ring-neg', 'stroke-dashoffset', -posArc);
-    setAttr('ring-neu', 'stroke-dasharray', neuArc+' '+circ);
-    setAttr('ring-neu', 'stroke-dashoffset', -(posArc+negArc));
-  }, 80);
+  setTimeout(function(){
+    var rPos = document.getElementById('ring-pos');
+    var rNeg = document.getElementById('ring-neg');
+    var rNeu = document.getElementById('ring-neu');
+    // Draw: pos starts at 0, neg follows, neu follows
+    // We use dashoffset to position each segment
+    if (rPos) { rPos.setAttribute('stroke-dasharray', arcPos + ' ' + (circ - arcPos)); rPos.setAttribute('stroke-dashoffset', '0'); }
+    if (rNeg) { rNeg.setAttribute('stroke-dasharray', arcNeg + ' ' + (circ - arcNeg)); rNeg.setAttribute('stroke-dashoffset', -arcPos + ''); }
+    if (rNeu) { rNeu.setAttribute('stroke-dasharray', arcNeu + ' ' + (circ - arcNeu)); rNeu.setAttribute('stroke-dashoffset', -(arcPos + arcNeg) + ''); }
+  }, 250);
 
-  setText('ring-pct', pPos+'%');
-  setText('leg-pos', posN); setText('leg-pos-pct', '('+pPos+'%)');
-  setText('leg-neg', negN); setText('leg-neg-pct', '('+pNeg+'%)');
-  setText('leg-neu', neuN); setText('leg-neu-pct', '('+pNeu+'%)');
+  setText('ring-pct', Math.round(posN/total*100) + '%');
+  setText('leg-pos', posN);
+  setText('leg-neg', negN);
+  setText('leg-neu', neuN);
 }
+
+/* ── ANÁLISE DE COMENTÁRIOS (NOVO) ──────────────────────────── */
+function renderComentarios(dados) {
+  var commPos = 0, commNeg = 0, commNeu = 0;
+  dados.forEach(function(d) {
+    var cs = norm(d.sentimento_comentarios || '');
+    if (cs === 'positivo') commPos++;
+    else if (cs === 'negativo') commNeg++;
+    else commNeu++;
+  });
+  var total = commPos + commNeg + commNeu || 1;
+  var pPos = Math.round(commPos/total*100);
+  var pNeg = Math.round(commNeg/total*100);
+  var pNeu = 100 - pPos - pNeg;
+
+  setTimeout(function(){
+    var sp = document.getElementById('cseg-pos');
+    var sn = document.getElementById('cseg-neg');
+    var su = document.getElementById('cseg-neu');
+    if (sp) sp.style.width = pPos + '%';
+    if (sn) sn.style.width = pNeg + '%';
+    if (su) su.style.width = pNeu + '%';
+  }, 350);
+
+  setText('cstat-pos', pPos + '%  (' + commPos + ')');
+  setText('cstat-neg', pNeg + '%  (' + commNeg + ')');
+  setText('cstat-neu', pNeu + '%  (' + commNeu + ')');
+
+  // Por perfil de origem
+  var perfilComm = {};
+  dados.forEach(function(d) {
+    var autor = d.autor || 'desconhecido';
+    if (!perfilComm[autor]) perfilComm[autor] = { pos:0, neg:0, neu:0, total:0 };
+    var cs = norm(d.sentimento_comentarios || '');
+    if (cs === 'positivo') perfilComm[autor].pos++;
+    else if (cs === 'negativo') perfilComm[autor].neg++;
+    else perfilComm[autor].neu++;
+    perfilComm[autor].total++;
+  });
+  var sorted = Object.entries(perfilComm)
+    .sort(function(a,b){ return b[1].total - a[1].total; })
+    .slice(0, 6);
+
+  var container = document.getElementById('comm-by-profile');
+  container.innerHTML = '';
+  sorted.forEach(function(entry) {
+    var autor = entry[0], s = entry[1];
+    var pctPos = Math.round(s.pos / s.total * 100);
+    var pctNeg = Math.round(s.neg / s.total * 100);
+    var row = document.createElement('div');
+    row.className = 'comm-profile-row';
+    row.innerHTML =
+      '<div class="comm-profile-avatar">' + (autor[0]||'?').toUpperCase() + '</div>' +
+      '<div class="comm-profile-name">@' + escHtml(autor) + '</div>' +
+      '<div class="comm-mini-bar">' +
+        '<div class="comm-mini-pos" style="width:' + pctPos + '%"></div>' +
+        '<div class="comm-mini-neg" style="width:' + pctNeg + '%"></div>' +
+      '</div>' +
+      '<div class="comm-mini-pct">' + pctPos + '%</div>';
+    container.appendChild(row);
+  });
+}
+
+/* ── ATRIBUIÇÃO ──────────────────────────────────────────────── */
+var ATRIB_LABELS = {
+  'prefeitura':'Prefeitura','prefeito':'Prefeito (pessoal)',
+  'gustavo carmo':'Prefeito Gustavo','camara municipal':'Câmara Municipal',
+  'oposicao':'Oposição','camara':'Câmara','vereadores':'Vereadores',
+  'governo estadual':'Gov. Estadual','governo federal':'Gov. Federal',
+  'secretaria':'Secretaria','estado':'Gov. Estadual',
+  // framework v1.0 keys
+  'prefeito_pessoal':'Prefeito','prefeitura_instituicao':'Prefeitura',
+  'secretaria_saude':'Sec. Saúde','secretaria_educacao':'Sec. Educação',
+  'secretaria_obras':'Sec. Obras','secretaria_outra':'Secretaria',
+  'vereadores':'Câmara','governo_estadual':'Gov. Estadual',
+  'governo_federal':'Gov. Federal','gestao_anterior':'Gestão Ant.',
+  'propria_populacao':'População','empresas_concessionarias':'Concessão',
+  'indefinido':'Indefinido',
+};
 
 function renderAtribuicao(dados) {
-  // Mapeamento de valores antigos → novos (retrocompatibilidade)
-  var legacyMap = {
-    'prefeitura':'prefeitura_instituicao', 'prefeito':'prefeito_pessoal',
-    'secretaria':'secretaria_outra', 'estado':'governo_estadual',
-    'federal':'governo_federal', 'populacao':'propria_populacao',
-    'imprensa':'indefinido', 'oposicao':'vereadores', 'neutro':'indefinido'
-  };
-  // Grupos conforme framework v1.0
-  var grupos = {
-    'prefeito_pessoal':         {label:'Prefeito (pessoal)',    cor:'#6366F1', count:0},
-    'prefeitura_instituicao':   {label:'Prefeitura',            cor:'#3B82F6', count:0},
-    'secretaria_saude':         {label:'Sec. Saúde',            cor:'#EF4444', count:0},
-    'secretaria_educacao':      {label:'Sec. Educação',         cor:'#60A5FA', count:0},
-    'secretaria_obras':         {label:'Sec. Obras',            cor:'#F59E0B', count:0},
-    'secretaria_outra':         {label:'Outra Secretaria',      cor:'#8B5CF6', count:0},
-    'governo_estadual':         {label:'Gov. Estadual',         cor:'#94A3B8', count:0},
-    'governo_federal':          {label:'Gov. Federal',          cor:'#64748B', count:0},
-    'gestao_anterior':          {label:'Gestão Anterior',       cor:'#F97316', count:0},
-    'vereadores':               {label:'Câmara/Vereadores',     cor:'#EC4899', count:0},
-    'propria_populacao':        {label:'Própria população',     cor:'#10B981', count:0},
-    'empresas_concessionarias': {label:'Concessionárias',       cor:'#14B8A6', count:0},
-    'indefinido':               {label:'Indefinido',            cor:'#A8B8D0', count:0},
-  };
-  dados.forEach(function(d) {
-    var a = norm(d.atribuicao || 'indefinido');
-    a = legacyMap[a] || a;
-    if (grupos[a]) grupos[a].count++;
-    else grupos.indefinido.count++;
-  });
-  var total = dados.length || 1;
-  // Ordena por count desc, pega top 6 com count > 0
-  var sorted = Object.entries(grupos)
-    .filter(function(e){ return e[1].count > 0; })
-    .sort(function(a,b){ return b[1].count - a[1].count; })
-    .slice(0, 6);
-  var maxCount = sorted.length ? sorted[0][1].count : 1;
-  var html = '';
-  sorted.forEach(function(e) {
-    var key = e[0], info = e[1];
-    var pct = Math.round(info.count / total * 100);
-    var barPct = Math.round(info.count / maxCount * 100);
-    html += '<div class="attr-row">' +
-      '<div class="attr-label" title="'+info.label+'">'+info.label+'</div>' +
-      '<div class="attr-bar-wrap"><div class="attr-fill" style="width:'+barPct+'%;background:'+info.cor+';border-radius:4px"></div></div>' +
-      '<div class="attr-num" style="color:'+info.cor+'">'+info.count+' <span style="font-weight:400;color:var(--muted);font-size:10px">('+pct+'%)</span></div>' +
-      '</div>';
-  });
-  if (!html) html = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Sem dados de atribuição</div>';
-  document.getElementById('attr-bars').innerHTML = html;
-}
-
-function renderTematico(dados) {
-  var card = document.getElementById('card-tematico');
-  var container = document.getElementById('tema-framework-bars');
-  if (!card || !container) return;
-
-  var CATS = {
-    'saude':                {label:'Saúde',              cor:'#EF4444'},
-    'educacao':             {label:'Educação',            cor:'#3B82F6'},
-    'infraestrutura_urbana':{label:'Infraestrutura',     cor:'#F59E0B'},
-    'limpeza_urbana':       {label:'Limpeza Urbana',     cor:'#10B981'},
-    'seguranca_publica':    {label:'Segurança',          cor:'#6366F1'},
-    'transporte_publico':   {label:'Transporte',         cor:'#8B5CF6'},
-    'saneamento_agua':      {label:'Saneamento/Água',    cor:'#06B6D4'},
-    'assistencia_social':   {label:'Assist. Social',     cor:'#F97316'},
-    'tributos_servicos':    {label:'Tributos/Serv.',     cor:'#84CC16'},
-    'cultura_esporte_lazer':{label:'Cultura/Esporte',   cor:'#EC4899'},
-    'servidores_municipais':{label:'Servidores',         cor:'#14B8A6'},
-    'imagem_gestao':        {label:'Imagem/Gestão',      cor:'#E05A1A'},
-    'meio_ambiente':        {label:'Meio Ambiente',      cor:'#22C55E'},
-    'zona_rural':           {label:'Zona Rural',         cor:'#A78BFA'},
-  };
-
   var counts = {};
-  var hasCatData = false;
   dados.forEach(function(d) {
-    var c = norm(d.categoria_tematica || '');
-    if (c && CATS[c]) { counts[c] = (counts[c]||0)+1; hasCatData = true; }
+    var raw = (d.atribuicao || '').trim();
+    if (!raw) return;
+    // Normalize: try exact match, then partial match
+    var key = norm(raw);
+    var label = ATRIB_LABELS[raw] || ATRIB_LABELS[key] || raw;
+    // Try to find best matching label key
+    if (!ATRIB_LABELS[raw] && !ATRIB_LABELS[key]) {
+      // Try partial match
+      Object.keys(ATRIB_LABELS).forEach(function(k) {
+        if (key.includes(k) || k.includes(key)) label = ATRIB_LABELS[k];
+      });
+    }
+    counts[label] = (counts[label] || 0) + 1;
   });
-
-  // Esconde o card se não houver dados de categoria (posts antigos)
-  if (!hasCatData) { card.style.display='none'; return; }
-  card.style.display = '';
-
-  var sorted = Object.entries(counts).sort(function(a,b){return b[1]-a[1];});
-  var maxCount = sorted[0] ? sorted[0][1] : 1;
-  var totalDados = dados.length || 1;
-
+  var sorted = Object.entries(counts).sort(function(a,b){ return b[1]-a[1]; }).slice(0,7);
+  var max = sorted.length ? sorted[0][1] : 1;
+  var container = document.getElementById('attr-bars');
   container.innerHTML = '';
-  var grid = document.createElement('div');
-  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;';
-
-  sorted.slice(0, 10).forEach(function(e) {
-    var cat = e[0], count = e[1];
-    var info = CATS[cat] || {label:cat, cor:'#94A3B8'};
-    var pct = Math.round(count / totalDados * 100);
-    var barPct = Math.round(count / maxCount * 100);
-    // Sentimento breakdown for this category
-    var catPosts = dados.filter(function(d){return norm(d.categoria_tematica)===cat;});
-    var catNeg = catPosts.filter(function(d){return norm(d.sentimento_post)==='negativo';}).length;
-    var catNegPct = Math.round(catNeg/count*100);
-
-    var row = document.createElement('div');
-    row.style.cssText = 'display:flex;flex-direction:column;gap:3px;';
+  if (!sorted.length) { container.innerHTML = '<div class="empty">Sem dados</div>'; return; }
+  sorted.forEach(function(e) {
+    var row = document.createElement('div'); row.className = 'attr-row';
+    var pct = Math.round(e[1]/max*100);
     row.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-        '<span style="font-size:12px;font-weight:600;color:var(--text-2)">' + info.label + '</span>' +
-        '<span style="font-size:11px;font-weight:700;color:'+info.cor+'">' + count +
-          '<span style="color:var(--muted);font-weight:400"> ('+pct+'%)</span>' +
-          (catNegPct>50?' <span style="color:var(--red);font-size:10px">▲'+catNegPct+'%neg</span>':'') +
-        '</span>' +
-      '</div>' +
-      '<div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">' +
-        '<div style="height:100%;width:0%;background:'+info.cor+';border-radius:3px;transition:width 1.2s cubic-bezier(0.4,0,0.2,1);" data-w="'+barPct+'"></div>' +
-      '</div>';
-    grid.appendChild(row);
+      '<div class="attr-label" title="'+escHtml(e[0])+'">'+escHtml(e[0])+'</div>' +
+      '<div class="attr-track"><div class="attr-fill" style="width:0%" data-pct="'+pct+'"></div></div>' +
+      '<div class="attr-count">'+e[1]+'</div>';
+    container.appendChild(row);
   });
-
-  container.appendChild(grid);
-  // Anima barras
   setTimeout(function(){
-    container.querySelectorAll('[data-w]').forEach(function(el){
-      el.style.width = el.dataset.w + '%';
+    container.querySelectorAll('.attr-fill').forEach(function(el){
+      el.style.width = el.dataset.pct + '%';
     });
-  }, 120);
+  }, 300);
 }
 
+/* ── TENDÊNCIA ───────────────────────────────────────────────── */
 function renderTendencia(dados) {
-  var container = document.getElementById('chart-tendencia');
-  if (!container) return;
-
-  // Group by day
   var byDay = {};
   dados.forEach(function(d) {
-    var dateStr = d.data_post ? d.data_post.substring(0,10) : 'sem data';
-    if (!byDay[dateStr]) byDay[dateStr] = {pos:0, neg:0, neu:0};
-    var s = norm(d.sentimento_post||'neutro');
-    if (s==='positivo') byDay[dateStr].pos++;
-    else if (s==='negativo') byDay[dateStr].neg++;
-    else byDay[dateStr].neu++;
+    var dt = parseDataPost(d.data_post);
+    if (!dt) return;
+    var key = dt.toISOString().slice(0,10);
+    if (!byDay[key]) byDay[key] = { pos:0, neg:0, neu:0 };
+    var s = norm(d.sentimento_post);
+    if (s === 'positivo') byDay[key].pos++;
+    else if (s === 'negativo') byDay[key].neg++;
+    else byDay[key].neu++;
+  });
+  var days = Object.keys(byDay).sort();
+  var container = document.getElementById('chart-tendencia');
+  if (!days.length) { container.innerHTML = '<div class="empty">Sem dados no período.</div>'; return; }
+  var maxVal = days.reduce(function(m, d){ return Math.max(m, byDay[d].pos+byDay[d].neg+byDay[d].neu); }, 1);
+  container.innerHTML = '';
+  days.forEach(function(day) {
+    var v = byDay[day];
+    var hPos = Math.round(v.pos/maxVal*70);
+    var hNeg = Math.round(v.neg/maxVal*70);
+    var hNeu = Math.round(v.neu/maxVal*70);
+    var dLabel = day.slice(5).replace('-','/');
+    var grp = document.createElement('div'); grp.className = 'trend-day-group';
+    grp.innerHTML =
+      '<div class="trend-bars">' +
+        '<div class="trend-bar" style="height:0px;background:var(--green)" data-h="'+hPos+'"></div>' +
+        '<div class="trend-bar" style="height:0px;background:var(--red)" data-h="'+hNeg+'"></div>' +
+        '<div class="trend-bar" style="height:0px;background:rgba(0,0,0,0.10)" data-h="'+hNeu+'"></div>' +
+      '</div>' +
+      '<div class="trend-day-label">'+dLabel+'</div>';
+    container.appendChild(grp);
+  });
+  setTimeout(function(){
+    container.querySelectorAll('.trend-bar').forEach(function(el){
+      el.style.height = el.dataset.h + 'px';
+      el.style.transition = 'height 600ms cubic-bezier(0.4,0,0.2,1)';
+    });
+  }, 200);
+}
+
+/* ── RANKING DE PERFIS (NOVO) ────────────────────────────────── */
+function renderRanking(dados) {
+  // Compute per-profile stats
+  var stats = {};
+  dados.forEach(function(d) {
+    var autor = d.autor || 'desconhecido';
+    if (!stats[autor]) stats[autor] = { pos:0, neg:0, neu:0, total:0 };
+    var s = norm(d.sentimento_post);
+    if (s === 'positivo') stats[autor].pos++;
+    else if (s === 'negativo') stats[autor].neg++;
+    else stats[autor].neu++;
+    stats[autor].total++;
   });
 
-  var days = Object.keys(byDay).sort();
-  if (days.length === 0) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;width:100%">Sem dados para o período</div>';
+  // Filter profiles with at least 1 post
+  var profiles = Object.entries(stats)
+    .filter(function(e){ return e[1].total >= 1; })
+    .map(function(e){
+      var s = e[1];
+      return {
+        autor: e[0],
+        pctPos: Math.round(s.pos/s.total*100),
+        pctNeg: Math.round(s.neg/s.total*100),
+        total: s.total,
+      };
+    });
+
+  // Most positive (sorted by pctPos)
+  var topPos = profiles.slice().sort(function(a,b){ return b.pctPos - a.pctPos; }).slice(0,5);
+  // Most negative (sorted by pctNeg)
+  var topNeg = profiles.slice().sort(function(a,b){ return b.pctNeg - a.pctNeg; }).slice(0,5);
+
+  function makeRankingList(containerId, list, type) {
+    var container = document.getElementById(containerId);
+    container.innerHTML = '';
+    if (!list.length) { container.innerHTML = '<div class="empty">Sem dados suficientes.</div>'; return; }
+    list.forEach(function(p, idx) {
+      var pct = type === 'pos' ? p.pctPos : p.pctNeg;
+      var color = type === 'pos' ? 'var(--green)' : 'var(--red)';
+      var item = document.createElement('div'); item.className = 'ranking-item';
+      item.onclick = function(){ abrirModalPerfil(p.autor); };
+      item.innerHTML =
+        '<div class="ranking-pos-num">' + (idx+1) + '</div>' +
+        '<div class="ranking-avatar">' + (p.autor[0]||'?').toUpperCase() + '</div>' +
+        '<div class="ranking-info">' +
+          '<div class="ranking-name">@' + escHtml(p.autor) + '</div>' +
+          '<div class="ranking-meta">' + p.total + ' posts</div>' +
+          '<div class="ranking-sub-bar"><div class="ranking-sub-fill" style="width:'+pct+'%;background:'+color+'"></div></div>' +
+        '</div>' +
+        '<div class="ranking-pct ' + type + '">' + pct + '%</div>';
+      container.appendChild(item);
+    });
+  }
+
+  makeRankingList('ranking-pos', topPos, 'pos');
+  makeRankingList('ranking-neg', topNeg, 'neg');
+}
+
+/* ── URGÊNCIAS ───────────────────────────────────────────────── */
+function renderUrgencias(urgPosts) {
+  var container = document.getElementById('urgencia-items');
+  if (!urgPosts.length) {
+    container.innerHTML = '<div class="empty">Nenhuma urgência no período.</div>';
     return;
   }
-
-  // Keep last 14 days max
-  if (days.length > 14) days = days.slice(days.length-14);
-
-  var maxVal = 1;
-  days.forEach(function(d){ var t=(byDay[d].pos||0)+(byDay[d].neg||0)+(byDay[d].neu||0); if(t>maxVal)maxVal=t; });
-
   container.innerHTML = '';
-  days.forEach(function(dateStr) {
-    var d = byDay[dateStr] || {pos:0,neg:0,neu:0};
-    var total = (d.pos||0)+(d.neg||0)+(d.neu||0);
-    var heightPct = total/maxVal;
-    var shortDate = dateStr==='sem data' ? '??' : dateStr.substring(5); // MM-DD
-
-    var group = document.createElement('div');
-    group.className = 'bar-day-group';
-    group.title = dateStr+': '+total+' posts ('+d.pos+' pos, '+d.neg+' neg, '+d.neu+' neu)';
-
-    var stack = document.createElement('div');
-    stack.className = 'bar-stacked';
-    stack.style.height = '100%';
-
-    if (d.neu > 0) {
-      var seg = document.createElement('div');
-      seg.className = 'bar-segment';
-      seg.style.cssText = 'flex:'+(d.neu/total)+';background:#CBD5E1;min-height:2px;';
-      stack.appendChild(seg);
-    }
-    if (d.neg > 0) {
-      var seg2 = document.createElement('div');
-      seg2.className = 'bar-segment';
-      seg2.style.cssText = 'flex:'+(d.neg/total)+';background:#EF4444;min-height:2px;';
-      stack.appendChild(seg2);
-    }
-    if (d.pos > 0) {
-      var seg3 = document.createElement('div');
-      seg3.className = 'bar-segment';
-      seg3.style.cssText = 'flex:'+(d.pos/total)+';background:#10B981;min-height:2px;';
-      stack.appendChild(seg3);
-    }
-
-    // Wrapper to control bar height — start at 0, animate to final
-    var finalH = Math.max(Math.round(heightPct*76), 4);
-    var barWrap = document.createElement('div');
-    barWrap.style.cssText = 'flex:1;display:flex;flex-direction:column;justify-content:flex-end;width:100%';
-    var barInner = document.createElement('div');
-    barInner.style.cssText = 'border-radius:4px 4px 0 0;overflow:hidden;display:flex;flex-direction:column-reverse;transition:height 0.75s cubic-bezier(0.34,1.56,0.64,1);height:0px';
-    barInner._finalH = finalH;
-    barInner.appendChild(stack);
-    barWrap.appendChild(barInner);
-
-    var label = document.createElement('div');
-    label.className = 'bar-day-label';
-    label.textContent = shortDate;
-
-    group.appendChild(barWrap);
-    group.appendChild(label);
-    container.appendChild(group);
-  });
-
-  // Animate bars after paint
-  requestAnimationFrame(function() {
-    requestAnimationFrame(function() {
-      var innerBars = container.querySelectorAll('[style*="height:0px"]');
-      innerBars.forEach(function(el, i) {
-        setTimeout(function() {
-          if (el._finalH !== undefined) el.style.height = el._finalH + 'px';
-        }, i * 40);
-      });
-    });
+  urgPosts.slice(0,6).forEach(function(p) {
+    var item = document.createElement('div'); item.className = 'urgencia-item';
+    var resumo = (p.resumo || p.tema || 'Post urgente').slice(0, 90);
+    item.innerHTML =
+      '<div class="urg-dot"></div>' +
+      '<div class="urg-text"><b>@' + escHtml(p.autor||'') + '</b> — ' + escHtml(resumo) + '</div>' +
+      (p.url ? '<a class="urg-link" href="'+escHtml(p.url)+'" target="_blank" rel="noopener">Ver ↗</a>' : '');
+    container.appendChild(item);
   });
 }
 
+/* ── TEMAS ───────────────────────────────────────────────────── */
 function renderTemas(dados) {
-  var freq = {};
-  dados.forEach(function(d){ if(d.tema){ freq[d.tema]=(freq[d.tema]||0)+1; } });
-  var sorted = Object.keys(freq).sort(function(a,b){return freq[b]-freq[a];}).slice(0,12);
-  document.getElementById('topic-cloud').innerHTML = sorted.map(function(t){
-    return '<span class="topic-tag" onclick="abrirModalTema(\''+escHtml(t)+'\')">'+escHtml(t)+' <small style="color:var(--muted-light)">('+freq[t]+')</small></span>';
-  }).join('') || '<span style="color:var(--muted);font-size:13px">Nenhum tema encontrado</span>';
+  var counts = {};
+  dados.forEach(function(d) {
+    var tema = (d.tema || '').trim();
+    if (tema) counts[tema] = (counts[tema]||0)+1;
+  });
+  var sorted = Object.entries(counts).sort(function(a,b){return b[1]-a[1];}).slice(0,20);
+  var max = sorted.length ? sorted[0][1] : 1;
+  var COLORS = ['#C99A2E','#16A34A','#DC2626','#2563EB','#7C3AED','#EA580C','#0891B2'];
+  var container = document.getElementById('topic-cloud');
+  container.innerHTML = '';
+  if (!sorted.length) { container.innerHTML = '<div class="empty">Sem temas identificados.</div>'; return; }
+  sorted.forEach(function(e, i) {
+    var col = COLORS[i % COLORS.length];
+    var size = Math.max(11, Math.round(11 + (e[1]/max) * 5));
+    var tag = document.createElement('span');
+    tag.className = 'topic-tag';
+    tag.style.cssText = 'font-size:'+size+'px;color:'+col+';border-color:'+col+'20;background:'+col+'10;';
+    tag.textContent = e[0] + ' (' + e[1] + ')';
+    tag.onclick = function(){ abrirModalTema(e[0]); };
+    container.appendChild(tag);
+  });
 }
 
+/* ── NARRATIVA EXECUTIVA ─────────────────────────────────────── */
+function renderNarrativa(dados, posN, negN, neuN, urgN, total) {
+  var pPos = Math.round(posN/total*100);
+  var pNeg = Math.round(negN/total*100);
+  var tom = pPos>=60 ? 'predominantemente positivo' : pNeg>=60 ? 'predominantemente negativo' : 'equilibrado';
+  var corTom = pPos>=60 ? '#22C55E' : pNeg>=60 ? '#EF4444' : '#C99A2E';
+
+  // Top tema
+  var tCount = {}; dados.forEach(function(d){ if(d.tema) tCount[d.tema]=(tCount[d.tema]||0)+1; });
+  var topTema = Object.entries(tCount).sort(function(a,b){return b[1]-a[1];})[0];
+
+  // Top atribuição
+  var aCount = {}; dados.forEach(function(d){ if(d.atribuicao) aCount[d.atribuicao]=(aCount[d.atribuicao]||0)+1; });
+  var topAtrib = Object.entries(aCount).sort(function(a,b){return b[1]-a[1];})[0];
+
+  // Risco alto
+  var riscoAlto = dados.filter(function(d){ return norm(d.risco_crise) === 'alto'; }).length;
+  // Crescendo
+  var crescendo = dados.filter(function(d){ return norm(d.tendencia) === 'crescendo'; }).length;
+
+  var html = '<div style="display:flex;flex-direction:column;gap:7px">';
+  html += '<span>📊 <b>'+total+' posts</b> monitorados '+(DIAS===1?'nas últimas 24h':'nos últimos '+DIAS+' dias')+' — sentimento <span style="color:'+corTom+';font-weight:700">'+tom+'</span> ('+pPos+'% pos · '+pNeg+'% neg).</span>';
+  if (topTema) html += '<span>🏷️ <b>Tema dominante:</b> <b>'+escHtml(topTema[0])+'</b> ('+topTema[1]+' posts).</span>';
+  if (topAtrib) html += '<span>🎯 <b>Atribuição principal:</b> <b>'+escHtml(topAtrib[0])+'</b> em '+(Math.round(topAtrib[1]/total*100))+'% das menções.</span>';
+  if (urgN > 0) html += '<span>⚠️ <span style="color:#ff6b6b;font-weight:700">'+urgN+' post'+(urgN>1?'s':'')+' requer'+(urgN>1?'em':'')+' atenção imediata.</span>'+(riscoAlto>0?' <b>'+riscoAlto+'</b> com risco de crise alto.':'')+'</span>';
+  if (crescendo > 0) html += '<span>📈 <b>'+crescendo+' post'+(crescendo>1?'s':'')+' com tendência crescente</b> de engajamento — monitorar.</span>';
+  html += '</div>';
+
+  document.getElementById('narrativa-box').innerHTML = html;
+}
+
+/* ── LISTA DE POSTS ──────────────────────────────────────────── */
 function renderLista(containerId, posts, filtro) {
-  var container = document.getElementById(containerId); if(!container) return;
-  var filtrados = posts;
-  if (containerId==='lista-positivos' && filtro!=='todos') filtrados=posts.filter(function(p){return norm(p.atribuicao)===filtro;});
-  if (containerId==='lista-negativos') {
-    if (filtro==='alta') filtrados=posts.filter(function(p){return norm(p.urgencia)==='alta';});
-    else if (filtro==='oposicao') filtrados=posts.filter(function(p){return norm(p.atribuicao)==='oposição'||norm(p.atribuicao)==='oposicao';});
-  }
-  if (!filtrados.length) { container.innerHTML='<div class="empty">Nenhum post encontrado</div>'; return; }
-  container.innerHTML='';
-  filtrados.forEach(function(p){ container.appendChild(criarPostCard(p,false)); });
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var filtered = posts;
+  if (filtro === 'alta') filtered = posts.filter(function(p){ return norm(p.urgencia) === 'alta'; });
+  else if (filtro === 'media') filtered = posts.filter(function(p){ return norm(p.urgencia) === 'media' || norm(p.urgencia) === 'média'; });
+  else if (filtro === 'crise') filtered = posts.filter(function(p){ return norm(p.risco_crise) === 'alto'; });
+  container.innerHTML = '';
+  if (!filtered.length) { container.innerHTML = '<div class="empty">Nenhum post neste filtro.</div>'; return; }
+  filtered.forEach(function(p) {
+    container.appendChild(criarPostCard(p, norm(p.urgencia) === 'alta'));
+  });
 }
 
+function criarPostCard(p, isUrgente) {
+  var card = document.createElement('div');
+  card.className = 'post-card' + (isUrgente ? ' urgente' : '');
+  var sent = norm(p.sentimento_post || 'neutro');
+  var urg  = norm(p.urgencia || 'baixa');
+  var cs   = norm(p.sentimento_comentarios || '');
+  var risco = norm(p.risco_crise || '');
+  var tendencia = norm(p.tendencia || '');
+  var dt   = parseDataPost(p.data_post);
+  var data = dt ? dt.toLocaleDateString('pt-BR') : '';
+  var acoes = { 'monitorar':'👁 Monitorar', 'responder publicamente':'💬 Responder', 'acionar assessoria':'📞 Assessoria', 'conter crise':'🚨 Conter crise', 'ampliar positivo':'🔊 Ampliar' };
+  var acao = acoes[norm(p.sugestao_acao||'')] || '';
+
+  var urgStr = urg === 'média' ? 'média' : urg;
+
+  card.innerHTML =
+    '<div class="post-meta">' +
+      '<span class="post-autor">@' + escHtml(p.autor||'') + '</span>' +
+      (data ? '<span class="post-data">' + data + '</span>' : '') +
+      '<span class="badge badge-'+norm(sent)+'">'+escHtml(norm(sent) || 'neutro')+'</span>' +
+      '<span class="badge badge-'+urgStr+'">'+escHtml(urg || 'baixa')+'</span>' +
+      (cs && cs !== 'sem comentários' ? '<span class="badge badge-'+norm(cs)+' txt" title="Sentimento dos comentários">💬'+norm(cs)+'</span>' : '') +
+      (risco === 'alto' ? '<span class="badge badge-risk-alto">⚡ risco alto</span>' : '') +
+      (tendencia === 'crescendo' ? '<span class="badge badge-trend-crescendo">↑ crescendo</span>' : '') +
+    '</div>' +
+    (p.resumo ? '<div class="post-resumo">' + escHtml(p.resumo) + '</div>' : '') +
+    (p.tema   ? '<div class="post-tema">📌 ' + escHtml(p.tema) + '</div>' : '') +
+    (p.atribuicao ? '<div class="post-tema" style="margin-top:3px">🎯 ' + escHtml(p.atribuicao) + '</div>' : '') +
+    '<div class="post-stats">' +
+      (p.engajamento ? '<span class="badge" style="background:rgba(0,0,0,0.04);color:var(--muted)">Eng: '+escHtml(p.engajamento)+'</span>' : '') +
+      (acao ? '<span class="post-action">' + acao + '</span>' : '') +
+      (p.url ? '<a class="btn-ver" href="'+escHtml(p.url)+'" target="_blank" rel="noopener">Ver post ↗</a>' : '') +
+    '</div>';
+  return card;
+}
+
+/* ── PERFIS ──────────────────────────────────────────────────── */
 function renderPerfis() {
   var container = document.getElementById('lista-perfis');
-  if (!PERFIS_DATA.length) { container.innerHTML='<div class="empty">Nenhum perfil encontrado</div>'; return; }
-  var sorted = PERFIS_DATA.slice().sort(function(a,b){return(b.total_posts||0)-(a.total_posts||0);});
-  container.innerHTML='';
+
+  // Compute stats from DADOS if PERFIS_DATA is empty
+  var dados = filtrarPorPeriodo(DADOS);
+  var stats = {};
+  dados.forEach(function(d) {
+    var a = d.autor || 'desconhecido';
+    if (!stats[a]) stats[a] = { pos:0, neg:0, neu:0, total:0 };
+    var s = norm(d.sentimento_post);
+    if (s==='positivo') stats[a].pos++;
+    else if (s==='negativo') stats[a].neg++;
+    else stats[a].neu++;
+    stats[a].total++;
+  });
+
+  var source = PERFIS_DATA.length ? PERFIS_DATA.map(function(p){
+    return { perfil:p.perfil||p.autor, categoria:p.categoria, total:parseInt(p.total_posts)||0, pct:parseInt(p.pct_positivo)||0 };
+  }) : Object.entries(stats).map(function(e){
+    var s = e[1];
+    return { perfil:e[0], categoria:'', total:s.total, pct: Math.round(s.pos/s.total*100) };
+  });
+
+  var sorted = source.slice().sort(function(a,b){ return b.total - a.total; });
+  container.innerHTML = '';
+  if (!sorted.length) { container.innerHTML = '<div class="empty">Nenhum perfil encontrado.</div>'; return; }
+
   sorted.forEach(function(p) {
-    var pct=parseInt(p.pct_positivo)||0;
-    var cor=pct>=60?'var(--green)':pct>=40?'var(--yellow)':'var(--red)';
-    var ini=(p.perfil||'?')[0].toUpperCase();
-    var row=document.createElement('div'); row.className='perfil-row';
-    row.onclick=function(){ abrirModalPerfil(p.perfil); };
-    row.innerHTML='<div class="perfil-avatar">'+ini+'</div>'+
-      '<div style="flex:1"><div class="perfil-name">@'+escHtml(p.perfil||'')+'</div><div class="perfil-cat">'+escHtml(p.categoria||'')+' · '+(p.total_posts||0)+' posts</div></div>'+
-      '<div class="perfil-bar-wrap"><div class="perfil-bar-bg"><div class="perfil-bar-fill" style="width:'+pct+'%;background:'+cor+'"></div></div></div>'+
+    var pct = p.pct;
+    var cor = pct>=60 ? 'var(--green)' : pct>=40 ? 'var(--amber)' : 'var(--red)';
+    var ini = (p.perfil||'?')[0].toUpperCase();
+    var row = document.createElement('div'); row.className = 'perfil-row';
+    row.onclick = function(){ abrirModalPerfil(p.perfil); };
+    row.innerHTML =
+      '<div class="perfil-avatar">'+ini+'</div>' +
+      '<div style="flex:1"><div class="perfil-name">@'+escHtml(p.perfil||'')+'</div>' +
+        '<div class="perfil-cat">'+escHtml(p.categoria||'')+(p.total?' · '+p.total+' posts':'')+'</div></div>' +
+      '<div class="perfil-bar-wrap"><div class="perfil-bar-bg"><div class="perfil-bar-fill" style="width:'+pct+'%;background:'+cor+'"></div></div></div>' +
       '<div class="perfil-pct" style="color:'+cor+'">'+pct+'%</div>';
     container.appendChild(row);
   });
 }
 
-// Labels de atribuição legíveis
-var ATRIB_LABELS = {
-  'prefeito_pessoal':'Prefeito','prefeitura_instituicao':'Prefeitura',
-  'secretaria_saude':'Sec.Saúde','secretaria_educacao':'Sec.Educação',
-  'secretaria_obras':'Sec.Obras','secretaria_outra':'Secretaria',
-  'vereadores':'Câmara','governo_estadual':'Gov.Estadual',
-  'governo_federal':'Gov.Federal','gestao_anterior':'Gestão Ant.',
-  'propria_populacao':'População','empresas_concessionarias':'Concessão',
-  'indefinido':'Indefinido',
-  // legacy
-  'prefeitura':'Prefeitura','prefeito':'Prefeito','secretaria':'Secretaria',
-  'estado':'Gov.Estadual','federal':'Gov.Federal','populacao':'População',
-};
-var CAT_LABELS = {
-  'saude':'Saúde','educacao':'Educação','infraestrutura_urbana':'Infraestrutura',
-  'limpeza_urbana':'Limpeza','seguranca_publica':'Segurança',
-  'transporte_publico':'Transporte','saneamento_agua':'Saneamento',
-  'assistencia_social':'Assist.Social','tributos_servicos':'Tributos',
-  'cultura_esporte_lazer':'Cultura','servidores_municipais':'Servidores',
-  'imagem_gestao':'Imagem/Gestão','meio_ambiente':'Meio Amb.','zona_rural':'Zona Rural',
-};
-
-function criarPostCard(p, isUrgente) {
-  var card=document.createElement('div'); card.className='post-card'+(isUrgente?' urgente':'');
-  var sent=norm(p.sentimento_post||'neutro'), urg=norm(p.urgencia||'baixa');
-  var attr=norm(p.atribuicao||'');
-  var attrLabel = ATRIB_LABELS[attr] || attr || 'indefinido';
-  var cat=norm(p.categoria_tematica||'');
-  var catLabel = CAT_LABELS[cat] || '';
-  var intens=norm(p.intensidade||'');
-  var local=p.localizacao&&p.localizacao!=='nao_identificado'?p.localizacao:'';
-  var dataParsed = parseDataPost(p.data_post);
-  var data = dataParsed ? dataParsed.toLocaleDateString('pt-BR') : '';
-  var curtidas=parseInt(p.curtidas)||parseInt(p.curtidas_count)||0;
-  var comentarios=parseInt(p.comentarios_count)||parseInt(p.comentarios)||parseInt(p.comments)||0;
-
-  // Tags de badges adicionais
-  var extraBadges = '';
-  if (catLabel) extraBadges += '<span class="badge" style="background:rgba(139,92,246,0.10);color:#7C3AED">'+catLabel+'</span>';
-  if (intens==='alta') extraBadges += '<span class="badge" style="background:rgba(239,68,68,0.10);color:#DC2626;font-weight:700">alta intensidade</span>';
-  if (local) extraBadges += '<span class="badge" style="background:rgba(16,185,129,0.10);color:#059669">📍'+local+'</span>';
-
-  card.innerHTML=
-    '<div class="post-meta"><span class="post-autor">@'+escHtml(p.autor||'')+'</span>'+(data?'<span class="post-data">'+data+'</span>':'')+
-    '<span class="badge badge-'+sent+'">'+sent+'</span><span class="badge badge-'+urg+'">'+urg+'</span>'+
-    (attrLabel?'<span class="badge badge-attr">'+attrLabel+'</span>':'')+
-    extraBadges+'</div>'+
-    (p.resumo?'<div class="post-resumo">'+escHtml(p.resumo)+'</div>':'')+
-    (p.tema?'<div class="post-tema">📌 '+escHtml(p.tema)+'</div>':'')+
-    '<div class="post-stats"><span class="stat-item likes">❤️ '+curtidas+'</span><span class="stat-item comments">💬 '+comentarios+'</span>'+
-    (p.url?'<a class="btn-ver" href="'+escHtml(p.url)+'" target="_blank" rel="noopener">Ver post ↗</a>':'')+
-    '</div>';
-  return card;
-}
-
+/* ── MODAIS ──────────────────────────────────────────────────── */
 function abrirModal(tipo) {
-  var dados=filtrarPorPeriodo(DADOS), posts, titulo;
+  var dados = filtrarPorPeriodo(DADOS), posts, titulo;
   if(tipo==='todos'){posts=dados;titulo='Todos os posts';}
   else if(tipo==='positivo'){posts=dados.filter(function(d){return norm(d.sentimento_post)==='positivo';});titulo='Posts Positivos';}
   else if(tipo==='negativo'){posts=dados.filter(function(d){return norm(d.sentimento_post)==='negativo';});titulo='Posts Negativos';}
-  else if(tipo==='neutro'){posts=dados.filter(function(d){return norm(d.sentimento_post)==='neutro';});titulo='Posts Neutros';}
-  else if(tipo==='urgente'){posts=dados.filter(function(d){return norm(d.urgencia)==='alta';});titulo='🚨 Urgência Alta';}
+  else if(tipo==='urgente'){posts=dados.filter(function(d){return norm(d.urgencia)==='alta';});titulo='⚠️ Urgência Alta';}
   else{posts=[];titulo='Posts';}
   mostrarModal(titulo, posts);
 }
 function abrirModalTema(tema){ var dados=filtrarPorPeriodo(DADOS); mostrarModal('📌 '+tema, dados.filter(function(d){return d.tema===tema;})); }
 function abrirModalPerfil(perfil){ var dados=filtrarPorPeriodo(DADOS); mostrarModal('@'+perfil, dados.filter(function(d){return d.autor===perfil;})); }
 function mostrarModal(titulo, posts) {
-  document.getElementById('modal-title').textContent=titulo;
-  document.getElementById('modal-count').textContent=posts.length+' post(s)';
-  var body=document.getElementById('modal-body'); body.innerHTML='';
-  if(!posts.length){body.innerHTML='<div class="empty">Nenhum post encontrado</div>';}
-  else{posts.forEach(function(p){body.appendChild(criarPostCard(p,norm(p.urgencia)==='alta'));});}
+  document.getElementById('modal-title').textContent = titulo;
+  document.getElementById('modal-count').textContent = posts.length + ' post(s)';
+  var body = document.getElementById('modal-body'); body.innerHTML = '';
+  if (!posts.length) { body.innerHTML = '<div class="empty">Nenhum post encontrado.</div>'; }
+  else { posts.forEach(function(p){ body.appendChild(criarPostCard(p, norm(p.urgencia)==='alta')); }); }
   document.getElementById('modal-overlay').classList.add('open');
 }
-function fecharModal(e){ if(!e||e.target===document.getElementById('modal-overlay')){document.getElementById('modal-overlay').classList.remove('open');} }
-
-function showSection(sec) {
-  SECTION=sec;
-  ['resumo','positivos','negativos','perfis','config'].forEach(function(s){ var el=document.getElementById('section-'+s); if(el)el.classList.toggle('hidden',s!==sec); });
-  document.querySelectorAll('.nav-item').forEach(function(b,i){ b.classList.toggle('active',i===['resumo','positivos','negativos','perfis','config'].indexOf(sec)); });
+function fecharModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay') || e.target === document.getElementById('modal-close')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
 }
 
+/* ── NAVEGAÇÃO ───────────────────────────────────────────────── */
+function showSection(sec) {
+  SECTION = sec;
+  var sections = ['resumo','positivos','negativos','perfis','config'];
+  sections.forEach(function(s){
+    var el = document.getElementById('section-'+s);
+    if (el) el.classList.toggle('hidden', s !== sec);
+  });
+  document.querySelectorAll('.nav-tab').forEach(function(tab, i){
+    tab.classList.toggle('active', ['resumo','positivos','negativos','perfis'].indexOf(sec) === i);
+  });
+  // Render section-specific content
+  if (sec === 'positivos') {
+    var dados = filtrarPorPeriodo(DADOS);
+    var pos = dados.filter(function(d){ return norm(d.sentimento_post)==='positivo'; });
+    renderLista('lista-positivos', pos, 'todos');
+  }
+  if (sec === 'negativos') {
+    var dados2 = filtrarPorPeriodo(DADOS);
+    var neg = dados2.filter(function(d){ return norm(d.sentimento_post)==='negativo'; });
+    renderLista('lista-negativos', neg, 'todos');
+  }
+}
+
+/* ── FILTROS DE LISTA ────────────────────────────────────────── */
 function filtrarLista(lista, filtro, btn) {
-  var containerId=lista==='pos'?'lista-positivos':'lista-negativos';
-  var dados=filtrarPorPeriodo(DADOS);
-  var posts=dados.filter(function(d){return norm(d.sentimento_post)===(lista==='pos'?'positivo':'negativo');});
-  renderLista(containerId,posts,filtro);
-  var parentId=lista==='pos'?'filter-pos':'filter-neg';
-  document.getElementById(parentId).querySelectorAll('.filter-tab').forEach(function(b){b.classList.remove('active');});
+  var containerId = lista==='pos' ? 'lista-positivos' : 'lista-negativos';
+  var dados = filtrarPorPeriodo(DADOS);
+  var posts = dados.filter(function(d){ return norm(d.sentimento_post)===(lista==='pos'?'positivo':'negativo'); });
+  renderLista(containerId, posts, filtro);
+  var parentId = lista==='pos' ? 'filter-pos' : 'filter-neg';
+  document.getElementById(parentId).querySelectorAll('.filter-tab').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
 }
 
+/* ── CONFIG ──────────────────────────────────────────────────── */
 function salvarConfig() {
-  SCRIPT_URL=document.getElementById('cfg-url').value.trim();
-  DIAS=parseInt(document.getElementById('cfg-dias').value)||7;
-  localStorage.setItem('radar_url',SCRIPT_URL); localStorage.setItem('radar_dias',DIAS);
-  var st=document.getElementById('cfg-status'); st.style.display='block'; st.textContent='✅ Configuração salva! Carregando dados...';
+  SCRIPT_URL = document.getElementById('cfg-url').value.trim();
+  DIAS = parseInt(document.getElementById('cfg-dias').value) || 7;
+  localStorage.setItem('radar_url', SCRIPT_URL);
+  localStorage.setItem('radar_dias', DIAS);
+  var st = document.getElementById('cfg-status');
+  st.style.display = 'block'; st.textContent = '✅ Configuração salva! Carregando dados...';
   carregarDados();
 }
 function renderKwTags() {
-  var wrap=document.getElementById('kw-tags'); wrap.innerHTML='';
-  KWS.forEach(function(kw,i){ var t=document.createElement('div'); t.className='kw-tag'; t.innerHTML=escHtml(kw)+'<span class="kw-remove" onclick="removeKeyword('+i+')">×</span>'; wrap.appendChild(t); });
+  var wrap = document.getElementById('kw-tags'); wrap.innerHTML = '';
+  KWS.forEach(function(kw, i){
+    var t = document.createElement('div'); t.className = 'kw-tag';
+    t.innerHTML = escHtml(kw) + '<span class="kw-remove" onclick="removeKeyword('+i+')">×</span>';
+    wrap.appendChild(t);
+  });
 }
-function addKeyword(){ var input=document.getElementById('kw-input'); var val=input.value.trim().toLowerCase(); if(val&&KWS.indexOf(val)===-1){KWS.push(val);renderKwTags();} input.value=''; }
+function addKeyword(){
+  var input = document.getElementById('kw-input');
+  var val = input.value.trim().toLowerCase();
+  if (val && KWS.indexOf(val) === -1) { KWS.push(val); renderKwTags(); }
+  input.value = '';
+}
 function removeKeyword(i){ KWS.splice(i,1); renderKwTags(); }
-function salvarKeywords(){ localStorage.setItem('radar_kws',JSON.stringify(KWS)); alert('✅ Palavras-chave salvas!'); }
-function restaurarKeywords(){ KWS=['prefeitura','gustavo','gustavo carmo','prefeito','gestao','municipio','alagoinhas','secom','secretaria']; renderKwTags(); }
-
-function norm(s){ return (s||'').toLowerCase().trim(); }
-function setText(id,val){ var el=document.getElementById(id); if(el)el.textContent=val; }
-function setAttr(id,attr,val){ var el=document.getElementById(id); if(el)el.setAttribute(attr,val); }
-function setBarWidth(id,pct){ var el=document.getElementById(id); if(el)el.style.width=pct+'%'; }
-
-/* ── COUNTER ANIMATION ── */
-function animateCounter(id, target, suffix, duration) {
-  var el = document.getElementById(id);
-  if (!el) return;
-  suffix = suffix || '';
-  var startVal = parseFloat(el.textContent) || 0;
-  if (isNaN(startVal) || el.textContent === '—') startVal = 0;
-  var startTime = null;
-  var dur = duration || 900;
-  function step(ts) {
-    if (!startTime) startTime = ts;
-    var elapsed = ts - startTime;
-    var progress = Math.min(elapsed / dur, 1);
-    // ease-out cubic
-    var eased = 1 - Math.pow(1 - progress, 3);
-    var current = startVal + (target - startVal) * eased;
-    var display = suffix === '%' ? Math.round(current) + '%' : Math.round(current);
-    el.textContent = display;
-    if (progress < 1) requestAnimationFrame(step);
-    else el.textContent = (suffix === '%') ? target + '%' : target;
-  }
-  requestAnimationFrame(step);
-}
-function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-document.addEventListener('keydown', function(e){ if(e.key==='Escape')document.getElementById('modal-overlay').classList.remove('open'); });
+function salvarKeywords(){ localStorage.setItem('radar_kws', JSON.stringify(KWS)); alert('✅ Palavras-chave salvas!'); }
 </script>
 </body>
 </html>
