@@ -39,9 +39,10 @@ jobs:
           echo "GOOGLE_SERVICE_ACCOUNT_FILE=service_account.json"           >> .env
           echo "GOOGLE_SHEET_ID=${{ secrets.GOOGLE_SHEET_ID }}"             >> .env
           echo "GOOGLE_SHEET_NAME=Radar"                                    >> .env
+          echo "APIFY_ACTOR_ID=shu8hvrXbJbY3Eb9W"                          >> .env
 
       - name: Executar pipeline completo (Apify + Claude + Sheets)
-        run: python run_pipeline.py
+        run: python radar.py
 
       - name: Resumo de sucesso
         if: success()
