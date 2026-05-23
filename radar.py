@@ -12,7 +12,6 @@ from google.oauth2.service_account import Credentials
 
 load_dotenv()
 
-# ── Credenciais ──────────────────────────────────────────────────────────────
 APIFY_API_TOKEN             = os.environ["APIFY_API_TOKEN"]
 APIFY_POST_ACTOR_ID         = os.environ.get("APIFY_POST_ACTOR_ID", "apify/instagram-post-scraper")
 APIFY_COMMENT_ACTOR_ID      = os.environ.get("APIFY_COMMENT_ACTOR_ID", "apify/instagram-comment-scraper")
@@ -21,25 +20,14 @@ GOOGLE_SERVICE_ACCOUNT_FILE = os.environ["GOOGLE_SERVICE_ACCOUNT_FILE"]
 GOOGLE_SHEET_ID             = os.environ["GOOGLE_SHEET_ID"]
 GOOGLE_SHEET_NAME           = os.environ.get("GOOGLE_SHEET_NAME", "Radar")
 
-# ── Perfis monitorados ───────────────────────────────────────────────────────
 PERFIS = [
-    "seligaalagoinhas",
-    "gustavoascarmo",
-    "portalalagoinhasnews",
-    "oficialjoaquimneto",
-    "prefeituraalagoinhas",
-    "soulucianoalmeida",
-    "jornalalagoinhas",
-    "suacidade",
-    "paulocezar_oficial",
-    "jaldicenunes",
-    "eulumamenezes",
-    "alagoinhas24h",
-    "alagonews",
-    "gleysersoares",
+    "seligaalagoinhas", "gustavoascarmo", "portalalagoinhasnews",
+    "oficialjoaquimneto", "prefeituraalagoinhas", "soulucianoalmeida",
+    "jornalalagoinhas", "suacidade", "paulocezar_oficial",
+    "jaldicenunes", "eulumamenezes", "alagoinhas24h",
+    "alagonews", "gleysersoares",
 ]
 
-# ── Colunas da planilha ──────────────────────────────────────────────────────
 SHEET_HEADERS = [
     "url", "data_post", "autor",
     "sentimento_post", "sentimento_comentarios",
@@ -49,13 +37,11 @@ SHEET_HEADERS = [
     "resumo", "atribuicao", "sugestao_acao"
 ]
 
-# ── Filtro de relevância ─────────────────────────────────────────────────────
 KEYWORDS = [
     "prefeitura", "gustavo", "prefeito", "alagoinhas",
     "municipio", "município", "secom", "secretar"
 ]
 
-# ── Prompt de análise ────────────────────────────────────────────────────────
 ANALYSIS_PROMPT = """\
 Você é um analista político sênior da Prefeitura de Alagoinhas/BA, especializado em monitoramento de redes sociais e gestão de crises de comunicação.
 
@@ -85,16 +71,14 @@ Retorne exatamente este JSON:
 }}
 
 Critérios importantes:
-- "tema_sensivel": marque Sim quando o tema pode gerar repercussão negativa ampla (saúde, segurança, corrupção, obras atrasadas)
+- "tema_sensivel": marque Sim quando o tema pode gerar repercussão negativa ampla
 - "risco_crise": Alto quando há comentários negativos crescentes + tema sensível + urgência alta
 - "tendencia": avalie se o tom dos comentários está piorando, estável ou melhorando
 - "engajamento": Alto acima de 50 comentários/curtidas, Médio entre 10-50, Baixo abaixo de 10
 - "sugestao_acao": baseie na combinação de sentimento + risco + tendência"""
 
 
-# ── Utilitários ──────────────────────────────────────────────────────────────
-
-def limpar_texto(texto: str) -> str:
+def limpar_texto(texto):
     if not texto:
         return "sem texto"
     texto = re.sub(r"http\S+", "", texto)
@@ -103,34 +87,28 @@ def limpar_texto(texto: str) -> str:
     return texto or "sem texto"
 
 
-def tem_keyword(texto: str) -> bool:
+def tem_keyword(texto):
     t = texto.lower()
     return any(k in t for k in KEYWORDS)
 
 
-def formatar_data(ts: str) -> str:
+def formatar_data(ts):
     try:
         return datetime.fromisoformat(ts.replace("Z", "+00:00")).strftime("%d/%m/%Y %H:%M")
     except Exception:
         return ts or ""
 
 
-# ── Apify — disparo e espera ─────────────────────────────────────────────────
-
-def disparar_actor(actor_id: str, input_data: dict, timeout: int = 300) -> str:
-    """
-    Dispara um Actor do Apify de forma síncrona e retorna o defaultDatasetId.
-    Aguarda até `timeout` segundos pelo status SUCCEEDED.
-    """
+def disparar_actor(actor_id, input_data, timeout=300):
     print(f"  Disparando {actor_id}...")
-    url = f"https://api.apify.com/v2/acts/{actor_id}/runs?token={APIFY_API_TOKEN}"
+    actor_slug = actor_id.replace("/", "~")
+    url = f"https://api.apify.com/v2/acts/{actor_slug}/runs?token={APIFY_API_TOKEN}"
     resp = requests.post(url, json=input_data, timeout=30)
     resp.raise_for_status()
     run = resp.json()["data"]
     run_id = run["id"]
     print(f"  Run iniciado: {run_id}")
 
-    # Polling até SUCCEEDED ou FAILED
     inicio = time.time()
     while True:
         time.sleep(10)
@@ -152,7 +130,7 @@ def disparar_actor(actor_id: str, input_data: dict, timeout: int = 300) -> str:
             raise TimeoutError(f"Actor {actor_id} excedeu {timeout}s de espera.")
 
 
-def buscar_items(dataset_id: str) -> list[dict]:
+def buscar_items(dataset_id):
     url = (
         f"https://api.apify.com/v2/datasets/{dataset_id}/items"
         f"?token={APIFY_API_TOKEN}&format=json&clean=true"
@@ -161,8 +139,6 @@ def buscar_items(dataset_id: str) -> list[dict]:
     resp.raise_for_status()
     return resp.json()
 
-
-# ── Google Sheets ────────────────────────────────────────────────────────────
 
 def abrir_planilha():
     creds = Credentials.from_service_account_file(
@@ -180,14 +156,12 @@ def abrir_planilha():
     return ws
 
 
-def urls_existentes(ws) -> set[str]:
+def urls_existentes(ws):
     valores = ws.col_values(1)
     return set(valores[1:])
 
 
-# ── Claude API ───────────────────────────────────────────────────────────────
-
-def analisar_post(texto: str, comentarios: str) -> dict:
+def analisar_post(texto, comentarios):
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     prompt = ANALYSIS_PROMPT.format(texto=texto, comentarios=comentarios)
     msg = client.messages.create(
@@ -200,13 +174,7 @@ def analisar_post(texto: str, comentarios: str) -> dict:
     return json.loads(raw)
 
 
-# ── Coleta de comentários via Comment Scraper ────────────────────────────────
-
-def coletar_comentarios(urls_posts: list[str]) -> dict[str, list[str]]:
-    """
-    Dispara o Instagram Comment Scraper para uma lista de URLs de posts.
-    Retorna um dict {url_post: [lista de textos dos comentários]}.
-    """
+def coletar_comentarios(urls_posts):
     if not urls_posts:
         return {}
 
@@ -214,7 +182,7 @@ def coletar_comentarios(urls_posts: list[str]) -> dict[str, list[str]]:
 
     input_data = {
         "directUrls": urls_posts,
-        "resultsLimit": 50,        # até 50 comentários por post
+        "resultsLimit": 50,
         "includeReplies": True,
     }
 
@@ -225,8 +193,7 @@ def coletar_comentarios(urls_posts: list[str]) -> dict[str, list[str]]:
         print(f"  Aviso: falha ao coletar comentários — {e}")
         return {}
 
-    # Agrupa comentários por URL do post
-    mapa: dict[str, list[str]] = {}
+    mapa = {}
     for item in items:
         post_url = item.get("postUrl") or item.get("url") or ""
         texto = item.get("text") or item.get("comment") or ""
@@ -237,10 +204,7 @@ def coletar_comentarios(urls_posts: list[str]) -> dict[str, list[str]]:
     return mapa
 
 
-# ── Pipeline principal ───────────────────────────────────────────────────────
-
 def processar():
-    # 1. Dispara o Post Scraper
     print("=" * 60)
     print("RADAR POLÍTICO — Alagoinhas/BA")
     print("=" * 60)
@@ -266,12 +230,10 @@ def processar():
         print("Nenhum post encontrado. Encerrando.")
         return
 
-    # 2. Abre planilha
     print("\n[2/5] Abrindo planilha...")
     ws = abrir_planilha()
     existentes = urls_existentes(ws)
 
-    # 3. Filtra posts relevantes e novos
     print("\n[3/5] Filtrando posts relevantes...")
     posts_filtrados = []
     for post in posts:
@@ -297,12 +259,10 @@ def processar():
         print("Nenhum post novo para processar. Encerrando.")
         return
 
-    # 4. Coleta comentários dos posts filtrados
     print("\n[4/5] Coletando comentários...")
     urls_para_comentar = [p["url"] for p in posts_filtrados if p["url"].startswith("http")]
     mapa_comentarios = coletar_comentarios(urls_para_comentar)
 
-    # 5. Analisa com Claude e grava na planilha
     print("\n[5/5] Analisando com Claude e gravando na planilha...")
     linhas = []
     novos = 0
@@ -311,7 +271,6 @@ def processar():
     for post in posts_filtrados:
         url = post["url"]
 
-        # Monta texto dos comentários para o Claude
         comentarios_lista = mapa_comentarios.get(url, [])
         if comentarios_lista:
             comentarios_texto = "\n".join(f"- {c}" for c in comentarios_lista[:30])
@@ -321,7 +280,7 @@ def processar():
         try:
             analise = analisar_post(post["caption"], comentarios_texto)
         except Exception as e:
-            print(f"  ✗ Erro ao analisar {url}: {e}")
+            print(f"  Erro ao analisar {url}: {e}")
             erros += 1
             continue
 
@@ -356,8 +315,6 @@ def processar():
     print(f"Concluído: {novos} novos | {erros} erros")
     print(f"{'='*60}")
 
-
-# ── Entrada ──────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     processar()
