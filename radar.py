@@ -123,7 +123,8 @@ def disparar_actor(actor_id: str, input_data: dict, timeout: int = 300) -> str:
     Aguarda até `timeout` segundos pelo status SUCCEEDED.
     """
     print(f"  Disparando {actor_id}...")
-    url = f"https://api.apify.com/v2/acts/{actor_id}/runs?token={APIFY_API_TOKEN}"
+   actor_slug = actor_id.replace("/", "~")
+    url = f"https://api.apify.com/v2/acts/{actor_slug}/runs?token={APIFY_API_TOKEN}"
     resp = requests.post(url, json=input_data, timeout=30)
     resp.raise_for_status()
     run = resp.json()["data"]
