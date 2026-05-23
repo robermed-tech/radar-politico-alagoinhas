@@ -57,6 +57,26 @@ KEYWORDS = [
     "municipio", "município", "secom", "secretar"
 ]
 
+# Keywords específicas para filtrar comentários com críticas ou elogios
+KEYWORDS_COMENTARIOS = [
+    # Referências diretas
+    "prefeitura", "prefeito", "gustavo", "gestão", "gestao",
+    "administração", "administracao", "secretaria", "secom",
+    "alagoinhas", "municipio", "município",
+    # Críticas
+    "incompetente", "corrupto", "corrupção", "roubando", "roubo",
+    "vergonha", "lamentável", "lamentavel", "abandono", "abandonado",
+    "descaso", "negligência", "negligencia", "fracasso", "pior prefeito",
+    "não faz nada", "nao faz nada", "mentira", "mentiroso", "promessa",
+    "cadê", "cade", "cadê as obras", "buraco", "esgoto", "lixo",
+    "falta de", "sem água", "sem agua", "sem luz", "sem saúde",
+    # Elogios
+    "parabéns", "parabens", "ótimo prefeito", "otimo prefeito",
+    "excelente", "muito bom", "muito boa", "melhorou", "melhorando",
+    "obrigado prefeito", "obrigada prefeito", "bem feito", "aprovado",
+    "continue assim", "fazendo um bom", "bom trabalho", "boa gestão",
+]
+
 ANALYSIS_PROMPT = """\
 Você é um analista político sênior da Prefeitura de Alagoinhas/BA, especializado em monitoramento de redes sociais e gestão de crises de comunicação.
 
@@ -208,7 +228,7 @@ def analisar_post(texto, comentarios_lista, autor, categoria):
     )) or "nenhum"
 
     comentarios_texto = "\n".join(
-        f"- {c}" for c in comentarios_lista[:30]
+        f"- {c}" for c in comentarios_lista
     ) if comentarios_lista else "Sem comentários coletados."
 
     prompt = ANALYSIS_PROMPT.format(
@@ -240,7 +260,7 @@ def coletar_comentarios(urls_posts):
 
     input_data = {
         "directUrls": urls_posts,
-        "resultsLimit": 50,
+        "resultsLimit": 500,  # sem limite prático para posts com menos de 100 comentários
         "includeReplies": True,
     }
 
@@ -251,17 +271,26 @@ def coletar_comentarios(urls_posts):
         print(f"  Aviso: falha ao coletar comentários — {e}")
         return {}
 
-    # Agrupa por URL, guardando texto + username
+    # Agrupa por URL, filtrando apenas comentários politicamente relevantes
     mapa = {}
+    ignorados = 0
     for item in items:
         post_url = (item.get("postUrl") or item.get("url") or "").rstrip("/")
         texto    = item.get("text") or item.get("comment") or ""
         username = item.get("ownerUsername") or item.get("username") or "anon"
-        if post_url and texto:
-            entrada = f"{username}: {limpar_texto(texto)}"
+        if not post_url or not texto:
+            continue
+        texto_limpo = limpar_texto(texto)
+        tem_conteudo = len(texto_limpo) > 10
+        tem_politica = any(k in texto_limpo.lower() for k in KEYWORDS_COMENTARIOS)
+        if tem_politica or (tem_conteudo and tem_keyword(texto_limpo)):
+            entrada = f"{username}: {texto_limpo}"
             mapa.setdefault(post_url, []).append(entrada)
+        else:
+            ignorados += 1
 
-    print(f"  {len(items)} comentários coletados em {len(mapa)} posts.")
+    total_coletados = sum(len(v) for v in mapa.values())
+    print(f"  {len(items)} brutos -> {total_coletados} relevantes em {len(mapa)} posts ({ignorados} ignorados).")
     return mapa
 
 
