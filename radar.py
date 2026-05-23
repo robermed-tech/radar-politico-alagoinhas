@@ -2,6 +2,7 @@ import os
 import re
 import json
 import sys
+import time
 import requests
 import gspread
 import anthropic
@@ -12,12 +13,31 @@ from google.oauth2.service_account import Credentials
 load_dotenv()
 
 # ── Credenciais ──────────────────────────────────────────────────────────────
-APIFY_API_TOKEN            = os.environ["APIFY_API_TOKEN"]
-APIFY_ACTOR_ID             = os.environ.get("APIFY_ACTOR_ID", "")          # ex: apify/instagram-scraper
-ANTHROPIC_API_KEY          = os.environ["ANTHROPIC_API_KEY"]
+APIFY_API_TOKEN             = os.environ["APIFY_API_TOKEN"]
+APIFY_POST_ACTOR_ID         = os.environ.get("APIFY_POST_ACTOR_ID", "apify/instagram-post-scraper")
+APIFY_COMMENT_ACTOR_ID      = os.environ.get("APIFY_COMMENT_ACTOR_ID", "apify/instagram-comment-scraper")
+ANTHROPIC_API_KEY           = os.environ["ANTHROPIC_API_KEY"]
 GOOGLE_SERVICE_ACCOUNT_FILE = os.environ["GOOGLE_SERVICE_ACCOUNT_FILE"]
-GOOGLE_SHEET_ID            = os.environ["GOOGLE_SHEET_ID"]
-GOOGLE_SHEET_NAME          = os.environ.get("GOOGLE_SHEET_NAME", "Radar")
+GOOGLE_SHEET_ID             = os.environ["GOOGLE_SHEET_ID"]
+GOOGLE_SHEET_NAME           = os.environ.get("GOOGLE_SHEET_NAME", "Radar")
+
+# ── Perfis monitorados ───────────────────────────────────────────────────────
+PERFIS = [
+    "seligaalagoinhas",
+    "gustavoascarmo",
+    "portalalagoinhasnews",
+    "oficialjoaquimneto",
+    "prefeituraalagoinhas",
+    "soulucianoalmeida",
+    "jornalalagoinhas",
+    "suacidade",
+    "paulocezar_oficial",
+    "jaldicenunes",
+    "eulumamenezes",
+    "alagoinhas24h",
+    "alagonews",
+    "gleysersoares",
+]
 
 # ── Colunas da planilha ──────────────────────────────────────────────────────
 SHEET_HEADERS = [
@@ -75,7 +95,6 @@ Critérios importantes:
 # ── Utilitários ──────────────────────────────────────────────────────────────
 
 def limpar_texto(texto: str) -> str:
-    """Remove emojis, URLs e quebras de linha excessivas."""
     if not texto:
         return "sem texto"
     texto = re.sub(r"http\S+", "", texto)
@@ -96,39 +115,44 @@ def formatar_data(ts: str) -> str:
         return ts or ""
 
 
-# ── Apify ────────────────────────────────────────────────────────────────────
+# ── Apify — disparo e espera ─────────────────────────────────────────────────
 
-def obter_ultimo_dataset_id() -> str:
+def disparar_actor(actor_id: str, input_data: dict, timeout: int = 300) -> str:
     """
-    Busca automaticamente o Dataset ID do último run bem-sucedido do ator.
-    Elimina a necessidade de atualizar o .env manualmente após cada run.
+    Dispara um Actor do Apify de forma síncrona e retorna o defaultDatasetId.
+    Aguarda até `timeout` segundos pelo status SUCCEEDED.
     """
-    if not APIFY_ACTOR_ID:
-        raise ValueError(
-            "APIFY_ACTOR_ID não definido no .env. "
-            "Adicione a linha: APIFY_ACTOR_ID=apify/instagram-scraper"
-        )
-
-    url = (
-        f"https://api.apify.com/v2/acts/{APIFY_ACTOR_ID}/runs"
-        f"?token={APIFY_API_TOKEN}&status=SUCCEEDED&limit=1"
-    )
-    resp = requests.get(url, timeout=30)
+    print(f"  Disparando {actor_id}...")
+    url = f"https://api.apify.com/v2/acts/{actor_id}/runs?token={APIFY_API_TOKEN}"
+    resp = requests.post(url, json=input_data, timeout=30)
     resp.raise_for_status()
-    runs = resp.json().get("data", {}).get("items", [])
+    run = resp.json()["data"]
+    run_id = run["id"]
+    print(f"  Run iniciado: {run_id}")
 
-    if not runs:
-        raise RuntimeError("Nenhum run SUCCEEDED encontrado para o ator informado.")
+    # Polling até SUCCEEDED ou FAILED
+    inicio = time.time()
+    while True:
+        time.sleep(10)
+        status_url = f"https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}"
+        r = requests.get(status_url, timeout=15)
+        r.raise_for_status()
+        status = r.json()["data"]["status"]
+        print(f"  Status: {status}")
 
-    dataset_id = runs[0].get("defaultDatasetId", "")
-    if not dataset_id:
-        raise RuntimeError("Dataset ID não encontrado no último run.")
+        if status == "SUCCEEDED":
+            dataset_id = r.json()["data"]["defaultDatasetId"]
+            print(f"  Dataset ID: {dataset_id}")
+            return dataset_id
 
-    print(f"Dataset ID encontrado automaticamente: {dataset_id}")
-    return dataset_id
+        if status in ("FAILED", "ABORTED", "TIMED-OUT"):
+            raise RuntimeError(f"Actor {actor_id} terminou com status: {status}")
+
+        if time.time() - inicio > timeout:
+            raise TimeoutError(f"Actor {actor_id} excedeu {timeout}s de espera.")
 
 
-def buscar_posts(dataset_id: str) -> list[dict]:
+def buscar_items(dataset_id: str) -> list[dict]:
     url = (
         f"https://api.apify.com/v2/datasets/{dataset_id}/items"
         f"?token={APIFY_API_TOKEN}&format=json&clean=true"
@@ -151,16 +175,14 @@ def abrir_planilha():
         ws = sh.worksheet(GOOGLE_SHEET_NAME)
     except gspread.WorksheetNotFound:
         ws = sh.add_worksheet(GOOGLE_SHEET_NAME, rows=1000, cols=20)
-    # Garante cabeçalho
     if not ws.row_values(1):
         ws.append_row(SHEET_HEADERS)
     return ws
 
 
 def urls_existentes(ws) -> set[str]:
-    col_url = 1  # coluna A
-    valores = ws.col_values(col_url)
-    return set(valores[1:])  # ignora cabeçalho
+    valores = ws.col_values(1)
+    return set(valores[1:])
 
 
 # ── Claude API ───────────────────────────────────────────────────────────────
@@ -174,66 +196,139 @@ def analisar_post(texto: str, comentarios: str) -> dict:
         messages=[{"role": "user", "content": prompt}],
     )
     raw = msg.content[0].text.strip()
-    # Remove possível markdown residual
     raw = re.sub(r"```(?:json)?|```", "", raw).strip()
     return json.loads(raw)
 
 
+# ── Coleta de comentários via Comment Scraper ────────────────────────────────
+
+def coletar_comentarios(urls_posts: list[str]) -> dict[str, list[str]]:
+    """
+    Dispara o Instagram Comment Scraper para uma lista de URLs de posts.
+    Retorna um dict {url_post: [lista de textos dos comentários]}.
+    """
+    if not urls_posts:
+        return {}
+
+    print(f"\nColetando comentários de {len(urls_posts)} posts...")
+
+    input_data = {
+        "directUrls": urls_posts,
+        "resultsLimit": 50,        # até 50 comentários por post
+        "includeReplies": True,
+    }
+
+    try:
+        dataset_id = disparar_actor(APIFY_COMMENT_ACTOR_ID, input_data, timeout=300)
+        items = buscar_items(dataset_id)
+    except Exception as e:
+        print(f"  Aviso: falha ao coletar comentários — {e}")
+        return {}
+
+    # Agrupa comentários por URL do post
+    mapa: dict[str, list[str]] = {}
+    for item in items:
+        post_url = item.get("postUrl") or item.get("url") or ""
+        texto = item.get("text") or item.get("comment") or ""
+        if post_url and texto:
+            mapa.setdefault(post_url, []).append(limpar_texto(texto))
+
+    print(f"  {len(items)} comentários coletados em {len(mapa)} posts.")
+    return mapa
+
+
 # ── Pipeline principal ───────────────────────────────────────────────────────
 
-def processar(dataset_id: str | None = None):
-    # 1. Dataset ID automático ou via argumento
-    if not dataset_id:
-        dataset_id = obter_ultimo_dataset_id()
+def processar():
+    # 1. Dispara o Post Scraper
+    print("=" * 60)
+    print("RADAR POLÍTICO — Alagoinhas/BA")
+    print("=" * 60)
+    print("\n[1/5] Coletando posts do Instagram...")
 
-    # 2. Busca posts do Apify
-    print("Buscando posts do Apify...")
-    posts = buscar_posts(dataset_id)
+    post_input = {
+        "username": PERFIS,
+        "resultsLimit": 20,
+        "onlyPostsNewerThan": "1 day",
+        "skipPinnedPosts": False,
+    }
+
+    try:
+        post_dataset_id = disparar_actor(APIFY_POST_ACTOR_ID, post_input, timeout=300)
+        posts = buscar_items(post_dataset_id)
+    except Exception as e:
+        print(f"Erro ao coletar posts: {e}")
+        sys.exit(1)
+
     print(f"  {len(posts)} posts recebidos.")
 
     if not posts:
         print("Nenhum post encontrado. Encerrando.")
         return
 
-    # 3. Abre planilha e carrega URLs já gravadas
-    print("Abrindo planilha...")
+    # 2. Abre planilha
+    print("\n[2/5] Abrindo planilha...")
     ws = abrir_planilha()
     existentes = urls_existentes(ws)
 
-    novos = 0
-    ignorados = 0
-    linhas = []
-
+    # 3. Filtra posts relevantes e novos
+    print("\n[3/5] Filtrando posts relevantes...")
+    posts_filtrados = []
     for post in posts:
-        url = post.get("url") or post.get("shortCode") or ""
+        url     = post.get("url") or post.get("shortCode") or ""
+        caption = limpar_texto(post.get("caption") or post.get("text") or "")
+        autor   = post.get("ownerUsername") or post.get("authorUsername") or ""
 
-        # Deduplicação
         if url in existentes:
-            ignorados += 1
+            continue
+        if not tem_keyword(caption + " " + autor):
             continue
 
-        caption     = limpar_texto(post.get("caption") or post.get("text") or "")
-        comentario  = limpar_texto(post.get("firstComment") or "")
-        autor       = post.get("ownerUsername") or post.get("authorUsername") or ""
-        data_post   = formatar_data(post.get("timestamp") or post.get("createdAt") or "")
+        posts_filtrados.append({
+            "url": url,
+            "caption": caption,
+            "autor": autor,
+            "data_post": formatar_data(post.get("timestamp") or post.get("createdAt") or ""),
+        })
 
-        # Filtro de relevância (opcional — comente as 2 linhas abaixo para processar tudo)
-        if not tem_keyword(caption + " " + comentario + " " + autor):
-            ignorados += 1
-            continue
+    print(f"  {len(posts_filtrados)} posts relevantes e novos.")
 
-        # Análise com Claude
+    if not posts_filtrados:
+        print("Nenhum post novo para processar. Encerrando.")
+        return
+
+    # 4. Coleta comentários dos posts filtrados
+    print("\n[4/5] Coletando comentários...")
+    urls_para_comentar = [p["url"] for p in posts_filtrados if p["url"].startswith("http")]
+    mapa_comentarios = coletar_comentarios(urls_para_comentar)
+
+    # 5. Analisa com Claude e grava na planilha
+    print("\n[5/5] Analisando com Claude e gravando na planilha...")
+    linhas = []
+    novos = 0
+    erros = 0
+
+    for post in posts_filtrados:
+        url = post["url"]
+
+        # Monta texto dos comentários para o Claude
+        comentarios_lista = mapa_comentarios.get(url, [])
+        if comentarios_lista:
+            comentarios_texto = "\n".join(f"- {c}" for c in comentarios_lista[:30])
+        else:
+            comentarios_texto = "Sem comentários coletados."
+
         try:
-            analise = analisar_post(caption, comentario)
+            analise = analisar_post(post["caption"], comentarios_texto)
         except Exception as e:
-            print(f"  Erro ao analisar {url}: {e}")
-            ignorados += 1
+            print(f"  ✗ Erro ao analisar {url}: {e}")
+            erros += 1
             continue
 
         linha = [
             url,
-            data_post,
-            autor,
+            post["data_post"],
+            post["autor"],
             analise.get("sentimento_post", ""),
             analise.get("sentimento_comentarios", ""),
             analise.get("comentarios_negativos_pct", ""),
@@ -251,19 +346,18 @@ def processar(dataset_id: str | None = None):
         linhas.append(linha)
         existentes.add(url)
         novos += 1
-        print(f"  ✓ {autor} — {analise.get('tema')} / {analise.get('urgencia')}")
+        n_coments = len(comentarios_lista)
+        print(f"  ✓ {post['autor']} | {analise.get('tema')} | {analise.get('urgencia')} | {n_coments} comentários")
 
-    # Grava tudo de uma vez (mais eficiente que linha a linha)
     if linhas:
         ws.append_rows(linhas, value_input_option="USER_ENTERED")
 
-    print(f"\nConcluído: {novos} novos | {ignorados} ignorados (duplicatas/sem keyword).")
+    print(f"\n{'='*60}")
+    print(f"Concluído: {novos} novos | {erros} erros")
+    print(f"{'='*60}")
 
 
 # ── Entrada ──────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    # Aceita Dataset ID como argumento opcional (útil para webhook do Apify)
-    # Uso: python radar.py [DATASET_ID]
-    dataset_id = sys.argv[1] if len(sys.argv) > 1 else None
-    processar(dataset_id)
+    processar()
