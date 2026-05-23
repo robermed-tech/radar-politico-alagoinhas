@@ -83,7 +83,7 @@ KEYWORDS_CONTEXTO = [
 ]
 
 # Perfis que são da própria gestão — filtro mais permissivo
-PERFIS_GESTAO = {"gustavoascarmo", "prefeituraalagoinhas", "seligaalagoinhas"}
+PERFIS_GESTAO = {"gustavoascarmo", "prefeituraalagoinhas"}
 
 
 def tem_keyword(texto):
