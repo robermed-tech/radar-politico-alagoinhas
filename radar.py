@@ -195,7 +195,7 @@ def coletar_comentarios(urls_posts):
 
     mapa = {}
     for item in items:
-        post_url = item.get("postUrl") or item.get("url") or ""
+        post_url = (item.get("postUrl") or item.get("url") or "").rstrip("/")
         texto = item.get("text") or item.get("comment") or ""
         if post_url and texto:
             mapa.setdefault(post_url, []).append(limpar_texto(texto))
@@ -247,7 +247,7 @@ def processar():
             continue
 
         posts_filtrados.append({
-            "url": url,
+            "url": url.rstrip("/"),
             "caption": caption,
             "autor": autor,
             "data_post": formatar_data(post.get("timestamp") or post.get("createdAt") or ""),
