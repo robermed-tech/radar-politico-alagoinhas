@@ -43,6 +43,7 @@ PERFIS = list(PERFIS_CATEGORIAS.keys())
 # ── Colunas da planilha (agora com 6 colunas novas) ──────────────────────────
 SHEET_HEADERS = [
     "url", "data_post", "autor", "categoria_perfil",
+    "curtidas", "comentarios_count",
     "sentimento_post", "sentimento_comentarios",
     "comentarios_negativos_pct", "comentarios_positivos_pct",
     "total_comentarios", "comentaristas",
@@ -340,11 +341,13 @@ def processar():
             continue
 
         posts_filtrados.append({
-            "url":        url,
-            "caption":    caption,
-            "autor":      autor,
-            "categoria":  categoria_perfil(autor),
-            "data_post":  formatar_data(post.get("timestamp") or post.get("createdAt") or ""),
+            "url":              url,
+            "caption":          caption,
+            "autor":            autor,
+            "categoria":        categoria_perfil(autor),
+            "data_post":        formatar_data(post.get("timestamp") or post.get("createdAt") or ""),
+            "curtidas":         int(post.get("likesCount") or post.get("likes") or 0),
+            "comentarios_count": int(post.get("commentsCount") or post.get("comments") or 0),
         })
 
     print(f"  {len(posts_filtrados)} posts relevantes e novos.")
@@ -386,6 +389,8 @@ def processar():
             post["data_post"],
             autor,
             categoria,
+            post["curtidas"],
+            post["comentarios_count"],
             analise.get("sentimento_post", ""),
             analise.get("sentimento_comentarios", ""),
             analise.get("comentarios_negativos_pct", ""),
