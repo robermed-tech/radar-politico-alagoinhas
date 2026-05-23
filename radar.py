@@ -58,25 +58,65 @@ KEYWORDS = [
     "municipio", "município", "secom", "secretar"
 ]
 
-# Keywords específicas para filtrar comentários com críticas ou elogios
-KEYWORDS_COMENTARIOS = [
-    # Referências diretas
-    "prefeitura", "prefeito", "gustavo", "gestão", "gestao",
-    "administração", "administracao", "secretaria", "secom",
-    "alagoinhas", "municipio", "município",
-    # Críticas
-    "incompetente", "corrupto", "corrupção", "roubando", "roubo",
-    "vergonha", "lamentável", "lamentavel", "abandono", "abandonado",
-    "descaso", "negligência", "negligencia", "fracasso", "pior prefeito",
-    "não faz nada", "nao faz nada", "mentira", "mentiroso", "promessa",
-    "cadê", "cade", "cadê as obras", "buraco", "esgoto", "lixo",
-    "falta de", "sem água", "sem agua", "sem luz", "sem saúde",
-    # Elogios
-    "parabéns", "parabens", "ótimo prefeito", "otimo prefeito",
-    "excelente", "muito bom", "muito boa", "melhorou", "melhorando",
-    "obrigado prefeito", "obrigada prefeito", "bem feito", "aprovado",
-    "continue assim", "fazendo um bom", "bom trabalho", "boa gestão",
+# Keywords âncora — obrigatórias para perfis de imprensa e oposição
+KEYWORDS_ANCORA = ["alagoinhas", "gustavo"]
+
+# Keywords de gestão — contexto político/administrativo
+KEYWORDS_GESTAO = [
+    "prefeitura", "prefeito", "gustavo", "secom", "secretar",
+    "municipio", "município", "gestao", "gestão", "administracao",
+    "administração", "câmara", "camara", "vereador", "decreto",
+    "licitacao", "licitação", "obra municipal", "servidor"
 ]
+
+# Keywords de contexto municipal — aprovam posts sobre Alagoinhas mesmo sem citar prefeitura
+KEYWORDS_CONTEXTO = [
+    "investimento", "investimentos", "obra", "obras", "infraestrutura",
+    "saúde", "saude", "educação", "educacao", "segurança", "seguranca",
+    "transporte", "saneamento", "habitação", "habitacao", "emprego",
+    "desenvolvimento", "recurso", "recursos", "verba", "verbas",
+    "governo", "estado", "federal", "convenio", "convênio",
+    "inauguração", "inauguracao", "entrega", "licitação", "licitacao",
+    "hospital", "escola", "creche", "posto de saúde", "ubs",
+    "pavimentação", "pavimentacao", "asfalto", "drenagem", "esgoto",
+    "iluminação", "iluminacao", "praça", "praca", "parque",
+]
+
+# Perfis que são da própria gestão — filtro mais permissivo
+PERFIS_GESTAO = {"gustavoascarmo", "prefeituraalagoinhas", "seligaalagoinhas"}
+
+
+def tem_keyword(texto):
+    t = texto.lower()
+    return any(k in t for k in KEYWORDS)
+
+
+def e_relevante_para_radar(texto, autor):
+    """
+    Filtro de relevância em três camadas:
+    1. Perfis da gestão: qualquer keyword de gestão passa
+    2. Outros perfis com âncora Gustavo: qualquer keyword de gestão passa
+    3. Outros perfis com âncora Alagoinhas: precisa de keyword de gestão OU contexto municipal
+    """
+    t = texto.lower()
+
+    # Camada 1 — perfis da própria gestão
+    if autor.lower() in PERFIS_GESTAO:
+        return any(k in t for k in KEYWORDS_GESTAO)
+
+    # Camada 2 — outros perfis precisam de âncora local
+    tem_ancora = any(k in t for k in KEYWORDS_ANCORA)
+    if not tem_ancora:
+        return False
+
+    # Camada 3a — menciona Gustavo: qualquer keyword de gestão aprova
+    if "gustavo" in t:
+        return any(k in t for k in KEYWORDS_GESTAO)
+
+    # Camada 3b — menciona Alagoinhas: keyword de gestão OU contexto municipal
+    tem_gestao = any(k in t for k in KEYWORDS_GESTAO)
+    tem_contexto = any(k in t for k in KEYWORDS_CONTEXTO)
+    return tem_gestao or tem_contexto
 
 ANALYSIS_PROMPT = """\
 Você é um analista político sênior da Prefeitura de Alagoinhas/BA, especializado em monitoramento de redes sociais e gestão de crises de comunicação.
@@ -337,7 +377,7 @@ def processar():
 
         if url in existentes:
             continue
-        if not tem_keyword(caption + " " + autor):
+        if not e_relevante_para_radar(caption, autor):
             continue
 
         posts_filtrados.append({
