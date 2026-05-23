@@ -123,8 +123,7 @@ def disparar_actor(actor_id: str, input_data: dict, timeout: int = 300) -> str:
     Aguarda até `timeout` segundos pelo status SUCCEEDED.
     """
     print(f"  Disparando {actor_id}...")
-    actor_slug = actor_id.replace("/", "~")
-    url = f"https://api.apify.com/v2/acts/{actor_slug}/runs?token={APIFY_API_TOKEN}"
+    url = f"https://api.apify.com/v2/acts/{actor_id}/runs?token={APIFY_API_TOKEN}"
     resp = requests.post(url, json=input_data, timeout=30)
     resp.raise_for_status()
     run = resp.json()["data"]
@@ -151,6 +150,16 @@ def disparar_actor(actor_id: str, input_data: dict, timeout: int = 300) -> str:
 
         if time.time() - inicio > timeout:
             raise TimeoutError(f"Actor {actor_id} excedeu {timeout}s de espera.")
+
+
+def buscar_items(dataset_id: str) -> list[dict]:
+    url = (
+        f"https://api.apify.com/v2/datasets/{dataset_id}/items"
+        f"?token={APIFY_API_TOKEN}&format=json&clean=true"
+    )
+    resp = requests.get(url, timeout=60)
+    resp.raise_for_status()
+    return resp.json()
 
 
 # ── Google Sheets ────────────────────────────────────────────────────────────
