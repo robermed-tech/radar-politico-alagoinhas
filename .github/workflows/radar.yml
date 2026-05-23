@@ -35,13 +35,13 @@ jobs:
 
       - name: Criar arquivo .env
         run: |
-          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}"         > .env
-          echo "APIFY_API_TOKEN=${{ secrets.APIFY_API_TOKEN }}"             >> .env
-          echo "APIFY_DATASET_ID=sera_preenchido_pelo_pipeline"             >> .env
-          echo "GOOGLE_SERVICE_ACCOUNT_FILE=service_account.json"           >> .env
-          echo "GOOGLE_SHEET_ID=${{ secrets.GOOGLE_SHEET_ID }}"             >> .env
-          echo "GOOGLE_SHEET_NAME=Radar"                                    >> .env
-          echo "APIFY_ACTOR_ID=shu8hvrXbJbY3Eb9W"                          >> .env
+          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}"              > .env
+          echo "APIFY_API_TOKEN=${{ secrets.APIFY_API_TOKEN }}"                 >> .env
+          echo "APIFY_POST_ACTOR_ID=${{ secrets.APIFY_POST_ACTOR_ID }}"         >> .env
+          echo "APIFY_COMMENT_ACTOR_ID=${{ secrets.APIFY_COMMENT_ACTOR_ID }}"   >> .env
+          echo "GOOGLE_SERVICE_ACCOUNT_FILE=service_account.json"               >> .env
+          echo "GOOGLE_SHEET_ID=${{ secrets.GOOGLE_SHEET_ID }}"                 >> .env
+          echo "GOOGLE_SHEET_NAME=Radar"                                        >> .env
 
       - name: Executar pipeline completo (Apify + Claude + Sheets)
         run: python radar.py
