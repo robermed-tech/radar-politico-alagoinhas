@@ -1547,10 +1547,18 @@ function criarPostCard(p, isUrgente) {
     (p.tema   ? '<div class="post-tema">📌 ' + escHtml(p.tema) + '</div>' : '') +
     (p.atribuicao ? '<div class="post-tema" style="margin-top:3px">🎯 ' + escHtml(p.atribuicao) + '</div>' : '') +
     '<div class="post-stats">' +
+      (p.curtidas > 0 ? '<span class="badge" style="background:rgba(220,38,38,0.07);color:#DC2626;font-weight:600">❤️ ' + Number(p.curtidas).toLocaleString('pt-BR') + '</span>' : '') +
+      (p.comentarios_count > 0 ? '<span class="badge" style="background:rgba(37,99,235,0.07);color:#2563EB;font-weight:600">💬 ' + Number(p.comentarios_count).toLocaleString('pt-BR') + '</span>' : '') +
+      (p.total_comentarios > 0 ? '<span class="badge" style="background:rgba(0,0,0,0.04);color:var(--muted)">📊 ' + p.total_comentarios + ' analisados</span>' : '') +
       (p.engajamento ? '<span class="badge" style="background:rgba(0,0,0,0.04);color:var(--muted)">Eng: '+escHtml(p.engajamento)+'</span>' : '') +
       (acao ? '<span class="post-action">' + acao + '</span>' : '') +
       (p.url ? '<a class="btn-ver" href="'+escHtml(p.url)+'" target="_blank" rel="noopener">Ver post ↗</a>' : '') +
-    '</div>';
+    '</div>' +
+    ((p.comentarios_destaque) ?
+      '<div style="margin-top:10px;padding:10px 12px;background:rgba(0,0,0,0.03);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;font-size:12px;color:var(--text2);line-height:1.5">' +
+        '<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:4px">💡 Destaque político</span>' +
+        escHtml(p.comentarios_destaque) +
+      '</div>' : '');
   return card;
 }
 
