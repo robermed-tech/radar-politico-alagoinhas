@@ -323,7 +323,7 @@ def coletar_comentarios(urls_posts):
             continue
         texto_limpo = limpar_texto(texto)
         tem_conteudo = len(texto_limpo) > 10
-        tem_politica = any(k in texto_limpo.lower() for k in KEYWORDS_COMENTARIOS)
+        tem_politica = any(k in texto_limpo.lower() for k in KEYWORDS_CONTEXTO)
         if tem_politica or (tem_conteudo and tem_keyword(texto_limpo)):
             entrada = f"{username}: {texto_limpo}"
             mapa.setdefault(post_url, []).append(entrada)
