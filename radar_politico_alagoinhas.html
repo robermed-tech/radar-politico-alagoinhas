@@ -4,948 +4,996 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Radar Político — Alagoinhas</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root {
-  --bg:       #F4F2EC;
-  --surface:  #FFFFFF;
-  --border:   rgba(0,0,0,0.07);
-  --border2:  rgba(0,0,0,0.12);
-  --text:     #111111;
-  --text2:    #444444;
-  --muted:    #888888;
-  --muted-lt: #BBBBBB;
-  --amber:    #C99A2E;
-  --amber-bg: rgba(201,154,46,0.10);
-  --amber-glow: rgba(230,185,60,0.18);
-  --green:    #16A34A;
-  --green-bg: rgba(22,163,74,0.09);
-  --red:      #DC2626;
-  --red-bg:   rgba(220,38,38,0.09);
-  --blue:     #2563EB;
-  --purple:   #7C3AED;
-  --nav-pill: #151515;
-  --radius:   14px;
-  --radius-sm:8px;
-  --shadow:   0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
-  --shadow-md:0 4px 16px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.05);
+  --bg:          #060D1A;
+  --sidebar:     #080F1E;
+  --surface:     #0E1E32;
+  --surface2:    #132438;
+  --border:      rgba(255,255,255,0.07);
+  --border2:     rgba(255,255,255,0.13);
+  --text:        #F0F4F8;
+  --text2:       #8FA8C0;
+  --muted:       #4A6680;
+  --green:       #10B981;
+  --green-bg:    rgba(16,185,129,0.12);
+  --green-glow:  rgba(16,185,129,0.22);
+  --red:         #EF4444;
+  --red-bg:      rgba(239,68,68,0.12);
+  --red-glow:    rgba(239,68,68,0.22);
+  --amber:       #F59E0B;
+  --amber-bg:    rgba(245,158,11,0.12);
+  --amber-glow:  rgba(245,158,11,0.22);
+  --blue:        #3B82F6;
+  --blue-bg:     rgba(59,130,246,0.12);
+  --blue-glow:   rgba(59,130,246,0.22);
+  --orange:      #F97316;
+  --orange-bg:   rgba(249,115,22,0.12);
+  --purple:      #8B5CF6;
+  --radius:      14px;
+  --radius-sm:   9px;
+  --shadow:      0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+  --shadow-md:   0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
 }
 *{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
 body{
-  font-family:'Figtree',sans-serif;
+  font-family:'DM Sans',sans-serif;
   background:var(--bg);
-  background-image:
-    radial-gradient(ellipse 55% 60% at 100% 0%, var(--amber-glow) 0%, transparent 60%),
-    radial-gradient(ellipse 35% 40% at 0% 100%, rgba(201,154,46,0.07) 0%, transparent 55%);
   color:var(--text);
-  min-height:100vh;
+  display:flex;
+  overflow:hidden;
 }
 
-/* ── TOP NAV ─────────────────────────────────────────────── */
-.topnav{
-  position:sticky;top:0;z-index:200;
-  display:flex;align-items:center;
-  background:rgba(244,242,236,0.85);
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+/* ── SIDEBAR ──────────────────────────────────────────────────── */
+.sidebar{
+  width:220px;flex-shrink:0;
+  background:var(--sidebar);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  height:100vh;overflow:hidden;
+  position:relative;z-index:100;
+}
+.sidebar::after{
+  content:'';position:absolute;top:0;right:0;bottom:0;width:1px;
+  background:linear-gradient(to bottom,transparent,var(--blue-glow),transparent);
+  opacity:0.5;
+}
+.sidebar-brand{
+  display:flex;align-items:center;gap:10px;
+  padding:20px 16px 16px;
   border-bottom:1px solid var(--border);
-  padding:0 28px;
-  height:60px;
-  gap:16px;
+  flex-shrink:0;
 }
-.nav-brand{display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.nav-logo{
-  width:34px;height:34px;border-radius:9px;
-  background:var(--nav-pill);
+.brand-logo{
+  width:34px;height:34px;border-radius:9px;flex-shrink:0;
+  background:linear-gradient(135deg,#1D4ED8,#3B82F6);
   display:flex;align-items:center;justify-content:center;
-  font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#fff;
-  letter-spacing:-0.5px;
+  font-family:'Outfit',sans-serif;font-size:14px;font-weight:900;color:#fff;
+  letter-spacing:-0.5px;box-shadow:0 0 12px rgba(59,130,246,0.35);
 }
-.nav-brand-text{
-  font-family:'Syne',sans-serif;font-size:14px;font-weight:700;
+.brand-name{
+  font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;
+  color:var(--text);letter-spacing:-0.3px;line-height:1.2;
+}
+.brand-sub{font-size:10px;color:var(--muted);font-weight:500;}
+
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 10px 0;}
+.nav-section-label{
+  font-size:9px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--muted);
+  padding:14px 8px 6px;
+}
+.nav-item{
+  display:flex;align-items:center;gap:9px;
+  width:100%;padding:9px 10px;
+  border-radius:var(--radius-sm);border:none;cursor:pointer;
+  background:transparent;color:var(--text2);
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;
+  text-align:left;transition:all 150ms ease;margin-bottom:2px;
+  position:relative;
+}
+.nav-item:hover{background:rgba(255,255,255,0.05);color:var(--text);}
+.nav-item.active{
+  background:var(--blue-bg);color:var(--blue);font-weight:600;
+  box-shadow:inset 0 0 0 1px rgba(59,130,246,0.25);
+}
+.nav-item.active .nav-icon{color:var(--blue);}
+.nav-icon{width:16px;height:16px;flex-shrink:0;opacity:0.8;}
+.nav-badge{
+  margin-left:auto;
+  min-width:20px;height:18px;
+  border-radius:100px;
+  font-size:10px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 5px;
+}
+.nav-badge.green{background:var(--green-bg);color:var(--green);}
+.nav-badge.red{background:var(--red-bg);color:var(--red);}
+.nav-badge.amber{background:var(--amber-bg);color:var(--amber);}
+
+.sidebar-footer{
+  padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;
+}
+.sync-chip{
+  display:flex;align-items:center;gap:7px;
+  font-size:11px;color:var(--muted);
+}
+.sync-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--green);flex-shrink:0;
+  animation:pulse 2.5s ease infinite;
+}
+.sync-dot.loading{background:var(--amber);animation:none;}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 var(--green-glow);}50%{opacity:.7;box-shadow:0 0 0 4px transparent;}}
+
+/* ── MAIN WRAPPER ─────────────────────────────────────────────── */
+.layout-main{
+  flex:1;display:flex;flex-direction:column;
+  height:100vh;overflow:hidden;
+  min-width:0;
+}
+
+/* ── TOPBAR ───────────────────────────────────────────────────── */
+.topbar{
+  display:flex;align-items:center;gap:12px;
+  padding:0 24px;height:56px;flex-shrink:0;
+  background:rgba(6,13,26,0.9);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  z-index:50;
+}
+.topbar-title{
+  font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;
   color:var(--text);letter-spacing:-0.3px;
 }
-.nav-center{
-  flex:1;display:flex;align-items:center;justify-content:center;gap:2px;
+.topbar-badge{
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:100px;padding:3px 10px;
+  font-size:11px;font-weight:600;color:var(--text2);
 }
-.nav-tabs{
-  display:flex;align-items:center;gap:2px;
-  background:rgba(0,0,0,0.05);
-  border-radius:100px;padding:4px;
+.topbar-sep{flex:1;}
+.filtro-ativo{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--muted);}
+.filtro-kw-tag{
+  background:var(--blue-bg);color:var(--blue);border:1px solid rgba(59,130,246,0.25);
+  border-radius:100px;padding:1px 8px;font-size:10px;font-weight:600;
 }
-.nav-tab{
-  padding:6px 16px;border-radius:100px;border:none;cursor:pointer;
-  font-family:'Figtree',sans-serif;font-size:13px;font-weight:500;
-  color:var(--muted);background:transparent;
-  transition:all 180ms ease;white-space:nowrap;
-}
-.nav-tab:hover{color:var(--text2);}
-.nav-tab.active{
-  background:var(--nav-pill);color:#fff;font-weight:600;
-  box-shadow:0 2px 8px rgba(0,0,0,0.18);
-}
-.nav-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.filtro-count{color:var(--text2);font-weight:600;}
+.period-group{display:flex;gap:3px;}
 .btn-period{
-  padding:6px 14px;border-radius:100px;border:1.5px solid var(--border2);
-  background:transparent;cursor:pointer;
-  font-family:'Figtree',sans-serif;font-size:12px;font-weight:600;
-  color:var(--muted);transition:all 150ms ease;white-space:nowrap;
+  padding:5px 12px;border-radius:100px;
+  border:1px solid var(--border2);background:transparent;
+  cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;
+  color:var(--muted);transition:all 140ms ease;
 }
-.btn-period:hover{color:var(--text);border-color:rgba(0,0,0,0.25);}
+.btn-period:hover{color:var(--text);border-color:var(--border2);}
 .btn-period.active{
-  background:var(--nav-pill);border-color:var(--nav-pill);color:#fff;
+  background:var(--blue);border-color:var(--blue);color:#fff;
+  box-shadow:0 0 12px rgba(59,130,246,0.30);
 }
 .btn-sync{
   display:flex;align-items:center;gap:6px;
-  padding:7px 16px;border-radius:100px;
-  background:var(--amber);border:none;cursor:pointer;
-  font-family:'Figtree',sans-serif;font-size:12px;font-weight:700;
-  color:#fff;letter-spacing:0.2px;
-  transition:all 150ms ease;
-  box-shadow:0 2px 10px rgba(201,154,46,0.30);
+  padding:6px 14px;border-radius:100px;
+  background:var(--surface2);border:1px solid var(--border2);cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;
+  color:var(--text2);transition:all 140ms ease;
 }
-.btn-sync:hover{background:#B8891F;transform:translateY(-1px);box-shadow:0 4px 14px rgba(201,154,46,0.40);}
-.btn-settings{
-  width:34px;height:34px;border-radius:9px;border:1.5px solid var(--border2);
-  background:transparent;cursor:pointer;color:var(--muted);
-  display:flex;align-items:center;justify-content:center;
-  transition:all 150ms ease;
-}
-.btn-settings:hover{background:var(--surface);color:var(--text);}
+.btn-sync:hover{background:var(--surface);color:var(--text);border-color:rgba(255,255,255,0.2);}
+.btn-sync:disabled{opacity:0.5;cursor:not-allowed;}
 
-/* ── MAIN ─────────────────────────────────────────────────── */
-main{
-  max-width:1200px;margin:0 auto;
-  padding:28px 28px 60px;
+/* ── SCROLL AREA ──────────────────────────────────────────────── */
+.scroll-area{
+  flex:1;overflow-y:auto;
+  padding:20px 24px 60px;
 }
+.scroll-area::-webkit-scrollbar{width:5px;}
+.scroll-area::-webkit-scrollbar-track{background:transparent;}
+.scroll-area::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px;}
 
-/* ── LOADING ─────────────────────────────────────────────── */
+/* ── LOADING ──────────────────────────────────────────────────── */
 #loading-state{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:14px;padding:80px 0;color:var(--muted);font-size:13px;
 }
 .spinner{
-  width:28px;height:28px;border:2.5px solid rgba(0,0,0,0.08);
-  border-top-color:var(--amber);border-radius:50%;
-  animation:spin 0.7s linear infinite;
+  width:28px;height:28px;
+  border:2.5px solid rgba(255,255,255,0.07);
+  border-top-color:var(--blue);
+  border-radius:50%;animation:spin 0.7s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg);}}
 
-/* ── PAGE HEADER ─────────────────────────────────────────── */
-.page-header{
-  display:flex;align-items:flex-end;justify-content:space-between;
-  margin-bottom:24px;
-}
-.page-header h1{
-  font-family:'Syne',sans-serif;font-size:28px;font-weight:800;
-  color:var(--text);letter-spacing:-0.7px;line-height:1.1;
-}
-.page-header h1 span{color:var(--amber);}
-.sync-status{
-  display:flex;align-items:center;gap:7px;
-  font-size:12px;color:var(--muted);margin-top:5px;
-}
-.dot-live{
-  width:6px;height:6px;border-radius:50%;background:var(--green);
-  flex-shrink:0;animation:livepulse 2.5s ease infinite;
-}
-@keyframes livepulse{0%,100%{opacity:1;}50%{opacity:.4;}}
-.page-header-right{
-  display:flex;align-items:center;gap:10px;
+/* ── UTILITY ──────────────────────────────────────────────────── */
+.hidden{display:none!important;}
+.empty{
+  padding:20px;text-align:center;
   font-size:12px;color:var(--muted);
 }
-.header-badge{
-  background:var(--surface);border:1px solid var(--border2);
-  border-radius:100px;padding:5px 12px;
-  font-size:11px;font-weight:600;color:var(--text2);
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(12px);}
+  to{opacity:1;transform:translateY(0);}
 }
+@keyframes countPop{
+  0%{transform:scale(1.08);}100%{transform:scale(1);}
+}
+.count-pop{animation:countPop 200ms ease;}
 
-/* ── CARDS ───────────────────────────────────────────────── */
+/* ── CARDS ────────────────────────────────────────────────────── */
 .card{
-  background:var(--surface);border-radius:var(--radius);
-  box-shadow:var(--shadow);padding:20px;
-  animation:fadeUp 320ms ease both;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px;
+  animation:fadeUp 300ms ease both;
 }
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.card:hover{border-color:var(--border2);}
 .card-title{
-  font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
-  color:var(--text);letter-spacing:-0.2px;
-  margin-bottom:16px;display:flex;align-items:center;gap:8px;
+  font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;
+  color:var(--text2);letter-spacing:0.4px;text-transform:uppercase;
+  margin-bottom:16px;
+  display:flex;align-items:center;gap:8px;
 }
-.card-title .dot{
-  width:7px;height:7px;border-radius:50%;flex-shrink:0;
-}
-.card-sub{font-size:11px;font-weight:500;color:var(--muted);margin-left:auto;}
+.card-title .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.card-sub{font-size:10px;font-weight:500;color:var(--muted);margin-left:auto;text-transform:none;letter-spacing:0;}
 
-/* ── SECTION LABEL ───────────────────────────────────────── */
+/* ── SECTION LABEL ────────────────────────────────────────────── */
 .section-label{
-  font-family:'Syne',sans-serif;font-size:10px;font-weight:800;
-  letter-spacing:1.8px;text-transform:uppercase;color:var(--muted);
-  margin-bottom:12px;margin-top:28px;
+  font-family:'Outfit',sans-serif;font-size:9px;font-weight:800;
+  letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+  margin:24px 0 12px;
   display:flex;align-items:center;gap:10px;
 }
 .section-label::after{content:'';flex:1;height:1px;background:var(--border);}
 
-/* ── ROW 1: PROFILE + KPI ────────────────────────────────── */
-.row-hero{
+/* ── KPI STRIP ────────────────────────────────────────────────── */
+.kpi-strip{
   display:grid;
-  grid-template-columns:200px 1fr;
-  gap:14px;
-  margin-bottom:14px;
+  grid-template-columns:repeat(6,1fr);
+  gap:10px;
+  margin-bottom:16px;
 }
-/* Profile card */
-.profile-card{
-  background:var(--nav-pill);border-radius:var(--radius);
-  overflow:hidden;position:relative;
-  aspect-ratio:4/5;
-  display:flex;flex-direction:column;justify-content:flex-end;
-  box-shadow:0 6px 24px rgba(0,0,0,0.20);
-}
-.profile-card img{
-  position:absolute;inset:0;width:100%;height:100%;
-  object-fit:cover;opacity:0.85;
-}
-.profile-overlay{
-  position:relative;z-index:2;
-  background:linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 70%);
-  padding:16px;
-}
-.profile-name-badge{
-  font-family:'Syne',sans-serif;font-size:14px;font-weight:800;
-  color:#fff;line-height:1.2;
-}
-.profile-role{font-size:10px;color:rgba(255,255,255,0.60);margin-top:2px;font-weight:500;}
-.profile-tag{
-  display:inline-flex;align-items:center;margin-top:8px;
-  background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);
-  border-radius:100px;padding:3px 10px;
-  font-size:9px;font-weight:700;color:rgba(255,255,255,0.85);
-  letter-spacing:0.5px;text-transform:uppercase;
-}
-
-/* KPI grid */
-.kpi-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  grid-template-rows:auto auto;
-  gap:14px;
-}
+@media(max-width:1300px){.kpi-strip{grid-template-columns:repeat(3,1fr);}}
 .kpi-card{
-  background:var(--surface);border-radius:var(--radius);
-  box-shadow:var(--shadow);
-  padding:18px 20px;
-  cursor:pointer;
-  transition:all 180ms ease;
-  border-top:3px solid transparent;
-  animation:fadeUp 320ms ease both;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 16px;
+  cursor:pointer;transition:all 160ms ease;
   position:relative;overflow:hidden;
+  animation:fadeUp 280ms ease both;
+}
+.kpi-card::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  opacity:0;transition:opacity 200ms ease;
 }
 .kpi-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
-.kpi-card.total{border-top-color:var(--amber);}
-.kpi-card.positivo{border-top-color:var(--green);}
-.kpi-card.negativo{border-top-color:var(--red);}
-.kpi-card.urgente{border-top-color:#EA580C;}
-.kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
-.kpi-number{
-  font-family:'Syne',sans-serif;font-size:38px;font-weight:800;
-  color:var(--text);letter-spacing:-1.5px;line-height:1;
-  margin:4px 0;
+.kpi-card:hover::before{opacity:1;}
+.kpi-card.total{border-color:rgba(59,130,246,0.25);}
+.kpi-card.total::before{background:var(--blue-bg);}
+.kpi-card.positivo{border-color:rgba(16,185,129,0.25);}
+.kpi-card.positivo::before{background:var(--green-bg);}
+.kpi-card.negativo{border-color:rgba(239,68,68,0.25);}
+.kpi-card.negativo::before{background:var(--red-bg);}
+.kpi-card.urgente{border-color:rgba(245,158,11,0.25);}
+.kpi-card.urgente::before{background:var(--amber-bg);}
+.kpi-card.crise{border-color:rgba(249,115,22,0.25);}
+.kpi-card.crise::before{background:var(--orange-bg);}
+.kpi-card.crescendo{border-color:rgba(139,92,246,0.25);}
+.kpi-card.crescendo::before{background:rgba(139,92,246,0.08);}
+.kpi-label{
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;
+  color:var(--muted);margin-bottom:8px;position:relative;
 }
+.kpi-icon{position:absolute;top:14px;right:14px;font-size:16px;opacity:0.5;}
+.kpi-number{
+  font-family:'Outfit',sans-serif;font-size:2.4rem;font-weight:900;
+  line-height:1;letter-spacing:-1.5px;margin-bottom:8px;
+  position:relative;font-variant-numeric:tabular-nums;
+}
+.kpi-card.total .kpi-number{color:var(--blue);}
 .kpi-card.positivo .kpi-number{color:var(--green);}
 .kpi-card.negativo .kpi-number{color:var(--red);}
-.kpi-card.urgente  .kpi-number{color:#EA580C;}
-.kpi-footer{display:flex;align-items:center;justify-content:space-between;}
+.kpi-card.urgente .kpi-number{color:var(--amber);}
+.kpi-card.crise .kpi-number{color:var(--orange);}
+.kpi-card.crescendo .kpi-number{color:var(--purple);}
 .kpi-pct{
-  font-size:11px;font-weight:700;color:var(--muted-lt);
+  font-size:11px;font-weight:600;color:var(--muted);
+  position:relative;
 }
 .kpi-bar-track{
-  height:3px;background:rgba(0,0,0,0.06);border-radius:2px;
-  margin-top:10px;overflow:hidden;
+  height:3px;background:rgba(255,255,255,0.05);
+  border-radius:2px;margin-top:8px;overflow:hidden;position:relative;
 }
-.kpi-bar-fill{height:100%;border-radius:2px;transition:width 800ms cubic-bezier(0.4,0,0.2,1);}
-.kpi-card.total   .kpi-bar-fill{background:var(--amber);}
+.kpi-bar-fill{
+  height:100%;border-radius:2px;transition:width 700ms cubic-bezier(0.4,0,0.2,1);
+  width:0%;
+}
+.kpi-card.total .kpi-bar-fill{background:var(--blue);}
 .kpi-card.positivo .kpi-bar-fill{background:var(--green);}
 .kpi-card.negativo .kpi-bar-fill{background:var(--red);}
-.kpi-card.urgente  .kpi-bar-fill{background:#EA580C;}
+.kpi-card.urgente .kpi-bar-fill{background:var(--amber);}
+.kpi-card.crise .kpi-bar-fill{background:var(--orange);}
+.kpi-card.crescendo .kpi-bar-fill{background:var(--purple);}
 
-/* ── ROW 2: SENTIMENT RING + COMMENT ANALYSIS + ATTR ─────── */
-.row-three{
-  display:grid;
-  grid-template-columns:1fr 1.4fr 1fr;
-  gap:14px;
-  margin-bottom:14px;
+/* ── NARRATIVA ────────────────────────────────────────────────── */
+.narrativa-box{
+  background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(139,92,246,0.06));
+  border:1px solid rgba(59,130,246,0.20);
+  border-radius:var(--radius);padding:14px 18px;
+  font-size:13px;line-height:1.6;color:var(--text2);
+  margin-bottom:4px;
 }
+.narrativa-box b{color:var(--text);}
 
-/* Ring */
-.ring-wrap{
+/* ── CHART GRID 2-COL ─────────────────────────────────────────── */
+.row-two{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.row-three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.row-60-40{display:grid;grid-template-columns:3fr 2fr;gap:12px;}
+.row-40-60{display:grid;grid-template-columns:2fr 3fr;gap:12px;}
+
+/* ── SENTIMENT DONUT ──────────────────────────────────────────── */
+.donut-wrap{
   display:flex;flex-direction:column;align-items:center;
-  position:relative;margin:8px 0;
+  gap:12px;padding:4px 0;
 }
-.ring-center{
+.donut-canvas-wrap{
+  position:relative;width:160px;height:160px;flex-shrink:0;
+}
+.donut-center{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  text-align:center;
+  text-align:center;pointer-events:none;
 }
-.ring-big{
-  font-family:'Syne',sans-serif;font-size:28px;font-weight:800;
+.donut-big{
+  font-family:'Outfit',sans-serif;font-size:1.8rem;font-weight:900;
   color:var(--text);letter-spacing:-1px;line-height:1;
 }
-.ring-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-top:2px;}
-.legend-row{display:flex;gap:14px;margin-top:12px;justify-content:center;}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
+.donut-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+.donut-legend{
+  display:flex;gap:14px;flex-wrap:wrap;justify-content:center;
+}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;}
 .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.legend-val{font-weight:700;}
+.legend-val{font-weight:700;color:var(--text);margin-left:2px;}
 
-/* Comment analysis */
+/* ── COMMENT STACKED BAR ──────────────────────────────────────── */
 .comment-stacked-bar{
-  height:10px;border-radius:100px;overflow:hidden;
-  display:flex;margin-bottom:16px;
-  background:rgba(0,0,0,0.05);
+  display:flex;height:28px;border-radius:8px;overflow:hidden;
+  margin-bottom:12px;background:rgba(255,255,255,0.04);
+  gap:2px;
 }
-.comment-bar-seg{height:100%;transition:width 700ms cubic-bezier(0.4,0,0.2,1);}
-.comment-stat-row{
-  display:flex;align-items:center;gap:8px;margin-bottom:8px;
-}
-.comment-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.comment-stat-label{font-size:12px;color:var(--text2);flex:1;}
-.comment-stat-pct{font-size:12px;font-weight:700;color:var(--text);}
-.comment-stat-count{font-size:10px;color:var(--muted);margin-left:2px;}
-
-/* Profile comment bars */
-.comm-profile-row{
-  display:flex;align-items:center;gap:8px;margin-bottom:10px;
-}
-.comm-profile-avatar{
-  width:26px;height:26px;border-radius:7px;
-  background:var(--nav-pill);
+.comment-bar-seg{
+  height:100%;transition:width 700ms cubic-bezier(0.4,0,0.2,1);
   display:flex;align-items:center;justify-content:center;
-  font-size:10px;font-weight:800;color:#fff;flex-shrink:0;
+  font-size:10px;font-weight:700;color:rgba(255,255,255,0.85);
+  overflow:hidden;white-space:nowrap;
+  border-radius:4px;
 }
-.comm-profile-name{font-size:11px;font-weight:600;color:var(--text2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.comm-mini-bar{
-  display:flex;height:6px;border-radius:100px;overflow:hidden;width:60px;flex-shrink:0;background:rgba(0,0,0,0.05);
+.comment-stat-row{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;
 }
-.comm-mini-pos{height:100%;background:var(--green);transition:width 600ms ease;}
-.comm-mini-neg{height:100%;background:var(--red);}
-.comm-mini-pct{font-size:10px;font-weight:700;color:var(--text2);width:28px;text-align:right;flex-shrink:0;}
+.comment-stat-row:last-of-type{border-bottom:none;}
+.comment-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.comment-stat-label{flex:1;color:var(--text2);}
+.comment-stat-pct{font-family:'Outfit',sans-serif;font-weight:700;color:var(--text);font-size:13px;}
+.comment-origin-table{margin-top:12px;}
+.comm-profile-row{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);
+  font-size:11px;
+}
+.comm-profile-row:last-child{border-bottom:none;}
+.comm-profile-name{width:90px;color:var(--text2);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.comm-profile-bar{flex:1;height:10px;background:rgba(255,255,255,0.05);border-radius:5px;overflow:hidden;display:flex;gap:1px;}
+.comm-profile-seg{height:100%;border-radius:3px;}
 
-/* Attribution bars */
-.attr-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
-.attr-label{font-size:11px;color:var(--text2);width:110px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.attr-track{flex:1;height:6px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden;}
-.attr-fill{height:100%;background:var(--purple);border-radius:3px;transition:width 700ms cubic-bezier(0.4,0,0.2,1);}
-.attr-count{font-size:10px;font-weight:700;color:var(--muted);width:20px;text-align:right;}
+/* ── THEME CHART ──────────────────────────────────────────────── */
+.themes-chart-wrap{
+  position:relative;height:200px;
+}
 
-/* ── ROW 3: TREND CHART ───────────────────────────────────── */
-.trend-card{margin-bottom:14px;}
+/* ── ATTRIBUTION BARS ─────────────────────────────────────────── */
+.attr-row{
+  display:flex;align-items:center;gap:8px;margin-bottom:7px;
+  font-size:11px;
+}
+.attr-label{width:120px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
+.attr-track{flex:1;height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;}
+.attr-fill{
+  height:100%;background:var(--purple);border-radius:4px;
+  transition:width 600ms cubic-bezier(0.4,0,0.2,1);width:0%;
+}
+.attr-count{font-family:'Outfit',sans-serif;font-weight:700;font-size:12px;color:var(--purple);width:24px;text-align:right;}
+
+/* ── TREND BARS ───────────────────────────────────────────────── */
 .chart-tendencia-wrap{
-  width:100%;overflow-x:auto;
-  display:flex;align-items:flex-end;
-  gap:0;min-height:90px;
+  display:flex;align-items:flex-end;gap:6px;
+  height:80px;padding-top:8px;overflow-x:auto;
 }
 .trend-day-group{
-  display:flex;flex-direction:column;align-items:center;
-  flex:1;min-width:36px;
+  display:flex;flex-direction:column;align-items:center;gap:0;
+  flex-shrink:0;min-width:32px;
 }
-.trend-bars{display:flex;gap:2px;align-items:flex-end;height:70px;}
+.trend-bars{
+  display:flex;align-items:flex-end;gap:2px;height:70px;
+}
 .trend-bar{
-  width:10px;border-radius:3px 3px 0 0;min-height:4px;
+  width:8px;border-radius:3px 3px 0 0;
   transition:height 600ms cubic-bezier(0.4,0,0.2,1);
+  min-height:2px;
 }
-.trend-day-label{font-size:9px;color:var(--muted);margin-top:5px;white-space:nowrap;}
+.trend-day-label{
+  font-size:8px;color:var(--muted);margin-top:4px;white-space:nowrap;
+}
 
-/* ── ROW 4: RANKING ──────────────────────────────────────── */
-.row-ranking{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:14px;
-  margin-bottom:14px;
-}
-.ranking-list{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
+/* ── RANKING ──────────────────────────────────────────────────── */
 .ranking-item{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 12px;border-radius:10px;
-  background:rgba(0,0,0,0.025);
-  transition:all 150ms ease;cursor:pointer;
+  display:flex;align-items:center;gap:8px;
+  padding:7px 8px;border-radius:var(--radius-sm);cursor:pointer;
+  transition:background 140ms ease;margin-bottom:2px;
 }
-.ranking-item:hover{background:rgba(0,0,0,0.05);}
+.ranking-item:hover{background:rgba(255,255,255,0.04);}
 .ranking-pos-num{
-  font-family:'Syne',sans-serif;font-size:13px;font-weight:800;
-  color:var(--muted-lt);width:18px;flex-shrink:0;
+  font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;
+  color:var(--muted);width:16px;text-align:center;flex-shrink:0;
 }
 .ranking-avatar{
-  width:30px;height:30px;border-radius:8px;
-  background:var(--nav-pill);
+  width:28px;height:28px;border-radius:8px;
+  background:var(--surface2);border:1px solid var(--border2);
   display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:800;color:#fff;flex-shrink:0;
+  font-family:'Outfit',sans-serif;font-size:11px;font-weight:800;
+  color:var(--text2);flex-shrink:0;
 }
 .ranking-info{flex:1;min-width:0;}
-.ranking-name{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ranking-meta{font-size:10px;color:var(--muted);margin-top:1px;}
+.ranking-name{font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ranking-meta{font-size:10px;color:var(--muted);}
+.ranking-sub-bar{height:3px;background:rgba(255,255,255,0.05);border-radius:2px;margin-top:3px;overflow:hidden;}
+.ranking-sub-fill{height:100%;border-radius:2px;transition:width 600ms ease;}
 .ranking-pct{
-  font-family:'Syne',sans-serif;font-size:16px;font-weight:800;
-  flex-shrink:0;letter-spacing:-0.5px;
+  font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;
+  flex-shrink:0;
 }
 .ranking-pct.pos{color:var(--green);}
 .ranking-pct.neg{color:var(--red);}
-.ranking-sub-bar{height:3px;border-radius:2px;margin-top:5px;width:100%;background:rgba(0,0,0,0.06);overflow:hidden;}
-.ranking-sub-fill{height:100%;border-radius:2px;}
 
-/* ── THEMES ──────────────────────────────────────────────── */
-.topic-cloud{display:flex;flex-wrap:wrap;gap:8px;}
+/* ── URGÊNCIA ─────────────────────────────────────────────────── */
+.urgencia-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:10px 0;border-bottom:1px solid var(--border);
+  font-size:12px;
+}
+.urgencia-item:last-child{border-bottom:none;}
+.urg-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--red);
+  flex-shrink:0;margin-top:3px;
+  box-shadow:0 0 8px var(--red-glow);
+  animation:pulse 2s ease infinite;
+}
+.urg-text{flex:1;line-height:1.5;color:var(--text2);}
+.urg-text b{color:var(--text);}
+.urg-link{
+  font-size:10px;font-weight:600;color:var(--blue);text-decoration:none;
+  padding:2px 7px;border-radius:100px;background:var(--blue-bg);
+  white-space:nowrap;margin-top:1px;flex-shrink:0;
+}
+.urg-link:hover{background:rgba(59,130,246,0.25);}
+
+/* ── TOPIC TAGS ───────────────────────────────────────────────── */
+.topic-cloud{display:flex;flex-wrap:wrap;gap:7px;}
 .topic-tag{
-  padding:6px 14px;border-radius:100px;
-  font-size:12px;font-weight:600;
-  border:1.5px solid;cursor:pointer;
-  transition:all 150ms ease;
+  padding:5px 12px;border-radius:100px;font-size:11px;font-weight:600;
+  border:1px solid;cursor:pointer;transition:all 140ms ease;
 }
-.topic-tag:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.10);}
+.topic-tag:hover{transform:translateY(-1px);filter:brightness(1.1);}
 
-/* ── NARRATIVA ───────────────────────────────────────────── */
-.narrativa-box{
-  background:linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%);
-  border-radius:var(--radius);
-  padding:20px 24px;
-  color:rgba(255,255,255,0.85);
-  font-size:13px;line-height:1.75;
-  margin-bottom:14px;
+/* ── FILTER TABS ──────────────────────────────────────────────── */
+.filter-tabs{
+  display:flex;gap:4px;margin-bottom:14px;
 }
-.narrativa-box b{color:#fff;}
-
-/* ── FILTER TABS ─────────────────────────────────────────── */
-.filter-tabs{display:flex;gap:4px;margin-bottom:16px;}
 .filter-tab{
-  padding:5px 14px;border-radius:100px;border:1.5px solid var(--border2);
-  background:transparent;cursor:pointer;
-  font-size:11px;font-weight:600;color:var(--muted);
-  transition:all 150ms ease;
+  padding:5px 14px;border-radius:100px;
+  border:1px solid var(--border2);background:transparent;
+  cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;
+  color:var(--muted);transition:all 140ms ease;
 }
-.filter-tab.active{background:var(--nav-pill);border-color:var(--nav-pill);color:#fff;}
+.filter-tab:hover{color:var(--text);border-color:var(--border2);}
+.filter-tab.active{background:var(--surface2);color:var(--text);border-color:var(--border2);}
 
-/* ── POST CARDS ──────────────────────────────────────────── */
-.post-list{display:flex;flex-direction:column;gap:10px;}
+/* ── POST CARDS ───────────────────────────────────────────────── */
+.post-list{display:flex;flex-direction:column;gap:8px;}
 .post-card{
-  background:var(--surface);border-radius:12px;
-  padding:16px;box-shadow:var(--shadow);
-  animation:fadeUp 300ms ease both;
-  transition:all 150ms ease;
-}
-.post-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
-.post-card.urgente{border-left:3px solid var(--red);padding-left:13px;}
-.post-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
-.post-autor{font-size:12px;font-weight:700;color:var(--text);}
-.post-data{font-size:11px;color:var(--muted);}
-.badge{
-  display:inline-flex;align-items:center;
-  padding:2px 9px;border-radius:100px;
-  font-size:10px;font-weight:700;letter-spacing:0.2px;
-}
-.badge-positivo,.badge-positivo.txt{background:var(--green-bg);color:var(--green);}
-.badge-negativo,.badge-negativo.txt{background:var(--red-bg);color:var(--red);}
-.badge-neutro,.badge-neutro.txt{background:rgba(0,0,0,0.06);color:var(--muted);}
-.badge-alta{background:rgba(234,88,12,0.10);color:#EA580C;}
-.badge-media,.badge-média{background:var(--amber-bg);color:var(--amber);}
-.badge-baixa{background:rgba(0,0,0,0.05);color:var(--muted);}
-.badge-sens{background:rgba(220,38,38,0.08);color:var(--red);}
-.badge-attr{background:rgba(124,58,237,0.09);color:var(--purple);}
-.post-resumo{font-size:13px;color:var(--text2);margin-bottom:6px;line-height:1.5;}
-.post-tema{font-size:11px;color:var(--muted);font-weight:500;}
-.post-stats{
-  display:flex;align-items:center;gap:8px;margin-top:10px;
-  font-size:11px;color:var(--muted);
-}
-.btn-ver{
-  margin-left:auto;font-size:11px;font-weight:600;
-  color:var(--amber);text-decoration:none;
-  padding:3px 10px;border-radius:100px;
-  border:1px solid var(--amber-bg);
-  transition:all 150ms ease;
-}
-.btn-ver:hover{background:var(--amber);color:#fff;}
-.post-action{
-  margin-top:8px;display:inline-flex;align-items:center;gap:4px;
-  padding:3px 10px;border-radius:100px;
-  font-size:10px;font-weight:700;
-  background:rgba(0,0,0,0.04);color:var(--text2);
-}
-
-/* ── PERFIS ──────────────────────────────────────────────── */
-.perfil-grid{display:flex;flex-direction:column;gap:10px;}
-.perfil-row{
-  display:flex;align-items:center;gap:12px;
-  padding:12px 16px;border-radius:12px;background:var(--surface);
-  box-shadow:var(--shadow);cursor:pointer;
-  transition:all 150ms ease;
-}
-.perfil-row:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
-.perfil-avatar{
-  width:36px;height:36px;border-radius:10px;
-  background:var(--nav-pill);
-  display:flex;align-items:center;justify-content:center;
-  font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#fff;
-  flex-shrink:0;
-}
-.perfil-name{font-size:13px;font-weight:700;color:var(--text);}
-.perfil-cat{font-size:11px;color:var(--muted);margin-top:1px;}
-.perfil-bar-wrap{width:100px;flex-shrink:0;}
-.perfil-bar-bg{height:5px;background:rgba(0,0,0,0.07);border-radius:3px;overflow:hidden;}
-.perfil-bar-fill{height:100%;border-radius:3px;transition:width 700ms ease;}
-.perfil-pct{font-size:13px;font-weight:800;width:36px;text-align:right;flex-shrink:0;}
-
-/* ── CONFIG ──────────────────────────────────────────────── */
-.config-group{margin-bottom:20px;}
-.config-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:7px;}
-.config-input{
-  width:100%;padding:10px 14px;border-radius:10px;
-  border:1.5px solid var(--border2);background:var(--surface);
-  font-family:'Figtree',sans-serif;font-size:13px;color:var(--text);
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 16px;
   transition:border-color 150ms ease;
 }
-.config-input:focus{outline:none;border-color:var(--amber);}
-.btn-save{
-  padding:10px 22px;border-radius:10px;
-  background:var(--nav-pill);border:none;cursor:pointer;
-  font-family:'Figtree',sans-serif;font-size:13px;font-weight:700;color:#fff;
-  transition:all 150ms ease;
+.post-card:hover{border-color:var(--border2);}
+.post-card.urgente{border-left:3px solid var(--amber);}
+.post-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:7px;}
+.post-autor{font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;color:var(--text);}
+.post-data{font-size:10px;color:var(--muted);}
+.post-resumo{font-size:12px;line-height:1.55;color:var(--text2);margin-bottom:6px;}
+.post-tema{font-size:10px;color:var(--muted);margin-top:3px;}
+.post-stats{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.post-action{
+  font-size:10px;font-weight:600;color:var(--amber);
+  background:var(--amber-bg);border-radius:100px;padding:2px 8px;
 }
-.btn-save:hover{background:#333;transform:translateY(-1px);}
-#cfg-status{display:none;margin-top:10px;font-size:12px;color:var(--green);}
-.kw-row{display:flex;gap:7px;}
-.kw-input{flex:1;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border2);font-family:'Figtree',sans-serif;font-size:12px;}
-.kw-add-btn{padding:8px 14px;border-radius:8px;border:none;background:var(--nav-pill);color:#fff;font-size:12px;font-weight:700;cursor:pointer;}
-.kw-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
-.kw-tag{
-  display:flex;align-items:center;gap:4px;
-  background:var(--nav-pill);color:#fff;
-  padding:3px 10px;border-radius:100px;font-size:11px;font-weight:600;
+.btn-ver{
+  font-size:10px;font-weight:600;color:var(--blue);text-decoration:none;
+  background:var(--blue-bg);border-radius:100px;padding:2px 8px;
+  margin-left:auto;
 }
-.kw-remove{cursor:pointer;opacity:0.6;font-size:13px;}
-.kw-remove:hover{opacity:1;}
+.btn-ver:hover{background:rgba(59,130,246,0.25);}
 
-/* ── MODAL ───────────────────────────────────────────────── */
+/* ── BADGES ───────────────────────────────────────────────────── */
+.badge{
+  display:inline-flex;align-items:center;
+  padding:2px 8px;border-radius:100px;font-size:10px;font-weight:600;
+}
+.badge-positivo{background:var(--green-bg);color:var(--green);}
+.badge-negativo{background:var(--red-bg);color:var(--red);}
+.badge-neutro{background:rgba(255,255,255,0.06);color:var(--muted);}
+.badge-alta{background:var(--amber-bg);color:var(--amber);}
+.badge-média,.badge-media{background:var(--blue-bg);color:var(--blue);}
+.badge-baixa{background:rgba(255,255,255,0.05);color:var(--muted);}
+.badge-risk-alto{background:var(--orange-bg);color:var(--orange);}
+.badge-trend-crescendo{background:rgba(139,92,246,0.12);color:var(--purple);}
+.badge.txt{cursor:default;}
+
+/* ── PERFIS ───────────────────────────────────────────────────── */
+.perfil-grid{display:flex;flex-direction:column;gap:4px;}
+.perfil-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;
+  transition:background 140ms ease;
+}
+.perfil-row:hover{background:rgba(255,255,255,0.04);}
+.perfil-avatar{
+  width:32px;height:32px;border-radius:9px;
+  background:var(--surface2);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;
+  color:var(--text2);flex-shrink:0;
+}
+.perfil-name{font-size:12px;font-weight:600;color:var(--text);}
+.perfil-cat{font-size:10px;color:var(--muted);}
+.perfil-bar-wrap{width:80px;}
+.perfil-bar-bg{height:5px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;}
+.perfil-bar-fill{height:100%;border-radius:3px;transition:width 600ms ease;}
+.perfil-pct{font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;width:36px;text-align:right;}
+
+/* ── CONFIG ───────────────────────────────────────────────────── */
+.config-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:20px;margin-bottom:12px;
+}
+.config-label{
+  font-size:11px;font-weight:700;color:var(--text2);
+  text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;
+}
+.config-input{
+  width:100%;background:var(--surface2);border:1px solid var(--border2);
+  border-radius:var(--radius-sm);padding:9px 12px;
+  font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);
+  outline:none;transition:border-color 150ms ease;
+}
+.config-input:focus{border-color:var(--blue);}
+.btn-save{
+  margin-top:12px;padding:8px 18px;border-radius:var(--radius-sm);
+  background:var(--blue);border:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+  color:#fff;transition:all 140ms ease;
+  box-shadow:0 0 12px rgba(59,130,246,0.25);
+}
+.btn-save:hover{background:#2563EB;}
+.kw-tags-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.kw-tag{
+  display:flex;align-items:center;gap:5px;
+  background:var(--blue-bg);border:1px solid rgba(59,130,246,0.25);
+  color:var(--blue);border-radius:100px;padding:3px 10px;font-size:11px;font-weight:600;
+}
+.kw-remove{cursor:pointer;opacity:0.6;font-size:13px;line-height:1;}
+.kw-remove:hover{opacity:1;}
+#cfg-status{margin-top:8px;font-size:12px;color:var(--green);}
+
+/* ── MODAL ────────────────────────────────────────────────────── */
 #modal-overlay{
-  display:none;position:fixed;inset:0;z-index:500;
-  background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);
+  position:fixed;inset:0;z-index:999;
+  background:rgba(0,0,0,0.7);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;
   padding:20px;
 }
-#modal-overlay.open{display:flex;align-items:flex-start;justify-content:center;}
+#modal-overlay.open{display:flex;}
 #modal-box{
-  background:var(--surface);border-radius:18px;
-  width:100%;max-width:680px;max-height:90vh;
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:18px;width:100%;max-width:640px;max-height:80vh;
   display:flex;flex-direction:column;overflow:hidden;
-  box-shadow:0 20px 80px rgba(0,0,0,0.20);
-  animation:fadeUp 250ms ease both;
+  box-shadow:0 24px 64px rgba(0,0,0,0.6);
+  animation:fadeUp 200ms ease both;
 }
 #modal-header{
   display:flex;align-items:center;gap:10px;
-  padding:20px 24px;border-bottom:1px solid var(--border);
+  padding:16px 20px;border-bottom:1px solid var(--border);
   flex-shrink:0;
 }
-#modal-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text);}
-#modal-count{font-size:11px;color:var(--muted);margin-left:auto;}
+#modal-title{
+  font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;
+  color:var(--text);
+}
+#modal-count{
+  background:var(--surface2);color:var(--muted);
+  border-radius:100px;padding:2px 10px;font-size:11px;font-weight:600;
+}
 #modal-close{
-  width:28px;height:28px;border-radius:8px;
-  border:1.5px solid var(--border2);background:transparent;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  font-size:14px;color:var(--muted);transition:all 150ms ease;
+  margin-left:auto;width:28px;height:28px;border-radius:8px;
+  border:1px solid var(--border2);background:transparent;cursor:pointer;
+  color:var(--muted);font-size:16px;display:flex;align-items:center;justify-content:center;
+  transition:all 140ms ease;
 }
-#modal-close:hover{background:var(--nav-pill);color:#fff;border-color:var(--nav-pill);}
+#modal-close:hover{background:var(--surface2);color:var(--text);}
 #modal-body{
-  flex:1;overflow-y:auto;padding:20px 24px;
-  display:flex;flex-direction:column;gap:10px;
+  overflow-y:auto;padding:16px 20px;
+  display:flex;flex-direction:column;gap:8px;
 }
-
-/* ── EMPTY STATE ─────────────────────────────────────────── */
-.empty{
-  text-align:center;color:var(--muted);font-size:13px;
-  padding:40px;grid-column:1/-1;
-}
-
-/* ── URGÊNCIA BANNER ─────────────────────────────────────── */
-.urgencia-items{display:flex;flex-direction:column;gap:8px;}
-.urgencia-item{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 14px;border-radius:10px;
-  background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.12);
-}
-.urg-dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;animation:livepulse 1.5s ease infinite;}
-.urg-text{flex:1;font-size:12px;color:var(--text2);line-height:1.4;}
-.urg-link{font-size:11px;color:var(--amber);font-weight:600;text-decoration:none;flex-shrink:0;}
-.urg-link:hover{text-decoration:underline;}
-
-/* ── RISK/TREND BADGES ───────────────────────────────────── */
-.badge-risk-alto{background:rgba(220,38,38,0.08);color:var(--red);}
-.badge-risk-medio,.badge-risk-médio{background:var(--amber-bg);color:var(--amber);}
-.badge-risk-baixo{background:rgba(0,0,0,0.05);color:var(--muted);}
-.badge-trend-crescendo{background:rgba(220,38,38,0.08);color:var(--red);}
-.badge-trend-estável,.badge-trend-estavel{background:rgba(0,0,0,0.05);color:var(--muted);}
-.badge-trend-diminuindo{background:var(--green-bg);color:var(--green);}
-
-/* ── FILTRO ATIVO ────────────────────────────────────────── */
-.filtro-wrap{
-  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
-  margin-bottom:16px;font-size:11px;color:var(--muted);
-}
-.filtro-kw-tag{
-  background:var(--amber-bg);border:1px solid rgba(201,154,46,0.20);
-  padding:2px 9px;border-radius:100px;font-size:10px;color:var(--amber);font-weight:600;
-}
-.filtro-count{margin-left:auto;font-size:11px;color:var(--muted);}
-
-/* ── ANIMATIONS ──────────────────────────────────────────── */
-@keyframes countUp{from{opacity:0;transform:scale(0.85);}to{opacity:1;transform:scale(1);}}
-.count-pop{animation:countUp 400ms cubic-bezier(0.34,1.56,0.64,1) both;}
-
-.hidden{display:none!important;}
 </style>
 </head>
 <body>
 
-<!-- TOP NAV -->
-<nav class="topnav">
-  <div class="nav-brand">
-    <div class="nav-logo">R</div>
-    <span class="nav-brand-text">Radar Político</span>
-  </div>
-
-  <div class="nav-center">
-    <div class="nav-tabs">
-      <button class="nav-tab active" onclick="showSection('resumo')">Resumo</button>
-      <button class="nav-tab" onclick="showSection('positivos')">Positivos</button>
-      <button class="nav-tab" onclick="showSection('negativos')">Negativos</button>
-      <button class="nav-tab" onclick="showSection('perfis')">Perfis</button>
+<!-- ─── SIDEBAR ──────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">R</div>
+    <div>
+      <div class="brand-name">Radar Político</div>
+      <div class="brand-sub">Alagoinhas · BA</div>
     </div>
   </div>
 
-  <div class="nav-right">
-    <div style="display:flex;gap:4px;">
-      <button class="btn-period" id="btn-diario"  onclick="setPeriodo(1)">Diário</button>
-      <button class="btn-period active" id="btn-semanal" onclick="setPeriodo(7)">Semanal</button>
-      <button class="btn-period" id="btn-mensal"  onclick="setPeriodo(30)">Mensal</button>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Análise</div>
+
+    <button class="nav-item active" id="nav-resumo" onclick="showSection('resumo')">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M2 4.5A2.5 2.5 0 0 1 4.5 2h11A2.5 2.5 0 0 1 18 4.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 2 15.5v-11Zm5.5 7a.75.75 0 0 0-1.5 0v2a.75.75 0 0 0 1.5 0v-2Zm2.25-4a.75.75 0 0 0-1.5 0v6a.75.75 0 0 0 1.5 0V7.5Zm3-.75a.75.75 0 0 0-1.5 0V13.5a.75.75 0 0 0 1.5 0V6.75Z"/></svg>
+      <span>Visão Geral</span>
+    </button>
+
+    <button class="nav-item" id="nav-positivos" onclick="showSection('positivos')">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.577 4.878a.75.75 0 0 1 .919-.53l4.78 1.281a.75.75 0 0 1 .531.919l-1.281 4.78a.75.75 0 0 1-1.449-.387l.81-3.022a19.407 19.407 0 0 0-5.594 5.203.75.75 0 0 1-1.139.093L7 10.06l-4.72 4.72a.75.75 0 0 1-1.06-1.061l5.25-5.25a.75.75 0 0 1 1.06 0l3.074 3.073a20.923 20.923 0 0 1 5.545-4.931l-3.042-.815a.75.75 0 0 1-.53-.918Z" clip-rule="evenodd"/></svg>
+      <span>Positivos</span>
+      <span class="nav-badge green" id="nav-badge-pos">0</span>
+    </button>
+
+    <button class="nav-item" id="nav-negativos" onclick="showSection('negativos')">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M1.22 5.222a.75.75 0 0 1 1.06 0L7 9.942l3.768-3.769a.75.75 0 0 1 1.113.058 20.908 20.908 0 0 1 3.813 7.254l1.574-2.727a.75.75 0 0 1 1.3.75l-2.475 4.286a.75.75 0 0 1-1.025.275l-4.287-2.475a.75.75 0 0 1 .75-1.3l2.71 1.565a19.422 19.422 0 0 0-3.013-6.024L7.53 11.533a.75.75 0 0 1-1.06 0l-5.25-5.25a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+      <span>Negativos</span>
+      <span class="nav-badge red" id="nav-badge-neg">0</span>
+    </button>
+
+    <button class="nav-item" id="nav-perfis" onclick="showSection('perfis')">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM14.5 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM1.615 16.428a1.224 1.224 0 0 1-.569-1.175 6.002 6.002 0 0 1 11.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 0 1 7 18a9.953 9.953 0 0 1-5.385-1.572ZM14.5 16h-.106c.07-.297.088-.611.048-.933a7.47 7.47 0 0 0-1.588-3.755 4.502 4.502 0 0 1 5.874 2.153c.191.46-.077.993-.538 1.18A9.964 9.964 0 0 1 14.5 16Z"/></svg>
+      <span>Perfis</span>
+    </button>
+
+    <div class="nav-section-label" style="margin-top:8px">Sistema</div>
+
+    <button class="nav-item" id="nav-config" onclick="showSection('config')">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.84 1.804A1 1 0 0 1 8.82 1h2.36a1 1 0 0 1 .98.804l.331 1.652a6.993 6.993 0 0 1 1.929 1.115l1.598-.54a1 1 0 0 1 1.186.447l1.18 2.044a1 1 0 0 1-.205 1.251l-1.267 1.113a7.047 7.047 0 0 1 0 2.228l1.267 1.113a1 1 0 0 1 .206 1.25l-1.18 2.045a1 1 0 0 1-1.187.447l-1.598-.54a6.993 6.993 0 0 1-1.929 1.115l-.33 1.652a1 1 0 0 1-.98.804H8.82a1 1 0 0 1-.98-.804l-.331-1.652a6.993 6.993 0 0 1-1.929-1.115l-1.598.54a1 1 0 0 1-1.186-.447l-1.18-2.044a1 1 0 0 1 .205-1.251l1.267-1.114a7.05 7.05 0 0 1 0-2.227L1.821 7.773a1 1 0 0 1-.206-1.25l1.18-2.045a1 1 0 0 1 1.187-.447l1.598.54A6.992 6.992 0 0 1 7.51 3.456l.33-1.652ZM10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" clip-rule="evenodd"/></svg>
+      <span>Configurações</span>
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sync-chip">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-label">Aguardando...</span>
+    </div>
+  </div>
+</aside>
+
+<!-- ─── MAIN ──────────────────────────────────────────────────── -->
+<div class="layout-main">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <span class="topbar-title" id="topbar-title">Visão Geral</span>
+    <span class="topbar-badge" id="periodo-badge">7 dias</span>
+    <div class="topbar-sep"></div>
+    <div class="filtro-ativo" id="filtro-ativo"></div>
+    <div class="period-group">
+      <button class="btn-period" id="btn-diario"  onclick="setPeriodo(1)">24h</button>
+      <button class="btn-period active" id="btn-semanal" onclick="setPeriodo(7)">7d</button>
+      <button class="btn-period" id="btn-mensal"  onclick="setPeriodo(30)">30d</button>
     </div>
     <button class="btn-sync" id="sync-btn" onclick="carregarDados()">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-      <span id="sync-label">Sincronizar</span>
+      Sincronizar
     </button>
-    <button class="btn-settings" onclick="showSection('config')" title="Configurações">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg>
-    </button>
-  </div>
-</nav>
+  </header>
 
-<!-- MAIN -->
-<main id="main-content">
-  <div id="loading-state">
-    <div class="spinner"></div>
-    <span>Carregando dados do Radar...</span>
-  </div>
+  <!-- SCROLL AREA -->
+  <div class="scroll-area">
 
-  <div id="dashboard" class="hidden">
-
-    <!-- PAGE HEADER -->
-    <div class="page-header">
-      <div>
-        <h1>Bem-vindo ao <span>Radar</span></h1>
-        <div class="sync-status">
-          <div class="dot-live"></div>
-          <span id="sync-time">carregando...</span>
-        </div>
-      </div>
-      <div class="page-header-right">
-        <span class="header-badge">🏛 Alagoinhas — BA</span>
-        <span class="header-badge" id="periodo-badge">7 dias</span>
-      </div>
+    <!-- LOADING -->
+    <div id="loading-state">
+      <div class="spinner"></div>
+      <span>Carregando dados do Radar...</span>
     </div>
 
-    <!-- FILTROS -->
-    <div class="filtro-wrap" id="filtro-ativo">
-      <span>Filtros:</span>
-    </div>
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="hidden">
 
-    <!-- ═══ SEÇÃO: RESUMO ═══ -->
-    <div id="section-resumo">
+      <!-- ══ SEÇÃO: RESUMO ══ -->
+      <div id="section-resumo">
 
-      <!-- ROW 1: PROFILE + KPI -->
-      <div class="row-hero">
-        <div class="profile-card">
-          <img src="prefeito.jpg" alt="Gustavo Carmo" onerror="this.style.display='none'">
-          <div class="profile-overlay">
-            <div class="profile-name-badge">Gustavo Carmo</div>
-            <div class="profile-role">Prefeito de Alagoinhas</div>
-            <div class="profile-tag">🏛 Mandato 2025–2028</div>
-          </div>
-        </div>
-
-        <div class="kpi-grid">
-          <div class="kpi-card total" onclick="abrirModal('todos')" title="Ver todos os posts">
+        <!-- KPI STRIP -->
+        <div class="kpi-strip">
+          <div class="kpi-card total" onclick="abrirModal('todos')">
             <div class="kpi-label">Total monitorado</div>
             <div class="kpi-number" id="kpi-total">—</div>
-            <div class="kpi-footer">
-              <span class="kpi-pct">posts</span>
-              <span class="kpi-pct" id="kpi-total-pct"></span>
-            </div>
+            <div class="kpi-pct" id="kpi-total-sub">posts no período</div>
             <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-total" style="width:100%"></div></div>
           </div>
-
-          <div class="kpi-card positivo" onclick="abrirModal('positivo')" title="Ver posts positivos">
+          <div class="kpi-card positivo" onclick="abrirModal('positivo')">
             <div class="kpi-label">Positivos</div>
             <div class="kpi-number" id="kpi-pos">—</div>
-            <div class="kpi-footer">
-              <span class="kpi-pct" id="kpi-pos-pct"></span>
-            </div>
-            <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-pos" style="width:0%"></div></div>
+            <div class="kpi-pct" id="kpi-pos-pct"></div>
+            <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-pos"></div></div>
           </div>
-
-          <div class="kpi-card negativo" onclick="abrirModal('negativo')" title="Ver posts negativos">
+          <div class="kpi-card negativo" onclick="abrirModal('negativo')">
             <div class="kpi-label">Negativos</div>
             <div class="kpi-number" id="kpi-neg">—</div>
-            <div class="kpi-footer">
-              <span class="kpi-pct" id="kpi-neg-pct"></span>
-            </div>
-            <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-neg" style="width:0%"></div></div>
+            <div class="kpi-pct" id="kpi-neg-pct"></div>
+            <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-neg"></div></div>
           </div>
-
-          <div class="kpi-card urgente" onclick="abrirModal('urgente')" title="Ver posts urgentes">
+          <div class="kpi-card urgente" onclick="abrirModal('urgente')">
             <div class="kpi-label">Urgência Alta</div>
             <div class="kpi-number" id="kpi-urg">—</div>
-            <div class="kpi-footer">
-              <span class="kpi-pct" id="kpi-urg-pct"></span>
+            <div class="kpi-pct" id="kpi-urg-pct"></div>
+            <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-urg"></div></div>
+          </div>
+          <div class="kpi-card crise" onclick="abrirModal('todos')">
+            <div class="kpi-label">Risco de Crise</div>
+            <div class="kpi-number" id="kpi-crise">—</div>
+            <div class="kpi-pct" id="kpi-crise-pct">alto risco</div>
+            <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-crise"></div></div>
+          </div>
+          <div class="kpi-card crescendo" onclick="abrirModal('todos')">
+            <div class="kpi-label">Crescendo</div>
+            <div class="kpi-number" id="kpi-cresc">—</div>
+            <div class="kpi-pct" id="kpi-cresc-pct">eng. crescente</div>
+            <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-cresc"></div></div>
+          </div>
+        </div>
+
+        <!-- NARRATIVA -->
+        <div class="narrativa-box" id="narrativa-box">
+          <span style="color:var(--muted)">Aguardando dados...</span>
+        </div>
+
+        <!-- SENTIMENTO + COMENTÁRIOS -->
+        <div class="section-label">Análise de Sentimentos</div>
+        <div class="row-two" style="margin-bottom:12px">
+
+          <!-- Donut sentimento posts -->
+          <div class="card">
+            <div class="card-title">
+              <div class="dot" style="background:var(--green)"></div>
+              Sentimento dos Posts
             </div>
-            <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-urg" style="width:0%"></div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- NARRATIVA -->
-      <div class="narrativa-box" id="narrativa-box">
-        <span style="color:rgba(255,255,255,0.4)">Aguardando dados...</span>
-      </div>
-
-      <!-- ROW 2: RING + COMMENT ANALYSIS + ATTRIBUTION -->
-      <div class="section-label">Análise de Sentimentos</div>
-      <div class="row-three">
-
-        <!-- Sentimento dos Posts (Ring) -->
-        <div class="card">
-          <div class="card-title">
-            <div class="dot" style="background:var(--amber)"></div>
-            Sentimento dos Posts
-          </div>
-          <div class="ring-wrap" id="ring-wrap">
-            <svg width="130" height="130" viewBox="0 0 130 130">
-              <circle cx="65" cy="65" r="50" fill="none" stroke="rgba(0,0,0,0.05)" stroke-width="14"/>
-              <circle id="ring-neg" cx="65" cy="65" r="50" fill="none" stroke="var(--red)"
-                stroke-width="14" stroke-linecap="round" stroke-dasharray="0 314.16"
-                transform="rotate(-90 65 65)" style="transition:stroke-dasharray 800ms ease"/>
-              <circle id="ring-neu" cx="65" cy="65" r="50" fill="none" stroke="rgba(0,0,0,0.10)"
-                stroke-width="14" stroke-linecap="round" stroke-dasharray="0 314.16"
-                transform="rotate(-90 65 65)" style="transition:stroke-dasharray 800ms ease 100ms"/>
-              <circle id="ring-pos" cx="65" cy="65" r="50" fill="none" stroke="var(--green)"
-                stroke-width="14" stroke-linecap="round" stroke-dasharray="0 314.16"
-                transform="rotate(-90 65 65)" style="transition:stroke-dasharray 800ms ease 200ms"/>
-            </svg>
-            <div class="ring-center">
-              <div class="ring-big" id="ring-pct">—</div>
-              <div class="ring-lbl">positivo</div>
+            <div class="donut-wrap">
+              <div class="donut-canvas-wrap">
+                <canvas id="sentiment-canvas"></canvas>
+                <div class="donut-center">
+                  <div class="donut-big" id="donut-pct">—</div>
+                  <div class="donut-lbl">positivo</div>
+                </div>
+              </div>
+              <div class="donut-legend">
+                <div class="legend-item">
+                  <div class="legend-dot" style="background:var(--green)"></div>
+                  <span style="color:var(--text2)">Pos</span>
+                  <span class="legend-val" id="leg-pos">—</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background:var(--red)"></div>
+                  <span style="color:var(--text2)">Neg</span>
+                  <span class="legend-val" id="leg-neg">—</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background:var(--muted)"></div>
+                  <span style="color:var(--text2)">Neu</span>
+                  <span class="legend-val" id="leg-neu">—</span>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="legend-row">
-            <div class="legend-item">
-              <div class="legend-dot" style="background:var(--green)"></div>
-              <span>Pos</span><span class="legend-val" id="leg-pos">—</span>
+
+          <!-- Comentários -->
+          <div class="card">
+            <div class="card-title">
+              <div class="dot" style="background:var(--blue)"></div>
+              Sentimento dos Comentários
+              <span class="card-sub">por perfil de origem</span>
             </div>
-            <div class="legend-item">
-              <div class="legend-dot" style="background:var(--red)"></div>
-              <span>Neg</span><span class="legend-val" id="leg-neg">—</span>
+            <div class="comment-stacked-bar" id="comment-stacked-bar">
+              <div class="comment-bar-seg" id="cseg-pos" style="width:0%;background:var(--green)"></div>
+              <div class="comment-bar-seg" id="cseg-neg" style="width:0%;background:var(--red)"></div>
+              <div class="comment-bar-seg" id="cseg-neu" style="width:0%;background:rgba(255,255,255,0.06)"></div>
             </div>
-            <div class="legend-item">
-              <div class="legend-dot" style="background:rgba(0,0,0,0.15)"></div>
-              <span>Neu</span><span class="legend-val" id="leg-neu">—</span>
+            <div class="comment-stat-row">
+              <div class="comment-dot" style="background:var(--green)"></div>
+              <div class="comment-stat-label">Comentários positivos</div>
+              <div class="comment-stat-pct" id="cstat-pos" style="color:var(--green)">—</div>
+            </div>
+            <div class="comment-stat-row">
+              <div class="comment-dot" style="background:var(--red)"></div>
+              <div class="comment-stat-label">Comentários negativos</div>
+              <div class="comment-stat-pct" id="cstat-neg" style="color:var(--red)">—</div>
+            </div>
+            <div class="comment-stat-row">
+              <div class="comment-dot" style="background:var(--muted)"></div>
+              <div class="comment-stat-label">Neutros / sem comentários</div>
+              <div class="comment-stat-pct" id="cstat-neu" style="color:var(--muted)">—</div>
+            </div>
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);margin:12px 0 8px">Origem por perfil</div>
+            <div id="comm-by-profile"></div>
+          </div>
+        </div>
+
+        <!-- TEMAS + RANKING -->
+        <div class="section-label">Temas & Perfis</div>
+        <div class="row-60-40" style="margin-bottom:12px">
+
+          <!-- Temas (Chart.js) -->
+          <div class="card">
+            <div class="card-title">
+              <div class="dot" style="background:var(--amber)"></div>
+              Temas em Destaque
+              <span class="card-sub">top 8 por volume</span>
+            </div>
+            <div class="themes-chart-wrap">
+              <canvas id="themes-canvas"></canvas>
             </div>
           </div>
+
+          <!-- Ranking -->
+          <div class="card">
+            <div class="card-title">
+              <div class="dot" style="background:var(--green)"></div>
+              Ranking de Perfis
+            </div>
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--green);margin-bottom:6px">Mais positivos</div>
+            <div id="ranking-pos"></div>
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--red);margin:12px 0 6px">Mais negativos</div>
+            <div id="ranking-neg"></div>
+          </div>
         </div>
 
-        <!-- Análise de Comentários -->
-        <div class="card">
+        <!-- TENDÊNCIA + ATRIBUIÇÃO -->
+        <div class="section-label">Tendência & Atribuição</div>
+        <div class="row-two" style="margin-bottom:12px">
+
+          <!-- Tendência diária -->
+          <div class="card">
+            <div class="card-title">
+              <div class="dot" style="background:var(--amber)"></div>
+              Evolução Diária
+              <span class="card-sub" style="display:flex;gap:8px;align-items:center">
+                <span style="display:flex;align-items:center;gap:4px"><span style="width:7px;height:7px;border-radius:2px;background:var(--green);display:inline-block"></span><span style="text-transform:none;letter-spacing:0">pos</span></span>
+                <span style="display:flex;align-items:center;gap:4px"><span style="width:7px;height:7px;border-radius:2px;background:var(--red);display:inline-block"></span><span style="text-transform:none;letter-spacing:0">neg</span></span>
+                <span style="display:flex;align-items:center;gap:4px"><span style="width:7px;height:7px;border-radius:2px;background:var(--muted);display:inline-block"></span><span style="text-transform:none;letter-spacing:0">neu</span></span>
+              </span>
+            </div>
+            <div class="chart-tendencia-wrap" id="chart-tendencia">
+              <div class="empty">Carregando...</div>
+            </div>
+          </div>
+
+          <!-- Atribuição -->
+          <div class="card">
+            <div class="card-title">
+              <div class="dot" style="background:var(--purple)"></div>
+              Atribuição dos Posts
+            </div>
+            <div id="attr-bars"></div>
+          </div>
+        </div>
+
+        <!-- URGÊNCIAS -->
+        <div class="section-label">Atenção Imediata</div>
+        <div class="card" style="margin-bottom:12px">
           <div class="card-title">
-            <div class="dot" style="background:var(--blue)"></div>
-            Sentimento dos Comentários
-            <span class="card-sub">por perfil de origem</span>
+            <div class="dot" style="background:var(--red);box-shadow:0 0 8px var(--red-glow)"></div>
+            Posts com Urgência Alta
           </div>
-
-          <!-- Stacked bar geral -->
-          <div class="comment-stacked-bar" id="comment-stacked-bar">
-            <div class="comment-bar-seg" id="cseg-pos" style="width:0%;background:var(--green)"></div>
-            <div class="comment-bar-seg" id="cseg-neg" style="width:0%;background:var(--red)"></div>
-            <div class="comment-bar-seg" id="cseg-neu" style="width:0%;background:rgba(0,0,0,0.08)"></div>
+          <div id="urgencia-items">
+            <div class="empty">Nenhuma urgência no período.</div>
           </div>
-          <div class="comment-stat-row">
-            <div class="comment-dot" style="background:var(--green)"></div>
-            <div class="comment-stat-label">Comentários positivos</div>
-            <div class="comment-stat-pct" id="cstat-pos">—</div>
-          </div>
-          <div class="comment-stat-row">
-            <div class="comment-dot" style="background:var(--red)"></div>
-            <div class="comment-stat-label">Comentários negativos</div>
-            <div class="comment-stat-pct" id="cstat-neg">—</div>
-          </div>
-          <div class="comment-stat-row" style="margin-bottom:14px">
-            <div class="comment-dot" style="background:rgba(0,0,0,0.12)"></div>
-            <div class="comment-stat-label">Neutros / sem comentários</div>
-            <div class="comment-stat-pct" id="cstat-neu">—</div>
-          </div>
-
-          <!-- Por perfil de origem -->
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px">Origem por perfil</div>
-          <div id="comm-by-profile"></div>
         </div>
 
-        <!-- Atribuição -->
-        <div class="card">
-          <div class="card-title">
-            <div class="dot" style="background:var(--purple)"></div>
-            Atribuição
-          </div>
-          <div id="attr-bars"></div>
+      </div><!-- /section-resumo -->
+
+      <!-- ══ SEÇÃO: POSITIVOS ══ -->
+      <div id="section-positivos" class="hidden">
+        <div style="margin-bottom:14px">
+          <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;color:var(--green);letter-spacing:-0.5px;margin-bottom:4px">Posts Positivos</div>
+          <div style="font-size:12px;color:var(--muted)">Publicações com sentimento favorável à gestão</div>
+        </div>
+        <div id="filter-pos" class="filter-tabs">
+          <button class="filter-tab active" onclick="filtrarLista('pos','todos',this)">Todos</button>
+          <button class="filter-tab" onclick="filtrarLista('pos','alta',this)">Urgência Alta</button>
+          <button class="filter-tab" onclick="filtrarLista('pos','media',this)">Urgência Média</button>
+        </div>
+        <div class="post-list" id="lista-positivos">
+          <div class="empty">Nenhum post positivo no período.</div>
         </div>
       </div>
 
-      <!-- ROW 3: TREND CHART -->
-      <div class="section-label">Tendência</div>
-      <div class="card trend-card">
-        <div class="card-title">
-          <div class="dot" style="background:var(--amber)"></div>
-          Evolução de Publicações
-          <span class="card-sub" style="display:flex;gap:10px;align-items:center">
-            <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--green);display:inline-block"></span>Positivo</span>
-            <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--red);display:inline-block"></span>Negativo</span>
-            <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:rgba(0,0,0,0.12);display:inline-block"></span>Neutro</span>
-          </span>
+      <!-- ══ SEÇÃO: NEGATIVOS ══ -->
+      <div id="section-negativos" class="hidden">
+        <div style="margin-bottom:14px">
+          <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;color:var(--red);letter-spacing:-0.5px;margin-bottom:4px">Posts Negativos</div>
+          <div style="font-size:12px;color:var(--muted)">Publicações críticas ou de risco — requerem monitoramento</div>
         </div>
-        <div class="chart-tendencia-wrap" id="chart-tendencia">
-          <div class="empty">Carregando gráfico...</div>
+        <div id="filter-neg" class="filter-tabs">
+          <button class="filter-tab active" onclick="filtrarLista('neg','todos',this)">Todos</button>
+          <button class="filter-tab" onclick="filtrarLista('neg','alta',this)">Urgência Alta</button>
+          <button class="filter-tab" onclick="filtrarLista('neg','crise',this)">Risco Alto</button>
         </div>
-      </div>
-
-      <!-- ROW 4: PROFILE RANKING -->
-      <div class="section-label">Ranking de Perfis</div>
-      <div class="row-ranking">
-
-        <!-- Mais Positivos -->
-        <div class="card">
-          <div class="card-title">
-            <div class="dot" style="background:var(--green)"></div>
-            Mais Notícias Positivas
-            <span class="card-sub">por % de posts positivos</span>
-          </div>
-          <div class="ranking-list" id="ranking-pos"></div>
-        </div>
-
-        <!-- Mais Negativos -->
-        <div class="card">
-          <div class="card-title">
-            <div class="dot" style="background:var(--red)"></div>
-            Mais Notícias Negativas
-            <span class="card-sub">por % de posts negativos</span>
-          </div>
-          <div class="ranking-list" id="ranking-neg"></div>
+        <div class="post-list" id="lista-negativos">
+          <div class="empty">Nenhum post negativo no período.</div>
         </div>
       </div>
 
-      <!-- URGÊNCIAS -->
-      <div class="section-label">Atenção Imediata</div>
-      <div class="card" style="margin-bottom:14px">
-        <div class="card-title">
-          <div class="dot" style="background:var(--red)"></div>
-          Posts com Urgência Alta
+      <!-- ══ SEÇÃO: PERFIS ══ -->
+      <div id="section-perfis" class="hidden">
+        <div style="margin-bottom:14px">
+          <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;color:var(--text);letter-spacing:-0.5px;margin-bottom:4px">Perfis Monitorados</div>
+          <div style="font-size:12px;color:var(--muted)">Distribuição de sentimento por perfil</div>
         </div>
-        <div id="urgencia-items" class="urgencia-items">
-          <div class="empty">Nenhuma urgência no período.</div>
+        <div class="perfil-grid" id="lista-perfis">
+          <div class="empty">Nenhum perfil encontrado.</div>
         </div>
       </div>
 
-      <!-- TEMAS -->
-      <div class="section-label">Temas em Destaque</div>
-      <div class="card" style="margin-bottom:14px">
-        <div class="card-title">
-          <div class="dot" style="background:var(--amber)"></div>
-          Nuvem de Temas
+      <!-- ══ SEÇÃO: CONFIG ══ -->
+      <div id="section-config" class="hidden">
+        <div style="margin-bottom:14px">
+          <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;color:var(--text);letter-spacing:-0.5px;margin-bottom:4px">Configurações</div>
+          <div style="font-size:12px;color:var(--muted)">Conecte ao Google Sheets via Apps Script</div>
         </div>
-        <div class="topic-cloud" id="topic-cloud"></div>
-      </div>
-
-    </div><!-- /section-resumo -->
-
-    <!-- ═══ SEÇÃO: POSITIVOS ═══ -->
-    <div id="section-positivos" class="hidden">
-      <div class="page-header" style="margin-bottom:16px">
-        <h1>Posts <span>Positivos</span></h1>
-      </div>
-      <div id="filter-pos" class="filter-tabs">
-        <button class="filter-tab active" onclick="filtrarLista('pos','todos',this)">Todos</button>
-        <button class="filter-tab" onclick="filtrarLista('pos','alta',this)">Urgência Alta</button>
-        <button class="filter-tab" onclick="filtrarLista('pos','media',this)">Urgência Média</button>
-      </div>
-      <div class="post-list" id="lista-positivos">
-        <div class="empty">Nenhum post positivo no período.</div>
-      </div>
-    </div>
-
-    <!-- ═══ SEÇÃO: NEGATIVOS ═══ -->
-    <div id="section-negativos" class="hidden">
-      <div class="page-header" style="margin-bottom:16px">
-        <h1>Posts <span style="color:var(--red)">Negativos</span></h1>
-      </div>
-      <div id="filter-neg" class="filter-tabs">
-        <button class="filter-tab active" onclick="filtrarLista('neg','todos',this)">Todos</button>
-        <button class="filter-tab" onclick="filtrarLista('neg','alta',this)">Urgência Alta</button>
-        <button class="filter-tab" onclick="filtrarLista('neg','crise',this)">Risco Alto</button>
-      </div>
-      <div class="post-list" id="lista-negativos">
-        <div class="empty">Nenhum post negativo no período.</div>
-      </div>
-    </div>
-
-    <!-- ═══ SEÇÃO: PERFIS ═══ -->
-    <div id="section-perfis" class="hidden">
-      <div class="page-header" style="margin-bottom:16px">
-        <h1>Perfis <span>Monitorados</span></h1>
-      </div>
-      <div class="perfil-grid" id="lista-perfis">
-        <div class="empty">Nenhum perfil encontrado.</div>
-      </div>
-    </div>
-
-    <!-- ═══ SEÇÃO: CONFIG ═══ -->
-    <div id="section-config" class="hidden">
-      <div class="page-header" style="margin-bottom:16px">
-        <h1>Configurações</h1>
-      </div>
-      <div class="card" style="max-width:600px">
-        <div class="config-group">
-          <div class="config-label">URL do Google Apps Script</div>
+        <div class="config-card">
+          <div class="config-label">URL do Apps Script</div>
           <input class="config-input" id="cfg-url" type="url" placeholder="https://script.google.com/macros/s/...">
+          <div style="margin-top:8px;font-size:11px;color:var(--muted)">Cole aqui a URL do Web App do seu Google Apps Script (Deploy → Publicar como Web App)</div>
         </div>
-        <div class="config-group">
-          <div class="config-label">Período padrão (dias)</div>
-          <input class="config-input" id="cfg-dias" type="number" min="1" max="90" value="7" style="width:120px">
+        <div class="config-card">
+          <div class="config-label">Período padrão</div>
+          <select class="config-input" id="cfg-dias" style="cursor:pointer">
+            <option value="1">Últimas 24 horas</option>
+            <option value="7" selected>Últimos 7 dias</option>
+            <option value="30">Últimos 30 dias</option>
+          </select>
         </div>
-        <div class="config-group">
-          <div class="config-label">Palavras-chave de filtro</div>
-          <div class="kw-row">
-            <input class="kw-input" id="kw-input" placeholder="ex: prefeito, obras..." onkeydown="if(event.key==='Enter')addKeyword()">
-            <button class="kw-add-btn" onclick="addKeyword()">+ Adicionar</button>
+        <div class="config-card">
+          <div class="config-label">Filtro de palavras-chave</div>
+          <div class="kw-tags-wrap" id="kw-tags"></div>
+          <div style="display:flex;gap:8px">
+            <input class="config-input" id="kw-input" type="text" placeholder="Digite uma palavra-chave..." style="flex:1">
+            <button class="btn-save" onclick="addKeyword()" style="margin-top:0">Adicionar</button>
           </div>
-          <div class="kw-tags" id="kw-tags"></div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn-save" onclick="salvarConfig()">Salvar configuração</button>
-          <button class="btn-save" onclick="salvarKeywords()" style="background:var(--surface);color:var(--text);border:1.5px solid var(--border2)">Salvar palavras-chave</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn-save" onclick="salvarConfig()">Salvar e recarregar</button>
+          <button class="btn-save" onclick="salvarKeywords()" style="background:var(--surface2);border:1px solid var(--border2);box-shadow:none">Salvar palavras-chave</button>
         </div>
         <div id="cfg-status"></div>
       </div>
-    </div>
 
-  </div><!-- /dashboard -->
-</main>
+    </div><!-- /dashboard -->
+  </div><!-- /scroll-area -->
+</div><!-- /layout-main -->
 
 <!-- MODAL -->
 <div id="modal-overlay" onclick="fecharModal(event)">
@@ -960,19 +1008,21 @@ main{
 </div>
 
 <script>
-/* ── ESTADO GLOBAL ─────────────────────────────────────────── */
-var SCRIPT_URL = localStorage.getItem('radar_url') || '';
-var DIAS       = parseInt(localStorage.getItem('radar_dias') || '7');
-var DADOS      = [];
+/* ── ESTADO GLOBAL ───────────────────────────────────────────── */
+var SCRIPT_URL  = localStorage.getItem('radar_url') || '';
+var DIAS        = parseInt(localStorage.getItem('radar_dias') || '7');
+var DADOS       = [];
 var PERFIS_DATA = [];
-var KWS        = [];
-var SECTION    = 'resumo';
+var KWS         = [];
+var SECTION     = 'resumo';
+var CHART_SENTIMENT = null;
+var CHART_THEMES    = null;
 
-/* ── UTILS ─────────────────────────────────────────────────── */
+/* ── UTILS ───────────────────────────────────────────────────── */
 function norm(s) {
   if (!s) return '';
   return s.toString().toLowerCase().trim()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    .normalize('NFD').replace(/[̀-ͯ]/g,'');
 }
 function escHtml(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -983,9 +1033,8 @@ function setText(id, v) {
 }
 function setBarWidth(id, pct) {
   var el = document.getElementById(id);
-  if (el) el.style.width = Math.min(100, pct) + '%';
+  if (el) el.style.width = Math.min(100, Math.max(0, pct)) + '%';
 }
-
 function animateCounter(id, target, suffix, dur) {
   var el = document.getElementById(id);
   if (!el) return;
@@ -995,14 +1044,13 @@ function animateCounter(id, target, suffix, dur) {
   var start = 0, t0 = null;
   function step(ts) {
     if (!t0) t0 = ts;
-    var p = Math.min((ts - t0) / (dur||700), 1);
+    var p = Math.min((ts - t0) / (dur || 700), 1);
     var ease = 1 - Math.pow(1 - p, 3);
     el.textContent = Math.round(start + (target - start) * ease) + (suffix||'');
     if (p < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
 }
-
 function parseDataPost(str) {
   if (!str) return null;
   var m = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
@@ -1010,7 +1058,7 @@ function parseDataPost(str) {
   try { return new Date(str); } catch(e){ return null; }
 }
 
-/* ── PERÍODO ────────────────────────────────────────────────── */
+/* ── PERÍODO ─────────────────────────────────────────────────── */
 function filtrarPorPeriodo(dados) {
   if (!dados || !dados.length) return [];
   var cutoff = new Date();
@@ -1020,7 +1068,6 @@ function filtrarPorPeriodo(dados) {
     var dt = parseDataPost(d.data_post);
     return dt ? dt >= cutoff : true;
   });
-  // Apply keyword filter if any
   if (KWS.length) {
     filtered = filtered.filter(function(d) {
       var hay = ((d.resumo||'')+(d.tema||'')+(d.atribuicao||'')).toLowerCase();
@@ -1029,16 +1076,11 @@ function filtrarPorPeriodo(dados) {
   }
   return filtered;
 }
-
 function setPeriodo(dias) {
   DIAS = dias;
   localStorage.setItem('radar_dias', DIAS);
   document.getElementById('cfg-dias').value = DIAS;
-  var map = {1:'btn-diario',7:'btn-semanal',30:'btn-mensal'};
-  ['btn-diario','btn-semanal','btn-mensal'].forEach(function(id){
-    var el = document.getElementById(id);
-    if (el) el.classList.toggle('active', id === map[dias]);
-  });
+  syncPeriodButtons();
   if (DADOS.length) renderDashboard();
 }
 function syncPeriodButtons() {
@@ -1049,10 +1091,10 @@ function syncPeriodButtons() {
   });
 }
 
-/* ── CARREGAR DADOS ─────────────────────────────────────────── */
+/* ── FETCH DATA ──────────────────────────────────────────────── */
 window.onload = function() {
   var savedKws = localStorage.getItem('radar_kws');
-  if (savedKws) KWS = JSON.parse(savedKws);
+  if (savedKws) try { KWS = JSON.parse(savedKws); } catch(e){}
   syncPeriodButtons();
   if (SCRIPT_URL) {
     document.getElementById('cfg-url').value = SCRIPT_URL;
@@ -1077,8 +1119,10 @@ window.onload = function() {
 function carregarDados() {
   if (!SCRIPT_URL) { showSection('config'); return; }
   var btn = document.getElementById('sync-btn');
+  var dot = document.getElementById('sync-dot');
   var lbl = document.getElementById('sync-label');
-  if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
+  if (btn) { btn.disabled = true; }
+  if (dot) { dot.classList.add('loading'); }
   if (lbl) lbl.textContent = 'Sincronizando...';
 
   fetch(SCRIPT_URL + '?action=list')
@@ -1096,14 +1140,17 @@ function carregarDados() {
       renderDashboard();
       localStorage.setItem('radar_last_sync', Date.now());
       var now = new Date();
-      if (lbl) lbl.textContent = 'Atualizado às ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+      if (lbl) lbl.textContent = 'Atualizado ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      if (dot) { dot.classList.remove('loading'); }
+      if (btn) { btn.disabled = false; }
     })
     .catch(function(e) {
       document.getElementById('loading-state').innerHTML =
-        '<div style="color:var(--red);text-align:center">❌ '+escHtml(e.message)+'<br><small style="color:var(--muted)">Verifique a URL nas Configurações</small></div>';
-      if (btn) { btn.disabled = false; btn.style.opacity = ''; }
-      if (lbl) lbl.textContent = 'Tentar novamente';
+        '<div style="color:var(--red);text-align:center;font-size:13px">❌ ' + escHtml(e.message) +
+        '<br><small style="color:var(--muted)">Verifique a URL nas Configurações</small></div>';
+      if (dot) { dot.classList.remove('loading'); }
+      if (btn) { btn.disabled = false; }
+      if (lbl) lbl.textContent = 'Erro — tente novamente';
     });
 }
 
@@ -1111,64 +1158,56 @@ function carregarDados() {
 function renderDashboard() {
   var dados = filtrarPorPeriodo(DADOS);
   var total = dados.length;
+  var t     = total || 1;
   var pos   = dados.filter(function(d){ return norm(d.sentimento_post) === 'positivo'; });
   var neg   = dados.filter(function(d){ return norm(d.sentimento_post) === 'negativo'; });
   var neu   = dados.filter(function(d){ return norm(d.sentimento_post) !== 'positivo' && norm(d.sentimento_post) !== 'negativo'; });
   var urg   = dados.filter(function(d){ return norm(d.urgencia) === 'alta'; });
-  var t     = total || 1;
+  var crise = dados.filter(function(d){ return norm(d.risco_crise) === 'alto'; });
+  var cresc = dados.filter(function(d){ return norm(d.tendencia) === 'crescendo'; });
 
-  // Período badge
   setText('periodo-badge', DIAS === 1 ? 'Últimas 24h' : 'Últimos ' + DIAS + ' dias');
 
-  // KPI numbers
+  // KPIs
   animateCounter('kpi-total', total, '', 700);
   animateCounter('kpi-pos',   pos.length, '', 750);
   animateCounter('kpi-neg',   neg.length, '', 800);
   animateCounter('kpi-urg',   urg.length, '', 650);
+  animateCounter('kpi-crise', crise.length, '', 720);
+  animateCounter('kpi-cresc', cresc.length, '', 760);
 
-  // KPI pcts
-  var pPos = Math.round(pos.length/t*100);
-  var pNeg = Math.round(neg.length/t*100);
-  var pUrg = Math.round(urg.length/t*100);
-  setText('kpi-pos-pct', pPos + '%');
-  setText('kpi-neg-pct', pNeg + '%');
-  setText('kpi-urg-pct', pUrg + '%');
+  var pPos   = Math.round(pos.length/t*100);
+  var pNeg   = Math.round(neg.length/t*100);
+  var pUrg   = Math.round(urg.length/t*100);
+  var pCrise = Math.round(crise.length/t*100);
+  var pCresc = Math.round(cresc.length/t*100);
 
-  // Bars
+  setText('kpi-pos-pct',   pPos + '% do total');
+  setText('kpi-neg-pct',   pNeg + '% do total');
+  setText('kpi-urg-pct',   pUrg + '% do total');
+
   setTimeout(function(){
-    setBarWidth('bar-pos', pPos);
-    setBarWidth('bar-neg', pNeg);
-    setBarWidth('bar-urg', pUrg);
+    setBarWidth('bar-pos',   pPos);
+    setBarWidth('bar-neg',   pNeg);
+    setBarWidth('bar-urg',   pUrg);
+    setBarWidth('bar-crise', pCrise);
+    setBarWidth('bar-cresc', pCresc);
   }, 300);
 
-  // Filtro ativo
+  // Nav badges
+  setText('nav-badge-pos', pos.length);
+  setText('nav-badge-neg', neg.length);
+
   renderFiltroAtivo(total);
-
-  // Ring chart
-  renderRing(pos.length, neg.length, neu.length, t);
-
-  // Comment analysis (NEW)
+  renderSentimentChart(pos.length, neg.length, neu.length, t);
   renderComentarios(dados);
-
-  // Attribution
-  renderAtribuicao(dados);
-
-  // Trend
-  renderTendencia(dados);
-
-  // Profile ranking (NEW)
+  renderThemesChart(dados);
   renderRanking(dados);
-
-  // Urgências
+  renderTendencia(dados);
+  renderAtribuicao(dados);
   renderUrgencias(urg);
-
-  // Temas
-  renderTemas(dados);
-
-  // Narrativa
   renderNarrativa(dados, pos.length, neg.length, neu.length, urg.length, t);
 
-  // Section lists
   if (SECTION === 'positivos') renderLista('lista-positivos', pos, 'todos');
   if (SECTION === 'negativos') renderLista('lista-negativos', neg, 'todos');
   renderPerfis();
@@ -1177,176 +1216,248 @@ function renderDashboard() {
 /* ── FILTRO ATIVO ────────────────────────────────────────────── */
 function renderFiltroAtivo(n) {
   var wrap = document.getElementById('filtro-ativo');
-  wrap.innerHTML = '<span>Filtros:</span>';
+  wrap.innerHTML = '';
   if (KWS.length) {
-    KWS.forEach(function(kw){ wrap.innerHTML += '<span class="filtro-kw-tag">'+escHtml(kw)+'</span>'; });
+    KWS.forEach(function(kw){
+      var t = document.createElement('span'); t.className = 'filtro-kw-tag'; t.textContent = kw;
+      wrap.appendChild(t);
+    });
   }
-  wrap.innerHTML += '<span class="filtro-count">'+n+' posts</span>';
+  var c = document.createElement('span'); c.className = 'filtro-count'; c.textContent = n + ' posts';
+  wrap.appendChild(c);
 }
 
-/* ── RING CHART ──────────────────────────────────────────────── */
-function renderRing(posN, negN, neuN, total) {
-  var circ = 314.16;
-  var pPos = posN / total;
-  var pNeg = negN / total;
-  var pNeu = neuN / total;
-  var arcPos = pPos * circ;
-  var arcNeg = pNeg * circ;
-  var arcNeu = pNeu * circ;
-
-  setTimeout(function(){
-    var rPos = document.getElementById('ring-pos');
-    var rNeg = document.getElementById('ring-neg');
-    var rNeu = document.getElementById('ring-neu');
-    // Draw: pos starts at 0, neg follows, neu follows
-    // We use dashoffset to position each segment
-    if (rPos) { rPos.setAttribute('stroke-dasharray', arcPos + ' ' + (circ - arcPos)); rPos.setAttribute('stroke-dashoffset', '0'); }
-    if (rNeg) { rNeg.setAttribute('stroke-dasharray', arcNeg + ' ' + (circ - arcNeg)); rNeg.setAttribute('stroke-dashoffset', -arcPos + ''); }
-    if (rNeu) { rNeu.setAttribute('stroke-dasharray', arcNeu + ' ' + (circ - arcNeu)); rNeu.setAttribute('stroke-dashoffset', -(arcPos + arcNeg) + ''); }
-  }, 250);
-
-  setText('ring-pct', Math.round(posN/total*100) + '%');
+/* ── SENTIMENT DONUT (Chart.js) ──────────────────────────────── */
+function renderSentimentChart(posN, negN, neuN, t) {
+  setText('donut-pct', Math.round(posN/t*100) + '%');
   setText('leg-pos', posN);
   setText('leg-neg', negN);
   setText('leg-neu', neuN);
+
+  if (CHART_SENTIMENT) { CHART_SENTIMENT.destroy(); CHART_SENTIMENT = null; }
+  var canvas = document.getElementById('sentiment-canvas');
+  if (!canvas) return;
+  CHART_SENTIMENT = new Chart(canvas.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Positivo','Negativo','Neutro'],
+      datasets:[{
+        data: [posN, negN, neuN],
+        backgroundColor: ['#10B981','#EF4444','#2D4A5C'],
+        borderWidth: 0,
+        borderRadius: 4,
+        spacing: 2,
+      }]
+    },
+    options: {
+      cutout: '72%',
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: { animateRotate: true, duration: 900, easing: 'easeInOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0E1E32',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#F0F4F8',
+          bodyColor: '#94A3B8',
+          callbacks: {
+            label: function(ctx) {
+              var tot = ctx.dataset.data.reduce(function(a,b){return a+b;},0)||1;
+              return ' '+ctx.label+': '+ctx.raw+' ('+Math.round(ctx.raw/tot*100)+'%)';
+            }
+          }
+        }
+      }
+    }
+  });
 }
 
-/* ── ANÁLISE DE COMENTÁRIOS (NOVO) ──────────────────────────── */
+/* ── THEMES CHART (Chart.js) ─────────────────────────────────── */
+function renderThemesChart(dados) {
+  var counts = {};
+  dados.forEach(function(d){
+    var tema = (d.tema||'').trim();
+    if (tema) counts[tema] = (counts[tema]||0)+1;
+  });
+  var sorted = Object.entries(counts).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+
+  if (CHART_THEMES) { CHART_THEMES.destroy(); CHART_THEMES = null; }
+  var canvas = document.getElementById('themes-canvas');
+  if (!canvas) return;
+  if (!sorted.length) {
+    canvas.parentElement.innerHTML = '<div class="empty">Sem temas identificados</div>';
+    return;
+  }
+
+  var COLORS = ['#3B82F6','#10B981','#EF4444','#F59E0B','#8B5CF6','#F97316','#06B6D4','#84CC16'];
+  CHART_THEMES = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(function(e){return e[0];}),
+      datasets:[{
+        data: sorted.map(function(e){return e[1];}),
+        backgroundColor: sorted.map(function(_,i){return COLORS[i%COLORS.length]+'55';}),
+        borderColor:     sorted.map(function(_,i){return COLORS[i%COLORS.length];}),
+        borderWidth: 1.5,
+        borderRadius: 5,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 900, easing: 'easeInOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0E1E32',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#F0F4F8',
+          bodyColor: '#94A3B8',
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: '#4A6680', font: { family: 'DM Sans', size: 10 } },
+          border: { display: false },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: '#8FA8C0', font: { family: 'DM Sans', size: 11 } },
+          border: { display: false },
+        }
+      }
+    }
+  });
+}
+
+/* ── COMENTÁRIOS ─────────────────────────────────────────────── */
 function renderComentarios(dados) {
   var commPos = 0, commNeg = 0, commNeu = 0;
-  dados.forEach(function(d) {
-    var cs = norm(d.sentimento_comentarios || '');
-    if (cs === 'positivo') commPos++;
-    else if (cs === 'negativo') commNeg++;
+  dados.forEach(function(d){
+    var cs = norm(d.sentimento_comentarios||'');
+    if (cs==='positivo') commPos++;
+    else if (cs==='negativo') commNeg++;
     else commNeu++;
   });
-  var total = commPos + commNeg + commNeu || 1;
+  var total = commPos+commNeg+commNeu||1;
   var pPos = Math.round(commPos/total*100);
   var pNeg = Math.round(commNeg/total*100);
-  var pNeu = 100 - pPos - pNeg;
+  var pNeu = 100-pPos-pNeg;
 
   setTimeout(function(){
     var sp = document.getElementById('cseg-pos');
     var sn = document.getElementById('cseg-neg');
     var su = document.getElementById('cseg-neu');
-    if (sp) sp.style.width = pPos + '%';
-    if (sn) sn.style.width = pNeg + '%';
-    if (su) su.style.width = pNeu + '%';
+    if (sp) { sp.style.width = pPos+'%'; if(pPos>8) sp.textContent=pPos+'%'; }
+    if (sn) { sn.style.width = pNeg+'%'; if(pNeg>8) sn.textContent=pNeg+'%'; }
+    if (su) { su.style.width = pNeu+'%'; if(pNeu>8) su.textContent=pNeu+'%'; }
   }, 350);
 
-  setText('cstat-pos', pPos + '%  (' + commPos + ')');
-  setText('cstat-neg', pNeg + '%  (' + commNeg + ')');
-  setText('cstat-neu', pNeu + '%  (' + commNeu + ')');
+  setText('cstat-pos', pPos+'%  ('+commPos+')');
+  setText('cstat-neg', pNeg+'%  ('+commNeg+')');
+  setText('cstat-neu', pNeu+'%  ('+commNeu+')');
 
-  // Por perfil de origem
+  // Per-profile origin
   var perfilComm = {};
-  dados.forEach(function(d) {
-    var autor = d.autor || 'desconhecido';
-    if (!perfilComm[autor]) perfilComm[autor] = { pos:0, neg:0, neu:0, total:0 };
-    var cs = norm(d.sentimento_comentarios || '');
-    if (cs === 'positivo') perfilComm[autor].pos++;
-    else if (cs === 'negativo') perfilComm[autor].neg++;
+  dados.forEach(function(d){
+    var autor = d.autor||'desconhecido';
+    if (!perfilComm[autor]) perfilComm[autor] = {pos:0,neg:0,neu:0,total:0};
+    var cs = norm(d.sentimento_comentarios||'');
+    if (cs==='positivo') perfilComm[autor].pos++;
+    else if (cs==='negativo') perfilComm[autor].neg++;
     else perfilComm[autor].neu++;
     perfilComm[autor].total++;
   });
+
   var sorted = Object.entries(perfilComm)
-    .sort(function(a,b){ return b[1].total - a[1].total; })
-    .slice(0, 6);
+    .sort(function(a,b){return b[1].total-a[1].total;}).slice(0,6);
 
   var container = document.getElementById('comm-by-profile');
   container.innerHTML = '';
-  sorted.forEach(function(entry) {
-    var autor = entry[0], s = entry[1];
-    var pctPos = Math.round(s.pos / s.total * 100);
-    var pctNeg = Math.round(s.neg / s.total * 100);
-    var row = document.createElement('div');
-    row.className = 'comm-profile-row';
+  sorted.forEach(function(e){
+    var name = e[0], s = e[1];
+    var t = s.total||1;
+    var wPos = Math.round(s.pos/t*100);
+    var wNeg = Math.round(s.neg/t*100);
+    var wNeu = 100-wPos-wNeg;
+    var row = document.createElement('div'); row.className = 'comm-profile-row';
     row.innerHTML =
-      '<div class="comm-profile-avatar">' + (autor[0]||'?').toUpperCase() + '</div>' +
-      '<div class="comm-profile-name">@' + escHtml(autor) + '</div>' +
-      '<div class="comm-mini-bar">' +
-        '<div class="comm-mini-pos" style="width:' + pctPos + '%"></div>' +
-        '<div class="comm-mini-neg" style="width:' + pctNeg + '%"></div>' +
-      '</div>' +
-      '<div class="comm-mini-pct">' + pctPos + '%</div>';
+      '<div class="comm-profile-name">@'+escHtml(name)+'</div>'+
+      '<div class="comm-profile-bar">'+
+        '<div class="comm-profile-seg" style="width:'+wPos+'%;background:var(--green);transition:width 600ms ease"></div>'+
+        '<div class="comm-profile-seg" style="width:'+wNeg+'%;background:var(--red);transition:width 600ms ease"></div>'+
+        '<div class="comm-profile-seg" style="width:'+wNeu+'%;background:rgba(255,255,255,0.06);transition:width 600ms ease"></div>'+
+      '</div>'+
+      '<div style="font-size:10px;font-weight:600;color:var(--muted);width:28px;text-align:right">'+s.total+'</div>';
     container.appendChild(row);
   });
 }
 
 /* ── ATRIBUIÇÃO ──────────────────────────────────────────────── */
 var ATRIB_LABELS = {
-  'prefeitura':'Prefeitura','prefeito':'Prefeito (pessoal)',
-  'gustavo carmo':'Prefeito Gustavo','camara municipal':'Câmara Municipal',
-  'oposicao':'Oposição','camara':'Câmara','vereadores':'Vereadores',
-  'governo estadual':'Gov. Estadual','governo federal':'Gov. Federal',
-  'secretaria':'Secretaria','estado':'Gov. Estadual',
-  // framework v1.0 keys
-  'prefeito_pessoal':'Prefeito','prefeitura_instituicao':'Prefeitura',
-  'secretaria_saude':'Sec. Saúde','secretaria_educacao':'Sec. Educação',
-  'secretaria_obras':'Sec. Obras','secretaria_outra':'Secretaria',
-  'vereadores':'Câmara','governo_estadual':'Gov. Estadual',
-  'governo_federal':'Gov. Federal','gestao_anterior':'Gestão Ant.',
-  'propria_populacao':'População','empresas_concessionarias':'Concessão',
-  'indefinido':'Indefinido',
+  'prefeito_pessoal':'Prefeito (pessoal)','prefeitura_instituicao':'Prefeitura (inst.)','secretaria':'Secretaria',
+  'camara_vereadores':'Câmara','oposicao':'Oposição','governo_federal':'Gov. Federal',
+  'governo_estadual':'Gov. Estadual','sociedade_civil':'Soc. Civil','outros':'Outros',
 };
-
 function renderAtribuicao(dados) {
   var counts = {};
-  dados.forEach(function(d) {
-    var raw = (d.atribuicao || '').trim();
-    if (!raw) return;
-    // Normalize: try exact match, then partial match
+  dados.forEach(function(d){
+    var raw = (d.atribuicao||'').toLowerCase().trim();
     var key = norm(raw);
-    var label = ATRIB_LABELS[raw] || ATRIB_LABELS[key] || raw;
-    // Try to find best matching label key
-    if (!ATRIB_LABELS[raw] && !ATRIB_LABELS[key]) {
-      // Try partial match
-      Object.keys(ATRIB_LABELS).forEach(function(k) {
-        if (key.includes(k) || k.includes(key)) label = ATRIB_LABELS[k];
+    var label = ATRIB_LABELS[raw]||ATRIB_LABELS[key]||raw;
+    if (!ATRIB_LABELS[raw]&&!ATRIB_LABELS[key]) {
+      Object.keys(ATRIB_LABELS).forEach(function(k){
+        if (key.includes(k)||k.includes(key)) label = ATRIB_LABELS[k];
       });
     }
-    counts[label] = (counts[label] || 0) + 1;
+    if (label) counts[label] = (counts[label]||0)+1;
   });
-  var sorted = Object.entries(counts).sort(function(a,b){ return b[1]-a[1]; }).slice(0,7);
+  var sorted = Object.entries(counts).sort(function(a,b){return b[1]-a[1];}).slice(0,7);
   var max = sorted.length ? sorted[0][1] : 1;
   var container = document.getElementById('attr-bars');
   container.innerHTML = '';
   if (!sorted.length) { container.innerHTML = '<div class="empty">Sem dados</div>'; return; }
-  sorted.forEach(function(e) {
+  sorted.forEach(function(e){
     var row = document.createElement('div'); row.className = 'attr-row';
     var pct = Math.round(e[1]/max*100);
     row.innerHTML =
-      '<div class="attr-label" title="'+escHtml(e[0])+'">'+escHtml(e[0])+'</div>' +
-      '<div class="attr-track"><div class="attr-fill" style="width:0%" data-pct="'+pct+'"></div></div>' +
+      '<div class="attr-label" title="'+escHtml(e[0])+'">'+escHtml(e[0])+'</div>'+
+      '<div class="attr-track"><div class="attr-fill" data-pct="'+pct+'" style="width:0%"></div></div>'+
       '<div class="attr-count">'+e[1]+'</div>';
     container.appendChild(row);
   });
   setTimeout(function(){
     container.querySelectorAll('.attr-fill').forEach(function(el){
-      el.style.width = el.dataset.pct + '%';
+      el.style.width = el.dataset.pct+'%';
     });
   }, 300);
 }
 
-/* ── TENDÊNCIA ───────────────────────────────────────────────── */
+/* ── TENDÊNCIA DIÁRIA ────────────────────────────────────────── */
 function renderTendencia(dados) {
   var byDay = {};
-  dados.forEach(function(d) {
+  dados.forEach(function(d){
     var dt = parseDataPost(d.data_post);
     if (!dt) return;
     var key = dt.toISOString().slice(0,10);
-    if (!byDay[key]) byDay[key] = { pos:0, neg:0, neu:0 };
+    if (!byDay[key]) byDay[key] = {pos:0,neg:0,neu:0};
     var s = norm(d.sentimento_post);
-    if (s === 'positivo') byDay[key].pos++;
-    else if (s === 'negativo') byDay[key].neg++;
+    if (s==='positivo') byDay[key].pos++;
+    else if (s==='negativo') byDay[key].neg++;
     else byDay[key].neu++;
   });
   var days = Object.keys(byDay).sort();
   var container = document.getElementById('chart-tendencia');
   if (!days.length) { container.innerHTML = '<div class="empty">Sem dados no período.</div>'; return; }
-  var maxVal = days.reduce(function(m, d){ return Math.max(m, byDay[d].pos+byDay[d].neg+byDay[d].neu); }, 1);
+  var maxVal = days.reduce(function(m,d){ return Math.max(m,byDay[d].pos+byDay[d].neg+byDay[d].neu); },1);
   container.innerHTML = '';
-  days.forEach(function(day) {
+  days.forEach(function(day){
     var v = byDay[day];
     var hPos = Math.round(v.pos/maxVal*70);
     var hNeg = Math.round(v.neg/maxVal*70);
@@ -1354,150 +1465,114 @@ function renderTendencia(dados) {
     var dLabel = day.slice(5).replace('-','/');
     var grp = document.createElement('div'); grp.className = 'trend-day-group';
     grp.innerHTML =
-      '<div class="trend-bars">' +
-        '<div class="trend-bar" style="height:0px;background:var(--green)" data-h="'+hPos+'"></div>' +
-        '<div class="trend-bar" style="height:0px;background:var(--red)" data-h="'+hNeg+'"></div>' +
-        '<div class="trend-bar" style="height:0px;background:rgba(0,0,0,0.10)" data-h="'+hNeu+'"></div>' +
-      '</div>' +
+      '<div class="trend-bars">'+
+        '<div class="trend-bar" style="height:0;background:var(--green)" data-h="'+hPos+'"></div>'+
+        '<div class="trend-bar" style="height:0;background:var(--red)" data-h="'+hNeg+'"></div>'+
+        '<div class="trend-bar" style="height:0;background:var(--muted)" data-h="'+hNeu+'"></div>'+
+      '</div>'+
       '<div class="trend-day-label">'+dLabel+'</div>';
     container.appendChild(grp);
   });
   setTimeout(function(){
     container.querySelectorAll('.trend-bar').forEach(function(el){
-      el.style.height = el.dataset.h + 'px';
+      el.style.height = el.dataset.h+'px';
       el.style.transition = 'height 600ms cubic-bezier(0.4,0,0.2,1)';
     });
   }, 200);
 }
 
-/* ── RANKING DE PERFIS (NOVO) ────────────────────────────────── */
+/* ── RANKING DE PERFIS ───────────────────────────────────────── */
 function renderRanking(dados) {
-  // Compute per-profile stats
   var stats = {};
-  dados.forEach(function(d) {
-    var autor = d.autor || 'desconhecido';
-    if (!stats[autor]) stats[autor] = { pos:0, neg:0, neu:0, total:0 };
+  dados.forEach(function(d){
+    var autor = d.autor||'desconhecido';
+    if (!stats[autor]) stats[autor] = {pos:0,neg:0,neu:0,total:0};
     var s = norm(d.sentimento_post);
-    if (s === 'positivo') stats[autor].pos++;
-    else if (s === 'negativo') stats[autor].neg++;
+    if (s==='positivo') stats[autor].pos++;
+    else if (s==='negativo') stats[autor].neg++;
     else stats[autor].neu++;
     stats[autor].total++;
   });
+  var profiles = Object.entries(stats).map(function(e){
+    var s = e[1], t = s.total||1;
+    return { autor:e[0], total:s.total, pos:s.pos, neg:s.neg,
+      pctPos:Math.round(s.pos/t*100), pctNeg:Math.round(s.neg/t*100) };
+  }).filter(function(p){ return p.total >= 1; });
 
-  // Filter profiles with at least 1 post
-  var profiles = Object.entries(stats)
-    .filter(function(e){ return e[1].total >= 1; })
-    .map(function(e){
-      var s = e[1];
-      return {
-        autor: e[0],
-        pctPos: Math.round(s.pos/s.total*100),
-        pctNeg: Math.round(s.neg/s.total*100),
-        total: s.total,
-      };
-    });
+  var topPos = profiles.slice().sort(function(a,b){return b.pctPos-a.pctPos;}).slice(0,5);
+  var topNeg = profiles.slice().sort(function(a,b){return b.pctNeg-a.pctNeg;}).slice(0,5);
 
-  // Most positive (sorted by pctPos)
-  var topPos = profiles.slice().sort(function(a,b){ return b.pctPos - a.pctPos; }).slice(0,5);
-  // Most negative (sorted by pctNeg)
-  var topNeg = profiles.slice().sort(function(a,b){ return b.pctNeg - a.pctNeg; }).slice(0,5);
-
-  function makeRankingList(containerId, list, type) {
-    var container = document.getElementById(containerId);
-    container.innerHTML = '';
-    if (!list.length) { container.innerHTML = '<div class="empty">Sem dados suficientes.</div>'; return; }
-    list.forEach(function(p, idx) {
-      var pct = type === 'pos' ? p.pctPos : p.pctNeg;
-      var color = type === 'pos' ? 'var(--green)' : 'var(--red)';
+  function makeList(containerId, list, type) {
+    var c = document.getElementById(containerId);
+    c.innerHTML = '';
+    if (!list.length) { c.innerHTML = '<div class="empty">Sem dados.</div>'; return; }
+    list.forEach(function(p,idx){
+      var pct  = type==='pos' ? p.pctPos : p.pctNeg;
+      var color= type==='pos' ? 'var(--green)' : 'var(--red)';
       var item = document.createElement('div'); item.className = 'ranking-item';
       item.onclick = function(){ abrirModalPerfil(p.autor); };
       item.innerHTML =
-        '<div class="ranking-pos-num">' + (idx+1) + '</div>' +
-        '<div class="ranking-avatar">' + (p.autor[0]||'?').toUpperCase() + '</div>' +
-        '<div class="ranking-info">' +
-          '<div class="ranking-name">@' + escHtml(p.autor) + '</div>' +
-          '<div class="ranking-meta">' + p.total + ' posts</div>' +
-          '<div class="ranking-sub-bar"><div class="ranking-sub-fill" style="width:'+pct+'%;background:'+color+'"></div></div>' +
-        '</div>' +
-        '<div class="ranking-pct ' + type + '">' + pct + '%</div>';
-      container.appendChild(item);
+        '<div class="ranking-pos-num">'+(idx+1)+'</div>'+
+        '<div class="ranking-avatar">'+((p.autor[0]||'?').toUpperCase())+'</div>'+
+        '<div class="ranking-info">'+
+          '<div class="ranking-name">@'+escHtml(p.autor)+'</div>'+
+          '<div class="ranking-meta">'+p.total+' posts</div>'+
+          '<div class="ranking-sub-bar"><div class="ranking-sub-fill" data-w="'+pct+'" style="width:0;background:'+color+'"></div></div>'+
+        '</div>'+
+        '<div class="ranking-pct '+type+'">'+pct+'%</div>';
+      c.appendChild(item);
     });
+    setTimeout(function(){
+      c.querySelectorAll('.ranking-sub-fill').forEach(function(el){
+        el.style.width = el.dataset.w+'%';
+        el.style.transition = 'width 600ms ease';
+      });
+    }, 300);
   }
-
-  makeRankingList('ranking-pos', topPos, 'pos');
-  makeRankingList('ranking-neg', topNeg, 'neg');
+  makeList('ranking-pos', topPos, 'pos');
+  makeList('ranking-neg', topNeg, 'neg');
 }
 
 /* ── URGÊNCIAS ───────────────────────────────────────────────── */
 function renderUrgencias(urgPosts) {
   var container = document.getElementById('urgencia-items');
   if (!urgPosts.length) {
-    container.innerHTML = '<div class="empty">Nenhuma urgência no período.</div>';
-    return;
+    container.innerHTML = '<div class="empty">Nenhuma urgência no período.</div>'; return;
   }
   container.innerHTML = '';
-  urgPosts.slice(0,6).forEach(function(p) {
+  urgPosts.slice(0,6).forEach(function(p){
     var item = document.createElement('div'); item.className = 'urgencia-item';
-    var resumo = (p.resumo || p.tema || 'Post urgente').slice(0, 90);
+    var resumo = (p.resumo||p.tema||'Post urgente').slice(0,90);
     item.innerHTML =
-      '<div class="urg-dot"></div>' +
-      '<div class="urg-text"><b>@' + escHtml(p.autor||'') + '</b> — ' + escHtml(resumo) + '</div>' +
+      '<div class="urg-dot"></div>'+
+      '<div class="urg-text"><b>@'+escHtml(p.autor||'')+'</b> — '+escHtml(resumo)+'</div>'+
       (p.url ? '<a class="urg-link" href="'+escHtml(p.url)+'" target="_blank" rel="noopener">Ver ↗</a>' : '');
     container.appendChild(item);
   });
 }
 
-/* ── TEMAS ───────────────────────────────────────────────────── */
-function renderTemas(dados) {
-  var counts = {};
-  dados.forEach(function(d) {
-    var tema = (d.tema || '').trim();
-    if (tema) counts[tema] = (counts[tema]||0)+1;
-  });
-  var sorted = Object.entries(counts).sort(function(a,b){return b[1]-a[1];}).slice(0,20);
-  var max = sorted.length ? sorted[0][1] : 1;
-  var COLORS = ['#C99A2E','#16A34A','#DC2626','#2563EB','#7C3AED','#EA580C','#0891B2'];
-  var container = document.getElementById('topic-cloud');
-  container.innerHTML = '';
-  if (!sorted.length) { container.innerHTML = '<div class="empty">Sem temas identificados.</div>'; return; }
-  sorted.forEach(function(e, i) {
-    var col = COLORS[i % COLORS.length];
-    var size = Math.max(11, Math.round(11 + (e[1]/max) * 5));
-    var tag = document.createElement('span');
-    tag.className = 'topic-tag';
-    tag.style.cssText = 'font-size:'+size+'px;color:'+col+';border-color:'+col+'20;background:'+col+'10;';
-    tag.textContent = e[0] + ' (' + e[1] + ')';
-    tag.onclick = function(){ abrirModalTema(e[0]); };
-    container.appendChild(tag);
-  });
-}
-
-/* ── NARRATIVA EXECUTIVA ─────────────────────────────────────── */
+/* ── NARRATIVA ───────────────────────────────────────────────── */
 function renderNarrativa(dados, posN, negN, neuN, urgN, total) {
   var pPos = Math.round(posN/total*100);
   var pNeg = Math.round(negN/total*100);
-  var tom = pPos>=60 ? 'predominantemente positivo' : pNeg>=60 ? 'predominantemente negativo' : 'equilibrado';
-  var corTom = pPos>=60 ? '#22C55E' : pNeg>=60 ? '#EF4444' : '#C99A2E';
+  var tom  = pPos>=60 ? 'predominantemente positivo' : pNeg>=60 ? 'predominantemente negativo' : 'equilibrado';
+  var corTom = pPos>=60?'var(--green)':pNeg>=60?'var(--red)':'var(--amber)';
 
-  // Top tema
   var tCount = {}; dados.forEach(function(d){ if(d.tema) tCount[d.tema]=(tCount[d.tema]||0)+1; });
   var topTema = Object.entries(tCount).sort(function(a,b){return b[1]-a[1];})[0];
 
-  // Top atribuição
   var aCount = {}; dados.forEach(function(d){ if(d.atribuicao) aCount[d.atribuicao]=(aCount[d.atribuicao]||0)+1; });
   var topAtrib = Object.entries(aCount).sort(function(a,b){return b[1]-a[1];})[0];
 
-  // Risco alto
-  var riscoAlto = dados.filter(function(d){ return norm(d.risco_crise) === 'alto'; }).length;
-  // Crescendo
-  var crescendo = dados.filter(function(d){ return norm(d.tendencia) === 'crescendo'; }).length;
+  var riscoAlto = dados.filter(function(d){ return norm(d.risco_crise)==='alto'; }).length;
+  var crescendo = dados.filter(function(d){ return norm(d.tendencia)==='crescendo'; }).length;
 
-  var html = '<div style="display:flex;flex-direction:column;gap:7px">';
-  html += '<span>📊 <b>'+total+' posts</b> monitorados '+(DIAS===1?'nas últimas 24h':'nos últimos '+DIAS+' dias')+' — sentimento <span style="color:'+corTom+';font-weight:700">'+tom+'</span> ('+pPos+'% pos · '+pNeg+'% neg).</span>';
+  var html = '<div style="display:flex;flex-direction:column;gap:6px">';
+  html += '<span>📊 <b>'+total+' posts</b> monitorados '+(DIAS===1?'nas últimas 24h':'nos últimos '+DIAS+' dias')+'&nbsp;—&nbsp;sentimento <span style="color:'+corTom+';font-weight:700">'+tom+'</span> ('+pPos+'% positivo · '+pNeg+'% negativo).</span>';
   if (topTema) html += '<span>🏷️ <b>Tema dominante:</b> <b>'+escHtml(topTema[0])+'</b> ('+topTema[1]+' posts).</span>';
   if (topAtrib) html += '<span>🎯 <b>Atribuição principal:</b> <b>'+escHtml(topAtrib[0])+'</b> em '+(Math.round(topAtrib[1]/total*100))+'% das menções.</span>';
-  if (urgN > 0) html += '<span>⚠️ <span style="color:#ff6b6b;font-weight:700">'+urgN+' post'+(urgN>1?'s':'')+' requer'+(urgN>1?'em':'')+' atenção imediata.</span>'+(riscoAlto>0?' <b>'+riscoAlto+'</b> com risco de crise alto.':'')+'</span>';
-  if (crescendo > 0) html += '<span>📈 <b>'+crescendo+' post'+(crescendo>1?'s':'')+' com tendência crescente</b> de engajamento — monitorar.</span>';
+  if (urgN>0) html += '<span>⚠️ <span style="color:var(--amber);font-weight:700">'+urgN+' post'+(urgN>1?'s':'')+' requer'+(urgN>1?'em':'')+' atenção imediata.</span>'+(riscoAlto>0?' <b style="color:var(--orange)">'+riscoAlto+' com risco de crise alto.</b>':'')+'</span>';
+  if (crescendo>0) html += '<span>📈 <b>'+crescendo+' post'+(crescendo>1?'s':'')+' com tendência crescente</b> de engajamento — monitorar.</span>';
   html += '</div>';
 
   document.getElementById('narrativa-box').innerHTML = html;
@@ -1508,91 +1583,90 @@ function renderLista(containerId, posts, filtro) {
   var container = document.getElementById(containerId);
   if (!container) return;
   var filtered = posts;
-  if (filtro === 'alta') filtered = posts.filter(function(p){ return norm(p.urgencia) === 'alta'; });
-  else if (filtro === 'media') filtered = posts.filter(function(p){ return norm(p.urgencia) === 'media' || norm(p.urgencia) === 'média'; });
-  else if (filtro === 'crise') filtered = posts.filter(function(p){ return norm(p.risco_crise) === 'alto'; });
+  if (filtro==='alta') filtered = posts.filter(function(p){ return norm(p.urgencia)==='alta'; });
+  else if (filtro==='media') filtered = posts.filter(function(p){ var u=norm(p.urgencia); return u==='media'||u==='média'; });
+  else if (filtro==='crise') filtered = posts.filter(function(p){ return norm(p.risco_crise)==='alto'; });
   container.innerHTML = '';
   if (!filtered.length) { container.innerHTML = '<div class="empty">Nenhum post neste filtro.</div>'; return; }
-  filtered.forEach(function(p) {
-    container.appendChild(criarPostCard(p, norm(p.urgencia) === 'alta'));
-  });
+  filtered.forEach(function(p){ container.appendChild(criarPostCard(p, norm(p.urgencia)==='alta')); });
 }
 
 function criarPostCard(p, isUrgente) {
   var card = document.createElement('div');
-  card.className = 'post-card' + (isUrgente ? ' urgente' : '');
-  var sent = norm(p.sentimento_post || 'neutro');
-  var urg  = norm(p.urgencia || 'baixa');
-  var cs   = norm(p.sentimento_comentarios || '');
-  var risco = norm(p.risco_crise || '');
-  var tendencia = norm(p.tendencia || '');
+  card.className = 'post-card'+(isUrgente?' urgente':'');
+  var sent = norm(p.sentimento_post||'neutro');
+  var urg  = norm(p.urgencia||'baixa');
+  var cs   = norm(p.sentimento_comentarios||'');
+  var risco = norm(p.risco_crise||'');
+  var tendencia = norm(p.tendencia||'');
   var dt   = parseDataPost(p.data_post);
   var data = dt ? dt.toLocaleDateString('pt-BR') : '';
-  var acoes = { 'monitorar':'👁 Monitorar', 'responder publicamente':'💬 Responder', 'acionar assessoria':'📞 Assessoria', 'conter crise':'🚨 Conter crise', 'ampliar positivo':'🔊 Ampliar' };
+  var acoes = {'monitorar':'👁 Monitorar','responder publicamente':'💬 Responder','acionar assessoria':'📞 Assessoria','conter crise':'🚨 Conter crise','ampliar positivo':'🔊 Ampliar'};
   var acao = acoes[norm(p.sugestao_acao||'')] || '';
-
-  var urgStr = urg === 'média' ? 'média' : urg;
+  var urgStr = urg==='média'?'média':urg;
 
   card.innerHTML =
-    '<div class="post-meta">' +
-      '<span class="post-autor">@' + escHtml(p.autor||'') + '</span>' +
-      (data ? '<span class="post-data">' + data + '</span>' : '') +
-      '<span class="badge badge-'+norm(sent)+'">'+escHtml(norm(sent) || 'neutro')+'</span>' +
-      '<span class="badge badge-'+urgStr+'">'+escHtml(urg || 'baixa')+'</span>' +
-      (cs && cs !== 'sem comentários' ? '<span class="badge badge-'+norm(cs)+' txt" title="Sentimento dos comentários">💬'+norm(cs)+'</span>' : '') +
-      (risco === 'alto' ? '<span class="badge badge-risk-alto">⚡ risco alto</span>' : '') +
-      (tendencia === 'crescendo' ? '<span class="badge badge-trend-crescendo">↑ crescendo</span>' : '') +
-    '</div>' +
-    (p.resumo ? '<div class="post-resumo">' + escHtml(p.resumo) + '</div>' : '') +
-    (p.tema   ? '<div class="post-tema">📌 ' + escHtml(p.tema) + '</div>' : '') +
-    (p.atribuicao ? '<div class="post-tema" style="margin-top:3px">🎯 ' + escHtml(p.atribuicao) + '</div>' : '') +
-    '<div class="post-stats">' +
-      (p.engajamento ? '<span class="badge" style="background:rgba(0,0,0,0.04);color:var(--muted)">Eng: '+escHtml(p.engajamento)+'</span>' : '') +
-      (acao ? '<span class="post-action">' + acao + '</span>' : '') +
-      (p.url ? '<a class="btn-ver" href="'+escHtml(p.url)+'" target="_blank" rel="noopener">Ver post ↗</a>' : '') +
-    '</div>';
+    '<div class="post-meta">'+
+      '<span class="post-autor">@'+escHtml(p.autor||'')+'</span>'+
+      (data?'<span class="post-data">'+data+'</span>':'')+
+      '<span class="badge badge-'+norm(sent)+'">'+escHtml(norm(sent)||'neutro')+'</span>'+
+      '<span class="badge badge-'+urgStr+'">'+escHtml(urg||'baixa')+'</span>'+
+      (cs&&cs!=='sem comentários'?'<span class="badge badge-'+norm(cs)+' txt" title="Sentimento dos comentários">💬 '+norm(cs)+'</span>':'')+
+      (risco==='alto'?'<span class="badge badge-risk-alto">⚡ risco alto</span>':'')+
+      (tendencia==='crescendo'?'<span class="badge badge-trend-crescendo">↑ crescendo</span>':'')+
+    '</div>'+
+    (p.resumo?'<div class="post-resumo">'+escHtml(p.resumo)+'</div>':'')+
+    (p.tema?'<div class="post-tema">📌 '+escHtml(p.tema)+'</div>':'')+
+    (p.atribuicao?'<div class="post-tema" style="margin-top:2px">🎯 '+escHtml(p.atribuicao)+'</div>':'')+
+    '<div class="post-stats">'+
+      (p.curtidas>0?'<span class="badge" style="background:rgba(239,68,68,0.10);color:var(--red)">❤️ '+Number(p.curtidas).toLocaleString('pt-BR')+'</span>':'')+
+      (p.comentarios_count>0?'<span class="badge" style="background:var(--blue-bg);color:var(--blue)">💬 '+Number(p.comentarios_count).toLocaleString('pt-BR')+'</span>':'')+
+      (p.engajamento?'<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--muted)">eng: '+escHtml(p.engajamento)+'</span>':'')+
+      (acao?'<span class="post-action">'+acao+'</span>':'')+
+      (p.url?'<a class="btn-ver" href="'+escHtml(p.url)+'" target="_blank" rel="noopener">Ver post ↗</a>':'')+
+    '</div>'+
+    (p.comentarios_destaque?
+      '<div style="margin-top:8px;padding:8px 12px;background:rgba(59,130,246,0.06);border-left:2px solid var(--blue);border-radius:0 6px 6px 0;font-size:11px;color:var(--text2);line-height:1.5">'+
+        '<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--blue);display:block;margin-bottom:3px">💡 Destaque</span>'+
+        escHtml(p.comentarios_destaque)+
+      '</div>':'');
   return card;
 }
 
 /* ── PERFIS ──────────────────────────────────────────────────── */
 function renderPerfis() {
   var container = document.getElementById('lista-perfis');
-
-  // Compute stats from DADOS if PERFIS_DATA is empty
   var dados = filtrarPorPeriodo(DADOS);
   var stats = {};
-  dados.forEach(function(d) {
-    var a = d.autor || 'desconhecido';
-    if (!stats[a]) stats[a] = { pos:0, neg:0, neu:0, total:0 };
+  dados.forEach(function(d){
+    var a = d.autor||'desconhecido';
+    if (!stats[a]) stats[a] = {pos:0,neg:0,neu:0,total:0};
     var s = norm(d.sentimento_post);
     if (s==='positivo') stats[a].pos++;
     else if (s==='negativo') stats[a].neg++;
     else stats[a].neu++;
     stats[a].total++;
   });
-
   var source = PERFIS_DATA.length ? PERFIS_DATA.map(function(p){
-    return { perfil:p.perfil||p.autor, categoria:p.categoria, total:parseInt(p.total_posts)||0, pct:parseInt(p.pct_positivo)||0 };
+    return {perfil:p.perfil||p.autor,categoria:p.categoria,total:parseInt(p.total_posts)||0,pct:parseInt(p.pct_positivo)||0};
   }) : Object.entries(stats).map(function(e){
     var s = e[1];
-    return { perfil:e[0], categoria:'', total:s.total, pct: Math.round(s.pos/s.total*100) };
+    return {perfil:e[0],categoria:'',total:s.total,pct:Math.round(s.pos/s.total*100)};
   });
-
-  var sorted = source.slice().sort(function(a,b){ return b.total - a.total; });
+  var sorted = source.slice().sort(function(a,b){return b.total-a.total;});
   container.innerHTML = '';
-  if (!sorted.length) { container.innerHTML = '<div class="empty">Nenhum perfil encontrado.</div>'; return; }
-
-  sorted.forEach(function(p) {
+  if (!sorted.length) { container.innerHTML = '<div class="empty">Nenhum perfil.</div>'; return; }
+  sorted.forEach(function(p){
     var pct = p.pct;
-    var cor = pct>=60 ? 'var(--green)' : pct>=40 ? 'var(--amber)' : 'var(--red)';
+    var cor = pct>=60?'var(--green)':pct>=40?'var(--amber)':'var(--red)';
     var ini = (p.perfil||'?')[0].toUpperCase();
     var row = document.createElement('div'); row.className = 'perfil-row';
     row.onclick = function(){ abrirModalPerfil(p.perfil); };
     row.innerHTML =
-      '<div class="perfil-avatar">'+ini+'</div>' +
-      '<div style="flex:1"><div class="perfil-name">@'+escHtml(p.perfil||'')+'</div>' +
-        '<div class="perfil-cat">'+escHtml(p.categoria||'')+(p.total?' · '+p.total+' posts':'')+'</div></div>' +
-      '<div class="perfil-bar-wrap"><div class="perfil-bar-bg"><div class="perfil-bar-fill" style="width:'+pct+'%;background:'+cor+'"></div></div></div>' +
+      '<div class="perfil-avatar">'+ini+'</div>'+
+      '<div style="flex:1"><div class="perfil-name">@'+escHtml(p.perfil||'')+'</div>'+
+        '<div class="perfil-cat">'+escHtml(p.categoria||'')+(p.total?' · '+p.total+' posts':'')+'</div></div>'+
+      '<div class="perfil-bar-wrap"><div class="perfil-bar-bg"><div class="perfil-bar-fill" style="width:'+pct+'%;background:'+cor+'"></div></div></div>'+
       '<div class="perfil-pct" style="color:'+cor+'">'+pct+'%</div>';
     container.appendChild(row);
   });
@@ -1601,60 +1675,58 @@ function renderPerfis() {
 /* ── MODAIS ──────────────────────────────────────────────────── */
 function abrirModal(tipo) {
   var dados = filtrarPorPeriodo(DADOS), posts, titulo;
-  if(tipo==='todos'){posts=dados;titulo='Todos os posts';}
-  else if(tipo==='positivo'){posts=dados.filter(function(d){return norm(d.sentimento_post)==='positivo';});titulo='Posts Positivos';}
-  else if(tipo==='negativo'){posts=dados.filter(function(d){return norm(d.sentimento_post)==='negativo';});titulo='Posts Negativos';}
-  else if(tipo==='urgente'){posts=dados.filter(function(d){return norm(d.urgencia)==='alta';});titulo='⚠️ Urgência Alta';}
-  else{posts=[];titulo='Posts';}
+  if (tipo==='todos')     { posts=dados; titulo='Todos os posts'; }
+  else if (tipo==='positivo') { posts=dados.filter(function(d){return norm(d.sentimento_post)==='positivo';}); titulo='Posts Positivos'; }
+  else if (tipo==='negativo') { posts=dados.filter(function(d){return norm(d.sentimento_post)==='negativo';}); titulo='Posts Negativos'; }
+  else if (tipo==='urgente')  { posts=dados.filter(function(d){return norm(d.urgencia)==='alta';}); titulo='⚠️ Urgência Alta'; }
+  else { posts=[]; titulo='Posts'; }
   mostrarModal(titulo, posts);
 }
-function abrirModalTema(tema){ var dados=filtrarPorPeriodo(DADOS); mostrarModal('📌 '+tema, dados.filter(function(d){return d.tema===tema;})); }
-function abrirModalPerfil(perfil){ var dados=filtrarPorPeriodo(DADOS); mostrarModal('@'+perfil, dados.filter(function(d){return d.autor===perfil;})); }
+function abrirModalTema(tema)  { var d=filtrarPorPeriodo(DADOS); mostrarModal('📌 '+tema,d.filter(function(x){return x.tema===tema;})); }
+function abrirModalPerfil(p)   { var d=filtrarPorPeriodo(DADOS); mostrarModal('@'+p,d.filter(function(x){return x.autor===p;})); }
 function mostrarModal(titulo, posts) {
-  document.getElementById('modal-title').textContent = titulo;
-  document.getElementById('modal-count').textContent = posts.length + ' post(s)';
+  setText('modal-title', titulo);
+  setText('modal-count', posts.length+' post(s)');
   var body = document.getElementById('modal-body'); body.innerHTML = '';
-  if (!posts.length) { body.innerHTML = '<div class="empty">Nenhum post encontrado.</div>'; }
-  else { posts.forEach(function(p){ body.appendChild(criarPostCard(p, norm(p.urgencia)==='alta')); }); }
+  if (!posts.length) body.innerHTML = '<div class="empty">Nenhum post encontrado.</div>';
+  else posts.forEach(function(p){ body.appendChild(criarPostCard(p, norm(p.urgencia)==='alta')); });
   document.getElementById('modal-overlay').classList.add('open');
 }
 function fecharModal(e) {
-  if (!e || e.target === document.getElementById('modal-overlay') || e.target === document.getElementById('modal-close')) {
+  if (!e||e.target===document.getElementById('modal-overlay')||e.target===document.getElementById('modal-close')) {
     document.getElementById('modal-overlay').classList.remove('open');
   }
 }
 
 /* ── NAVEGAÇÃO ───────────────────────────────────────────────── */
+var SECTION_TITLES = {resumo:'Visão Geral',positivos:'Posts Positivos',negativos:'Posts Negativos',perfis:'Perfis Monitorados',config:'Configurações'};
 function showSection(sec) {
   SECTION = sec;
-  var sections = ['resumo','positivos','negativos','perfis','config'];
-  sections.forEach(function(s){
+  ['resumo','positivos','negativos','perfis','config'].forEach(function(s){
     var el = document.getElementById('section-'+s);
-    if (el) el.classList.toggle('hidden', s !== sec);
+    if (el) el.classList.toggle('hidden', s!==sec);
+    var nav = document.getElementById('nav-'+s);
+    if (nav) nav.classList.toggle('active', s===sec);
   });
-  document.querySelectorAll('.nav-tab').forEach(function(tab, i){
-    tab.classList.toggle('active', ['resumo','positivos','negativos','perfis'].indexOf(sec) === i);
-  });
-  // Render section-specific content
-  if (sec === 'positivos') {
-    var dados = filtrarPorPeriodo(DADOS);
-    var pos = dados.filter(function(d){ return norm(d.sentimento_post)==='positivo'; });
-    renderLista('lista-positivos', pos, 'todos');
+  setText('topbar-title', SECTION_TITLES[sec]||sec);
+
+  if (sec==='positivos') {
+    var d = filtrarPorPeriodo(DADOS);
+    renderLista('lista-positivos', d.filter(function(x){return norm(x.sentimento_post)==='positivo';}), 'todos');
   }
-  if (sec === 'negativos') {
-    var dados2 = filtrarPorPeriodo(DADOS);
-    var neg = dados2.filter(function(d){ return norm(d.sentimento_post)==='negativo'; });
-    renderLista('lista-negativos', neg, 'todos');
+  if (sec==='negativos') {
+    var d2 = filtrarPorPeriodo(DADOS);
+    renderLista('lista-negativos', d2.filter(function(x){return norm(x.sentimento_post)==='negativo';}), 'todos');
   }
 }
 
-/* ── FILTROS DE LISTA ────────────────────────────────────────── */
+/* ── FILTRO LISTA ────────────────────────────────────────────── */
 function filtrarLista(lista, filtro, btn) {
-  var containerId = lista==='pos' ? 'lista-positivos' : 'lista-negativos';
+  var containerId = lista==='pos'?'lista-positivos':'lista-negativos';
   var dados = filtrarPorPeriodo(DADOS);
   var posts = dados.filter(function(d){ return norm(d.sentimento_post)===(lista==='pos'?'positivo':'negativo'); });
   renderLista(containerId, posts, filtro);
-  var parentId = lista==='pos' ? 'filter-pos' : 'filter-neg';
+  var parentId = lista==='pos'?'filter-pos':'filter-neg';
   document.getElementById(parentId).querySelectorAll('.filter-tab').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
 }
@@ -1662,29 +1734,29 @@ function filtrarLista(lista, filtro, btn) {
 /* ── CONFIG ──────────────────────────────────────────────────── */
 function salvarConfig() {
   SCRIPT_URL = document.getElementById('cfg-url').value.trim();
-  DIAS = parseInt(document.getElementById('cfg-dias').value) || 7;
+  DIAS = parseInt(document.getElementById('cfg-dias').value)||7;
   localStorage.setItem('radar_url', SCRIPT_URL);
   localStorage.setItem('radar_dias', DIAS);
   var st = document.getElementById('cfg-status');
-  st.style.display = 'block'; st.textContent = '✅ Configuração salva! Carregando dados...';
+  st.style.display='block'; st.textContent='✅ Configuração salva! Carregando dados...';
   carregarDados();
 }
 function renderKwTags() {
   var wrap = document.getElementById('kw-tags'); wrap.innerHTML = '';
-  KWS.forEach(function(kw, i){
+  KWS.forEach(function(kw,i){
     var t = document.createElement('div'); t.className = 'kw-tag';
-    t.innerHTML = escHtml(kw) + '<span class="kw-remove" onclick="removeKeyword('+i+')">×</span>';
+    t.innerHTML = escHtml(kw)+'<span class="kw-remove" onclick="removeKeyword('+i+')">×</span>';
     wrap.appendChild(t);
   });
 }
-function addKeyword(){
+function addKeyword() {
   var input = document.getElementById('kw-input');
   var val = input.value.trim().toLowerCase();
-  if (val && KWS.indexOf(val) === -1) { KWS.push(val); renderKwTags(); }
+  if (val&&KWS.indexOf(val)===-1) { KWS.push(val); renderKwTags(); }
   input.value = '';
 }
-function removeKeyword(i){ KWS.splice(i,1); renderKwTags(); }
-function salvarKeywords(){ localStorage.setItem('radar_kws', JSON.stringify(KWS)); alert('✅ Palavras-chave salvas!'); }
+function removeKeyword(i) { KWS.splice(i,1); renderKwTags(); }
+function salvarKeywords() { localStorage.setItem('radar_kws',JSON.stringify(KWS)); alert('✅ Palavras-chave salvas!'); }
 </script>
 </body>
 </html>
