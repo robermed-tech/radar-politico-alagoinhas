@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
-Pipeline completo do Radar Político — Alagoinhas
+Pipeline completo do Radar Político
   1. Dispara o scraper Apify (Instagram)
   2. Aguarda a coleta terminar
   3. Analisa os novos posts com Claude Haiku
   4. Salva resultados no Google Sheets
 
 Uso:
-  python run_pipeline.py            # coleta + análise (padrão)
+  python run_pipeline.py              # coleta + análise (padrão)
   python run_pipeline.py --sem-apify  # só análise (usa dataset existente)
+
+O cliente ativo é definido por CLIENT_CONFIG no .env:
+  CLIENT_CONFIG=clientes/alagoinhas.json
 """
 
 import os
@@ -18,23 +21,22 @@ import argparse
 import requests
 from dotenv import load_dotenv
 
-load_dotenv(override=True)   # override=True: .env tem prioridade sobre vars de sistema (inclusive vazias)
+load_dotenv(override=True)  # .env tem prioridade sobre vars de sistema
 
 APIFY_API_TOKEN = os.environ["APIFY_API_TOKEN"]
 ACTOR_ID = "shu8hvrXbJbY3Eb9W"  # apify/instagram-scraper
 
-# Importa PROFILES_META como fonte única de verdade para os perfis monitorados.
-# Elimina a necessidade de manter duas listas sincronizadas manualmente.
-from radar import PROFILES_META  # noqa: E402 (import após load_dotenv é intencional)
+# Importa PROFILES_META do radar — fonte única de verdade para os perfis do cliente.
+# O cliente ativo vem de CLIENT_CONFIG no .env; radar.py já carrega o JSON correto.
+from radar import PROFILES_META, NOME_CLIENTE  # noqa: E402
 
 ACTOR_INPUT = {
     "addParentData": False,
-    # directUrls gerado dinamicamente a partir de PROFILES_META
     "directUrls": [
         f"https://www.instagram.com/{username}/"
         for username in PROFILES_META
     ],
-    "onlyPostsNewerThan": "2 days",   # buffer de 2 dias (duplicatas são ignoradas)
+    "onlyPostsNewerThan": "2 days",  # buffer de 2 dias (duplicatas são ignoradas)
     "resultsLimit": 200,
     "resultsType": "posts",
     "searchLimit": 10,
@@ -98,7 +100,7 @@ def wait_for_run(run_id, timeout=2700, interval=30):
 
 def main(sem_apify=False):
     print("=" * 60)
-    print("RADAR POLITICO — PIPELINE AUTOMATICO")
+    print(f"RADAR POLITICO — {NOME_CLIENTE}")
     print("=" * 60)
 
     if sem_apify:
@@ -110,22 +112,19 @@ def main(sem_apify=False):
     else:
         run_id = trigger_apify()
         dataset_id = wait_for_run(run_id)
-        # Injeta o novo dataset_id antes de importar radar.py
         os.environ["APIFY_DATASET_ID"] = dataset_id
 
     print()
     print("Iniciando analise de sentimento...")
 
-    # radar já foi importado no topo (para PROFILES_META); apenas sincroniza vars
+    # radar já foi importado no topo; apenas sincroniza vars de ambiente
     import radar as _radar
+    _radar.APIFY_DATASET_ID  = dataset_id
+    _radar.APIFY_API_TOKEN   = os.environ["APIFY_API_TOKEN"]
+    _radar.ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
+    _radar.GOOGLE_SHEET_ID   = os.environ["GOOGLE_SHEET_ID"]
 
-    # Sincroniza variáveis do módulo com os valores corretos do .env
-    _radar.APIFY_DATASET_ID   = dataset_id
-    _radar.APIFY_API_TOKEN    = os.environ["APIFY_API_TOKEN"]
-    _radar.ANTHROPIC_API_KEY  = os.environ["ANTHROPIC_API_KEY"]
-    _radar.GOOGLE_SHEET_ID    = os.environ["GOOGLE_SHEET_ID"]
-
-    _radar.main()
+    _radar.processar()
 
     print()
     print("Pipeline concluido com sucesso!")
@@ -133,7 +132,7 @@ def main(sem_apify=False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Pipeline Radar Politico Alagoinhas")
+    parser = argparse.ArgumentParser(description="Pipeline Radar Politico")
     parser.add_argument(
         "--sem-apify",
         action="store_true",

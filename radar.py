@@ -12,6 +12,7 @@ from google.oauth2.service_account import Credentials
 
 load_dotenv()
 
+# ── Credenciais e configurações de API (via .env) ────────────────────────────
 APIFY_API_TOKEN             = os.environ["APIFY_API_TOKEN"]
 APIFY_POST_ACTOR_ID         = os.environ.get("APIFY_POST_ACTOR_ID", "apify/instagram-post-scraper")
 APIFY_COMMENT_ACTOR_ID      = os.environ.get("APIFY_COMMENT_ACTOR_ID", "apify/instagram-comment-scraper")
@@ -20,27 +21,38 @@ GOOGLE_SERVICE_ACCOUNT_FILE = os.environ["GOOGLE_SERVICE_ACCOUNT_FILE"]
 GOOGLE_SHEET_ID             = os.environ["GOOGLE_SHEET_ID"]
 GOOGLE_SHEET_NAME           = os.environ.get("GOOGLE_SHEET_NAME", "Radar")
 
-# ── Categorias de perfis monitorados ─────────────────────────────────────────
-PERFIS_CATEGORIAS = {
-    "gustavoascarmo":        "Prefeito",
-    "prefeituraalagoinhas":  "Prefeitura",
-    "seligaalagoinhas":      "Governo",
-    "portalalagoinhasnews":  "Imprensa",
-    "alagonews":             "Imprensa",
-    "jornalalagoinhas":      "Imprensa",
-    "alagoinhas24h":         "Imprensa",
-    "suacidade":             "Imprensa",
-    "oficialjoaquimneto":    "Oposição",
-    "soulucianoalmeida":     "Oposição",
-    "paulocezar_oficial":    "Oposição",
-    "jaldicenunes":          "Oposição",
-    "eulumamenezes":         "Oposição",
-    "gleysersoares":         "Oposição",
-}
 
-PERFIS = list(PERFIS_CATEGORIAS.keys())
+# ── Config do cliente (via CLIENT_CONFIG no .env) ─────────────────────────────
 
-# ── Colunas da planilha (agora com 6 colunas novas) ──────────────────────────
+def _carregar_config():
+    """Lê o arquivo JSON do cliente apontado por CLIENT_CONFIG no .env."""
+    config_path = os.environ.get("CLIENT_CONFIG", "clientes/template.json")
+    if not os.path.isfile(config_path):
+        raise FileNotFoundError(
+            f"Arquivo de config não encontrado: {config_path}\n"
+            f"Defina CLIENT_CONFIG no .env apontando para um JSON em clientes/."
+        )
+    with open(config_path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+_CFG = _carregar_config()
+
+# Dados do cliente carregados do JSON
+NOME_CLIENTE       = _CFG["nome"]           # ex: "Alagoinhas/BA"
+PERFIS_CATEGORIAS  = _CFG["perfis"]         # dict username -> categoria
+PERFIS_GESTAO      = set(_CFG["perfis_gestao"])
+KEYWORDS           = _CFG["keywords"]
+KEYWORDS_ANCORA    = _CFG["keywords_ancora"]
+KEYWORDS_GESTAO    = _CFG["keywords_gestao"]
+KEYWORDS_CONTEXTO  = _CFG["keywords_contexto"]
+
+# Derivados
+PERFIS        = list(PERFIS_CATEGORIAS.keys())
+PROFILES_META = PERFIS_CATEGORIAS   # alias usado por run_pipeline.py
+
+
+# ── Colunas da planilha ───────────────────────────────────────────────────────
 SHEET_HEADERS = [
     "url", "data_post", "autor", "categoria_perfil",
     "curtidas", "comentarios_count",
@@ -53,73 +65,9 @@ SHEET_HEADERS = [
     "resumo", "atribuicao", "sugestao_acao"
 ]
 
-KEYWORDS = [
-    "prefeitura", "gustavo", "prefeito", "alagoinhas",
-    "municipio", "município", "secom", "secretar"
-]
-
-# Keywords âncora — obrigatórias para perfis de imprensa e oposição
-KEYWORDS_ANCORA = ["alagoinhas", "gustavo"]
-
-# Keywords de gestão — contexto político/administrativo
-KEYWORDS_GESTAO = [
-    "prefeitura", "prefeito", "gustavo", "secom", "secretar",
-    "municipio", "município", "gestao", "gestão", "administracao",
-    "administração", "câmara", "camara", "vereador", "decreto",
-    "licitacao", "licitação", "obra municipal", "servidor"
-]
-
-# Keywords de contexto municipal — aprovam posts sobre Alagoinhas mesmo sem citar prefeitura
-KEYWORDS_CONTEXTO = [
-    "investimento", "investimentos", "obra", "obras", "infraestrutura",
-    "saúde", "saude", "educação", "educacao", "segurança", "seguranca",
-    "transporte", "saneamento", "habitação", "habitacao", "emprego",
-    "desenvolvimento", "recurso", "recursos", "verba", "verbas",
-    "governo", "estado", "federal", "convenio", "convênio",
-    "inauguração", "inauguracao", "entrega", "licitação", "licitacao",
-    "hospital", "escola", "creche", "posto de saúde", "ubs",
-    "pavimentação", "pavimentacao", "asfalto", "drenagem", "esgoto",
-    "iluminação", "iluminacao", "praça", "praca", "parque",
-]
-
-# Perfis que são da própria gestão — filtro mais permissivo
-PERFIS_GESTAO = {"gustavoascarmo", "prefeituraalagoinhas"}
-
-
-def tem_keyword(texto):
-    t = texto.lower()
-    return any(k in t for k in KEYWORDS)
-
-
-def e_relevante_para_radar(texto, autor):
-    """
-    Filtro de relevância em três camadas:
-    1. Perfis da gestão: qualquer keyword de gestão passa
-    2. Outros perfis com âncora Gustavo: qualquer keyword de gestão passa
-    3. Outros perfis com âncora Alagoinhas: precisa de keyword de gestão OU contexto municipal
-    """
-    t = texto.lower()
-
-    # Camada 1 — perfis da própria gestão
-    if autor.lower() in PERFIS_GESTAO:
-        return any(k in t for k in KEYWORDS_GESTAO)
-
-    # Camada 2 — outros perfis precisam de âncora local
-    tem_ancora = any(k in t for k in KEYWORDS_ANCORA)
-    if not tem_ancora:
-        return False
-
-    # Camada 3a — menciona Gustavo: qualquer keyword de gestão aprova
-    if "gustavo" in t:
-        return any(k in t for k in KEYWORDS_GESTAO)
-
-    # Camada 3b — menciona Alagoinhas: keyword de gestão OU contexto municipal
-    tem_gestao = any(k in t for k in KEYWORDS_GESTAO)
-    tem_contexto = any(k in t for k in KEYWORDS_CONTEXTO)
-    return tem_gestao or tem_contexto
-
+# ── Prompt de análise (usa nome do cliente dinamicamente) ─────────────────────
 ANALYSIS_PROMPT = """\
-Você é um analista político sênior da Prefeitura de Alagoinhas/BA, especializado em monitoramento de redes sociais e gestão de crises de comunicação.
+Você é um analista político sênior da Prefeitura de {nome_cliente}, especializado em monitoramento de redes sociais e gestão de crises de comunicação.
 
 Analise o post e os comentários abaixo com profundidade estratégica e retorne SOMENTE um JSON válido, sem texto extra, sem markdown.
 
@@ -145,7 +93,7 @@ Retorne exatamente este JSON:
   "tendencia": "Crescendo" | "Estável" | "Diminuindo",
   "engajamento": "Alto" | "Médio" | "Baixo",
   "resumo": "<resumo objetivo do post em até 15 palavras>",
-  "atribuicao": "<a quem o post se refere, ex: Prefeitura, Gustavo Carmo, Oposição, Câmara Municipal>",
+  "atribuicao": "<a quem o post se refere, ex: Prefeitura, Oposição, Câmara Municipal>",
   "sugestao_acao": "Monitorar" | "Responder publicamente" | "Acionar assessoria" | "Conter crise" | "Ampliar positivo"
 }}
 
@@ -185,6 +133,30 @@ def formatar_data(ts):
 
 def categoria_perfil(autor):
     return PERFIS_CATEGORIAS.get(autor.lower(), "Outro")
+
+
+def e_relevante_para_radar(texto, autor):
+    """
+    Filtro de relevância em três camadas:
+    1. Perfis da gestão: qualquer keyword de gestão passa
+    2. Outros perfis com âncora local: qualquer keyword de gestão aprova
+    3. Outros perfis com âncora local + tema municipal: keyword de contexto aprovam
+    """
+    t = texto.lower()
+
+    # Camada 1 — perfis da própria gestão (filtro mais permissivo)
+    if autor.lower() in PERFIS_GESTAO:
+        return any(k in t for k in KEYWORDS_GESTAO)
+
+    # Camada 2 — outros perfis precisam de âncora local
+    tem_ancora = any(k in t for k in KEYWORDS_ANCORA)
+    if not tem_ancora:
+        return False
+
+    # Camada 3 — com âncora: keyword de gestão OU contexto municipal aprova
+    tem_gestao  = any(k in t for k in KEYWORDS_GESTAO)
+    tem_contexto = any(k in t for k in KEYWORDS_CONTEXTO)
+    return tem_gestao or tem_contexto
 
 
 # ── Apify ─────────────────────────────────────────────────────────────────────
@@ -273,6 +245,7 @@ def analisar_post(texto, comentarios_lista, autor, categoria):
     ) if comentarios_lista else "Sem comentários coletados."
 
     prompt = ANALYSIS_PROMPT.format(
+        nome_cliente=NOME_CLIENTE,
         texto=texto,
         autor=autor,
         categoria=categoria,
@@ -301,7 +274,7 @@ def coletar_comentarios(urls_posts):
 
     input_data = {
         "directUrls": urls_posts,
-        "resultsLimit": 500,  # sem limite prático para posts com menos de 100 comentários
+        "resultsLimit": 500,
         "includeReplies": True,
     }
 
@@ -339,7 +312,7 @@ def coletar_comentarios(urls_posts):
 
 def processar():
     print("=" * 60)
-    print("RADAR POLÍTICO — Alagoinhas/BA")
+    print(f"RADAR POLÍTICO — {NOME_CLIENTE}")
     print("=" * 60)
 
     # 1. Coleta posts
@@ -371,9 +344,9 @@ def processar():
     print("\n[3/5] Filtrando posts relevantes...")
     posts_filtrados = []
     for post in posts:
-        url    = (post.get("url") or post.get("shortCode") or "").rstrip("/")
+        url     = (post.get("url") or post.get("shortCode") or "").rstrip("/")
         caption = limpar_texto(post.get("caption") or post.get("text") or "")
-        autor  = post.get("ownerUsername") or post.get("authorUsername") or ""
+        autor   = post.get("ownerUsername") or post.get("authorUsername") or ""
 
         if url in existentes:
             continue
@@ -381,12 +354,12 @@ def processar():
             continue
 
         posts_filtrados.append({
-            "url":              url,
-            "caption":          caption,
-            "autor":            autor,
-            "categoria":        categoria_perfil(autor),
-            "data_post":        formatar_data(post.get("timestamp") or post.get("createdAt") or ""),
-            "curtidas":         int(post.get("likesCount") or post.get("likes") or 0),
+            "url":               url,
+            "caption":           caption,
+            "autor":             autor,
+            "categoria":         categoria_perfil(autor),
+            "data_post":         formatar_data(post.get("timestamp") or post.get("createdAt") or ""),
+            "curtidas":          int(post.get("likesCount") or post.get("likes") or 0),
             "comentarios_count": int(post.get("commentsCount") or post.get("comments") or 0),
         })
 
@@ -407,8 +380,8 @@ def processar():
     erros  = 0
 
     for post in posts_filtrados:
-        url      = post["url"]
-        autor    = post["autor"]
+        url       = post["url"]
+        autor     = post["autor"]
         categoria = post["categoria"]
         comentarios_lista = mapa_comentarios.get(url, [])
 
@@ -419,7 +392,6 @@ def processar():
             erros += 1
             continue
 
-        # Comentaristas únicos
         comentaristas_unicos = ", ".join(sorted(set(
             c.split(":")[0].strip() for c in comentarios_lista if ":" in c
         ))[:10])
