@@ -42,7 +42,7 @@ SHEET_PADROES    = "Padroes"
 PERFIS_CATEGORIAS = {
     "gustavoascarmo":       "Prefeito",
     "prefeituraalagoinhas": "Prefeitura",
-    "seligaalagoinhas":     "Governo",
+    "seligaalagoinhas":     "Imprensa",
     "portalalagoinhasnews": "Imprensa",
     "alagonews":            "Imprensa",
     "jornalalagoinhas":     "Imprensa",
@@ -139,8 +139,8 @@ PERFIS_GESTAO = {"gustavoascarmo", "prefeituraalagoinhas"}
 
 # Perfis de imprensa que cobrem Alagoinhas — exigem filtro mais rigoroso
 PERFIS_IMPRENSA = {
-    "portalalagoinhasnews", "alagonews", "jornalalagoinhas",
-    "alagoinhas24h", "suacidade", "seligaalagoinhas"
+    "seligaalagoinhas", "portalalagoinhasnews", "alagonews",
+    "jornalalagoinhas", "alagoinhas24h", "suacidade"
 }
 
 # Perfis de oposição — qualquer menção ao prefeito/prefeitura é relevante
