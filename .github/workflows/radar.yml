@@ -45,7 +45,7 @@ jobs:
           echo "CLIENT_CONFIG=clientes/alagoinhas.json"                        >> .env
 
       - name: Executar pipeline completo (Apify + Claude + Sheets)
-        run: python radar.py
+        run: python radar_agente.py
 
       - name: Resumo de sucesso
         if: success()
