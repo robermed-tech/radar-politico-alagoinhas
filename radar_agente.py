@@ -222,15 +222,18 @@ def abrir_planilha(sh):
     except gspread.WorksheetNotFound:
         ws = sh.add_worksheet(GOOGLE_SHEET_NAME, rows=2000, cols=30)
 
+    # Expande colunas se necessário
+    if ws.col_count < len(SHEET_HEADERS) + 2:
+        ws.resize(rows=ws.row_count, cols=len(SHEET_HEADERS) + 5)
+
     cabecalho_atual = ws.row_values(1)
-    if cabecalho_atual != SHEET_HEADERS:
-        # Migração suave: apenas adiciona colunas novas sem apagar dados
-        if not cabecalho_atual:
-            ws.append_row(SHEET_HEADERS)
-        else:
-            for i, h in enumerate(SHEET_HEADERS):
-                if i >= len(cabecalho_atual) or cabecalho_atual[i] != h:
-                    ws.update_cell(1, i + 1, h)
+    if not cabecalho_atual:
+        ws.append_row(SHEET_HEADERS)
+    elif len(cabecalho_atual) < len(SHEET_HEADERS):
+        # Adiciona apenas colunas novas sem apagar dados
+        for i, h in enumerate(SHEET_HEADERS):
+            if i >= len(cabecalho_atual):
+                ws.update_cell(1, i + 1, h)
     return ws
 
 
