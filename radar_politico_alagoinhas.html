@@ -1605,6 +1605,20 @@ function criarPostCard(p, isUrgente) {
   var acao = acoes[norm(p.sugestao_acao||'')] || '';
   var urgStr = urg==='média'?'média':urg;
 
+  // Score de risco — cor dinâmica
+  var score = parseInt(p.score_risco) || 0;
+  var scoreCor = score >= 70 ? '#EF4444' : score >= 40 ? '#F59E0B' : '#10B981';
+  var scoreBg  = score >= 70 ? 'rgba(239,68,68,0.10)' : score >= 40 ? 'rgba(245,158,11,0.10)' : 'rgba(16,185,129,0.10)';
+  var scoreHtml = score > 0
+    ? '<span class="badge" style="background:'+scoreBg+';color:'+scoreCor+';font-weight:700;font-size:11px" title="Score de risco composto (0-100)">⚡ '+score+'</span>'
+    : '';
+
+  // Padrão detectado
+  var padrao = (p.aprendizado_aplicado || p.contexto_usado || '').trim();
+  var padraoBadge = (padrao && padrao !== 'Isolado' && padrao.length > 3)
+    ? '<span class="badge" style="background:rgba(139,92,246,0.10);color:#8B5CF6;font-size:10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(padrao)+'">🧠 '+escHtml(padrao.slice(0,40))+(padrao.length>40?'…':'')+'</span>'
+    : '';
+
   card.innerHTML =
     '<div class="post-meta">'+
       '<span class="post-autor">@'+escHtml(p.autor||'')+'</span>'+
@@ -1621,10 +1635,17 @@ function criarPostCard(p, isUrgente) {
     '<div class="post-stats">'+
       (p.curtidas>0?'<span class="badge" style="background:rgba(239,68,68,0.10);color:var(--red)">❤️ '+Number(p.curtidas).toLocaleString('pt-BR')+'</span>':'')+
       (p.comentarios_count>0?'<span class="badge" style="background:var(--blue-bg);color:var(--blue)">💬 '+Number(p.comentarios_count).toLocaleString('pt-BR')+'</span>':'')+
-      (p.engajamento?'<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--muted)">eng: '+escHtml(p.engajamento)+'</span>':'')+
+      (p.total_comentarios>0?'<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--muted)">📊 '+p.total_comentarios+' analisados</span>':'')+
+      scoreHtml+
+      padraoBadge+
+      (p.engajamento?'<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--muted)">Eng: '+escHtml(p.engajamento)+'</span>':'')+
       (acao?'<span class="post-action">'+acao+'</span>':'')+
       (p.url?'<a class="btn-ver" href="'+escHtml(p.url)+'" target="_blank" rel="noopener">Ver post ↗</a>':'')+
     '</div>'+
+    (p.justificativa_acao?
+      '<div style="margin-top:6px;font-size:11px;color:var(--muted);padding:0 2px">'+
+        '<span style="font-weight:600;color:var(--text2)">Por quê: </span>'+escHtml(p.justificativa_acao)+
+      '</div>':'')+
     (p.comentarios_destaque?
       '<div style="margin-top:8px;padding:8px 12px;background:rgba(59,130,246,0.06);border-left:2px solid var(--blue);border-radius:0 6px 6px 0;font-size:11px;color:var(--text2);line-height:1.5">'+
         '<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--blue);display:block;margin-bottom:3px">💡 Destaque</span>'+
