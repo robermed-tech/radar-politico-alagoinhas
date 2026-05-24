@@ -1,0 +1,50 @@
+{
+  "nome": "Alagoinhas/BA",
+  "nome_curto": "Alagoinhas",
+  "estado": "BA",
+
+  "perfis": {
+    "gustavoascarmo":        "Prefeito",
+    "prefeituraalagoinhas":  "Prefeitura",
+    "seligaalagoinhas":      "Imprensa",
+    "portalalagoinhasnews":  "Imprensa",
+    "alagonews":             "Imprensa",
+    "jornalalagoinhas":      "Imprensa",
+    "alagoinhas24h":         "Imprensa",
+    "suacidade":             "Imprensa",
+    "oficialjoaquimneto":    "Oposição",
+    "soulucianoalmeida":     "Oposição",
+    "paulocezar_oficial":    "Oposição",
+    "jaldicenunes":          "Oposição",
+    "eulumamenezes":         "Oposição",
+    "gleysersoares":         "Oposição"
+  },
+
+  "perfis_gestao": ["gustavoascarmo", "prefeituraalagoinhas"],
+
+  "keywords": [
+    "prefeitura", "gustavo", "prefeito", "alagoinhas",
+    "municipio", "município", "secom", "secretar"
+  ],
+
+  "keywords_ancora": ["alagoinhas", "gustavo"],
+
+  "keywords_gestao": [
+    "prefeitura", "prefeito", "gustavo", "secom", "secretar",
+    "municipio", "município", "gestao", "gestão", "administracao",
+    "administração", "câmara", "camara", "vereador", "decreto",
+    "licitacao", "licitação", "obra municipal", "servidor"
+  ],
+
+  "keywords_contexto": [
+    "investimento", "investimentos", "obra", "obras", "infraestrutura",
+    "saúde", "saude", "educação", "educacao", "segurança", "seguranca",
+    "transporte", "saneamento", "habitação", "habitacao", "emprego",
+    "desenvolvimento", "recurso", "recursos", "verba", "verbas",
+    "governo", "estado", "federal", "convenio", "convênio",
+    "inauguração", "inauguracao", "entrega", "licitação", "licitacao",
+    "hospital", "escola", "creche", "posto de saúde", "ubs",
+    "pavimentação", "pavimentacao", "asfalto", "drenagem", "esgoto",
+    "iluminação", "iluminacao", "praça", "praca", "parque"
+  ]
+}
