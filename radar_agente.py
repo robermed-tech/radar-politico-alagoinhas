@@ -89,29 +89,110 @@ PADROES_HEADERS = [
 ]
 
 # ── Keywords ──────────────────────────────────────────────────────────────────
-KEYWORDS_ANCORA   = ["alagoinhas", "gustavo"]
+KEYWORDS_ANCORA   = ["alagoinhas", "gustavo carmo", "gustavo ascarmo", "prefeito gustavo"]
+
+# Keywords que OBRIGATORIAMENTE precisam aparecer junto à âncora
 KEYWORDS_GESTAO   = [
-    "prefeitura", "prefeito", "gustavo", "secom", "secretar",
-    "municipio", "município", "gestao", "gestão", "administracao",
-    "administração", "câmara", "camara", "vereador", "decreto",
-    "licitacao", "licitação", "obra municipal", "servidor"
+    "prefeitura", "prefeito", "gustavo carmo", "gustavo ascarmo",
+    "secom", "secretar", "municipio", "município",
+    "gestao", "gestão", "administracao", "administração",
+    "câmara municipal", "camara municipal", "vereador",
+    "decreto municipal", "obra municipal", "servidor municipal",
+    "governo municipal", "gestão municipal",
+    "escola municipal", "hospital municipal", "creche municipal",
+    "ubs municipal", "posto municipal", "serviço municipal",
 ]
+
+# Keywords de contexto — só válidas SE combinadas com âncora forte
 KEYWORDS_CONTEXTO = [
-    "investimento", "investimentos", "obra", "obras", "infraestrutura",
-    "saúde", "saude", "educação", "educacao", "segurança", "seguranca",
-    "transporte", "saneamento", "habitação", "habitacao", "emprego",
-    "desenvolvimento", "recurso", "recursos", "verba", "verbas",
-    "governo", "estado", "federal", "convenio", "convênio",
-    "inauguração", "inauguracao", "entrega", "licitação", "licitacao",
-    "hospital", "escola", "creche", "posto de saúde", "ubs",
+    "obra", "obras", "infraestrutura", "saúde publica", "saude publica",
+    "educação publica", "educacao publica", "segurança publica", "seguranca publica",
+    "saneamento", "habitação popular", "habitacao popular",
+    "hospital municipal", "escola municipal", "creche municipal",
     "pavimentação", "pavimentacao", "asfalto", "drenagem", "esgoto",
-    "iluminação", "iluminacao", "praça", "praca", "parque",
+    "iluminação publica", "iluminacao publica", "praça publica",
+    "licitação municipal", "licitacao municipal", "orçamento municipal",
 ]
+
+# Keywords de exclusão — posts com qualquer uma dessas são rejeitados
+KEYWORDS_EXCLUSAO = [
+    "repórter", "reporter", "jornalista contratado", "novo repórter",
+    "anuncia jornalista", "apresentador", "âncora do telejornal",
+    "tv subaé", "tv subae", "record", "globo", "sbt", "band",
+    "campeonato", "futebol", "time de futebol", "copa",
+    "show", "festival", "evento cultural", "carnaval", "são joão",
+    "sao joao", "forró", "forro",
+    "prefeitura de cardeal", "prefeitura de entre rios",
+    "prefeitura de crisópolis", "prefeitura de inhambupe",
+    "prefeitura estadual", "governo federal",
+    "church", "igreja", "missa", "culto religioso",
+]
+
 KEYWORDS_CRISE = [
     "corrupto", "corrupção", "roubo", "desvio", "escândalo",
     "incompetente", "vergonha", "impeachment", "denúncia", "cpi",
     "morte", "tragédia", "colapso", "abandono", "negligência"
 ]
+
+# Perfis que são da própria gestão
+PERFIS_GESTAO = {"gustavoascarmo", "prefeituraalagoinhas"}
+
+# Perfis de imprensa que cobrem Alagoinhas — exigem filtro mais rigoroso
+PERFIS_IMPRENSA = {
+    "portalalagoinhasnews", "alagonews", "jornalalagoinhas",
+    "alagoinhas24h", "suacidade", "seligaalagoinhas"
+}
+
+# Perfis de oposição — qualquer menção ao prefeito/prefeitura é relevante
+PERFIS_OPOSICAO = {
+    "oficialjoaquimneto", "soulucianoalmeida", "paulocezar_oficial",
+    "jaldicenunes", "eulumamenezes", "gleysersoares"
+}
+
+
+def e_relevante_para_radar(texto, autor):
+    """
+    Filtro de relevância em 4 camadas:
+    1. Exclusão imediata — posts sobre temas claramente fora do escopo
+    2. Perfis da gestão — qualquer keyword de gestão municipal
+    3. Perfis de oposição — qualquer menção direta ao prefeito/prefeitura
+    4. Imprensa/outros — exige âncora forte + keyword de gestão municipal
+    """
+    t = texto.lower()
+    a = autor.lower()
+
+    # Camada 0 — exclusão imediata por tema irrelevante
+    if any(k in t for k in KEYWORDS_EXCLUSAO):
+        return False
+
+    # Camada 1 — perfis da gestão: qualquer keyword de gestão passa
+    if a in PERFIS_GESTAO:
+        return any(k in t for k in KEYWORDS_GESTAO)
+
+    # Camada 2 — perfis de oposição: menção direta ao prefeito/prefeitura
+    if a in PERFIS_OPOSICAO:
+        tem_ancora = any(k in t for k in KEYWORDS_ANCORA) or "prefeit" in t
+        return tem_ancora and any(k in t for k in KEYWORDS_GESTAO)
+
+    # Camada 3 — imprensa e outros: critério mais rigoroso
+    # Precisa de âncora forte (Gustavo Carmo / prefeito Gustavo) OU
+    # âncora Alagoinhas + keyword de gestão municipal explícita
+    tem_ancora_forte = (
+        "gustavo carmo" in t or
+        "gustavo ascarmo" in t or
+        "prefeito gustavo" in t or
+        "prefeito de alagoinhas" in t or
+        "prefeitura de alagoinhas" in t or
+        "gestão municipal" in t or
+        "administração municipal" in t
+    )
+    if tem_ancora_forte:
+        return True
+
+    # Alagoinhas + gestão explícita (não apenas contexto)
+    tem_alagoinhas = "alagoinhas" in t
+    tem_gestao     = any(k in t for k in KEYWORDS_GESTAO)
+    return tem_alagoinhas and tem_gestao
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -560,9 +641,26 @@ def coletar_comentarios(urls_posts):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 AGENT_PROMPT = """\
-Você é o AGENTE RADAR POLÍTICO de Alagoinhas/BA — um analista político sênior especializado em monitoramento de redes sociais, gestão de crises e assessoria estratégica para o prefeito Gustavo Carmo e sua equipe de comunicação.
+Você é o AGENTE RADAR POLÍTICO de Alagoinhas/BA — analista político sênior especializado em monitoramento de redes sociais e assessoria estratégica para o prefeito Gustavo Carmo e sua equipe de comunicação.
 
-Sua análise deve ser ESTRATÉGICA e ACIONÁVEL — não apenas descritiva. O assessor precisa saber EXATAMENTE o que fazer com a informação que você entregar.
+MISSÃO PRINCIPAL: Analisar EXCLUSIVAMENTE posts que sejam termômetro real da imagem do prefeito Gustavo Carmo e da Prefeitura de Alagoinhas — antecipando crises, monitorando a oposição e mapeando o cenário atual da gestão municipal.
+
+═══════════════════════════════════════════════
+CRITÉRIO DE RELEVÂNCIA — OBRIGATÓRIO
+═══════════════════════════════════════════════
+Este post DEVE ser analisado APENAS se atender a pelo menos um destes critérios:
+✅ Menciona diretamente o prefeito Gustavo Carmo ou sua gestão
+✅ É da oposição criticando ou questionando a Prefeitura de Alagoinhas
+✅ É da própria Prefeitura/Prefeito comunicando ações da gestão
+✅ É da imprensa cobrindo ações, omissões ou polêmicas da gestão municipal
+✅ É um morador denunciando falha de serviço público de Alagoinhas
+
+NÃO é relevante e deve ter urgencia="Baixa" + risco_crise="Baixo" + sugestao_acao="Monitorar":
+❌ Posts sobre pessoas sem vínculo com a gestão (jornalistas, artistas, esportistas)
+❌ Posts sobre outras prefeituras ou municípios
+❌ Eventos culturais, esportivos ou religiosos sem relação com a gestão
+❌ Notícias sobre o estado ou federal sem impacto direto na gestão Gustavo Carmo
+❌ Conteúdo de entretenimento ou interesse pessoal dos perfis monitorados
 
 {contexto_historico}
 {aprendizado}
@@ -582,15 +680,17 @@ Conteúdo do post:
 ═══════════════════════════════════════════════
 INSTRUÇÕES DE ANÁLISE
 ═══════════════════════════════════════════════
-1. Use o CONTEXTO HISTÓRICO para identificar se este post faz parte de um padrão ou campanha coordenada
-2. Considere o APRENDIZADO DO ASSESSOR para calibrar sua sugestão de ação
-3. O score_risco deve refletir a criticidade REAL, não apenas o sentimento imediato
+1. Primeiro avalie: este post é realmente um termômetro da gestão Gustavo Carmo? Se não for, sinalize com urgencia="Baixa" e risco_crise="Baixo"
+2. Use o CONTEXTO HISTÓRICO para identificar padrões e campanhas coordenadas
+3. Considere o APRENDIZADO DO ASSESSOR para calibrar sugestões de ação
 4. A sugestao_acao deve ser específica e executável nas próximas horas
-5. Se o post for da oposição, analise se é movimento isolado ou parte de campanha
+5. Se for da oposição, identifique se é movimento isolado ou campanha organizada
 
 Retorne SOMENTE um JSON válido, sem texto extra, sem markdown:
 
 {{
+  "e_relevante": true | false,
+  "motivo_irrelevancia": "<se false: explique em até 10 palavras por que não é relevante; se true: deixe vazio>",
   "sentimento_post": "Positivo" | "Negativo" | "Neutro",
   "sentimento_comentarios": "Positivo" | "Negativo" | "Neutro" | "Sem comentários",
   "comentarios_negativos_pct": "<ex: 35%>",
@@ -604,23 +704,13 @@ Retorne SOMENTE um JSON válido, sem texto extra, sem markdown:
   "risco_crise": "Alto" | "Médio" | "Baixo",
   "tendencia": "Crescendo" | "Estável" | "Diminuindo",
   "engajamento": "Alto" | "Médio" | "Baixo",
-  "resumo": "<resumo em até 15 palavras>",
-  "atribuicao": "<a quem o post se refere>",
+  "resumo": "<resumo em até 15 palavras focado na gestão>",
+  "atribuicao": "<a quem o post se refere na gestão>",
   "sugestao_acao": "Monitorar" | "Responder publicamente" | "Acionar assessoria" | "Conter crise" | "Ampliar positivo",
   "justificativa_acao": "<por que essa ação em até 20 palavras>",
-  "padrao_detectado": "<se faz parte de padrão ou campanha, descreva; senão: 'Isolado'>",
+  "padrao_detectado": "<se faz parte de padrão ou campanha; senão: 'Isolado'>",
   "janela_acao": "<quando agir: ex: 'próximas 2h', 'até 18h de hoje', 'monitorar 24h'>"
-}}
-
-Critérios de urgência:
-- Alta: risco real de crise nas próximas horas (denúncia grave, escândalo, morte, mobilização)
-- Média: situação que pode escalar se não tratada em 24h
-- Baixa: informativo, positivo ou sem potencial de crise
-
-Critérios de risco_crise:
-- Alto: comentários negativos crescentes + tema sensível + oposição ativa
-- Médio: algum risco mas controlável com ação adequada
-- Baixo: situação favorável ou neutra"""
+}}"""
 
 
 def analisar_post_agente(post, comentarios_lista, contexto_historico, aprendizado):
@@ -755,6 +845,7 @@ def processar():
     linhas = []
     novos  = 0
     erros  = 0
+    ignorados_agente = 0
     alertas_crise = []
 
     for post in posts_filtrados:
@@ -769,6 +860,13 @@ def processar():
         except Exception as e:
             print(f"  ✗ Erro ao analisar {url}: {e}")
             erros += 1
+            continue
+
+        # Descarta posts que o Claude identificou como irrelevantes
+        if not analise.get("e_relevante", True):
+            motivo = analise.get("motivo_irrelevancia", "fora do escopo")
+            print(f"  ↩ Descartado pelo agente: @{post['autor']} — {motivo}")
+            ignorados_agente += 1
             continue
 
         # Score de risco composto
@@ -863,7 +961,7 @@ def processar():
 
     # Relatório final
     print(f"\n{'='*65}")
-    print(f"CONCLUÍDO: {novos} novos | {erros} erros")
+    print(f"CONCLUÍDO: {novos} novos | {ignorados_agente} descartados pelo agente | {erros} erros")
 
     if alertas_crise:
         print(f"\n🚨 {len(alertas_crise)} ALERTAS DE CRISE (score ≥ 70):")
