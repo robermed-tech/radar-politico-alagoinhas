@@ -42,7 +42,8 @@ jobs:
           echo "GOOGLE_SERVICE_ACCOUNT_FILE=service_account.json"             >> .env
           echo "GOOGLE_SHEET_ID=${{ secrets.GOOGLE_SHEET_ID }}"               >> .env
           echo "GOOGLE_SHEET_NAME=Radar"                                      >> .env
-          
+          echo "CLIENT_CONFIG=clientes/alagoinhas.json"                        >> .env
+
       - name: Executar pipeline completo (Apify + Claude + Sheets)
         run: python radar.py
 
