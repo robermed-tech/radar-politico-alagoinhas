@@ -33,6 +33,13 @@ GOOGLE_SERVICE_ACCOUNT_FILE = os.environ["GOOGLE_SERVICE_ACCOUNT_FILE"]
 GOOGLE_SHEET_ID             = os.environ["GOOGLE_SHEET_ID"]
 GOOGLE_SHEET_NAME           = os.environ.get("GOOGLE_SHEET_NAME", "Radar")
 
+# ── Evolution API (WhatsApp) ──────────────────────────────────────────────────
+EVOLUTION_API_URL      = os.environ.get("EVOLUTION_API_URL", "")
+EVOLUTION_API_KEY      = os.environ.get("EVOLUTION_API_KEY", "")
+EVOLUTION_INSTANCE     = os.environ.get("EVOLUTION_INSTANCE", "radar-politico")
+EVOLUTION_GROUP_ID     = os.environ.get("EVOLUTION_GROUP_ID", "")
+SCORE_ALERTA_CRITICO   = 70  # score mínimo para disparar alerta no WhatsApp
+
 # ── Abas de memória ───────────────────────────────────────────────────────────
 SHEET_MEMORIA    = "Memoria_Contexto"
 SHEET_FEEDBACK   = "Feedback"
@@ -752,6 +759,137 @@ def analisar_post_agente(post, comentarios_lista, contexto_historico, aprendizad
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#  WHATSAPP — ALERTAS VIA EVOLUTION API
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def enviar_whatsapp(mensagem: str) -> bool:
+    """Envia mensagem para o grupo do WhatsApp via Evolution API."""
+    if not EVOLUTION_API_URL or not EVOLUTION_GROUP_ID:
+        print("  WhatsApp não configurado — pulando alerta.")
+        return False
+    try:
+        url = f"{EVOLUTION_API_URL}/message/sendText/{EVOLUTION_INSTANCE}"
+        headers = {
+            "apikey": EVOLUTION_API_KEY,
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "number": EVOLUTION_GROUP_ID,
+            "text": mensagem
+        }
+        resp = requests.post(url, json=payload, headers=headers, timeout=15)
+        if resp.status_code in (200, 201):
+            print(f"  ✅ WhatsApp enviado para o grupo.")
+            return True
+        else:
+            print(f"  ⚠️ Falha WhatsApp: {resp.status_code} — {resp.text[:100]}")
+            return False
+    except Exception as e:
+        print(f"  ⚠️ Erro WhatsApp: {e}")
+        return False
+
+
+def formatar_alerta_critico(post: dict, analise: dict, score: int) -> str:
+    """Formata mensagem de alerta crítico para o WhatsApp."""
+    emoji_score = "🔴" if score >= 85 else "🟠"
+    categoria = post.get("categoria", "")
+    emoji_cat = "⚔️" if categoria == "Oposição" else "📰" if categoria == "Imprensa" else "🏛️"
+
+    linhas = [
+        f"🚨 *ALERTA RADAR POLÍTICO* 🚨",
+        f"",
+        f"{emoji_score} *Score de Risco: {score}/100*",
+        f"{emoji_cat} *Perfil:* @{post.get('autor', '')} ({categoria})",
+        f"📌 *Tema:* {analise.get('tema', '')}",
+        f"⚡ *Urgência:* {analise.get('urgencia', '')}",
+        f"",
+        f"📝 *Resumo:*",
+        f"{analise.get('resumo', '')}",
+        f"",
+    ]
+
+    padrao = analise.get("padrao_detectado", "Isolado")
+    if padrao and padrao != "Isolado":
+        linhas += [f"🧠 *Padrão detectado:*", f"{padrao}", f""]
+
+    destaque = analise.get("comentarios_destaque", "")
+    if destaque and destaque != "Nenhum comentário relevante":
+        linhas += [f"💬 *Comentário destaque:*", f"_{destaque}_", f""]
+
+    linhas += [
+        f"✅ *Ação recomendada:* {analise.get('sugestao_acao', '')}",
+        f"⏰ *Janela:* {analise.get('janela_acao', 'Monitorar')}",
+        f"",
+        f"🔗 {post.get('url', '')}",
+        f"",
+        f"_Radar Político Alagoinhas — {datetime.now().strftime('%d/%m/%Y %H:%M')}_"
+    ]
+    return "\n".join(linhas)
+
+
+def enviar_resumo_diario(sh) -> None:
+    """Gera e envia resumo diário ao grupo do WhatsApp."""
+    try:
+        ws = sh.worksheet(GOOGLE_SHEET_NAME)
+        dados = ws.get_all_records()
+    except Exception:
+        return
+
+    # Filtra últimas 24h
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    recentes = []
+    for r in dados:
+        try:
+            dt = datetime.strptime(str(r.get("data_post", "")), "%d/%m/%Y %H:%M")
+            dt = dt.replace(tzinfo=timezone.utc)
+            if dt >= cutoff:
+                recentes.append(r)
+        except Exception:
+            continue
+
+    if not recentes:
+        return
+
+    # Estatísticas
+    total      = len(recentes)
+    negativos  = sum(1 for r in recentes if str(r.get("sentimento_post","")).lower() == "negativo")
+    positivos  = sum(1 for r in recentes if str(r.get("sentimento_post","")).lower() == "positivo")
+    alto_risco = sum(1 for r in recentes if str(r.get("risco_crise","")).lower() == "alto")
+    crescendo  = sum(1 for r in recentes if str(r.get("tendencia","")).lower() == "crescendo")
+
+    # Top scores
+    top = sorted(recentes, key=lambda x: int(x.get("score_risco", 0) or 0), reverse=True)[:3]
+
+    linhas = [
+        f"📊 *RESUMO DIÁRIO — RADAR POLÍTICO*",
+        f"_{datetime.now().strftime('%d/%m/%Y')}_",
+        f"",
+        f"📈 *Posts analisados:* {total}",
+        f"🟢 Positivos: {positivos} | 🔴 Negativos: {negativos}",
+        f"⚡ Alto risco: {alto_risco} | 📈 Crescendo: {crescendo}",
+        f"",
+        f"🏆 *Top posts por risco:*",
+    ]
+
+    for i, r in enumerate(top, 1):
+        score = r.get("score_risco", 0)
+        autor = r.get("autor", "")
+        resumo = r.get("resumo", "")[:60]
+        acao = r.get("sugestao_acao", "")
+        linhas.append(f"{i}. @{autor} | Score {score} | {resumo}...")
+        linhas.append(f"   → {acao}")
+
+    linhas += [
+        f"",
+        f"_Radar Político Alagoinhas_"
+    ]
+
+    mensagem = "\n".join(linhas)
+    print("\n  Enviando resumo diário ao WhatsApp...")
+    enviar_whatsapp(mensagem)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #  PIPELINE PRINCIPAL
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -885,7 +1023,7 @@ def processar():
             c.split(":")[0].strip() for c in comentarios_lista if ":" in c
         ))[:10])
 
-        # Coleta alertas de crise para log final
+        # Coleta alertas de crise para log final e dispara WhatsApp
         if score >= 70:
             alertas_crise.append({
                 "autor": post["autor"],
@@ -896,6 +1034,10 @@ def processar():
                 "janela": analise.get("janela_acao", ""),
                 "padrao": analise.get("padrao_detectado", ""),
             })
+            # Dispara alerta imediato no WhatsApp
+            print(f"  🚨 Score {score} — disparando alerta WhatsApp...")
+            msg_alerta = formatar_alerta_critico(post, analise, score)
+            enviar_whatsapp(msg_alerta)
 
         linha = [
             url,
@@ -977,6 +1119,12 @@ def processar():
             print()
     else:
         print("  Nenhum alerta de crise nesta execução.")
+
+    # Resumo diário — envia às 8h BRT (11h UTC)
+    hora_utc = datetime.now(timezone.utc).hour
+    if hora_utc == 11:
+        print("\n📊 Horário do resumo diário — enviando ao WhatsApp...")
+        enviar_resumo_diario(sh)
 
     print(f"{'='*65}")
 
