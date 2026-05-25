@@ -43,6 +43,10 @@ jobs:
           echo "GOOGLE_SHEET_ID=${{ secrets.GOOGLE_SHEET_ID }}"               >> .env
           echo "GOOGLE_SHEET_NAME=Radar"                                      >> .env
           echo "CLIENT_CONFIG=clientes/alagoinhas.json"                        >> .env
+          echo "EVOLUTION_API_URL=${{ secrets.EVOLUTION_API_URL }}"   >> .env
+          echo "EVOLUTION_API_KEY=${{ secrets.EVOLUTION_API_KEY }}"   >> .env
+          echo "EVOLUTION_INSTANCE=${{ secrets.EVOLUTION_INSTANCE }}" >> .env
+          echo "EVOLUTION_GROUP_ID=${{ secrets.EVOLUTION_GROUP_ID }}" >> .env
 
       - name: Executar pipeline completo (Apify + Claude + Sheets)
         run: python radar_agente.py
