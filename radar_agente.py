@@ -808,6 +808,9 @@ def processar():
 
         if url in existentes:
             continue
+        # Rejeita perfis fora da lista de monitoramento
+        if autor.lower() not in [p.lower() for p in PERFIS]:
+            continue
         if not e_relevante_para_radar(caption, autor):
             continue
 
