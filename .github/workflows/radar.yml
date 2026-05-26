@@ -45,14 +45,12 @@ jobs:
           echo "EVOLUTION_API_KEY=${{ secrets.EVOLUTION_API_KEY }}"           >> .env
           echo "EVOLUTION_INSTANCE=${{ secrets.EVOLUTION_INSTANCE }}"         >> .env
           echo "EVOLUTION_GROUP_ID=${{ secrets.EVOLUTION_GROUP_ID }}"         >> .env
-          echo "DRIVE_FOLDER_ID=${{ secrets.DRIVE_FOLDER_ID }}"               >> .env
 
       - name: Executar pipeline completo (Apify + Claude + Sheets)
         run: python radar_agente.py
 
       - name: Gerar e enviar relatorio semanal (sextas 18h BRT)
-        # Roda APENAS nas sextas (dia 5) às 21h UTC
-        if: github.event.schedule == '0 21 * * 5' || github.event_name == 'workflow_dispatch'
+        if: always() && (github.event.schedule == '0 21 * * 5' || github.event_name == 'workflow_dispatch')
         run: python gerar_relatorio.py
 
       - name: Resumo de sucesso
