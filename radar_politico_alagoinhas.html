@@ -865,10 +865,8 @@ function carregarDados() {
 
   fetch(SCRIPT_URL + '?action=list')
     .then(function(r){ return r.json(); })
-    .then(function(json) {
-      if (!json.ok) throw new Error(json.error || 'Erro no servidor');
-      DADOS = json.data || [];
-      return fetch(SCRIPT_URL + '?action=perfis');
+    .then(function(json){
+      if (fbEl) fbEl.textContent = valor === 'útil' ? '✓ Obrigado!' : '✓ Registrado';
     })
     .then(function(r){ return r.json(); })
     .then(function(json) {
