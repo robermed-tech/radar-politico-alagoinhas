@@ -10,7 +10,22 @@ from datetime import datetime
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 
+# Banco central — importado condicionalmente para não quebrar quem ainda
+# não configurou o Supabase (fallback para modo somente-Sheets).
+try:
+    import supabase_db
+    _SUPABASE_DISPONIVEL = bool(
+        os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY")
+    )
+except ImportError:
+    _SUPABASE_DISPONIVEL = False
+
 load_dotenv()
+
+# Reavalia após carregar .env
+_SUPABASE_DISPONIVEL = _SUPABASE_DISPONIVEL or bool(
+    os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY")
+)
 
 # ── Credenciais e configurações de API (via .env) ────────────────────────────
 APIFY_API_TOKEN             = os.environ["APIFY_API_TOKEN"]
@@ -315,6 +330,16 @@ def processar():
     print(f"RADAR POLÍTICO — {NOME_CLIENTE}")
     print("=" * 60)
 
+    # ── Conecta ao banco central (Supabase) se disponível ─────────────────────
+    db = None
+    if _SUPABASE_DISPONIVEL:
+        try:
+            db = supabase_db.conectar()
+            print("  ✓ Banco central (Supabase) conectado.")
+        except Exception as e:
+            print(f"  ⚠ Supabase indisponível, usando apenas Sheets: {e}")
+            db = None
+
     # 1. Coleta posts
     print("\n[1/5] Coletando posts do Instagram...")
     post_input = {
@@ -335,10 +360,18 @@ def processar():
         print("Nenhum post encontrado. Encerrando.")
         return
 
-    # 2. Abre planilha
-    print("\n[2/5] Abrindo planilha...")
+    # 2. Abre planilha + obtém URLs existentes
+    print("\n[2/5] Verificando duplicatas...")
     ws = abrir_planilha()
-    existentes = urls_existentes(ws)
+
+    # Fonte primária de deduplicação: banco central (mais confiável e rápido)
+    # Fallback: planilha (compatibilidade para quem ainda não tem Supabase)
+    if db:
+        existentes = supabase_db.urls_existentes_db(db)
+        print(f"  ✓ {len(existentes)} URLs existentes (fonte: banco central)")
+    else:
+        existentes = urls_existentes(ws)
+        print(f"  ✓ {len(existentes)} URLs existentes (fonte: Google Sheets)")
 
     # 3. Filtra posts relevantes
     print("\n[3/5] Filtrando posts relevantes...")
@@ -368,13 +401,27 @@ def processar():
         print("Nenhum post novo para processar. Encerrando.")
         return
 
+    # ── NOVO (Dia 3 do plano): Salva posts brutos no banco ANTES de analisar ──
+    # Isso garante que a URL já está no banco mesmo se o Claude falhar depois.
+    # Evita reprocessamento desnecessário e coleta duplicada.
+    ids_db = {}  # url → id no banco
+    if db:
+        print("\n  → Salvando posts brutos no banco central...")
+        for post in posts_filtrados:
+            fonte_id = f"instagram:{post['autor']}"
+            post_id = supabase_db.salvar_post_bruto(db, post, fonte_id)
+            if post_id:
+                ids_db[post["url"]] = post_id
+                existentes.add(post["url"])  # previne duplicata em re-runs
+        print(f"  ✓ {len(ids_db)} posts salvos no banco (aguardando análise Claude).")
+
     # 4. Coleta comentários
     print("\n[4/5] Coletando comentários...")
     urls_para_comentar = [p["url"] for p in posts_filtrados if p["url"].startswith("http")]
     mapa_comentarios = coletar_comentarios(urls_para_comentar)
 
-    # 5. Analisa e grava
-    print("\n[5/5] Analisando com Claude e gravando na planilha...")
+    # 5. Analisa com Claude e grava
+    print("\n[5/5] Analisando com Claude e gravando...")
     linhas = []
     novos  = 0
     erros  = 0
@@ -396,6 +443,15 @@ def processar():
             c.split(":")[0].strip() for c in comentarios_lista if ":" in c
         ))[:10])
 
+        # ── NOVO (Dia 4): Salva análise no banco + marca post como analisado ──
+        if db and url in ids_db:
+            try:
+                supabase_db.salvar_analise(db, ids_db[url], analise, comentarios_lista)
+                supabase_db.salvar_comentarios(db, ids_db[url], comentarios_lista)
+            except Exception as e:
+                print(f"  ⚠ Erro ao salvar análise no banco ({url}): {e}")
+
+        # Continua gravando no Sheets (compatibilidade — será descontinuado no Dia 5)
         linha = [
             url,
             post["data_post"],
@@ -429,13 +485,15 @@ def processar():
         print(
             f"  ✓ [{categoria}] {autor} | {analise.get('tema')} | "
             f"{analise.get('urgencia')} | {len(comentarios_lista)} comentários"
+            + (" [banco+sheets]" if db and url in ids_db else " [sheets]")
         )
 
     if linhas:
         ws.append_rows(linhas, value_input_option="USER_ENTERED")
 
+    modo = "banco central + Sheets" if db else "somente Sheets"
     print(f"\n{'='*60}")
-    print(f"Concluído: {novos} novos | {erros} erros")
+    print(f"Concluído: {novos} novos | {erros} erros | Destino: {modo}")
     print(f"{'='*60}")
 
 
