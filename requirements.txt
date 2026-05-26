@@ -7,4 +7,6 @@ tenacity>=8.2.0
 reportlab
 # Banco central — Dia 1-5 do plano estratégico
 supabase>=2.0.0
+# Coletor Instagram gratuito (substituto do Apify)
+instagrapi>=2.0.0
 
