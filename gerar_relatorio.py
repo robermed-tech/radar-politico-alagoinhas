@@ -14,6 +14,8 @@ import requests
 import gspread
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
+
+BRT = ZoneInfo("America/Bahia")
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 
@@ -257,7 +259,7 @@ def gerar_resumo_executivo(dados, stats, periodo):
     story.append(HRFlowable(width="100%", thickness=1, color=COR_LINHA))
     story.append(Spacer(1, 6))
     story.append(Paragraph(
-        f"Radar Político Alagoinhas | {datetime.now(ZoneInfo("America/Bahia")).strftime('%d/%m/%Y %H:%M')} | Confidencial",
+        f"Radar Político Alagoinhas | {datetime.now(BRT).strftime('%d/%m/%Y %H:%M')} | Confidencial",
         estilos["rodape"]))
     doc.build(story)
     buffer.seek(0)
@@ -285,7 +287,7 @@ def gerar_relatorio_completo(dados, stats, periodo):
     story.append(Spacer(1, 0.5*cm))
     story.append(Paragraph("Relatório Semanal Completo", estilos["subtitulo"]))
     story.append(Paragraph(f"Período: {periodo}", estilos["subtitulo"]))
-    story.append(Paragraph(f"Gerado em: {datetime.now(ZoneInfo("America/Bahia")).strftime('%d/%m/%Y às %H:%M')}", estilos["subtitulo"]))
+    story.append(Paragraph(f"Gerado em: {datetime.now(BRT).strftime('%d/%m/%Y às %H:%M')}", estilos["subtitulo"]))
     story.append(Spacer(1, 2*cm))
 
     score_medio = stats.get("score_medio", 0)
@@ -444,7 +446,7 @@ def gerar_relatorio_completo(dados, stats, periodo):
     story.append(HRFlowable(width="100%", thickness=1, color=COR_LINHA))
     story.append(Spacer(1, 6))
     story.append(Paragraph(
-        f"Radar Político Alagoinhas | {datetime.now(ZoneInfo("America/Bahia")).strftime('%d/%m/%Y %H:%M')} | Documento Confidencial",
+        f"Radar Político Alagoinhas | {datetime.now(BRT).strftime('%d/%m/%Y %H:%M')} | Documento Confidencial",
         estilos["rodape"]))
     doc.build(story)
     buffer.seek(0)
@@ -541,7 +543,7 @@ def formatar_mensagem_alerta(stats, periodo):
         f"1️⃣ Resumo Executivo (visão geral)",
         f"2️⃣ Relatório Completo (análise detalhada)",
         f"",
-        f"_Radar Político Alagoinhas — {datetime.now(ZoneInfo("America/Bahia")).strftime('%d/%m/%Y %H:%M')}_",
+        f"_Radar Político Alagoinhas — {datetime.now(BRT).strftime('%d/%m/%Y %H:%M')}_",
     ]
     return "\n".join(linhas)
 
@@ -553,10 +555,10 @@ def formatar_mensagem_alerta(stats, periodo):
 def gerar_e_enviar():
     print("=" * 65)
     print("RADAR POLÍTICO — Geração de Relatório Semanal")
-    print(f"Execução: {datetime.now(ZoneInfo("America/Bahia")).strftime('%d/%m/%Y %H:%M')}")
+    print(f"Execução: {datetime.now(BRT).strftime('%d/%m/%Y %H:%M')}")
     print("=" * 65)
 
-    hoje   = datetime.now(ZoneInfo("America/Bahia"))
+    hoje   = datetime.now(BRT)
     semana = hoje - timedelta(days=7)
     periodo = f"{semana.strftime('%d/%m/%Y')} a {hoje.strftime('%d/%m/%Y')}"
 
