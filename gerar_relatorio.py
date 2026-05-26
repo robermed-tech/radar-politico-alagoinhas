@@ -689,10 +689,13 @@ def upload_drive(creds, buffer, nome_arquivo, folder_id=None):
         file_metadata["parents"] = [folder_id]
 
     media = MediaIoBaseUpload(buffer, mimetype="application/pdf", resumable=True)
+
+    # supportsAllDrives=True permite upload em pastas compartilhadas (Shared Drives)
     arquivo = service.files().create(
         body=file_metadata,
         media_body=media,
-        fields="id, webViewLink"
+        fields="id, webViewLink",
+        supportsAllDrives=True,
     ).execute()
 
     file_id = arquivo.get("id")
@@ -700,7 +703,8 @@ def upload_drive(creds, buffer, nome_arquivo, folder_id=None):
     # Torna o arquivo público (qualquer um com o link pode visualizar)
     service.permissions().create(
         fileId=file_id,
-        body={"type": "anyone", "role": "reader"}
+        body={"type": "anyone", "role": "reader"},
+        supportsAllDrives=True,
     ).execute()
 
     link = arquivo.get("webViewLink", f"https://drive.google.com/file/d/{file_id}/view")
