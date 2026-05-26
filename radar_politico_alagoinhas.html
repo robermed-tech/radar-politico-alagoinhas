@@ -2,669 +2,883 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Radar Político — Alagoinhas</title>
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;800;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root {
-  --bg-0:        #060708;
-  --bg-1:        #0C0F14;
-  --bg-2:        #131821;
-  --bg-3:        #1A2030;
-  --sidebar-bg:  #08090B;
-  --border-1:    rgba(255,255,255,0.05);
-  --border-2:    rgba(255,255,255,0.10);
-  --border-3:    rgba(255,255,255,0.16);
-  --txt-1:       #F2F4F8;
-  --txt-2:       #8B99B3;
-  --txt-3:       #4A5568;
-  --accent:      #00C8FF;
-  --accent-bg:   rgba(0,200,255,0.08);
-  --accent-glow: rgba(0,200,255,0.20);
-  --sig-pos:     #10D98A;
-  --sig-pos-bg:  rgba(16,217,138,0.09);
-  --sig-pos-glow:rgba(16,217,138,0.22);
-  --sig-neg:     #FF3D5A;
-  --sig-neg-bg:  rgba(255,61,90,0.09);
-  --sig-neg-glow:rgba(255,61,90,0.22);
-  --sig-urg:     #FFB300;
-  --sig-urg-bg:  rgba(255,179,0,0.09);
-  --sig-urg-glow:rgba(255,179,0,0.22);
-  --sig-crise:   #FF6B35;
-  --sig-crise-bg:rgba(255,107,53,0.09);
-  --sig-cresc:   #9D5AFF;
-  --sig-cresc-bg:rgba(157,90,255,0.09);
-  --radius:      13px;
-  --radius-sm:   8px;
+  --navy-0:   #04091A;
+  --navy-1:   #080F26;
+  --navy-2:   #0C1530;
+  --navy-3:   #111B3C;
+  --glass:    rgba(255,255,255,0.06);
+  --glass-b:  rgba(255,255,255,0.11);
+  --gold:     #FFD166;
+  --sky:      #74B9FF;
+  --green:    #00CFA8;
+  --red:      #FF6B6B;
+  --amber:    #FFBE76;
+  --purple:   #A29BFE;
+  --orange:   #FD9644;
+  --txt-1:    #EEF2FF;
+  --txt-2:    #94A9CC;
+  --txt-3:    #4E6080;
+  --nav-h:    72px;
+  --hero-h:   285px;
+  --radius:   16px;
+  --radius-sm:10px;
 }
-*{margin:0;padding:0;box-sizing:border-box;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;}
 body{
-  font-family:'Manrope',sans-serif;
-  background:var(--bg-0);
+  font-family:'Nunito',sans-serif;
+  background:var(--navy-0);
   color:var(--txt-1);
-  display:flex;
+  height:100%;
   overflow:hidden;
-  background-image:radial-gradient(rgba(255,255,255,0.025) 1px,transparent 1px);
-  background-size:24px 24px;
 }
 
-/* ── SIDEBAR ──────────────────────────────────────────────────── */
-.sidebar{
-  width:212px;flex-shrink:0;
-  background:var(--sidebar-bg);
-  border-right:1px solid var(--border-1);
+/* ── APP SHELL ───────────────────────────── */
+#app{
   display:flex;flex-direction:column;
-  height:100vh;overflow:hidden;
-  position:relative;z-index:100;
-}
-.sidebar-brand{
-  display:flex;align-items:center;gap:10px;
-  padding:20px 16px 18px;
-  border-bottom:1px solid var(--border-1);
-  flex-shrink:0;
-}
-.brand-logo{
-  width:34px;height:34px;border-radius:9px;flex-shrink:0;
-  background:linear-gradient(135deg,var(--accent) 0%,rgba(0,200,255,0.4) 100%);
-  display:flex;align-items:center;justify-content:center;
-  font-family:'Unbounded',sans-serif;font-size:13px;font-weight:900;color:#060708;
-  letter-spacing:-0.5px;
-  box-shadow:0 0 16px var(--accent-glow);
-}
-.brand-name{
-  font-family:'Unbounded',sans-serif;font-size:11px;font-weight:800;
-  color:var(--txt-1);letter-spacing:-0.3px;line-height:1.25;
-}
-.brand-sub{font-size:10px;color:var(--txt-3);font-weight:500;margin-top:1px;}
-
-.sidebar-nav{flex:1;overflow-y:auto;padding:10px 8px 0;}
-.sidebar-nav::-webkit-scrollbar{width:0;}
-.nav-section-label{
-  font-size:9px;font-weight:700;letter-spacing:2px;
-  text-transform:uppercase;color:var(--txt-3);
-  padding:14px 10px 6px;
-}
-.nav-item{
-  display:flex;align-items:center;gap:9px;
-  width:100%;padding:8px 10px;
-  border-radius:var(--radius-sm);border:none;cursor:pointer;
-  background:transparent;color:var(--txt-2);
-  font-family:'Manrope',sans-serif;font-size:13px;font-weight:500;
-  text-align:left;transition:all 140ms ease;margin-bottom:1px;
-  position:relative;
-}
-.nav-item:hover{background:rgba(255,255,255,0.04);color:var(--txt-1);}
-.nav-item.active{
-  color:var(--accent);font-weight:700;
-  background:var(--accent-bg);
-}
-.nav-item.active::before{
-  content:'';position:absolute;left:0;top:20%;bottom:20%;
-  width:2px;border-radius:2px;background:var(--accent);
-  box-shadow:0 0 8px var(--accent-glow);
-}
-.nav-item.active .nav-icon{color:var(--accent);}
-.nav-icon{width:16px;height:16px;flex-shrink:0;opacity:0.75;}
-.nav-badge{
-  margin-left:auto;
-  min-width:20px;height:18px;
-  border-radius:100px;
-  font-size:10px;font-weight:700;
-  display:flex;align-items:center;justify-content:center;
-  padding:0 5px;
-}
-.nav-badge.green{background:var(--sig-pos-bg);color:var(--sig-pos);}
-.nav-badge.red{background:var(--sig-neg-bg);color:var(--sig-neg);}
-.nav-badge.amber{background:var(--sig-urg-bg);color:var(--sig-urg);}
-
-.sidebar-footer{
-  padding:14px 16px;border-top:1px solid var(--border-1);flex-shrink:0;
-}
-.sync-chip{
-  display:flex;align-items:center;gap:7px;
-  font-size:11px;color:var(--txt-3);
-}
-.sync-dot{
-  width:7px;height:7px;border-radius:50%;
-  background:var(--sig-pos);flex-shrink:0;
-  animation:pulse 2.5s ease infinite;
-}
-.sync-dot.loading{background:var(--sig-urg);animation:none;}
-@keyframes pulse{
-  0%,100%{opacity:1;box-shadow:0 0 0 0 var(--sig-pos-glow);}
-  50%{opacity:0.7;box-shadow:0 0 0 5px transparent;}
+  height:100svh;
+  max-width:480px;
+  margin:0 auto;
+  position:relative;overflow:hidden;
 }
 
-/* ── MAIN WRAPPER ─────────────────────────────────────────────── */
-.layout-main{
-  flex:1;display:flex;flex-direction:column;
-  height:100vh;overflow:hidden;min-width:0;
-}
-
-/* ── TOPBAR ───────────────────────────────────────────────────── */
-.topbar{
-  display:flex;align-items:center;gap:12px;
-  padding:0 24px;height:54px;flex-shrink:0;
-  background:rgba(6,7,8,0.88);
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  border-bottom:1px solid var(--border-1);
-  z-index:50;
-}
-.topbar-title{
-  font-family:'Unbounded',sans-serif;font-size:13px;font-weight:800;
-  color:var(--txt-1);letter-spacing:-0.3px;
-}
-.topbar-badge{
-  background:var(--bg-2);border:1px solid var(--border-2);
-  border-radius:100px;padding:3px 10px;
-  font-size:10px;font-weight:700;color:var(--txt-2);
-  font-family:'Manrope',sans-serif;letter-spacing:0.3px;
-}
-.topbar-sep{flex:1;}
-.filtro-ativo{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--txt-3);}
-.filtro-kw-tag{
-  background:var(--accent-bg);color:var(--accent);border:1px solid rgba(0,200,255,0.2);
-  border-radius:100px;padding:1px 8px;font-size:10px;font-weight:700;
-}
-.filtro-count{color:var(--txt-2);font-weight:600;}
-.period-group{display:flex;gap:3px;}
-.btn-period{
-  padding:5px 11px;border-radius:100px;
-  border:1px solid var(--border-2);background:transparent;
-  cursor:pointer;font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;
-  color:var(--txt-3);transition:all 130ms ease;
-}
-.btn-period:hover{color:var(--txt-1);border-color:var(--border-3);}
-.btn-period.active{
-  background:var(--accent);border-color:var(--accent);color:#060708;
-  box-shadow:0 0 14px var(--accent-glow);
-}
-.btn-sync{
-  display:flex;align-items:center;gap:6px;
-  padding:6px 14px;border-radius:100px;
-  background:var(--bg-2);border:1px solid var(--border-2);cursor:pointer;
-  font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;
-  color:var(--txt-2);transition:all 130ms ease;
-}
-.btn-sync:hover{background:var(--bg-3);color:var(--txt-1);border-color:var(--border-3);}
-.btn-sync:disabled{opacity:0.4;cursor:not-allowed;}
-
-/* ── SCROLL AREA ──────────────────────────────────────────────── */
-.scroll-area{
-  flex:1;overflow-y:auto;
-  padding:20px 24px 60px;
-}
-.scroll-area::-webkit-scrollbar{width:4px;}
-.scroll-area::-webkit-scrollbar-track{background:transparent;}
-.scroll-area::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
-
-/* ── LOADING ──────────────────────────────────────────────────── */
+/* ── LOADING ─────────────────────────────── */
 #loading-state{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:14px;padding:80px 0;color:var(--txt-3);font-size:12px;letter-spacing:0.3px;
+  position:fixed;inset:0;z-index:100;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:var(--navy-0);gap:16px;
 }
-.spinner{
-  width:26px;height:26px;
-  border:2px solid rgba(255,255,255,0.06);
-  border-top-color:var(--accent);
-  border-radius:50%;animation:spin 0.65s linear infinite;
+#loading-state.hidden{display:none;}
+.loading-spinner{
+  width:44px;height:44px;
+  border:3px solid rgba(255,255,255,0.07);
+  border-top-color:var(--sky);
+  border-radius:50%;
+  animation:spin 0.9s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg);}}
+.loading-label{
+  font-family:'Syne',sans-serif;
+  font-size:13px;font-weight:700;
+  color:var(--txt-2);letter-spacing:0.5px;
+}
 
-/* ── UTILITY ──────────────────────────────────────────────────── */
+/* ── HERO CARD ───────────────────────────── */
+#hero-card{
+  position:relative;
+  height:var(--hero-h);
+  flex-shrink:0;
+  overflow:hidden;
+}
+#hero-bg{
+  position:absolute;inset:0;
+  background:linear-gradient(170deg,#0D1B4A 0%,#1A237E 35%,#283593 60%,#3F51B5 85%,#5C6BC0 100%);
+  transition:background 1.4s ease;
+}
+/* Weather gradient per condition */
+.wx-sunny  #hero-bg{background:linear-gradient(170deg,#0D47A1 0%,#1565C0 30%,#1976D2 55%,#42A5F5 78%,#FFB74D 100%);}
+.wx-partly #hero-bg{background:linear-gradient(170deg,#0D1B4A 0%,#1A237E 35%,#283593 60%,#3F51B5 85%,#5C6BC0 100%);}
+.wx-cloudy #hero-bg{background:linear-gradient(170deg,#1C2130 0%,#263238 35%,#37474F 65%,#546E7A 100%);}
+.wx-rain   #hero-bg{background:linear-gradient(170deg,#050D1A 0%,#0D1B2A 30%,#0D47A1 70%,#1565C0 100%);}
+.wx-storm  #hero-bg{background:linear-gradient(170deg,#0A0520 0%,#1A0533 25%,#2D1B69 55%,#512DA8 80%,#6A1B9A 100%);}
+.wx-severe #hero-bg{background:linear-gradient(170deg,#1A0000 0%,#3D0000 35%,#7B0000 70%,#B71C1C 100%);}
+
+/* Rain particles */
+.rain-wrap{
+  position:absolute;inset:0;overflow:hidden;
+  pointer-events:none;opacity:0;
+  transition:opacity 1s;
+}
+.wx-rain .rain-wrap,.wx-storm .rain-wrap{opacity:1;}
+.raindrop{
+  position:absolute;top:-20px;
+  width:1.5px;height:16px;
+  background:linear-gradient(to bottom,transparent,rgba(120,180,255,0.55));
+  border-radius:2px;
+  animation:rain-fall linear infinite;
+}
+@keyframes rain-fall{to{transform:translateY(320px) translateX(18px);opacity:0;}}
+
+/* Cloud shimmer */
+.cloud-overlay{
+  position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 65% 45% at 75% 25%,rgba(120,120,140,0.14) 0%,transparent 70%);
+  opacity:0;transition:opacity 1.2s;
+}
+.wx-cloudy .cloud-overlay,.wx-rain .cloud-overlay,.wx-storm .cloud-overlay{opacity:1;}
+
+/* Hero content */
+#hero-content{
+  position:relative;z-index:2;height:100%;
+  display:flex;flex-direction:column;
+  padding:0 20px;
+  padding-top:env(safe-area-inset-top,12px);
+  padding-top:max(env(safe-area-inset-top),12px);
+}
+
+/* Topbar */
+#hero-topbar{
+  display:flex;align-items:center;
+  justify-content:space-between;
+  padding:12px 0 8px;
+}
+.hero-brand{display:flex;align-items:center;gap:7px;}
+.hero-brand-icon{
+  font-size:18px;
+  filter:drop-shadow(0 0 8px rgba(116,185,255,0.55));
+}
+.hero-brand-text{
+  font-family:'Syne',sans-serif;
+  font-size:13px;font-weight:800;
+  letter-spacing:0.2px;
+  color:rgba(255,255,255,0.9);
+}
+.location-pill{
+  font-size:11px;font-weight:600;
+  color:rgba(255,255,255,0.60);
+  background:rgba(255,255,255,0.09);
+  padding:4px 10px;border-radius:20px;
+  border:1px solid rgba(255,255,255,0.12);
+}
+#sync-btn{
+  background:rgba(255,255,255,0.11);
+  border:1px solid rgba(255,255,255,0.14);
+  color:rgba(255,255,255,0.80);
+  width:34px;height:34px;border-radius:50%;
+  cursor:pointer;font-size:17px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background 0.2s;
+}
+#sync-btn:hover{background:rgba(255,255,255,0.20);}
+#sync-btn:disabled{opacity:0.5;}
+#sync-btn.spin-active{animation:spin 1s linear infinite;}
+
+/* Hero main */
+#hero-main{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;gap:1px;
+}
+#hero-icon{
+  font-size:56px;line-height:1;
+  filter:drop-shadow(0 4px 18px rgba(0,0,0,0.38));
+  animation:float 4.2s ease-in-out infinite;
+  margin-bottom:5px;
+}
+@keyframes float{
+  0%,100%{transform:translateY(0);}
+  50%{transform:translateY(-9px);}
+}
+#hero-condition-label{
+  font-family:'Syne',sans-serif;
+  font-size:11px;font-weight:700;
+  color:rgba(255,255,255,0.62);
+  letter-spacing:1.5px;text-transform:uppercase;
+}
+#hero-pct{
+  font-family:'Syne',sans-serif;
+  font-size:76px;font-weight:900;
+  color:#fff;line-height:1;
+  letter-spacing:-3px;
+  text-shadow:0 2px 24px rgba(0,0,0,0.28);
+}
+#hero-pct span{font-size:32px;font-weight:700;letter-spacing:0;opacity:0.75;}
+#hero-sub{
+  font-size:12px;font-weight:600;
+  color:rgba(255,255,255,0.50);
+  letter-spacing:0.2px;margin-top:3px;
+}
+
+/* Hero bottom */
+#hero-bottom-bar{
+  display:flex;align-items:center;
+  justify-content:space-between;
+  padding:10px 0 14px;
+}
+.period-pills{display:flex;gap:6px;}
+.period-pill{
+  background:rgba(255,255,255,0.09);
+  border:1px solid rgba(255,255,255,0.14);
+  color:rgba(255,255,255,0.55);
+  padding:5px 14px;border-radius:20px;
+  font-size:12px;font-weight:700;
+  cursor:pointer;transition:all 0.2s;
+  font-family:'Nunito',sans-serif;
+}
+.period-pill.active{
+  background:rgba(255,255,255,0.20);
+  border-color:rgba(255,255,255,0.32);
+  color:#fff;
+}
+.sync-indicator{display:flex;align-items:center;gap:5px;}
+#sync-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 6px var(--green);
+}
+#sync-dot.loading{
+  animation:pulse-dot 1s ease-in-out infinite;
+  background:var(--amber);
+  box-shadow:0 0 6px var(--amber);
+}
+@keyframes pulse-dot{
+  0%,100%{opacity:1;transform:scale(1);}
+  50%{opacity:0.38;transform:scale(0.6);}
+}
+#sync-label{font-size:10px;font-weight:600;color:rgba(255,255,255,0.46);}
+
+/* ── SCROLL AREA ─────────────────────────── */
+#scroll-area{
+  flex:1;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+#scroll-area::-webkit-scrollbar{display:none;}
+#dashboard{
+  padding:16px 16px calc(var(--nav-h) + 24px + env(safe-area-inset-bottom));
+}
+#dashboard.hidden{display:none;}
 .hidden{display:none!important;}
-.empty{padding:20px;text-align:center;font-size:12px;color:var(--txt-3);}
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-@keyframes countPop{0%{transform:scale(1.06);}100%{transform:scale(1);}}
-.count-pop{animation:countPop 200ms ease;}
 
-/* ── CARDS ────────────────────────────────────────────────────── */
-.card{
-  background:var(--bg-1);
-  border:1px solid var(--border-1);
-  border-radius:var(--radius);
-  padding:18px;
-  animation:fadeUp 320ms ease both;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);
-  transition:border-color 160ms ease;
-}
-.card:hover{border-color:var(--border-2);}
-.card-title{
-  font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;
-  color:var(--txt-3);letter-spacing:0.8px;text-transform:uppercase;
-  margin-bottom:16px;
-  display:flex;align-items:center;gap:8px;
-}
-.card-title .dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
-.card-sub{font-size:10px;font-weight:500;color:var(--txt-3);margin-left:auto;text-transform:none;letter-spacing:0;}
-
-/* ── SECTION LABEL ────────────────────────────────────────────── */
-.section-label{
-  font-family:'Manrope',sans-serif;font-size:9px;font-weight:700;
-  letter-spacing:2.2px;text-transform:uppercase;color:var(--txt-3);
-  margin:24px 0 12px;
-  display:flex;align-items:center;gap:10px;
-}
-.section-label::after{content:'';flex:1;height:1px;background:var(--border-1);}
-
-/* ── KPI STRIP ────────────────────────────────────────────────── */
-.kpi-strip{
-  display:grid;
-  grid-template-columns:repeat(6,1fr);
-  gap:10px;margin-bottom:14px;
-}
-@media(max-width:1300px){.kpi-strip{grid-template-columns:repeat(3,1fr);}}
-.kpi-card{
-  background:var(--bg-1);border:1px solid var(--border-1);
-  border-radius:var(--radius);padding:16px;
-  cursor:pointer;transition:all 160ms ease;
+/* ── DESTAQUE CARD ───────────────────────── */
+#destaque-card{
   position:relative;overflow:hidden;
-  animation:fadeUp 280ms ease both;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);
+  border-radius:var(--radius);
+  padding:18px 16px 18px 18px;
+  margin-bottom:14px;cursor:pointer;
+  display:flex;align-items:center;gap:14px;
+  background:linear-gradient(135deg,rgba(116,185,255,0.14) 0%,rgba(162,155,254,0.09) 100%);
+  border:1px solid rgba(255,255,255,0.11);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  transition:transform 0.18s,box-shadow 0.18s;
+  animation:fadeUp 0.45s ease both;
 }
-.kpi-card:hover{transform:translateY(-2px);border-color:var(--border-2);box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),0 8px 28px rgba(0,0,0,0.4);}
-.kpi-card.total   {border-top:2px solid var(--accent);}
-.kpi-card.positivo{border-top:2px solid var(--sig-pos);}
-.kpi-card.negativo{border-top:2px solid var(--sig-neg);}
-.kpi-card.urgente {border-top:2px solid var(--sig-urg);}
-.kpi-card.crise   {border-top:2px solid var(--sig-crise);}
-.kpi-card.crescendo{border-top:2px solid var(--sig-cresc);}
-.kpi-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--txt-3);margin-bottom:10px;}
+#destaque-card:active{transform:scale(0.98);}
+#destaque-card::before{
+  content:'';position:absolute;
+  top:0;left:-100%;
+  width:55%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.055),transparent);
+  animation:shine 3.2s ease-in-out infinite;
+}
+@keyframes shine{0%{left:-100%;}45%{left:130%;}100%{left:130%;}}
+.wx-sunny  #destaque-card{background:linear-gradient(135deg,rgba(255,190,118,0.15) 0%,rgba(116,185,255,0.10) 100%);}
+.wx-cloudy #destaque-card{background:linear-gradient(135deg,rgba(78,96,128,0.22) 0%,rgba(84,110,122,0.14) 100%);}
+.wx-rain   #destaque-card{background:linear-gradient(135deg,rgba(13,71,161,0.24) 0%,rgba(116,185,255,0.10) 100%);}
+.wx-storm  #destaque-card{background:linear-gradient(135deg,rgba(81,45,168,0.28) 0%,rgba(162,155,254,0.12) 100%);}
+.wx-severe #destaque-card{background:linear-gradient(135deg,rgba(183,28,28,0.22) 0%,rgba(255,107,107,0.10) 100%);}
+
+#destaque-icon{font-size:46px;flex-shrink:0;filter:drop-shadow(0 2px 10px rgba(0,0,0,0.3));}
+.destaque-body{flex:1;min-width:0;}
+.destaque-eyebrow{
+  font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1.8px;
+  color:var(--sky);margin-bottom:5px;
+}
+.wx-sunny  .destaque-eyebrow{color:var(--amber);}
+.wx-storm  .destaque-eyebrow,.wx-severe .destaque-eyebrow{color:var(--red);}
+#destaque-text{
+  font-family:'Syne',sans-serif;
+  font-size:14px;font-weight:700;
+  color:var(--txt-1);line-height:1.38;
+}
+.destaque-arrow{font-size:20px;color:rgba(255,255,255,0.35);flex-shrink:0;}
+
+/* ── SECTION LABEL ───────────────────────── */
+.section-label{
+  font-size:9px;font-weight:800;
+  text-transform:uppercase;letter-spacing:2.2px;
+  color:var(--txt-3);
+  margin:20px 0 10px;
+}
+
+/* ── FILTRO ATIVO ────────────────────────── */
+#filtro-ativo{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin-bottom:12px;min-height:0;
+}
+#filtro-ativo:empty{display:none;}
+.filtro-kw-tag{
+  background:rgba(116,185,255,0.11);
+  border:1px solid rgba(116,185,255,0.24);
+  color:var(--sky);padding:3px 10px;
+  border-radius:20px;font-size:11px;font-weight:600;
+}
+.filtro-count{
+  background:rgba(255,255,255,0.05);color:var(--txt-3);
+  padding:3px 10px;border-radius:20px;
+  font-size:11px;font-weight:600;
+}
+
+/* ── KPI GRID ────────────────────────────── */
+.kpi-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:9px;margin-bottom:14px;
+}
+.kpi-card{
+  background:var(--glass);
+  border:1px solid rgba(255,255,255,0.07);
+  border-radius:var(--radius-sm);
+  padding:12px 10px;
+  position:relative;overflow:hidden;
+  cursor:pointer;transition:transform 0.15s;
+  animation:fadeUp 0.4s ease both;
+}
+.kpi-card:nth-child(1){animation-delay:0.04s;}
+.kpi-card:nth-child(2){animation-delay:0.08s;}
+.kpi-card:nth-child(3){animation-delay:0.12s;}
+.kpi-card:nth-child(4){animation-delay:0.16s;}
+.kpi-card:nth-child(5){animation-delay:0.20s;}
+.kpi-card:nth-child(6){animation-delay:0.24s;}
+.kpi-card:active{transform:scale(0.97);}
+.kpi-card::after{
+  content:'';position:absolute;
+  top:0;left:0;right:0;height:2.5px;border-radius:2px 2px 0 0;
+}
+.kpi-total::after{background:var(--sky);}
+.kpi-pos::after{background:var(--green);}
+.kpi-neg::after{background:var(--red);}
+.kpi-urg::after{background:var(--amber);}
+.kpi-crise::after{background:var(--orange);}
+.kpi-cresc::after{background:var(--purple);}
+.kpi-emoji{font-size:15px;margin-bottom:4px;display:block;line-height:1;}
 .kpi-number{
-  font-family:'Unbounded',sans-serif;font-size:2.5rem;font-weight:900;
-  line-height:1;letter-spacing:-2px;margin-bottom:9px;
-  font-variant-numeric:tabular-nums;
+  font-family:'Syne',sans-serif;
+  font-size:27px;font-weight:900;
+  line-height:1;color:var(--txt-1);letter-spacing:-1px;
 }
-.kpi-card.total    .kpi-number{color:var(--accent);}
-.kpi-card.positivo .kpi-number{color:var(--sig-pos);}
-.kpi-card.negativo .kpi-number{color:var(--sig-neg);}
-.kpi-card.urgente  .kpi-number{color:var(--sig-urg);}
-.kpi-card.crise    .kpi-number{color:var(--sig-crise);}
-.kpi-card.crescendo .kpi-number{color:var(--sig-cresc);}
-.kpi-pct{font-size:10px;font-weight:600;color:var(--txt-3);}
-.kpi-bar-track{height:2px;background:rgba(255,255,255,0.04);border-radius:1px;margin-top:9px;overflow:hidden;}
-.kpi-bar-fill{height:100%;border-radius:1px;transition:width 700ms cubic-bezier(0.4,0,0.2,1);width:0%;}
-.kpi-card.total    .kpi-bar-fill{background:var(--accent);}
-.kpi-card.positivo .kpi-bar-fill{background:var(--sig-pos);}
-.kpi-card.negativo .kpi-bar-fill{background:var(--sig-neg);}
-.kpi-card.urgente  .kpi-bar-fill{background:var(--sig-urg);}
-.kpi-card.crise    .kpi-bar-fill{background:var(--sig-crise);}
-.kpi-card.crescendo .kpi-bar-fill{background:var(--sig-cresc);}
-
-/* ── NARRATIVA ────────────────────────────────────────────────── */
-.narrativa-box{
-  background:linear-gradient(130deg,rgba(0,200,255,0.05) 0%,rgba(157,90,255,0.04) 100%);
-  border:1px solid rgba(0,200,255,0.12);
-  border-radius:var(--radius);padding:14px 18px;
-  font-size:13px;line-height:1.65;color:var(--txt-2);
-  margin-bottom:4px;
-  box-shadow:inset 0 1px 0 rgba(0,200,255,0.06);
+.kpi-label{
+  font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:0.7px;
+  color:var(--txt-3);margin-top:3px;line-height:1.25;
 }
-.narrativa-box b{color:var(--txt-1);}
+.kpi-sub{font-size:10px;color:var(--txt-3);margin-top:3px;}
+.kpi-bar-track{
+  height:2.5px;background:rgba(255,255,255,0.05);
+  border-radius:2px;margin-top:8px;
+}
+.kpi-bar-fill{
+  height:100%;border-radius:2px;width:0%;
+  transition:width 900ms cubic-bezier(0.4,0,0.2,1);
+}
+.kpi-total .kpi-bar-fill{background:var(--sky);}
+.kpi-pos   .kpi-bar-fill{background:var(--green);}
+.kpi-neg   .kpi-bar-fill{background:var(--red);}
+.kpi-urg   .kpi-bar-fill{background:var(--amber);}
+.kpi-crise .kpi-bar-fill{background:var(--orange);}
+.kpi-cresc .kpi-bar-fill{background:var(--purple);}
+@keyframes count-pop{0%{transform:scale(1);}40%{transform:scale(1.10);}100%{transform:scale(1);}}
+.count-pop{animation:count-pop 0.42s ease;}
 
-/* ── CHART GRID ───────────────────────────────────────────────── */
-.row-two{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.row-three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
-.row-60-40{display:grid;grid-template-columns:3fr 2fr;gap:12px;}
-.row-40-60{display:grid;grid-template-columns:2fr 3fr;gap:12px;}
+/* ── GLASS CARD ──────────────────────────── */
+.card{
+  background:var(--glass);
+  border:1px solid rgba(255,255,255,0.07);
+  border-radius:var(--radius);
+  padding:16px;margin-bottom:10px;
+  animation:fadeUp 0.4s ease both;
+}
+.card-title{
+  display:flex;align-items:center;gap:7px;
+  font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1.4px;
+  color:var(--txt-2);margin-bottom:14px;
+}
+.card-title .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.card-sub{
+  font-size:9px;color:var(--txt-3);
+  text-transform:none;letter-spacing:0;
+  font-weight:600;margin-left:auto;
+  display:flex;gap:8px;align-items:center;
+}
+.empty{font-size:12px;color:var(--txt-3);text-align:center;padding:24px 0;font-style:italic;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 
-/* ── SENTIMENT DONUT ──────────────────────────────────────────── */
-.donut-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:4px 0;}
-.donut-canvas-wrap{position:relative;width:156px;height:156px;flex-shrink:0;}
-.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;}
-.donut-big{font-family:'Unbounded',sans-serif;font-size:1.75rem;font-weight:900;color:var(--txt-1);letter-spacing:-1.5px;line-height:1;}
-.donut-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--txt-3);margin-top:2px;}
-.donut-legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
-.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;}
+/* Row layouts */
+.row-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+
+/* ── NARRATIVA ───────────────────────────── */
+#narrativa-box{
+  font-size:12px;line-height:1.68;color:var(--txt-2);
+  background:rgba(255,255,255,0.035);
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:var(--radius-sm);
+  padding:14px;margin-bottom:10px;
+  animation:fadeUp 0.4s 0.1s ease both;
+}
+
+/* ── SENTIMENT DONUT ─────────────────────── */
+.sentiment-wrap{display:flex;align-items:center;gap:16px;}
+.donut-container{position:relative;width:90px;height:90px;flex-shrink:0;}
+#donut-pct{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:18px;font-weight:900;color:var(--txt-1);
+}
+.legend-group{display:flex;flex-direction:column;gap:7px;flex:1;}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;color:var(--txt-2);}
 .legend-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
-.legend-val{font-weight:700;color:var(--txt-1);margin-left:2px;font-family:'Unbounded',sans-serif;font-size:10px;}
+.legend-val{margin-left:auto;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--txt-1);}
 
-/* ── COMMENT STACKED BAR ──────────────────────────────────────── */
-.comment-stacked-bar{display:flex;height:24px;border-radius:6px;overflow:hidden;margin-bottom:12px;background:rgba(255,255,255,0.03);gap:2px;}
-.comment-bar-seg{height:100%;transition:width 700ms cubic-bezier(0.4,0,0.2,1);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:rgba(255,255,255,0.85);overflow:hidden;white-space:nowrap;border-radius:3px;}
-.comment-stat-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border-1);font-size:12px;}
-.comment-stat-row:last-of-type{border-bottom:none;}
+/* ── STACKED BAR ─────────────────────────── */
+.comment-stacked-bar{
+  display:flex;height:20px;border-radius:6px;
+  overflow:hidden;margin-bottom:10px;background:rgba(255,255,255,0.04);
+}
+.comment-bar-seg{
+  height:100%;display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;color:rgba(0,0,0,0.55);
+  transition:width 900ms cubic-bezier(0.4,0,0.2,1);overflow:hidden;
+}
+.comment-stat-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px;color:var(--txt-2);}
 .comment-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
-.comment-stat-label{flex:1;color:var(--txt-2);}
-.comment-stat-pct{font-family:'Unbounded',sans-serif;font-weight:700;color:var(--txt-1);font-size:12px;}
-.comm-profile-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:11px;}
-.comm-profile-row:last-child{border-bottom:none;}
-.comm-profile-name{width:90px;color:var(--txt-2);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.comm-profile-bar{flex:1;height:8px;background:rgba(255,255,255,0.04);border-radius:4px;overflow:hidden;display:flex;gap:1px;}
-.comm-profile-seg{height:100%;border-radius:2px;}
+.comment-stat-label{flex:1;}
+.comment-stat-pct{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;}
+.comm-profile-row{display:flex;align-items:center;gap:8px;padding:3px 0;}
+.comm-profile-name{font-size:10px;font-weight:700;color:var(--txt-2);width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;}
+.comm-profile-bar{flex:1;height:6px;border-radius:3px;overflow:hidden;background:rgba(255,255,255,0.04);display:flex;}
+.comm-profile-seg{height:100%;transition:width 650ms ease;}
 
-/* ── THEME CHART ──────────────────────────────────────────────── */
-.themes-chart-wrap{position:relative;height:200px;}
+/* ── THEMES CHART ────────────────────────── */
+.themes-chart-wrap{height:180px;position:relative;}
 
-/* ── ATTRIBUTION BARS ─────────────────────────────────────────── */
-.attr-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11px;}
-.attr-label{width:120px;color:var(--txt-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
-.attr-track{flex:1;height:6px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;}
-.attr-fill{height:100%;background:var(--sig-cresc);border-radius:3px;transition:width 600ms cubic-bezier(0.4,0,0.2,1);width:0%;}
-.attr-count{font-family:'Unbounded',sans-serif;font-weight:700;font-size:11px;color:var(--sig-cresc);width:24px;text-align:right;}
+/* ── TENDÊNCIA ───────────────────────────── */
+.chart-tendencia-wrap{
+  display:flex;gap:5px;align-items:flex-end;
+  height:84px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;
+}
+.chart-tendencia-wrap::-webkit-scrollbar{display:none;}
+.trend-day-group{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;}
+.trend-bars{display:flex;gap:2px;align-items:flex-end;height:72px;}
+.trend-bar{width:7px;border-radius:3px 3px 0 0;min-height:2px;transition:height 650ms cubic-bezier(0.4,0,0.2,1);}
+.trend-day-label{font-size:8px;color:var(--txt-3);font-weight:600;white-space:nowrap;}
 
-/* ── TREND BARS ───────────────────────────────────────────────── */
-.chart-tendencia-wrap{display:flex;align-items:flex-end;gap:6px;height:80px;padding-top:8px;overflow-x:auto;}
-.trend-day-group{display:flex;flex-direction:column;align-items:center;gap:0;flex-shrink:0;min-width:32px;}
-.trend-bars{display:flex;align-items:flex-end;gap:2px;height:70px;}
-.trend-bar{width:8px;border-radius:3px 3px 0 0;transition:height 600ms cubic-bezier(0.4,0,0.2,1);min-height:2px;}
-.trend-day-label{font-size:8px;color:var(--txt-3);margin-top:4px;white-space:nowrap;}
+/* ── ATRIBUIÇÃO ──────────────────────────── */
+.attr-row{display:flex;align-items:center;gap:8px;padding:3px 0;}
+.attr-label{font-size:10px;font-weight:600;color:var(--txt-2);width:82px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.attr-track{flex:1;height:5px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;}
+.attr-fill{height:100%;background:var(--purple);border-radius:3px;transition:width 650ms ease;}
+.attr-count{font-size:11px;font-weight:700;color:var(--txt-2);width:22px;text-align:right;}
 
-/* ── RANKING ──────────────────────────────────────────────────── */
-.ranking-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--radius-sm);cursor:pointer;transition:background 130ms ease;margin-bottom:2px;}
-.ranking-item:hover{background:rgba(255,255,255,0.04);}
-.ranking-pos-num{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:700;color:var(--txt-3);width:16px;text-align:center;flex-shrink:0;}
-.ranking-avatar{width:28px;height:28px;border-radius:7px;background:var(--bg-2);border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:10px;font-weight:800;color:var(--txt-2);flex-shrink:0;}
+/* ── RANKING ─────────────────────────────── */
+.ranking-item{display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);}
+.ranking-item:last-child{border-bottom:none;}
+.ranking-pos-num{font-family:'Syne',sans-serif;font-size:11px;font-weight:800;color:var(--txt-3);width:14px;flex-shrink:0;}
+.ranking-avatar{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:11px;font-weight:800;color:var(--txt-2);flex-shrink:0;}
 .ranking-info{flex:1;min-width:0;}
-.ranking-name{font-size:11px;font-weight:600;color:var(--txt-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ranking-meta{font-size:10px;color:var(--txt-3);}
-.ranking-sub-bar{height:2px;background:rgba(255,255,255,0.04);border-radius:1px;margin-top:3px;overflow:hidden;}
-.ranking-sub-fill{height:100%;border-radius:1px;transition:width 600ms ease;}
-.ranking-pct{font-family:'Unbounded',sans-serif;font-size:12px;font-weight:800;flex-shrink:0;}
-.ranking-pct.pos{color:var(--sig-pos);}
-.ranking-pct.neg{color:var(--sig-neg);}
+.ranking-name{font-size:11px;font-weight:700;color:var(--txt-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ranking-meta{font-size:9px;color:var(--txt-3);font-weight:600;}
+.ranking-sub-bar{height:3px;background:rgba(255,255,255,0.05);border-radius:2px;margin-top:4px;overflow:hidden;}
+.ranking-sub-fill{height:100%;border-radius:2px;}
+.ranking-pct{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;flex-shrink:0;}
+.ranking-pct.pos{color:var(--green);}
+.ranking-pct.neg{color:var(--red);}
 
-/* ── URGÊNCIA ─────────────────────────────────────────────────── */
-.urgencia-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-1);font-size:12px;}
+/* ── URGÊNCIAS ───────────────────────────── */
+.urgencia-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
 .urgencia-item:last-child{border-bottom:none;}
-.urg-dot{width:6px;height:6px;border-radius:50%;background:var(--sig-neg);flex-shrink:0;margin-top:4px;box-shadow:0 0 8px var(--sig-neg-glow);animation:pulse 2s ease infinite;}
-.urg-text{flex:1;line-height:1.55;color:var(--txt-2);}
-.urg-text b{color:var(--txt-1);}
-.urg-link{font-size:10px;font-weight:700;color:var(--accent);text-decoration:none;padding:2px 8px;border-radius:100px;background:var(--accent-bg);white-space:nowrap;margin-top:1px;flex-shrink:0;}
-.urg-link:hover{background:rgba(0,200,255,0.15);}
+.urg-dot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red);flex-shrink:0;margin-top:3px;animation:pulse-dot 1.6s ease-in-out infinite;}
+.urg-text{flex:1;font-size:12px;line-height:1.5;color:var(--txt-2);}
+.urg-link{color:var(--sky);font-size:11px;font-weight:700;text-decoration:none;flex-shrink:0;}
 
-/* ── TOPIC TAGS ───────────────────────────────────────────────── */
-.topic-cloud{display:flex;flex-wrap:wrap;gap:7px;}
-.topic-tag{padding:5px 12px;border-radius:100px;font-size:11px;font-weight:600;border:1px solid;cursor:pointer;transition:all 130ms ease;}
-.topic-tag:hover{transform:translateY(-1px);filter:brightness(1.1);}
+/* ── CRITERIA FOOTER ─────────────────────── */
+.criteria-footer{
+  margin-top:24px;padding:14px;
+  background:rgba(255,255,255,0.02);
+  border:1px solid rgba(255,255,255,0.05);
+  border-radius:var(--radius-sm);
+}
+.criteria-footer-label{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:2.2px;color:var(--txt-3);margin-bottom:8px;}
 
-/* ── FILTER TABS ──────────────────────────────────────────────── */
-.filter-tabs{display:flex;gap:4px;margin-bottom:14px;}
-.filter-tab{padding:5px 13px;border-radius:100px;border:1px solid var(--border-2);background:transparent;cursor:pointer;font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;color:var(--txt-3);transition:all 130ms ease;}
-.filter-tab:hover{color:var(--txt-1);border-color:var(--border-3);}
-.filter-tab.active{background:var(--bg-2);color:var(--txt-1);border-color:var(--border-2);}
+/* ── BADGES ──────────────────────────────── */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(255,255,255,0.06);color:var(--txt-2);}
+.badge-positivo{background:rgba(0,207,168,0.12);color:var(--green);}
+.badge-negativo{background:rgba(255,107,107,0.12);color:var(--red);}
+.badge-neutro{background:rgba(255,255,255,0.06);color:var(--txt-3);}
+.badge-alta{background:rgba(255,190,118,0.12);color:var(--amber);}
+.badge-media,.badge-m\E9dia{background:rgba(253,150,68,0.10);color:var(--orange);}
+.badge-baixa{background:rgba(255,255,255,0.05);color:var(--txt-3);}
+.badge-risk-alto{background:rgba(255,107,107,0.14);color:var(--red);}
+.badge-trend-crescendo{background:rgba(162,155,254,0.12);color:var(--purple);}
+.badge.txt{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-/* ── POST CARDS ───────────────────────────────────────────────── */
-.post-list{display:flex;flex-direction:column;gap:8px;}
-.post-card{background:var(--bg-1);border:1px solid var(--border-1);border-radius:var(--radius);padding:14px 16px;transition:border-color 140ms ease;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);}
-.post-card:hover{border-color:var(--border-2);}
-.post-card.urgente{border-left:2px solid var(--sig-urg);}
-.post-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:7px;}
-.post-autor{font-family:'Unbounded',sans-serif;font-size:10px;font-weight:800;color:var(--txt-1);}
-.post-data{font-size:10px;color:var(--txt-3);}
-.post-resumo{font-size:12px;line-height:1.6;color:var(--txt-2);margin-bottom:6px;}
-.post-tema{font-size:10px;color:var(--txt-3);margin-top:3px;}
-.post-stats{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;}
-.post-action{font-size:10px;font-weight:700;color:var(--sig-urg);background:var(--sig-urg-bg);border-radius:100px;padding:2px 8px;}
-.btn-ver{font-size:10px;font-weight:700;color:var(--accent);text-decoration:none;background:var(--accent-bg);border-radius:100px;padding:2px 8px;margin-left:auto;}
-.btn-ver:hover{background:rgba(0,200,255,0.15);}
-.btn-feedback{font-size:10px;font-weight:700;border:none;cursor:pointer;border-radius:100px;padding:2px 9px;transition:opacity 0.15s;}
-.btn-feedback:hover{opacity:0.75;}
-.btn-util{background:rgba(16,217,138,0.10);color:var(--sig-pos);}
-.btn-inutl{background:rgba(255,61,90,0.10);color:var(--sig-neg);}
-.btn-feedback.marcado{opacity:0.5;cursor:default;pointer-events:none;}
-.feedback-ok{font-size:10px;color:var(--txt-3);margin-left:4px;}
+/* ── POST CARDS ──────────────────────────── */
+.post-list{display:flex;flex-direction:column;gap:10px;}
+.post-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius-sm);padding:12px;}
+.post-card.urgente{border-color:rgba(255,107,107,0.24);background:rgba(255,107,107,0.04);}
+.post-meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:6px;}
+.post-autor{font-size:12px;font-weight:700;color:var(--sky);}
+.post-data{font-size:10px;color:var(--txt-3);font-weight:600;}
+.post-resumo{font-size:12px;line-height:1.58;color:var(--txt-2);margin-bottom:5px;}
+.post-tema{font-size:10px;color:var(--txt-3);font-weight:600;}
+.post-stats{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:8px;}
+.post-action{font-size:10px;font-weight:700;color:var(--amber);background:rgba(255,190,118,0.08);padding:2px 8px;border-radius:20px;}
+.btn-ver{font-size:10px;font-weight:700;color:var(--sky);background:rgba(116,185,255,0.08);padding:2px 8px;border-radius:20px;text-decoration:none;display:inline-block;}
+.btn-feedback{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;border:none;transition:opacity 0.2s;font-family:'Nunito',sans-serif;}
+.btn-util{background:rgba(0,207,168,0.10);color:var(--green);}
+.btn-inutl{background:rgba(255,107,107,0.10);color:var(--red);}
+.btn-feedback.marcado{opacity:0.4;cursor:default;}
+.feedback-ok{font-size:10px;color:var(--green);font-weight:700;}
 
-/* ── BADGES ───────────────────────────────────────────────────── */
-.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:700;}
-.badge-positivo{background:var(--sig-pos-bg);color:var(--sig-pos);}
-.badge-negativo{background:var(--sig-neg-bg);color:var(--sig-neg);}
-.badge-neutro{background:rgba(255,255,255,0.05);color:var(--txt-3);}
-.badge-alta{background:var(--sig-urg-bg);color:var(--sig-urg);}
-.badge-média,.badge-media{background:var(--accent-bg);color:var(--accent);}
-.badge-baixa{background:rgba(255,255,255,0.04);color:var(--txt-3);}
-.badge-risk-alto{background:var(--sig-crise-bg);color:var(--sig-crise);}
-.badge-trend-crescendo{background:var(--sig-cresc-bg);color:var(--sig-cresc);}
-.badge.txt{cursor:default;}
+/* ── FILTER TABS ─────────────────────────── */
+.filter-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+.filter-tab{padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.05);color:var(--txt-2);transition:all 0.2s;font-family:'Nunito',sans-serif;}
+.filter-tab.active{background:rgba(116,185,255,0.14);border-color:rgba(116,185,255,0.28);color:var(--sky);}
 
-/* ── PERFIS ───────────────────────────────────────────────────── */
-.perfil-grid{display:flex;flex-direction:column;gap:4px;}
-.perfil-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:background 130ms ease;}
-.perfil-row:hover{background:rgba(255,255,255,0.03);}
-.perfil-avatar{width:32px;height:32px;border-radius:8px;background:var(--bg-2);border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:11px;font-weight:800;color:var(--txt-2);flex-shrink:0;}
-.perfil-name{font-size:12px;font-weight:600;color:var(--txt-1);}
-.perfil-cat{font-size:10px;color:var(--txt-3);}
-.perfil-bar-wrap{width:80px;}
-.perfil-bar-bg{height:4px;background:rgba(255,255,255,0.04);border-radius:2px;overflow:hidden;}
-.perfil-bar-fill{height:100%;border-radius:2px;transition:width 600ms ease;}
-.perfil-pct{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:700;width:36px;text-align:right;}
+/* ── PERFIL ROWS ─────────────────────────── */
+.perfil-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;}
+.perfil-row:last-child{border-bottom:none;}
+.perfil-avatar{width:36px;height:36px;border-radius:50%;background:rgba(116,185,255,0.11);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--sky);flex-shrink:0;}
+.perfil-name{font-size:13px;font-weight:700;color:var(--txt-1);}
+.perfil-cat{font-size:10px;color:var(--txt-3);font-weight:600;}
+.perfil-bar-wrap{flex:1;}
+.perfil-bar-bg{height:4px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;}
+.perfil-bar-fill{height:100%;border-radius:3px;transition:width 650ms ease;}
+.perfil-pct{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;width:36px;text-align:right;}
 
-/* ── CONFIG ───────────────────────────────────────────────────── */
-.config-card{background:var(--bg-1);border:1px solid var(--border-1);border-radius:var(--radius);padding:20px;margin-bottom:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);}
-.config-label{font-size:10px;font-weight:700;color:var(--txt-2);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;}
-.config-input{width:100%;background:var(--bg-2);border:1px solid var(--border-2);border-radius:var(--radius-sm);padding:9px 12px;font-family:'Manrope',sans-serif;font-size:13px;color:var(--txt-1);outline:none;transition:border-color 140ms ease;}
-.config-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,200,255,0.08);}
-.btn-save{margin-top:12px;padding:8px 18px;border-radius:var(--radius-sm);background:var(--accent);border:none;cursor:pointer;font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;color:#060708;transition:all 130ms ease;box-shadow:0 0 14px var(--accent-glow);}
-.btn-save:hover{filter:brightness(1.1);}
-.kw-tags-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
-.kw-tag{display:flex;align-items:center;gap:5px;background:var(--accent-bg);border:1px solid rgba(0,200,255,0.2);color:var(--accent);border-radius:100px;padding:3px 10px;font-size:11px;font-weight:700;}
-.kw-remove{cursor:pointer;opacity:0.6;font-size:13px;line-height:1;}
+/* ── SECTION HEADERS ─────────────────────── */
+.section-page-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:900;letter-spacing:-0.5px;margin-bottom:4px;}
+.section-page-sub{font-size:12px;color:var(--txt-3);margin-bottom:14px;}
+
+/* ── CONFIG ──────────────────────────────── */
+.config-card{background:var(--glass);border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px;}
+.config-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--txt-3);margin-bottom:8px;}
+.config-input{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:var(--txt-1);padding:10px 12px;font-size:13px;font-family:'Nunito',sans-serif;outline:none;transition:border-color 0.2s;}
+.config-input:focus{border-color:rgba(116,185,255,0.38);}
+.btn-save{display:block;width:100%;padding:12px;background:var(--sky);color:var(--navy-0);border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Syne',sans-serif;transition:opacity 0.2s;margin-top:12px;}
+.btn-save:hover{opacity:0.88;}
+#cfg-status{font-size:12px;color:var(--green);font-weight:700;padding:8px 0;display:none;}
+.kw-tags-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:28px;}
+.kw-tag{background:rgba(116,185,255,0.11);border:1px solid rgba(116,185,255,0.24);color:var(--sky);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px;}
+.kw-remove{cursor:pointer;font-size:14px;opacity:0.58;font-weight:900;}
 .kw-remove:hover{opacity:1;}
-#cfg-status{margin-top:8px;font-size:12px;color:var(--sig-pos);}
 
-/* ── MODAL ────────────────────────────────────────────────────── */
-#modal-overlay{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px;}
-#modal-overlay.open{display:flex;}
-#modal-box{background:var(--bg-1);border:1px solid var(--border-2);border-radius:18px;width:100%;max-width:640px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.06);animation:fadeUp 200ms ease both;}
-#modal-header{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border-1);flex-shrink:0;}
-#modal-title{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:800;color:var(--txt-1);}
-#modal-count{background:var(--bg-2);color:var(--txt-3);border-radius:100px;padding:2px 10px;font-size:11px;font-weight:600;}
-#modal-close{margin-left:auto;width:28px;height:28px;border-radius:7px;border:1px solid var(--border-2);background:transparent;cursor:pointer;color:var(--txt-3);font-size:15px;display:flex;align-items:center;justify-content:center;transition:all 130ms ease;}
-#modal-close:hover{background:var(--bg-2);color:var(--txt-1);}
-#modal-body{overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px;}
+/* ── BOTTOM NAV ──────────────────────────── */
+#bottom-nav{
+  position:fixed;bottom:0;
+  left:50%;transform:translateX(-50%);
+  width:100%;max-width:480px;
+  height:calc(var(--nav-h) + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);
+  display:flex;align-items:flex-start;padding-top:4px;
+  background:rgba(8,15,38,0.88);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-top:1px solid rgba(255,255,255,0.06);
+  z-index:50;
+}
+.nav-tab{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:3px;height:64px;
+  background:none;border:none;cursor:pointer;
+  color:var(--txt-3);font-family:'Nunito',sans-serif;
+  transition:color 0.2s;position:relative;
+}
+.nav-tab:active{transform:scale(0.94);}
+.nav-icon{font-size:20px;line-height:1;}
+.nav-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;}
+.nav-tab.active{color:var(--sky);}
+.nav-tab.active .nav-icon{filter:drop-shadow(0 0 7px rgba(116,185,255,0.52));}
+.nav-badge{
+  position:absolute;top:8px;
+  right:calc(50% - 18px);
+  background:var(--red);color:#fff;
+  font-size:8px;font-weight:800;
+  padding:1px 5px;border-radius:10px;
+  min-width:16px;text-align:center;display:none;
+}
+
+/* ── MODAL ───────────────────────────────── */
+#modal-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,0.72);
+  backdrop-filter:blur(5px);
+  display:flex;align-items:flex-end;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.28s;
+}
+#modal-overlay.open{opacity:1;pointer-events:all;}
+#modal-box{
+  width:100%;max-height:86svh;
+  background:var(--navy-2);
+  border-radius:24px 24px 0 0;
+  display:flex;flex-direction:column;
+  transform:translateY(100%);
+  transition:transform 0.36s cubic-bezier(0.32,0.72,0,1);
+  border:1px solid rgba(255,255,255,0.09);
+  border-bottom:none;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+#modal-overlay.open #modal-box{transform:translateY(0);}
+.modal-handle{width:40px;height:4px;background:rgba(255,255,255,0.14);border-radius:2px;margin:10px auto 0;flex-shrink:0;}
+#modal-header{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;}
+#modal-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--txt-1);flex:1;}
+#modal-count{font-size:11px;color:var(--txt-3);font-weight:700;}
+#modal-close{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.07);border:none;color:var(--txt-2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+#modal-body{overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch;}
+
+/* ── DESKTOP ─────────────────────────────── */
+@media(min-width:480px){
+  #app{box-shadow:0 0 80px rgba(0,0,0,0.9);}
+  body{background:#020509;}
+}
+@media(min-width:768px){
+  .row-two{grid-template-columns:1.6fr 1fr;}
+  .kpi-grid{grid-template-columns:repeat(3,1fr);}
+}
 </style>
 </head>
 <body>
+<div id="app" class="wx-partly">
 
-<!-- ─── SIDEBAR ──────────────────────────────────────────────── -->
-<aside class="sidebar">
-  <div class="sidebar-brand">
-    <div class="brand-logo">R</div>
-    <div>
-      <div class="brand-name">Radar<br>Político</div>
-      <div class="brand-sub">Alagoinhas · BA</div>
+  <!-- LOADING -->
+  <div id="loading-state">
+    <div class="loading-spinner"></div>
+    <div class="loading-label">Lendo o clima político...</div>
+  </div>
+
+  <!-- HERO CARD -->
+  <div id="hero-card">
+    <div id="hero-bg"></div>
+    <div class="cloud-overlay"></div>
+    <div class="rain-wrap"></div>
+    <div id="hero-content">
+      <div id="hero-topbar">
+        <div class="hero-brand">
+          <span class="hero-brand-icon">🌐</span>
+          <span class="hero-brand-text">Radar Político</span>
+        </div>
+        <div class="location-pill">📍 Alagoinhas, BA</div>
+        <button id="sync-btn" onclick="carregarDados()" title="Atualizar">↻</button>
+      </div>
+      <div id="hero-main">
+        <div id="hero-icon">⛅</div>
+        <div id="hero-condition-label">Como Está o Clima Hoje</div>
+        <div id="hero-pct">--<span>%</span></div>
+        <div id="hero-sub">Carregando análise política...</div>
+      </div>
+      <div id="hero-bottom-bar">
+        <div class="period-pills">
+          <button id="btn-diario"  class="period-pill" onclick="setPeriodo(1)">24h</button>
+          <button id="btn-semanal" class="period-pill active" onclick="setPeriodo(7)">7d</button>
+          <button id="btn-mensal"  class="period-pill" onclick="setPeriodo(30)">30d</button>
+        </div>
+        <div class="sync-indicator">
+          <div id="sync-dot"></div>
+          <span id="sync-label">Aguardando...</span>
+        </div>
+      </div>
     </div>
   </div>
 
-  <nav class="sidebar-nav">
-    <div class="nav-section-label">Análise</div>
-
-    <button class="nav-item active" id="nav-resumo" onclick="showSection('resumo')">
-      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M2 4.5A2.5 2.5 0 0 1 4.5 2h11A2.5 2.5 0 0 1 18 4.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 2 15.5v-11Zm5.5 7a.75.75 0 0 0-1.5 0v2a.75.75 0 0 0 1.5 0v-2Zm2.25-4a.75.75 0 0 0-1.5 0v6a.75.75 0 0 0 1.5 0V7.5Zm3-.75a.75.75 0 0 0-1.5 0V13.5a.75.75 0 0 0 1.5 0V6.75Z"/></svg>
-      <span>Visão Geral</span>
-    </button>
-
-    <button class="nav-item" id="nav-positivos" onclick="showSection('positivos')">
-      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.577 4.878a.75.75 0 0 1 .919-.53l4.78 1.281a.75.75 0 0 1 .531.919l-1.281 4.78a.75.75 0 0 1-1.449-.387l.81-3.022a19.407 19.407 0 0 0-5.594 5.203.75.75 0 0 1-1.139.093L7 10.06l-4.72 4.72a.75.75 0 0 1-1.06-1.061l5.25-5.25a.75.75 0 0 1 1.06 0l3.074 3.073a20.923 20.923 0 0 1 5.545-4.931l-3.042-.815a.75.75 0 0 1-.53-.918Z" clip-rule="evenodd"/></svg>
-      <span>Positivos</span>
-      <span class="nav-badge green" id="nav-badge-pos">0</span>
-    </button>
-
-    <button class="nav-item" id="nav-negativos" onclick="showSection('negativos')">
-      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M1.22 5.222a.75.75 0 0 1 1.06 0L7 9.942l3.768-3.769a.75.75 0 0 1 1.113.058 20.908 20.908 0 0 1 3.813 7.254l1.574-2.727a.75.75 0 0 1 1.3.75l-2.475 4.286a.75.75 0 0 1-1.025.275l-4.287-2.475a.75.75 0 0 1 .75-1.3l2.71 1.565a19.422 19.422 0 0 0-3.013-6.024L7.53 11.533a.75.75 0 0 1-1.06 0l-5.25-5.25a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
-      <span>Negativos</span>
-      <span class="nav-badge red" id="nav-badge-neg">0</span>
-    </button>
-
-    <button class="nav-item" id="nav-perfis" onclick="showSection('perfis')">
-      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM14.5 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM1.615 16.428a1.224 1.224 0 0 1-.569-1.175 6.002 6.002 0 0 1 11.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 0 1 7 18a9.953 9.953 0 0 1-5.385-1.572ZM14.5 16h-.106c.07-.297.088-.611.048-.933a7.47 7.47 0 0 0-1.588-3.755 4.502 4.502 0 0 1 5.874 2.153c.191.46-.077.993-.538 1.18A9.964 9.964 0 0 1 14.5 16Z"/></svg>
-      <span>Perfis</span>
-    </button>
-
-    <div class="nav-section-label" style="margin-top:8px">Sistema</div>
-
-    <button class="nav-item" id="nav-config" onclick="showSection('config')">
-      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.84 1.804A1 1 0 0 1 8.82 1h2.36a1 1 0 0 1 .98.804l.331 1.652a6.993 6.993 0 0 1 1.929 1.115l1.598-.54a1 1 0 0 1 1.186.447l1.18 2.044a1 1 0 0 1-.205 1.251l-1.267 1.113a7.047 7.047 0 0 1 0 2.228l1.267 1.113a1 1 0 0 1 .206 1.25l-1.18 2.045a1 1 0 0 1-1.187.447l-1.598-.54a6.993 6.993 0 0 1-1.929 1.115l-.33 1.652a1 1 0 0 1-.98.804H8.82a1 1 0 0 1-.98-.804l-.331-1.652a6.993 6.993 0 0 1-1.929-1.115l-1.598.54a1 1 0 0 1-1.186-.447l-1.18-2.044a1 1 0 0 1 .205-1.251l1.267-1.114a7.05 7.05 0 0 1 0-2.227L1.821 7.773a1 1 0 0 1-.206-1.25l1.18-2.045a1 1 0 0 1 1.187-.447l1.598.54A6.992 6.992 0 0 1 7.51 3.456l.33-1.652ZM10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" clip-rule="evenodd"/></svg>
-      <span>Configurações</span>
-    </button>
-  </nav>
-
-  <div class="sidebar-footer">
-    <div class="sync-chip">
-      <div class="sync-dot" id="sync-dot"></div>
-      <span id="sync-label">Aguardando...</span>
-    </div>
-  </div>
-</aside>
-
-<!-- ─── MAIN ──────────────────────────────────────────────────── -->
-<div class="layout-main">
-
-  <header class="topbar">
-    <span class="topbar-title" id="topbar-title">Visão Geral</span>
-    <span class="topbar-badge" id="periodo-badge">7 dias</span>
-    <div class="topbar-sep"></div>
-    <div class="filtro-ativo" id="filtro-ativo"></div>
-    <div class="period-group">
-      <button class="btn-period" id="btn-diario"  onclick="setPeriodo(1)">24h</button>
-      <button class="btn-period active" id="btn-semanal" onclick="setPeriodo(7)">7d</button>
-      <button class="btn-period" id="btn-mensal"  onclick="setPeriodo(30)">30d</button>
-    </div>
-    <button class="btn-sync" id="sync-btn" onclick="carregarDados()">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-      Sincronizar
-    </button>
-  </header>
-
-  <div class="scroll-area">
-
-    <div id="loading-state">
-      <div class="spinner"></div>
-      <span>Carregando dados do Radar...</span>
-    </div>
+  <!-- SCROLL AREA -->
+  <div id="scroll-area">
+    <!-- Hidden elements required by JS -->
+    <div id="topbar-title" style="display:none">Radar Político</div>
+    <div id="periodo-badge" style="display:none"></div>
 
     <div id="dashboard" class="hidden">
 
-      <!-- ══ RESUMO ══ -->
+      <!-- ══ HOJE (RESUMO) ══ -->
       <div id="section-resumo">
 
-        <div class="kpi-strip">
-          <div class="kpi-card total" onclick="abrirModal('todos')">
-            <div class="kpi-label">Total monitorado</div>
-            <div class="kpi-number" id="kpi-total">—</div>
-            <div class="kpi-pct" id="kpi-total-sub">posts no período</div>
+        <!-- Filtro ativo -->
+        <div id="filtro-ativo"></div>
+
+        <!-- Destaque Card — O que a população diz -->
+        <div id="destaque-card" onclick="abrirModal('todos')">
+          <div id="destaque-icon">⛅</div>
+          <div class="destaque-body">
+            <div class="destaque-eyebrow">O que a população diz agora</div>
+            <div id="destaque-text">Aguardando dados para análise do clima político...</div>
+          </div>
+          <div class="destaque-arrow">›</div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="kpi-grid">
+          <div class="kpi-card kpi-total" onclick="abrirModal('todos')">
+            <span class="kpi-emoji">📊</span>
+            <div class="kpi-number" id="kpi-total">0</div>
+            <div class="kpi-label">Análise Geral</div>
             <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-total" style="width:100%"></div></div>
           </div>
-          <div class="kpi-card positivo" onclick="abrirModal('positivo')">
-            <div class="kpi-label">Positivos</div>
-            <div class="kpi-number" id="kpi-pos">—</div>
-            <div class="kpi-pct" id="kpi-pos-pct"></div>
+          <div class="kpi-card kpi-pos" onclick="abrirModal('positivo')">
+            <span class="kpi-emoji">☀️</span>
+            <div class="kpi-number" id="kpi-pos">0</div>
+            <div class="kpi-label">Clima Bom</div>
+            <div class="kpi-sub" id="kpi-pos-pct"></div>
             <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-pos"></div></div>
           </div>
-          <div class="kpi-card negativo" onclick="abrirModal('negativo')">
-            <div class="kpi-label">Negativos</div>
-            <div class="kpi-number" id="kpi-neg">—</div>
-            <div class="kpi-pct" id="kpi-neg-pct"></div>
+          <div class="kpi-card kpi-neg" onclick="abrirModal('negativo')">
+            <span class="kpi-emoji">🌧️</span>
+            <div class="kpi-number" id="kpi-neg">0</div>
+            <div class="kpi-label">Clima Ruim</div>
+            <div class="kpi-sub" id="kpi-neg-pct"></div>
             <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-neg"></div></div>
           </div>
-          <div class="kpi-card urgente" onclick="abrirModal('urgente')">
-            <div class="kpi-label">Urgência Alta</div>
-            <div class="kpi-number" id="kpi-urg">—</div>
-            <div class="kpi-pct" id="kpi-urg-pct"></div>
+          <div class="kpi-card kpi-urg" onclick="abrirModal('urgente')">
+            <span class="kpi-emoji">⛈️</span>
+            <div class="kpi-number" id="kpi-urg">0</div>
+            <div class="kpi-label">Tempestade</div>
+            <div class="kpi-sub" id="kpi-urg-pct"></div>
             <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-urg"></div></div>
           </div>
-          <div class="kpi-card crise" onclick="abrirModal('todos')">
-            <div class="kpi-label">Risco de Crise</div>
-            <div class="kpi-number" id="kpi-crise">—</div>
-            <div class="kpi-pct" id="kpi-crise-pct">alto risco</div>
+          <div class="kpi-card kpi-crise">
+            <span class="kpi-emoji">⚠️</span>
+            <div class="kpi-number" id="kpi-crise">0</div>
+            <div class="kpi-label">Deslizamento</div>
             <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-crise"></div></div>
           </div>
-          <div class="kpi-card crescendo" onclick="abrirModal('todos')">
-            <div class="kpi-label">Crescendo</div>
-            <div class="kpi-number" id="kpi-cresc">—</div>
-            <div class="kpi-pct" id="kpi-cresc-pct">eng. crescente</div>
+          <div class="kpi-card kpi-cresc">
+            <span class="kpi-emoji">🌪️</span>
+            <div class="kpi-number" id="kpi-cresc">0</div>
+            <div class="kpi-label">Se Formando</div>
             <div class="kpi-bar-track"><div class="kpi-bar-fill" id="bar-cresc"></div></div>
           </div>
         </div>
 
-        <div class="narrativa-box" id="narrativa-box">
-          <span style="color:var(--txt-3)">Aguardando dados...</span>
-        </div>
+        <!-- Boletim -->
+        <div class="section-label">Boletim Meteorológico</div>
+        <div id="narrativa-box">Carregando análise...</div>
 
-        <div class="section-label">Análise de Sentimentos</div>
-        <div class="row-two" style="margin-bottom:12px">
-          <div class="card">
-            <div class="card-title"><div class="dot" style="background:var(--sig-pos)"></div>Sentimento dos Posts</div>
-            <div class="donut-wrap">
-              <div class="donut-canvas-wrap">
-                <canvas id="sentiment-canvas"></canvas>
-                <div class="donut-center">
-                  <div class="donut-big" id="donut-pct">—</div>
-                  <div class="donut-lbl">positivo</div>
-                </div>
+        <!-- Termômetro -->
+        <div class="section-label">Termômetro da Opinião</div>
+        <div class="card">
+          <div class="card-title">
+            <div class="dot" style="background:var(--sky)"></div>
+            Sentimento dos Posts
+            <span class="card-sub">visão geral</span>
+          </div>
+          <div class="sentiment-wrap">
+            <div class="donut-container">
+              <canvas id="sentiment-canvas"></canvas>
+              <div id="donut-pct">—</div>
+            </div>
+            <div class="legend-group">
+              <div class="legend-item">
+                <div class="legend-dot" style="background:var(--green)"></div>
+                <span style="color:var(--txt-2)">☀️ Clima Bom</span>
+                <span class="legend-val" id="leg-pos">—</span>
               </div>
-              <div class="donut-legend">
-                <div class="legend-item"><div class="legend-dot" style="background:var(--sig-pos)"></div><span style="color:var(--txt-2)">Pos</span><span class="legend-val" id="leg-pos">—</span></div>
-                <div class="legend-item"><div class="legend-dot" style="background:var(--sig-neg)"></div><span style="color:var(--txt-2)">Neg</span><span class="legend-val" id="leg-neg">—</span></div>
-                <div class="legend-item"><div class="legend-dot" style="background:var(--txt-3)"></div><span style="color:var(--txt-2)">Neu</span><span class="legend-val" id="leg-neu">—</span></div>
+              <div class="legend-item">
+                <div class="legend-dot" style="background:var(--red)"></div>
+                <span style="color:var(--txt-2)">🌧️ Clima Ruim</span>
+                <span class="legend-val" id="leg-neg">—</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot" style="background:var(--txt-3)"></div>
+                <span style="color:var(--txt-2)">☁️ Neutro</span>
+                <span class="legend-val" id="leg-neu">—</span>
               </div>
             </div>
           </div>
-          <div class="card">
-            <div class="card-title"><div class="dot" style="background:var(--accent)"></div>Sentimento dos Comentários<span class="card-sub">por perfil de origem</span></div>
-            <div class="comment-stacked-bar" id="comment-stacked-bar">
-              <div class="comment-bar-seg" id="cseg-pos" style="width:0%;background:var(--sig-pos)"></div>
-              <div class="comment-bar-seg" id="cseg-neg" style="width:0%;background:var(--sig-neg)"></div>
-              <div class="comment-bar-seg" id="cseg-neu" style="width:0%;background:rgba(255,255,255,0.05)"></div>
-            </div>
-            <div class="comment-stat-row"><div class="comment-dot" style="background:var(--sig-pos)"></div><div class="comment-stat-label">Comentários positivos</div><div class="comment-stat-pct" id="cstat-pos" style="color:var(--sig-pos)">—</div></div>
-            <div class="comment-stat-row"><div class="comment-dot" style="background:var(--sig-neg)"></div><div class="comment-stat-label">Comentários negativos</div><div class="comment-stat-pct" id="cstat-neg" style="color:var(--sig-neg)">—</div></div>
-            <div class="comment-stat-row"><div class="comment-dot" style="background:var(--txt-3)"></div><div class="comment-stat-label">Neutros / sem comentários</div><div class="comment-stat-pct" id="cstat-neu" style="color:var(--txt-3)">—</div></div>
-            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;color:var(--txt-3);margin:12px 0 8px">Origem por perfil</div>
-            <div id="comm-by-profile"></div>
-          </div>
         </div>
 
-        <div class="section-label">Temas & Perfis</div>
-        <div class="row-60-40" style="margin-bottom:12px">
-          <div class="card">
-            <div class="card-title"><div class="dot" style="background:var(--sig-urg)"></div>Temas em Destaque<span class="card-sub">top 8 por volume</span></div>
-            <div class="themes-chart-wrap"><canvas id="themes-canvas"></canvas></div>
+        <!-- Reação nos comentários -->
+        <div class="card">
+          <div class="card-title">
+            <div class="dot" style="background:var(--sky)"></div>
+            Reação nos Comentários
+            <span class="card-sub">por perfil de origem</span>
           </div>
-          <div class="card">
-            <div class="card-title"><div class="dot" style="background:var(--sig-pos)"></div>Ranking de Perfis</div>
-            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;color:var(--sig-pos);margin-bottom:6px">Mais positivos</div>
-            <div id="ranking-pos"></div>
-            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;color:var(--sig-neg);margin:12px 0 6px">Mais negativos</div>
-            <div id="ranking-neg"></div>
+          <div class="comment-stacked-bar" id="comment-stacked-bar">
+            <div class="comment-bar-seg" id="cseg-pos" style="width:0%;background:var(--green)"></div>
+            <div class="comment-bar-seg" id="cseg-neg" style="width:0%;background:var(--red)"></div>
+            <div class="comment-bar-seg" id="cseg-neu" style="width:0%;background:rgba(255,255,255,0.05)"></div>
           </div>
+          <div class="comment-stat-row">
+            <div class="comment-dot" style="background:var(--green)"></div>
+            <div class="comment-stat-label">Comentários positivos</div>
+            <div class="comment-stat-pct" id="cstat-pos" style="color:var(--green)">—</div>
+          </div>
+          <div class="comment-stat-row">
+            <div class="comment-dot" style="background:var(--red)"></div>
+            <div class="comment-stat-label">Comentários negativos</div>
+            <div class="comment-stat-pct" id="cstat-neg" style="color:var(--red)">—</div>
+          </div>
+          <div class="comment-stat-row">
+            <div class="comment-dot" style="background:var(--txt-3)"></div>
+            <div class="comment-stat-label">Neutros / sem comentários</div>
+            <div class="comment-stat-pct" id="cstat-neu" style="color:var(--txt-3)">—</div>
+          </div>
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;color:var(--txt-3);margin:12px 0 8px">Origem por perfil</div>
+          <div id="comm-by-profile"></div>
         </div>
 
-        <div class="section-label">Tendência & Atribuição</div>
-        <div class="row-two" style="margin-bottom:12px">
+        <!-- Frentes de pressão -->
+        <div class="section-label">Frentes de Pressão</div>
+        <div class="card">
+          <div class="card-title">
+            <div class="dot" style="background:var(--amber)"></div>
+            Temas em Destaque
+            <span class="card-sub">top 8 por volume</span>
+          </div>
+          <div class="themes-chart-wrap"><canvas id="themes-canvas"></canvas></div>
+        </div>
+
+        <!-- Tendência & Atribuição -->
+        <div class="row-two">
           <div class="card">
             <div class="card-title">
-              <div class="dot" style="background:var(--sig-urg)"></div>Evolução Diária
-              <span class="card-sub" style="display:flex;gap:8px;align-items:center">
-                <span style="display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:2px;background:var(--sig-pos);display:inline-block"></span><span style="text-transform:none;letter-spacing:0">pos</span></span>
-                <span style="display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:2px;background:var(--sig-neg);display:inline-block"></span><span style="text-transform:none;letter-spacing:0">neg</span></span>
-                <span style="display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:2px;background:var(--txt-3);display:inline-block"></span><span style="text-transform:none;letter-spacing:0">neu</span></span>
+              <div class="dot" style="background:var(--amber)"></div>Evolução Diária
+              <span class="card-sub">
+                <span style="display:flex;align-items:center;gap:3px"><span style="width:6px;height:6px;border-radius:2px;background:var(--green);display:inline-block"></span><span style="text-transform:none;letter-spacing:0">pos</span></span>
+                <span style="display:flex;align-items:center;gap:3px"><span style="width:6px;height:6px;border-radius:2px;background:var(--red);display:inline-block"></span><span style="text-transform:none;letter-spacing:0">neg</span></span>
               </span>
             </div>
             <div class="chart-tendencia-wrap" id="chart-tendencia"><div class="empty">Carregando...</div></div>
           </div>
           <div class="card">
-            <div class="card-title"><div class="dot" style="background:var(--sig-cresc)"></div>Atribuição dos Posts</div>
+            <div class="card-title"><div class="dot" style="background:var(--purple)"></div>Atribuição</div>
             <div id="attr-bars"></div>
           </div>
         </div>
 
-        <div class="section-label">Atenção Imediata</div>
-        <div class="card" style="margin-bottom:12px">
-          <div class="card-title"><div class="dot" style="background:var(--sig-neg);box-shadow:0 0 8px var(--sig-neg-glow)"></div>Posts com Urgência Alta</div>
-          <div id="urgencia-items"><div class="empty">Nenhuma urgência no período.</div></div>
+        <!-- Ranking -->
+        <div class="row-two">
+          <div class="card">
+            <div class="card-title"><div class="dot" style="background:var(--green)"></div>Perfis ☀️</div>
+            <div id="ranking-pos"></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><div class="dot" style="background:var(--red)"></div>Perfis 🌧️</div>
+            <div id="ranking-neg"></div>
+          </div>
+        </div>
+
+        <!-- Tempestades ativas -->
+        <div class="section-label">Tempestades Ativas</div>
+        <div class="card">
+          <div class="card-title">
+            <div class="dot" style="background:var(--red);box-shadow:0 0 8px rgba(255,107,107,0.5)"></div>
+            Posts em Urgência Alta
+          </div>
+          <div id="urgencia-items"><div class="empty">Nenhuma tempestade no período.</div></div>
+        </div>
+
+        <!-- Critérios no rodapé -->
+        <div class="criteria-footer">
+          <div class="criteria-footer-label">🔍 Critérios de monitoramento</div>
+          <div id="kw-footer-display" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
+          <div style="font-size:10px;color:var(--txt-3);line-height:1.5">Análise baseada em posts e comentários das redes sociais monitoradas nos perfis configurados. Os dados refletem o sentimento público em relação à Prefeitura de Alagoinhas, ao Prefeito e à gestão municipal.</div>
         </div>
 
       </div><!-- /section-resumo -->
 
-      <!-- ══ POSITIVOS ══ -->
+      <!-- ══ BOM (POSITIVOS) ══ -->
       <div id="section-positivos" class="hidden">
-        <div style="margin-bottom:16px">
-          <div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:900;color:var(--sig-pos);letter-spacing:-0.8px;margin-bottom:4px">Posts Positivos</div>
-          <div style="font-size:12px;color:var(--txt-3)">Publicações com sentimento favorável à gestão</div>
-        </div>
+        <div class="section-page-title" style="color:var(--green)">☀️ Clima Bom</div>
+        <div class="section-page-sub">Posts com sentimento favorável à gestão</div>
         <div id="filter-pos" class="filter-tabs">
           <button class="filter-tab active" onclick="filtrarLista('pos','todos',this)">Todos</button>
           <button class="filter-tab" onclick="filtrarLista('pos','alta',this)">Urgência Alta</button>
@@ -673,12 +887,10 @@ body{
         <div class="post-list" id="lista-positivos"><div class="empty">Nenhum post positivo no período.</div></div>
       </div>
 
-      <!-- ══ NEGATIVOS ══ -->
+      <!-- ══ RUIM (NEGATIVOS) ══ -->
       <div id="section-negativos" class="hidden">
-        <div style="margin-bottom:16px">
-          <div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:900;color:var(--sig-neg);letter-spacing:-0.8px;margin-bottom:4px">Posts Negativos</div>
-          <div style="font-size:12px;color:var(--txt-3)">Publicações críticas ou de risco — requerem monitoramento</div>
-        </div>
+        <div class="section-page-title" style="color:var(--red)">🌧️ Clima Ruim</div>
+        <div class="section-page-sub">Publicações críticas ou de risco — requerem monitoramento</div>
         <div id="filter-neg" class="filter-tabs">
           <button class="filter-tab active" onclick="filtrarLista('neg','todos',this)">Todos</button>
           <button class="filter-tab" onclick="filtrarLista('neg','alta',this)">Urgência Alta</button>
@@ -689,23 +901,19 @@ body{
 
       <!-- ══ PERFIS ══ -->
       <div id="section-perfis" class="hidden">
-        <div style="margin-bottom:16px">
-          <div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:900;color:var(--txt-1);letter-spacing:-0.8px;margin-bottom:4px">Perfis Monitorados</div>
-          <div style="font-size:12px;color:var(--txt-3)">Distribuição de sentimento por perfil</div>
-        </div>
-        <div class="perfil-grid" id="lista-perfis"><div class="empty">Nenhum perfil encontrado.</div></div>
+        <div class="section-page-title">👥 Perfis Monitorados</div>
+        <div class="section-page-sub">Distribuição de sentimento por perfil</div>
+        <div id="lista-perfis"><div class="empty">Nenhum perfil encontrado.</div></div>
       </div>
 
-      <!-- ══ CONFIG ══ -->
+      <!-- ══ AJUSTES (CONFIG) ══ -->
       <div id="section-config" class="hidden">
-        <div style="margin-bottom:16px">
-          <div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:900;color:var(--txt-1);letter-spacing:-0.8px;margin-bottom:4px">Configurações</div>
-          <div style="font-size:12px;color:var(--txt-3)">Conecte ao Google Sheets via Apps Script</div>
-        </div>
+        <div class="section-page-title">⚙️ Ajustes</div>
+        <div class="section-page-sub">Conecte ao Google Sheets via Apps Script</div>
         <div class="config-card">
           <div class="config-label">URL do Apps Script</div>
           <input class="config-input" id="cfg-url" type="url" placeholder="https://script.google.com/macros/s/...">
-          <div style="margin-top:8px;font-size:11px;color:var(--txt-3)">Cole aqui a URL do Web App do seu Google Apps Script (Deploy → Publicar como Web App)</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--txt-3)">Cole a URL do Web App do seu Google Apps Script (Deploy → Publicar como Web App)</div>
         </div>
         <div class="config-card">
           <div class="config-label">Período padrão</div>
@@ -720,22 +928,51 @@ body{
           <div class="kw-tags-wrap" id="kw-tags"></div>
           <div style="display:flex;gap:8px">
             <input class="config-input" id="kw-input" type="text" placeholder="Digite uma palavra-chave..." style="flex:1">
-            <button class="btn-save" onclick="addKeyword()" style="margin-top:0">Adicionar</button>
+            <button class="btn-save" onclick="addKeyword()" style="margin-top:0;width:auto;padding:10px 16px">Adicionar</button>
           </div>
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn-save" onclick="salvarConfig()">Salvar e recarregar</button>
-          <button class="btn-save" onclick="salvarKeywords()" style="background:var(--bg-2);border:1px solid var(--border-2);box-shadow:none;color:var(--txt-2)">Salvar palavras-chave</button>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn-save" onclick="salvarConfig()" style="flex:1">Salvar e recarregar</button>
+          <button class="btn-save" onclick="salvarKeywords()" style="flex:1;background:rgba(255,255,255,0.06);color:var(--txt-2)">Salvar palavras</button>
         </div>
         <div id="cfg-status"></div>
       </div>
 
     </div><!-- /dashboard -->
   </div><!-- /scroll-area -->
-</div><!-- /layout-main -->
 
+  <!-- BOTTOM NAV -->
+  <nav id="bottom-nav">
+    <button id="nav-resumo" class="nav-tab active" onclick="showSection('resumo')">
+      <span class="nav-icon">🌤️</span>
+      <span class="nav-label">Hoje</span>
+    </button>
+    <button id="nav-positivos" class="nav-tab" onclick="showSection('positivos')">
+      <span class="nav-icon">☀️</span>
+      <span class="nav-label">Bom</span>
+      <span id="nav-badge-pos" class="nav-badge"></span>
+    </button>
+    <button id="nav-negativos" class="nav-tab" onclick="showSection('negativos')">
+      <span class="nav-icon">🌧️</span>
+      <span class="nav-label">Ruim</span>
+      <span id="nav-badge-neg" class="nav-badge"></span>
+    </button>
+    <button id="nav-perfis" class="nav-tab" onclick="showSection('perfis')">
+      <span class="nav-icon">👥</span>
+      <span class="nav-label">Perfis</span>
+    </button>
+    <button id="nav-config" class="nav-tab" onclick="showSection('config')">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Ajustes</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- MODAL — sheet from bottom -->
 <div id="modal-overlay" onclick="fecharModal(event)">
   <div id="modal-box">
+    <div class="modal-handle"></div>
     <div id="modal-header">
       <span id="modal-title">Posts</span>
       <span id="modal-count"></span>
@@ -747,14 +984,63 @@ body{
 
 <script>
 /* ── ESTADO GLOBAL ───────────────────────────────────────────── */
-var SCRIPT_URL  = localStorage.getItem('radar_url') || '';
-var DIAS        = parseInt(localStorage.getItem('radar_dias') || '7');
-var DADOS       = [];
-var PERFIS_DATA = [];
-var KWS         = [];
-var SECTION     = 'resumo';
+var SCRIPT_URL      = localStorage.getItem('radar_url') || '';
+var DIAS            = parseInt(localStorage.getItem('radar_dias') || '7');
+var DADOS           = [];
+var PERFIS_DATA     = [];
+var KWS             = [];
+var SECTION         = 'resumo';
 var CHART_SENTIMENT = null;
 var CHART_THEMES    = null;
+
+/* ── WEATHER HELPERS ─────────────────────────────────────────── */
+function getWeatherCondition(pctPos) {
+  if (pctPos >= 75) return { icon:'☀️', label:'Céu Aberto',           sub:'Clima excelente — opinião muito favorável',   cls:'wx-sunny'  };
+  if (pctPos >= 60) return { icon:'⛅', label:'Parcialmente Nublado',  sub:'Clima estável — tendência positiva',          cls:'wx-partly' };
+  if (pctPos >= 45) return { icon:'☁️', label:'Nublado',              sub:'Clima incerto — opiniões divididas',          cls:'wx-cloudy' };
+  if (pctPos >= 30) return { icon:'🌧️', label:'Chuva',               sub:'Clima ruim — predominância negativa',         cls:'wx-rain'   };
+  if (pctPos >= 15) return { icon:'⛈️', label:'Tempestade',           sub:'Alerta máximo — crise de imagem detectada',  cls:'wx-storm'  };
+  return                   { icon:'🌑', label:'Severíssimo',          sub:'Crise iminente — ação urgente necessária',   cls:'wx-severe' };
+}
+
+function getDestaqueText(pctPos, topTema, topAtrib) {
+  var tema  = topTema  ? '"' + topTema  + '"' : 'temas locais';
+  var atrib = topAtrib ? topAtrib             : 'a gestão';
+  if (pctPos >= 70) return 'A maioria aprova. Comentários positivos dominam, especialmente sobre ' + tema + '.';
+  if (pctPos >= 55) return 'Clima favorável. A opinião pública apoia ' + atrib + ', com destaque para ' + tema + '.';
+  if (pctPos >= 45) return 'Opiniões divididas. O debate gira em torno de ' + tema + ' — situação instável.';
+  if (pctPos >= 30) return 'Insatisfação crescente. A crítica pública foca em ' + tema + ' e exige respostas.';
+  return 'Atenção: clima crítico. A maioria dos comentários é negativa — especialmente sobre ' + tema + '.';
+}
+
+function renderHeroWeather(pctPos) {
+  var cond = getWeatherCondition(pctPos);
+  var app  = document.getElementById('app');
+  ['wx-sunny','wx-partly','wx-cloudy','wx-rain','wx-storm','wx-severe'].forEach(function(c){ app.classList.remove(c); });
+  app.classList.add(cond.cls);
+  document.getElementById('hero-icon').textContent           = cond.icon;
+  document.getElementById('hero-condition-label').textContent = cond.label;
+  document.getElementById('hero-pct').innerHTML              = pctPos + '<span>%</span>';
+  document.getElementById('hero-sub').textContent            = cond.sub;
+  /* Generate rain drops once */
+  var rainWrap = document.querySelector('.rain-wrap');
+  if (rainWrap && !rainWrap.childElementCount && (cond.cls === 'wx-rain' || cond.cls === 'wx-storm')) {
+    for (var i = 0; i < 20; i++) {
+      var drop = document.createElement('div');
+      drop.className = 'raindrop';
+      drop.style.left              = (Math.random() * 100) + '%';
+      drop.style.animationDuration = (0.55 + Math.random() * 0.75) + 's';
+      drop.style.animationDelay   = (-Math.random() * 1.4) + 's';
+      rainWrap.appendChild(drop);
+    }
+  }
+}
+
+function renderDestaque(pctPos, topTema, topAtrib) {
+  var cond = getWeatherCondition(pctPos);
+  document.getElementById('destaque-icon').textContent = cond.icon;
+  document.getElementById('destaque-text').textContent  = getDestaqueText(pctPos, topTema, topAtrib);
+}
 
 /* ── UTILS ───────────────────────────────────────────────────── */
 function norm(s) {
@@ -782,7 +1068,7 @@ function animateCounter(id, target, suffix, dur) {
   var start = 0, t0 = null;
   function step(ts) {
     if (!t0) t0 = ts;
-    var p = Math.min((ts - t0) / (dur || 700), 1);
+    var p    = Math.min((ts - t0) / (dur || 700), 1);
     var ease = 1 - Math.pow(1 - p, 3);
     el.textContent = Math.round(start + (target - start) * ease) + (suffix||'');
     if (p < 1) requestAnimationFrame(step);
@@ -847,7 +1133,7 @@ window.onload = function() {
   document.getElementById('cfg-dias').value = DIAS;
   document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible' && SCRIPT_URL) {
-      var agora = Date.now();
+      var agora  = Date.now();
       var ultima = parseInt(localStorage.getItem('radar_last_sync') || '0');
       if (agora - ultima > 5 * 60 * 1000) carregarDados();
     }
@@ -859,18 +1145,15 @@ function carregarDados() {
   var btn = document.getElementById('sync-btn');
   var dot = document.getElementById('sync-dot');
   var lbl = document.getElementById('sync-label');
-  if (btn) { btn.disabled = true; }
+  if (btn) { btn.disabled = true; btn.classList.add('spin-active'); }
   if (dot) { dot.classList.add('loading'); }
   if (lbl) lbl.textContent = 'Sincronizando...';
 
   fetch(SCRIPT_URL + '?action=list')
     .then(function(r){ return r.json(); })
-    .then(function(json){
-      if (fbEl) fbEl.textContent = valor === 'útil' ? '✓ Obrigado!' : '✓ Registrado';
-    })
-    .then(function(r){ return r.json(); })
     .then(function(json) {
-      PERFIS_DATA = json.data || [];
+      DADOS       = json.data   || [];
+      PERFIS_DATA = json.perfis || [];
       document.getElementById('loading-state').classList.add('hidden');
       document.getElementById('dashboard').classList.remove('hidden');
       renderDashboard();
@@ -878,14 +1161,14 @@ function carregarDados() {
       var now = new Date();
       if (lbl) lbl.textContent = 'Atualizado ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
       if (dot) { dot.classList.remove('loading'); }
-      if (btn) { btn.disabled = false; }
+      if (btn) { btn.disabled = false; btn.classList.remove('spin-active'); }
     })
     .catch(function(e) {
       document.getElementById('loading-state').innerHTML =
-        '<div style="color:var(--sig-neg);text-align:center;font-size:13px">❌ ' + escHtml(e.message) +
+        '<div style="color:var(--red);text-align:center;font-size:13px;padding:20px">⛈️ ' + escHtml(e.message) +
         '<br><small style="color:var(--txt-3)">Verifique a URL nas Configurações</small></div>';
       if (dot) { dot.classList.remove('loading'); }
-      if (btn) { btn.disabled = false; }
+      if (btn) { btn.disabled = false; btn.classList.remove('spin-active'); }
       if (lbl) lbl.textContent = 'Erro — tente novamente';
     });
 }
@@ -904,22 +1187,22 @@ function renderDashboard() {
 
   setText('periodo-badge', DIAS === 1 ? 'Últimas 24h' : 'Últimos ' + DIAS + ' dias');
 
-  animateCounter('kpi-total', total, '', 700);
-  animateCounter('kpi-pos',   pos.length, '', 750);
-  animateCounter('kpi-neg',   neg.length, '', 800);
-  animateCounter('kpi-urg',   urg.length, '', 650);
+  animateCounter('kpi-total', total,        '', 700);
+  animateCounter('kpi-pos',   pos.length,   '', 750);
+  animateCounter('kpi-neg',   neg.length,   '', 800);
+  animateCounter('kpi-urg',   urg.length,   '', 650);
   animateCounter('kpi-crise', crise.length, '', 720);
   animateCounter('kpi-cresc', cresc.length, '', 760);
 
-  var pPos   = Math.round(pos.length/t*100);
-  var pNeg   = Math.round(neg.length/t*100);
-  var pUrg   = Math.round(urg.length/t*100);
-  var pCrise = Math.round(crise.length/t*100);
-  var pCresc = Math.round(cresc.length/t*100);
+  var pPos   = Math.round(pos.length   / t * 100);
+  var pNeg   = Math.round(neg.length   / t * 100);
+  var pUrg   = Math.round(urg.length   / t * 100);
+  var pCrise = Math.round(crise.length / t * 100);
+  var pCresc = Math.round(cresc.length / t * 100);
 
-  setText('kpi-pos-pct',   pPos + '% do total');
-  setText('kpi-neg-pct',   pNeg + '% do total');
-  setText('kpi-urg-pct',   pUrg + '% do total');
+  setText('kpi-pos-pct', pPos + '% do total');
+  setText('kpi-neg-pct', pNeg + '% do total');
+  setText('kpi-urg-pct', pUrg + '% do total');
 
   setTimeout(function(){
     setBarWidth('bar-pos',   pPos);
@@ -929,8 +1212,23 @@ function renderDashboard() {
     setBarWidth('bar-cresc', pCresc);
   }, 300);
 
-  setText('nav-badge-pos', pos.length);
-  setText('nav-badge-neg', neg.length);
+  /* Nav badges */
+  var bPos = document.getElementById('nav-badge-pos');
+  var bNeg = document.getElementById('nav-badge-neg');
+  if (bPos) { bPos.textContent = pos.length; bPos.style.display = pos.length ? 'block' : 'none'; }
+  if (bNeg) { bNeg.textContent = neg.length; bNeg.style.display = neg.length ? 'block' : 'none'; }
+
+  /* Weather hero */
+  renderHeroWeather(pPos);
+
+  /* Destaque */
+  var tCount = {};
+  dados.forEach(function(d){ if(d.tema) tCount[d.tema] = (tCount[d.tema]||0)+1; });
+  var topTemaEntry  = Object.entries(tCount).sort(function(a,b){return b[1]-a[1];})[0];
+  var aCount = {};
+  dados.forEach(function(d){ if(d.atribuicao) aCount[d.atribuicao] = (aCount[d.atribuicao]||0)+1; });
+  var topAtribEntry = Object.entries(aCount).sort(function(a,b){return b[1]-a[1];})[0];
+  renderDestaque(pPos, topTemaEntry ? topTemaEntry[0] : null, topAtribEntry ? topAtribEntry[0] : null);
 
   renderFiltroAtivo(total);
   renderSentimentChart(pos.length, neg.length, neu.length, t);
@@ -977,25 +1275,18 @@ function renderSentimentChart(posN, negN, neuN, t) {
       labels: ['Positivo','Negativo','Neutro'],
       datasets:[{
         data: [posN, negN, neuN],
-        backgroundColor: ['#10D98A','#FF3D5A','#1A2030'],
-        borderWidth: 0,
-        borderRadius: 4,
-        spacing: 2,
+        backgroundColor: ['#00CFA8','#FF6B6B','rgba(255,255,255,0.07)'],
+        borderWidth: 0, borderRadius: 4, spacing: 2,
       }]
     },
     options: {
-      cutout: '74%',
-      responsive: true,
-      maintainAspectRatio: true,
-      animation: { animateRotate: true, duration: 900, easing: 'easeInOutQuart' },
+      cutout: '74%', responsive: true, maintainAspectRatio: true,
+      animation: { animateRotate:true, duration:900, easing:'easeInOutQuart' },
       plugins: {
-        legend: { display: false },
+        legend: { display:false },
         tooltip: {
-          backgroundColor: '#0C0F14',
-          borderColor: 'rgba(255,255,255,0.08)',
-          borderWidth: 1,
-          titleColor: '#F2F4F8',
-          bodyColor: '#8B99B3',
+          backgroundColor:'#0C1530', borderColor:'rgba(255,255,255,0.08)', borderWidth:1,
+          titleColor:'#EEF2FF', bodyColor:'#94A9CC',
           callbacks: {
             label: function(ctx) {
               var tot = ctx.dataset.data.reduce(function(a,b){return a+b;},0)||1;
@@ -1021,11 +1312,9 @@ function renderThemesChart(dados) {
   var canvas = document.getElementById('themes-canvas');
   if (!canvas) return;
   if (!sorted.length) {
-    canvas.parentElement.innerHTML = '<div class="empty">Sem temas identificados</div>';
-    return;
+    canvas.parentElement.innerHTML = '<div class="empty">Sem temas identificados</div>'; return;
   }
-
-  var COLORS = ['#00C8FF','#10D98A','#FF3D5A','#FFB300','#9D5AFF','#FF6B35','#06B6D4','#84CC16'];
+  var COLORS = ['#74B9FF','#00CFA8','#FF6B6B','#FFBE76','#A29BFE','#FD9644','#06B6D4','#84CC16'];
   CHART_THEMES = new Chart(canvas.getContext('2d'), {
     type: 'bar',
     data: {
@@ -1034,37 +1323,22 @@ function renderThemesChart(dados) {
         data: sorted.map(function(e){return e[1];}),
         backgroundColor: sorted.map(function(_,i){return COLORS[i%COLORS.length]+'28';}),
         borderColor:     sorted.map(function(_,i){return COLORS[i%COLORS.length];}),
-        borderWidth: 1.5,
-        borderRadius: 4,
-        borderSkipped: false,
+        borderWidth: 1.5, borderRadius: 4, borderSkipped: false,
       }]
     },
     options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 900, easing: 'easeInOutQuart' },
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      animation:{ duration:900, easing:'easeInOutQuart' },
       plugins: {
-        legend: { display: false },
+        legend:{ display:false },
         tooltip: {
-          backgroundColor: '#0C0F14',
-          borderColor: 'rgba(255,255,255,0.08)',
-          borderWidth: 1,
-          titleColor: '#F2F4F8',
-          bodyColor: '#8B99B3',
+          backgroundColor:'#0C1530', borderColor:'rgba(255,255,255,0.08)', borderWidth:1,
+          titleColor:'#EEF2FF', bodyColor:'#94A9CC',
         }
       },
       scales: {
-        x: {
-          grid: { color: 'rgba(255,255,255,0.04)' },
-          ticks: { color: '#4A5568', font: { family: 'Manrope', size: 10 } },
-          border: { display: false },
-        },
-        y: {
-          grid: { display: false },
-          ticks: { color: '#8B99B3', font: { family: 'Manrope', size: 11 } },
-          border: { display: false },
-        }
+        x:{ grid:{ color:'rgba(255,255,255,0.04)' }, ticks:{ color:'#4E6080', font:{family:'Nunito',size:10} }, border:{display:false} },
+        y:{ grid:{ display:false }, ticks:{ color:'#94A9CC', font:{family:'Nunito',size:11} }, border:{display:false} }
       }
     }
   });
@@ -1108,14 +1382,11 @@ function renderComentarios(dados) {
     perfilComm[autor].total++;
   });
 
-  var sorted = Object.entries(perfilComm)
-    .sort(function(a,b){return b[1].total-a[1].total;}).slice(0,6);
-
+  var sorted = Object.entries(perfilComm).sort(function(a,b){return b[1].total-a[1].total;}).slice(0,6);
   var container = document.getElementById('comm-by-profile');
   container.innerHTML = '';
   sorted.forEach(function(e){
-    var name = e[0], s = e[1];
-    var t = s.total||1;
+    var name = e[0], s = e[1], t = s.total||1;
     var wPos = Math.round(s.pos/t*100);
     var wNeg = Math.round(s.neg/t*100);
     var wNeu = 100-wPos-wNeg;
@@ -1123,9 +1394,9 @@ function renderComentarios(dados) {
     row.innerHTML =
       '<div class="comm-profile-name">@'+escHtml(name)+'</div>'+
       '<div class="comm-profile-bar">'+
-        '<div class="comm-profile-seg" style="width:'+wPos+'%;background:var(--sig-pos);transition:width 600ms ease"></div>'+
-        '<div class="comm-profile-seg" style="width:'+wNeg+'%;background:var(--sig-neg);transition:width 600ms ease"></div>'+
-        '<div class="comm-profile-seg" style="width:'+wNeu+'%;background:rgba(255,255,255,0.05);transition:width 600ms ease"></div>'+
+        '<div class="comm-profile-seg" style="width:'+wPos+'%;background:var(--green)"></div>'+
+        '<div class="comm-profile-seg" style="width:'+wNeg+'%;background:var(--red)"></div>'+
+        '<div class="comm-profile-seg" style="width:'+wNeu+'%;background:rgba(255,255,255,0.05)"></div>'+
       '</div>'+
       '<div style="font-size:10px;font-weight:600;color:var(--txt-3);width:28px;text-align:right">'+s.total+'</div>';
     container.appendChild(row);
@@ -1141,8 +1412,8 @@ var ATRIB_LABELS = {
 function renderAtribuicao(dados) {
   var counts = {};
   dados.forEach(function(d){
-    var raw = (d.atribuicao||'').toLowerCase().trim();
-    var key = norm(raw);
+    var raw   = (d.atribuicao||'').toLowerCase().trim();
+    var key   = norm(raw);
     var label = ATRIB_LABELS[raw]||ATRIB_LABELS[key]||raw;
     if (!ATRIB_LABELS[raw]&&!ATRIB_LABELS[key]) {
       Object.keys(ATRIB_LABELS).forEach(function(k){
@@ -1191,7 +1462,7 @@ function renderTendencia(dados) {
   var maxVal = days.reduce(function(m,d){ return Math.max(m,byDay[d].pos+byDay[d].neg+byDay[d].neu); },1);
   container.innerHTML = '';
   days.forEach(function(day){
-    var v = byDay[day];
+    var v    = byDay[day];
     var hPos = Math.round(v.pos/maxVal*70);
     var hNeg = Math.round(v.neg/maxVal*70);
     var hNeu = Math.round(v.neu/maxVal*70);
@@ -1199,8 +1470,8 @@ function renderTendencia(dados) {
     var grp = document.createElement('div'); grp.className = 'trend-day-group';
     grp.innerHTML =
       '<div class="trend-bars">'+
-        '<div class="trend-bar" style="height:0;background:var(--sig-pos)" data-h="'+hPos+'"></div>'+
-        '<div class="trend-bar" style="height:0;background:var(--sig-neg)" data-h="'+hNeg+'"></div>'+
+        '<div class="trend-bar" style="height:0;background:var(--green)" data-h="'+hPos+'"></div>'+
+        '<div class="trend-bar" style="height:0;background:var(--red)"   data-h="'+hNeg+'"></div>'+
         '<div class="trend-bar" style="height:0;background:var(--txt-3)" data-h="'+hNeu+'"></div>'+
       '</div>'+
       '<div class="trend-day-label">'+dLabel+'</div>';
@@ -1208,8 +1479,8 @@ function renderTendencia(dados) {
   });
   setTimeout(function(){
     container.querySelectorAll('.trend-bar').forEach(function(el){
-      el.style.height = el.dataset.h+'px';
-      el.style.transition = 'height 600ms cubic-bezier(0.4,0,0.2,1)';
+      el.style.height     = el.dataset.h+'px';
+      el.style.transition = 'height 650ms cubic-bezier(0.4,0,0.2,1)';
     });
   }, 200);
 }
@@ -1229,7 +1500,7 @@ function renderRanking(dados) {
   var profiles = Object.entries(stats).map(function(e){
     var s = e[1], t = s.total||1;
     return { autor:e[0], total:s.total, pos:s.pos, neg:s.neg,
-      pctPos:Math.round(s.pos/t*100), pctNeg:Math.round(s.neg/t*100) };
+             pctPos:Math.round(s.pos/t*100), pctNeg:Math.round(s.neg/t*100) };
   }).filter(function(p){ return p.total >= 1; });
 
   var topPos = profiles.slice().sort(function(a,b){return b.pctPos-a.pctPos;}).slice(0,5);
@@ -1240,9 +1511,9 @@ function renderRanking(dados) {
     c.innerHTML = '';
     if (!list.length) { c.innerHTML = '<div class="empty">Sem dados.</div>'; return; }
     list.forEach(function(p,idx){
-      var pct  = type==='pos' ? p.pctPos : p.pctNeg;
-      var color= type==='pos' ? 'var(--sig-pos)' : 'var(--sig-neg)';
-      var item = document.createElement('div'); item.className = 'ranking-item';
+      var pct   = type==='pos' ? p.pctPos : p.pctNeg;
+      var color = type==='pos' ? 'var(--green)' : 'var(--red)';
+      var item  = document.createElement('div'); item.className = 'ranking-item';
       item.onclick = function(){ abrirModalPerfil(p.autor); };
       item.innerHTML =
         '<div class="ranking-pos-num">'+(idx+1)+'</div>'+
@@ -1257,8 +1528,8 @@ function renderRanking(dados) {
     });
     setTimeout(function(){
       c.querySelectorAll('.ranking-sub-fill').forEach(function(el){
-        el.style.width = el.dataset.w+'%';
-        el.style.transition = 'width 600ms ease';
+        el.style.width      = el.dataset.w+'%';
+        el.style.transition = 'width 650ms ease';
       });
     }, 300);
   }
@@ -1270,11 +1541,11 @@ function renderRanking(dados) {
 function renderUrgencias(urgPosts) {
   var container = document.getElementById('urgencia-items');
   if (!urgPosts.length) {
-    container.innerHTML = '<div class="empty">Nenhuma urgência no período.</div>'; return;
+    container.innerHTML = '<div class="empty">Nenhuma tempestade no período.</div>'; return;
   }
   container.innerHTML = '';
   urgPosts.slice(0,6).forEach(function(p){
-    var item = document.createElement('div'); item.className = 'urgencia-item';
+    var item   = document.createElement('div'); item.className = 'urgencia-item';
     var resumo = (p.resumo||p.tema||'Post urgente').slice(0,90);
     item.innerHTML =
       '<div class="urg-dot"></div>'+
@@ -1286,25 +1557,23 @@ function renderUrgencias(urgPosts) {
 
 /* ── NARRATIVA ───────────────────────────────────────────────── */
 function renderNarrativa(dados, posN, negN, neuN, urgN, total) {
-  var pPos = Math.round(posN/total*100);
-  var pNeg = Math.round(negN/total*100);
-  var tom  = pPos>=60 ? 'predominantemente positivo' : pNeg>=60 ? 'predominantemente negativo' : 'equilibrado';
-  var corTom = pPos>=60?'var(--sig-pos)':pNeg>=60?'var(--sig-neg)':'var(--sig-urg)';
+  var pPos   = Math.round(posN/total*100);
+  var pNeg   = Math.round(negN/total*100);
+  var tom    = pPos>=60 ? 'predominantemente positivo' : pNeg>=60 ? 'predominantemente negativo' : 'equilibrado';
+  var corTom = pPos>=60 ? 'var(--green)' : pNeg>=60 ? 'var(--red)' : 'var(--amber)';
 
   var tCount = {}; dados.forEach(function(d){ if(d.tema) tCount[d.tema]=(tCount[d.tema]||0)+1; });
-  var topTema = Object.entries(tCount).sort(function(a,b){return b[1]-a[1];})[0];
-
+  var topTema  = Object.entries(tCount).sort(function(a,b){return b[1]-a[1];})[0];
   var aCount = {}; dados.forEach(function(d){ if(d.atribuicao) aCount[d.atribuicao]=(aCount[d.atribuicao]||0)+1; });
   var topAtrib = Object.entries(aCount).sort(function(a,b){return b[1]-a[1];})[0];
-
   var riscoAlto = dados.filter(function(d){ return norm(d.risco_crise)==='alto'; }).length;
   var crescendo = dados.filter(function(d){ return norm(d.tendencia)==='crescendo'; }).length;
 
   var html = '<div style="display:flex;flex-direction:column;gap:6px">';
   html += '<span>📊 <b>'+total+' posts</b> monitorados '+(DIAS===1?'nas últimas 24h':'nos últimos '+DIAS+' dias')+'&nbsp;—&nbsp;sentimento <span style="color:'+corTom+';font-weight:700">'+tom+'</span> ('+pPos+'% positivo · '+pNeg+'% negativo).</span>';
-  if (topTema) html += '<span>🏷️ <b>Tema dominante:</b> <b>'+escHtml(topTema[0])+'</b> ('+topTema[1]+' posts).</span>';
+  if (topTema)  html += '<span>🏷️ <b>Tema dominante:</b> <b>'+escHtml(topTema[0])+'</b> ('+topTema[1]+' posts).</span>';
   if (topAtrib) html += '<span>🎯 <b>Atribuição principal:</b> <b>'+escHtml(topAtrib[0])+'</b> em '+(Math.round(topAtrib[1]/total*100))+'% das menções.</span>';
-  if (urgN>0) html += '<span>⚠️ <span style="color:var(--sig-urg);font-weight:700">'+urgN+' post'+(urgN>1?'s':'')+' requer'+(urgN>1?'em':'')+' atenção imediata.</span>'+(riscoAlto>0?' <b style="color:var(--sig-crise)">'+riscoAlto+' com risco de crise alto.</b>':'')+'</span>';
+  if (urgN>0)   html += '<span>⚠️ <span style="color:var(--amber);font-weight:700">'+urgN+' post'+(urgN>1?'s':'')+' requer'+(urgN>1?'em':'')+' atenção imediata.</span>'+(riscoAlto>0?' <b style="color:var(--orange)">'+riscoAlto+' com risco de crise alto.</b>':'')+'</span>';
   if (crescendo>0) html += '<span>📈 <b>'+crescendo+' post'+(crescendo>1?'s':'')+' com tendência crescente</b> de engajamento — monitorar.</span>';
   html += '</div>';
 
@@ -1316,7 +1585,7 @@ function renderLista(containerId, posts, filtro) {
   var container = document.getElementById(containerId);
   if (!container) return;
   var filtered = posts;
-  if (filtro==='alta') filtered = posts.filter(function(p){ return norm(p.urgencia)==='alta'; });
+  if (filtro==='alta')  filtered = posts.filter(function(p){ return norm(p.urgencia)==='alta'; });
   else if (filtro==='media') filtered = posts.filter(function(p){ var u=norm(p.urgencia); return u==='media'||u==='média'; });
   else if (filtro==='crise') filtered = posts.filter(function(p){ return norm(p.risco_crise)==='alto'; });
   container.innerHTML = '';
@@ -1325,24 +1594,22 @@ function renderLista(containerId, posts, filtro) {
 }
 
 function criarPostCard(p, isUrgente) {
-  var card = document.createElement('div');
+  var card      = document.createElement('div');
   card.className = 'post-card'+(isUrgente?' urgente':'');
-  var sent = norm(p.sentimento_post||'neutro');
-  var urg  = norm(p.urgencia||'baixa');
-  var cs   = norm(p.sentimento_comentarios||'');
-  var risco = norm(p.risco_crise||'');
+  var sent      = norm(p.sentimento_post||'neutro');
+  var urg       = norm(p.urgencia||'baixa');
+  var cs        = norm(p.sentimento_comentarios||'');
+  var risco     = norm(p.risco_crise||'');
   var tendencia = norm(p.tendencia||'');
-  var dt   = parseDataPost(p.data_post);
-  var data = dt ? dt.toLocaleDateString('pt-BR') : '';
-  var acoes = {'monitorar':'👁 Monitorar','responder publicamente':'💬 Responder','acionar assessoria':'📞 Assessoria','conter crise':'🚨 Conter crise','ampliar positivo':'🔊 Ampliar'};
-  var acao = acoes[norm(p.sugestao_acao||'')] || '';
-  var urgStr = urg==='média'?'média':urg;
-
-  var score = parseInt(p.score_risco) || 0;
-  var scoreCor = score>=70?'var(--sig-neg)':score>=40?'var(--sig-urg)':'var(--sig-pos)';
-  var scoreBg  = score>=70?'var(--sig-neg-bg)':score>=40?'var(--sig-urg-bg)':'var(--sig-pos-bg)';
-
-  var padrao = (p.aprendizado_aplicado||p.contexto_usado||'').trim();
+  var dt        = parseDataPost(p.data_post);
+  var data      = dt ? dt.toLocaleDateString('pt-BR') : '';
+  var acoes     = {'monitorar':'👁 Monitorar','responder publicamente':'💬 Responder','acionar assessoria':'📞 Assessoria','conter crise':'🚨 Conter crise','ampliar positivo':'🔊 Ampliar'};
+  var acao      = acoes[norm(p.sugestao_acao||'')] || '';
+  var urgStr    = urg==='média'?'média':urg;
+  var score     = parseInt(p.score_risco) || 0;
+  var scoreCor  = score>=70?'var(--red)':score>=40?'var(--amber)':'var(--green)';
+  var scoreBg   = score>=70?'rgba(255,107,107,0.12)':score>=40?'rgba(255,190,118,0.12)':'rgba(0,207,168,0.12)';
+  var padrao    = (p.aprendizado_aplicado||p.contexto_usado||'').trim();
 
   card.innerHTML =
     '<div class="post-meta">'+
@@ -1358,11 +1625,11 @@ function criarPostCard(p, isUrgente) {
     (p.tema?'<div class="post-tema">📌 '+escHtml(p.tema)+'</div>':'')+
     (p.atribuicao?'<div class="post-tema" style="margin-top:2px">🎯 '+escHtml(p.atribuicao)+'</div>':'')+
     '<div class="post-stats">'+
-      (p.curtidas>0?'<span class="badge" style="background:rgba(255,61,90,0.10);color:var(--sig-neg)">❤️ '+Number(p.curtidas).toLocaleString('pt-BR')+'</span>':'')+
-      (p.comentarios_count>0?'<span class="badge" style="background:var(--accent-bg);color:var(--accent)">💬 '+Number(p.comentarios_count).toLocaleString('pt-BR')+'</span>':'')+
+      (p.curtidas>0?'<span class="badge" style="background:rgba(255,107,107,0.10);color:var(--red)">❤️ '+Number(p.curtidas).toLocaleString('pt-BR')+'</span>':'')+
+      (p.comentarios_count>0?'<span class="badge" style="background:rgba(116,185,255,0.09);color:var(--sky)">💬 '+Number(p.comentarios_count).toLocaleString('pt-BR')+'</span>':'')+
       (p.total_comentarios>0?'<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--txt-3)">📊 '+p.total_comentarios+' analisados</span>':'')+
       (score>0?'<span class="badge" style="background:'+scoreBg+';color:'+scoreCor+';font-weight:700" title="Score de risco (0-100)">⚡ '+score+'</span>':'')+
-      (padrao&&padrao!=='Isolado'&&padrao.length>3?'<span class="badge" style="background:var(--sig-cresc-bg);color:var(--sig-cresc);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(padrao)+'">🧠 '+escHtml(padrao.slice(0,35))+(padrao.length>35?'…':'')+'</span>':'')+
+      (padrao&&padrao!=='Isolado'&&padrao.length>3?'<span class="badge" style="background:rgba(162,155,254,0.12);color:var(--purple);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(padrao)+'">🧠 '+escHtml(padrao.slice(0,35))+(padrao.length>35?'…':'')+'</span>':'')+
       (p.engajamento?'<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--txt-3)">Eng: '+escHtml(p.engajamento)+'</span>':'')+
       (acao?'<span class="post-action">'+acao+'</span>':'')+
       (p.url?'<a class="btn-ver" href="'+escHtml(p.url)+'" target="_blank" rel="noopener">Ver post ↗</a>':'')+
@@ -1370,13 +1637,13 @@ function criarPostCard(p, isUrgente) {
     (p.justificativa_acao?'<div style="margin-top:5px;font-size:11px;color:var(--txt-3)"><span style="font-weight:600;color:var(--txt-2)">Por quê: </span>'+escHtml(p.justificativa_acao)+'</div>':'')+
     '<div class="post-stats" style="margin-top:8px;padding-top:8px;border-top:0.5px solid rgba(255,255,255,0.05)">'+
       '<span style="font-size:10px;color:var(--txt-3)">Esta análise foi útil?</span>'+
-      '<button class="btn-feedback btn-util" onclick="enviarFeedback(this,\''+escHtml(p.url)+'\',\'útil\')">👍 Útil</button>'+
+      '<button class="btn-feedback btn-util"  onclick="enviarFeedback(this,\''+escHtml(p.url)+'\',\'útil\')">👍 Útil</button>'+
       '<button class="btn-feedback btn-inutl" onclick="enviarFeedback(this,\''+escHtml(p.url)+'\',\'inútil\')">👎 Inútil</button>'+
       '<span class="feedback-ok" id="fb-'+btoa(encodeURIComponent(p.url||'')).replace(/[^a-zA-Z0-9]/g,'').slice(0,16)+'"></span>'+
     '</div>'+
     (p.comentarios_destaque?
-      '<div style="margin-top:8px;padding:8px 12px;background:rgba(0,200,255,0.05);border-left:2px solid var(--accent);border-radius:0 6px 6px 0;font-size:11px;color:var(--txt-2);line-height:1.5">'+
-        '<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--accent);display:block;margin-bottom:3px">💡 Destaque</span>'+
+      '<div style="margin-top:8px;padding:8px 12px;background:rgba(116,185,255,0.05);border-left:2px solid var(--sky);border-radius:0 6px 6px 0;font-size:11px;color:var(--txt-2);line-height:1.5">'+
+        '<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--sky);display:block;margin-bottom:3px">💡 Destaque</span>'+
         escHtml(p.comentarios_destaque)+
       '</div>':'');
   return card;
@@ -1407,8 +1674,8 @@ function enviarFeedback(btn, url, valor) {
 /* ── PERFIS ──────────────────────────────────────────────────── */
 function renderPerfis() {
   var container = document.getElementById('lista-perfis');
-  var dados = filtrarPorPeriodo(DADOS);
-  var stats = {};
+  var dados     = filtrarPorPeriodo(DADOS);
+  var stats     = {};
   dados.forEach(function(d){
     var a = d.autor||'desconhecido';
     if (!stats[a]) stats[a] = {pos:0,neg:0,neu:0,total:0};
@@ -1419,17 +1686,17 @@ function renderPerfis() {
     stats[a].total++;
   });
   var source = PERFIS_DATA.length ? PERFIS_DATA.map(function(p){
-    return {perfil:p.perfil||p.autor,categoria:p.categoria,total:parseInt(p.total_posts)||0,pct:parseInt(p.pct_positivo)||0};
+    return {perfil:p.perfil||p.autor, categoria:p.categoria, total:parseInt(p.total_posts)||0, pct:parseInt(p.pct_positivo)||0};
   }) : Object.entries(stats).map(function(e){
     var s = e[1];
-    return {perfil:e[0],categoria:'',total:s.total,pct:Math.round(s.pos/s.total*100)};
+    return {perfil:e[0], categoria:'', total:s.total, pct:Math.round(s.pos/s.total*100)};
   });
   var sorted = source.slice().sort(function(a,b){return b.total-a.total;});
   container.innerHTML = '';
   if (!sorted.length) { container.innerHTML = '<div class="empty">Nenhum perfil.</div>'; return; }
   sorted.forEach(function(p){
     var pct = p.pct;
-    var cor = pct>=60?'var(--sig-pos)':pct>=40?'var(--sig-urg)':'var(--sig-neg)';
+    var cor = pct>=60?'var(--green)':pct>=40?'var(--amber)':'var(--red)';
     var ini = (p.perfil||'?')[0].toUpperCase();
     var row = document.createElement('div'); row.className = 'perfil-row';
     row.onclick = function(){ abrirModalPerfil(p.perfil); };
@@ -1446,15 +1713,15 @@ function renderPerfis() {
 /* ── MODAIS ──────────────────────────────────────────────────── */
 function abrirModal(tipo) {
   var dados = filtrarPorPeriodo(DADOS), posts, titulo;
-  if (tipo==='todos')     { posts=dados; titulo='Todos os posts'; }
-  else if (tipo==='positivo') { posts=dados.filter(function(d){return norm(d.sentimento_post)==='positivo';}); titulo='Posts Positivos'; }
-  else if (tipo==='negativo') { posts=dados.filter(function(d){return norm(d.sentimento_post)==='negativo';}); titulo='Posts Negativos'; }
-  else if (tipo==='urgente')  { posts=dados.filter(function(d){return norm(d.urgencia)==='alta';}); titulo='⚠️ Urgência Alta'; }
+  if (tipo==='todos')          { posts=dados; titulo='Todos os posts'; }
+  else if (tipo==='positivo')  { posts=dados.filter(function(d){return norm(d.sentimento_post)==='positivo';}); titulo='☀️ Clima Bom'; }
+  else if (tipo==='negativo')  { posts=dados.filter(function(d){return norm(d.sentimento_post)==='negativo';}); titulo='🌧️ Clima Ruim'; }
+  else if (tipo==='urgente')   { posts=dados.filter(function(d){return norm(d.urgencia)==='alta';}); titulo='⛈️ Tempestade'; }
   else { posts=[]; titulo='Posts'; }
   mostrarModal(titulo, posts);
 }
-function abrirModalTema(tema)  { var d=filtrarPorPeriodo(DADOS); mostrarModal('📌 '+tema,d.filter(function(x){return x.tema===tema;})); }
-function abrirModalPerfil(p)   { var d=filtrarPorPeriodo(DADOS); mostrarModal('@'+p,d.filter(function(x){return x.autor===p;})); }
+function abrirModalTema(tema)   { var d=filtrarPorPeriodo(DADOS); mostrarModal('📌 '+tema, d.filter(function(x){return x.tema===tema;})); }
+function abrirModalPerfil(p)    { var d=filtrarPorPeriodo(DADOS); mostrarModal('@'+p, d.filter(function(x){return x.autor===p;})); }
 function mostrarModal(titulo, posts) {
   setText('modal-title', titulo);
   setText('modal-count', posts.length+' post(s)');
@@ -1470,16 +1737,17 @@ function fecharModal(e) {
 }
 
 /* ── NAVEGAÇÃO ───────────────────────────────────────────────── */
-var SECTION_TITLES = {resumo:'Visão Geral',positivos:'Posts Positivos',negativos:'Posts Negativos',perfis:'Perfis Monitorados',config:'Configurações'};
+var SECTION_TITLES = {resumo:'Visão Geral',positivos:'Clima Bom',negativos:'Clima Ruim',perfis:'Perfis',config:'Ajustes'};
 function showSection(sec) {
   SECTION = sec;
   ['resumo','positivos','negativos','perfis','config'].forEach(function(s){
-    var el = document.getElementById('section-'+s);
-    if (el) el.classList.toggle('hidden', s!==sec);
+    var el  = document.getElementById('section-'+s);
+    if (el)  el.classList.toggle('hidden', s!==sec);
     var nav = document.getElementById('nav-'+s);
     if (nav) nav.classList.toggle('active', s===sec);
   });
   setText('topbar-title', SECTION_TITLES[sec]||sec);
+  document.getElementById('scroll-area').scrollTop = 0;
 
   if (sec==='positivos') {
     var d = filtrarPorPeriodo(DADOS);
@@ -1494,10 +1762,10 @@ function showSection(sec) {
 /* ── FILTRO LISTA ────────────────────────────────────────────── */
 function filtrarLista(lista, filtro, btn) {
   var containerId = lista==='pos'?'lista-positivos':'lista-negativos';
-  var dados = filtrarPorPeriodo(DADOS);
-  var posts = dados.filter(function(d){ return norm(d.sentimento_post)===(lista==='pos'?'positivo':'negativo'); });
+  var dados       = filtrarPorPeriodo(DADOS);
+  var posts       = dados.filter(function(d){ return norm(d.sentimento_post)===(lista==='pos'?'positivo':'negativo'); });
   renderLista(containerId, posts, filtro);
-  var parentId = lista==='pos'?'filter-pos':'filter-neg';
+  var parentId    = lista==='pos'?'filter-pos':'filter-neg';
   document.getElementById(parentId).querySelectorAll('.filter-tab').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
 }
@@ -1505,7 +1773,7 @@ function filtrarLista(lista, filtro, btn) {
 /* ── CONFIG ──────────────────────────────────────────────────── */
 function salvarConfig() {
   SCRIPT_URL = document.getElementById('cfg-url').value.trim();
-  DIAS = parseInt(document.getElementById('cfg-dias').value)||7;
+  DIAS       = parseInt(document.getElementById('cfg-dias').value)||7;
   localStorage.setItem('radar_url', SCRIPT_URL);
   localStorage.setItem('radar_dias', DIAS);
   var st = document.getElementById('cfg-status');
@@ -1513,17 +1781,27 @@ function salvarConfig() {
   carregarDados();
 }
 function renderKwTags() {
-  var wrap = document.getElementById('kw-tags'); wrap.innerHTML = '';
-  KWS.forEach(function(kw,i){
-    var t = document.createElement('div'); t.className = 'kw-tag';
-    t.innerHTML = escHtml(kw)+'<span class="kw-remove" onclick="removeKeyword('+i+')">×</span>';
-    wrap.appendChild(t);
-  });
+  var wrap = document.getElementById('kw-tags');
+  if (wrap) {
+    wrap.innerHTML = '';
+    KWS.forEach(function(kw,i){
+      var t = document.createElement('div'); t.className = 'kw-tag';
+      t.innerHTML = escHtml(kw)+'<span class="kw-remove" onclick="removeKeyword('+i+')">×</span>';
+      wrap.appendChild(t);
+    });
+  }
+  /* Update footer display */
+  var footer = document.getElementById('kw-footer-display');
+  if (footer) {
+    footer.innerHTML = KWS.length
+      ? KWS.map(function(kw){ return '<span class="filtro-kw-tag">'+escHtml(kw)+'</span>'; }).join('')
+      : '<span style="color:var(--txt-3);font-size:11px">Sem filtros ativos — monitorando todos os posts</span>';
+  }
 }
 function addKeyword() {
   var input = document.getElementById('kw-input');
-  var val = input.value.trim().toLowerCase();
-  if (val&&KWS.indexOf(val)===-1) { KWS.push(val); renderKwTags(); }
+  var val   = input.value.trim().toLowerCase();
+  if (val && KWS.indexOf(val)===-1) { KWS.push(val); renderKwTags(); }
   input.value = '';
 }
 function removeKeyword(i) { KWS.splice(i,1); renderKwTags(); }
