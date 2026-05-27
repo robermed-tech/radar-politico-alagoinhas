@@ -6,17 +6,22 @@ Responsabilidades:
   - Coleta posts recentes de múltiplos perfis
   - Coleta comentários por URL de post
   - Retorna dados no MESMO formato do Apify (pipeline não precisa mudar)
+  - Suporte a proxy residencial (Webshare) para evitar bloqueios de IP
 
 Variáveis de ambiente necessárias (.env):
-  IG_USERNAME = seu_usuario_instagram
-  IG_PASSWORD = sua_senha_instagram
+  IG_USERNAME    = seu_usuario_instagram
+  IG_PASSWORD    = sua_senha_instagram
   IG_SESSION_FILE = ig_session.json  (opcional, padrão: ig_session.json)
+
+  # Proxy Webshare (opcional mas recomendado)
+  IG_PROXY = http://usuario:senha@proxy.webshare.io:80
 
 Boas práticas anti-ban:
   - Sessão é salva e reutilizada (evita login frequente)
-  - Sleep aleatório entre perfis (0.5–2s)
+  - Sleep aleatório entre perfis (1–3s)
   - Limite de 20 posts/perfil e 200 comentários/post
   - Em caso de erro por perfil, continua os demais
+  - Proxy residencial rotativo reduz risco de bloqueio a quase zero
 """
 
 import os
@@ -42,6 +47,7 @@ except ImportError:
 IG_USERNAME     = os.environ.get("IG_USERNAME", "")
 IG_PASSWORD     = os.environ.get("IG_PASSWORD", "")
 IG_SESSION_FILE = os.environ.get("IG_SESSION_FILE", "ig_session.json")
+IG_PROXY        = os.environ.get("IG_PROXY", "")   # ex: http://user:pass@proxy.webshare.io:80
 
 POSTS_POR_PERFIL   = 20    # máximo de posts por perfil
 COMENTARIOS_POR_POST = 200 # máximo de comentários por post
@@ -69,6 +75,13 @@ def criar_cliente() -> "Client":
     cl = Client()
     cl.delay_range = [1, 3]  # delay automático entre requests (anti-ban)
 
+    # Configura proxy Webshare se disponível
+    if IG_PROXY:
+        cl.set_proxy(IG_PROXY)
+        print(f"  ✓ Proxy configurado: {IG_PROXY.split('@')[-1]}")  # esconde user:pass no log
+    else:
+        print("  ⚠ Sem proxy — usando IP direto (maior risco de bloqueio)")
+
     session_path = Path(IG_SESSION_FILE)
 
     # Tenta carregar sessão existente
@@ -80,6 +93,7 @@ def criar_cliente() -> "Client":
             return cl
         except (LoginRequired, Exception):
             print("  ⚠ Sessão expirada — fazendo novo login...")
+            session_path.unlink(missing_ok=True)  # remove sessão inválida
 
     # Login completo
     cl.login(IG_USERNAME, IG_PASSWORD)
