@@ -776,6 +776,11 @@ body{
   #dashboard{padding:28px 36px 32px;}
 }
 
+/* ── MOBILE MÉDIO 480–767px ──────────────── */
+@media(min-width:480px) and (max-width:767px){
+  body{background:#02050B;}
+}
+
 /* ── TABLET 768–1023px ────────────────────── */
 @media(min-width:768px) and (max-width:1023px){
   #app{max-width:100%;}
@@ -1226,12 +1231,7 @@ function renderHeroWeather(pctPos) {
   if (pill) pill.textContent = cond.icon + ' ' + cond.label + ' · ' + pctPos + '%';
   /* Sync desktop sidebar sync indicators */
   var dsDot = document.getElementById('ds-sync-dot');
-  var dsLbl = document.getElementById('ds-sync-label');
   if (dsDot) dsDot.classList.remove('loading');
-  if (dsLbl) {
-    var lbl = document.getElementById('sync-label');
-    if (lbl) dsLbl.textContent = lbl.textContent;
-  }
   /* Generate rain drops once */
   var rainWrap = document.querySelector('.rain-wrap');
   if (rainWrap && !rainWrap.childElementCount && (cond.cls === 'wx-rain' || cond.cls === 'wx-storm')) {
@@ -1370,10 +1370,13 @@ function carregarDados() {
       PERFIS_DATA = json.perfis || [];
       document.getElementById('loading-state').classList.add('hidden');
       document.getElementById('dashboard').classList.remove('hidden');
-      renderDashboard();
       localStorage.setItem('radar_last_sync', Date.now());
       var now = new Date();
-      if (lbl) lbl.textContent = 'Atualizado ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      var tsText = 'Atualizado ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      if (lbl) lbl.textContent = tsText;
+      var dsLblAfter = document.getElementById('ds-sync-label');
+      if (dsLblAfter) dsLblAfter.textContent = tsText;
+      renderDashboard();
       if (dot) { dot.classList.remove('loading'); }
       if (btn) { btn.disabled = false; btn.classList.remove('spin-active'); }
     })
@@ -1384,6 +1387,11 @@ function carregarDados() {
       if (dot) { dot.classList.remove('loading'); }
       if (btn) { btn.disabled = false; btn.classList.remove('spin-active'); }
       if (lbl) lbl.textContent = 'Erro — tente novamente';
+      /* Reset desktop sidebar loading state on error */
+      var dsDotErr = document.getElementById('ds-sync-dot');
+      var dsLblErr = document.getElementById('ds-sync-label');
+      if (dsDotErr) dsDotErr.classList.remove('loading');
+      if (dsLblErr) dsLblErr.textContent = 'Erro — tente novamente';
     });
 }
 

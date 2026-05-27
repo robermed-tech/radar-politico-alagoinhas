@@ -24,8 +24,15 @@ from google.oauth2.service_account import Credentials
 
 load_dotenv()
 
+# ── Coletor Instagram (Instagrapi ou Apify) ────────────────────────────────────
+import coletor_instagram as _coletor
+
+def _usar_instagrapi() -> bool:
+    """Retorna True se Instagrapi está configurado e disponível."""
+    return _coletor.disponivel()
+
 # ── Credenciais ───────────────────────────────────────────────────────────────
-APIFY_API_TOKEN             = os.environ["APIFY_API_TOKEN"]
+APIFY_API_TOKEN             = os.environ.get("APIFY_API_TOKEN", "")
 APIFY_POST_ACTOR_ID         = os.environ.get("APIFY_POST_ACTOR_ID", "apify/instagram-post-scraper")
 APIFY_COMMENT_ACTOR_ID      = os.environ.get("APIFY_COMMENT_ACTOR_ID", "apify/instagram-comment-scraper")
 ANTHROPIC_API_KEY           = os.environ["ANTHROPIC_API_KEY"]
@@ -919,34 +926,50 @@ def processar():
 
     # Coleta posts
     print("\n[2/6] Coletando posts do Instagram...")
-    try:
-        post_dataset_id = disparar_actor(APIFY_POST_ACTOR_ID, {
-            "username": PERFIS,
-            "resultsLimit": 20,
-            "onlyPostsNewerThan": "1 day",
-            "skipPinnedPosts": False,
-        }, timeout=300)
-        posts = buscar_items(post_dataset_id)
-    except Exception as e:
-        print(f"Erro ao coletar posts: {e}")
+    posts_brutos      = []
+    mapa_comentarios  = {}
+
+    if _usar_instagrapi():
+        print("  Coletor: Instagrapi (gratuito)")
+        try:
+            posts_brutos, mapa_comentarios = _coletor.coletar_posts_e_comentarios(PERFIS, dias_atras=2)
+        except Exception as e:
+            print(f"Erro no Instagrapi: {e}")
+            sys.exit(1)
+    elif APIFY_API_TOKEN:
+        print("  Coletor: Apify")
+        try:
+            post_dataset_id = disparar_actor(APIFY_POST_ACTOR_ID, {
+                "username": PERFIS,
+                "resultsLimit": 20,
+                "onlyPostsNewerThan": "1 day",
+                "skipPinnedPosts": False,
+            }, timeout=300)
+            posts_brutos = buscar_items(post_dataset_id)
+        except Exception as e:
+            print(f"Erro ao coletar posts via Apify: {e}")
+            sys.exit(1)
+    else:
+        print("ERRO: Nenhum coletor configurado.")
+        print("  → Para usar Instagrapi (gratuito): defina IG_USERNAME e IG_PASSWORD no .env")
+        print("  → Para usar Apify: defina APIFY_API_TOKEN no .env")
         sys.exit(1)
 
-    print(f"  {len(posts)} posts recebidos.")
-    if not posts:
+    print(f"  {len(posts_brutos)} posts recebidos.")
+    if not posts_brutos:
         print("Nenhum post encontrado. Encerrando.")
         return
 
     # Filtra posts relevantes
     print("\n[3/6] Filtrando posts relevantes...")
     posts_filtrados = []
-    for post in posts:
+    for post in posts_brutos:
         url     = (post.get("url") or post.get("shortCode") or "").rstrip("/")
         caption = limpar_texto(post.get("caption") or post.get("text") or "")
         autor   = post.get("ownerUsername") or post.get("authorUsername") or ""
 
         if url in existentes:
             continue
-        # Rejeita perfis fora da lista de monitoramento
         if autor.lower() not in [p.lower() for p in PERFIS]:
             continue
         if not e_relevante_para_radar(caption, autor):
@@ -955,12 +978,12 @@ def processar():
         tem_crise = any(k in caption.lower() for k in KEYWORDS_CRISE)
 
         posts_filtrados.append({
-            "url":              url,
-            "caption":          caption,
-            "autor":            autor,
-            "categoria":        categoria_perfil(autor),
-            "data_post":        formatar_data(post.get("timestamp") or post.get("createdAt") or ""),
-            "curtidas":         int(post.get("likesCount") or post.get("likes") or 0),
+            "url":               url,
+            "caption":           caption,
+            "autor":             autor,
+            "categoria":         categoria_perfil(autor),
+            "data_post":         formatar_data(post.get("timestamp") or post.get("createdAt") or ""),
+            "curtidas":          int(post.get("likesCount") or post.get("likes") or 0),
             "comentarios_count": int(post.get("commentsCount") or post.get("comments") or 0),
             "tem_crise_keywords": tem_crise,
         })
@@ -976,10 +999,13 @@ def processar():
         print("Nenhum post novo para processar. Encerrando.")
         return
 
-    # Coleta comentários
-    print("\n[4/6] Coletando comentários...")
-    urls_http = [p["url"] for p in posts_filtrados if p["url"].startswith("http")]
-    mapa_comentarios = coletar_comentarios(urls_http)
+    # Coleta comentários via Apify (se não veio do Instagrapi)
+    if not _usar_instagrapi() and APIFY_API_TOKEN:
+        print("\n[4/6] Coletando comentários via Apify...")
+        urls_http = [p["url"] for p in posts_filtrados if p["url"].startswith("http")]
+        mapa_comentarios = coletar_comentarios(urls_http)
+    else:
+        print("\n[4/6] Comentários já coletados pelo Instagrapi ✓")
 
     # Analisa com Claude Sonnet + contexto e grava
     print("\n[5/6] Analisando com Claude Sonnet (contexto histórico ativo)...")

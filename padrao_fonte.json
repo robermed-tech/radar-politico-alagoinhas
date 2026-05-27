@@ -1,0 +1,81 @@
+{
+  "_comentario": "Padrão de normalização de dados por fonte. Garante que qualquer coletor (Apify, PhantomBuster, YouTube API, Firecrawl) produza o mesmo schema antes de entrar no banco central.",
+  "_versao": "1.0.0",
+
+  "schema_post": {
+    "url":               { "tipo": "string", "obrigatorio": true,  "descricao": "URL canônica do post (chave de deduplicação)" },
+    "autor":             { "tipo": "string", "obrigatorio": true,  "descricao": "Username/handle do autor" },
+    "categoria":         { "tipo": "string", "obrigatorio": true,  "enum": ["Prefeito","Prefeitura","Oposição","Imprensa","Outro"] },
+    "data_post":         { "tipo": "string", "obrigatorio": true,  "formato": "dd/mm/yyyy HH:MM" },
+    "caption":           { "tipo": "string", "obrigatorio": false, "descricao": "Texto/legenda do post" },
+    "curtidas":          { "tipo": "integer","obrigatorio": false, "default": 0 },
+    "comentarios_count": { "tipo": "integer","obrigatorio": false, "default": 0 },
+    "plataforma":        { "tipo": "string", "obrigatorio": true,  "enum": ["instagram","youtube","web","tiktok"] },
+    "fonte_id":          { "tipo": "string", "obrigatorio": true,  "formato": "<plataforma>:<username>" }
+  },
+
+  "schema_comentario": {
+    "post_url":    { "tipo": "string", "obrigatorio": true,  "descricao": "URL do post pai" },
+    "autor":       { "tipo": "string", "obrigatorio": false, "default": "anon" },
+    "texto":       { "tipo": "string", "obrigatorio": true  }
+  },
+
+  "mapeamento_apify": {
+    "_descricao": "Mapeamento dos campos do Apify para o schema padrão",
+    "url":               ["url", "shortCode"],
+    "autor":             ["ownerUsername", "authorUsername"],
+    "data_post":         ["timestamp", "createdAt"],
+    "caption":           ["caption", "text"],
+    "curtidas":          ["likesCount", "likes"],
+    "comentarios_count": ["commentsCount", "comments"]
+  },
+
+  "mapeamento_youtube": {
+    "_descricao": "Mapeamento dos campos da YouTube Data API v3 para o schema padrão",
+    "url":               "https://youtube.com/watch?v={id}",
+    "autor":             "snippet.channelTitle",
+    "data_post":         "snippet.publishedAt",
+    "caption":           "snippet.title + snippet.description",
+    "curtidas":          "statistics.likeCount",
+    "comentarios_count": "statistics.commentCount"
+  },
+
+  "mapeamento_phantombuster": {
+    "_descricao": "Mapeamento dos campos do PhantomBuster para o schema padrão",
+    "url":               ["postUrl", "link"],
+    "autor":             ["profileUrl", "username"],
+    "data_post":         ["date", "timestamp"],
+    "caption":           ["caption", "message", "text"],
+    "curtidas":          ["likes", "likeCount"],
+    "comentarios_count": ["comments", "commentCount"]
+  },
+
+  "regras_deduplicacao": {
+    "campo_chave": "url",
+    "estrategia": "UNIQUE constraint no banco — conflito de URL é silenciado, post não é reinserido",
+    "fallback": "Se URL não disponível, usar hash(autor + data_post + caption[:100])"
+  },
+
+  "clientes": {
+    "alagoinhas": {
+      "nome":      "Alagoinhas/BA",
+      "estado":    "BA",
+      "fontes_ativas": [
+        "instagram:gustavoascarmo",
+        "instagram:prefeituraalagoinhas",
+        "instagram:seligaalagoinhas",
+        "instagram:portalalagoinhasnews",
+        "instagram:alagonews",
+        "instagram:jornalalagoinhas",
+        "instagram:alagoinhas24h",
+        "instagram:suacidade",
+        "instagram:oficialjoaquimneto",
+        "instagram:soulucianoalmeida",
+        "instagram:paulocezar_oficial",
+        "instagram:jaldicenunes",
+        "instagram:eulumamenezes",
+        "instagram:gleysersoares"
+      ]
+    }
+  }
+}
