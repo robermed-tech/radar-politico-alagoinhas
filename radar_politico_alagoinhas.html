@@ -575,6 +575,20 @@ body.wx-severe { background: var(--bg-severe); background-attachment:fixed; }
 .btn-feedback.marcado{opacity:0.4;cursor:default;}
 .feedback-ok{font-size:10px;color:var(--green);font-weight:700;}
 
+/* ── TERMÔMETRO PILLS ────────────────────── */
+.tc-pill{
+  padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;
+  cursor:pointer;border:1px solid rgba(255,255,255,0.14);
+  background:rgba(255,255,255,0.07);color:var(--txt-3);
+  transition:all 0.2s;font-family:'Inter',sans-serif;
+}
+.tc-pill:hover{background:rgba(255,255,255,0.12);color:var(--txt-2);}
+.tc-pill.active{
+  background:rgba(96,165,250,0.20);
+  border-color:rgba(96,165,250,0.38);
+  color:var(--sky);
+}
+
 /* ── FILTER TABS ─────────────────────────── */
 .filter-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
 .filter-tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.07);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:var(--txt-2);transition:all 0.2s;font-family:'Inter',sans-serif;}
@@ -984,7 +998,7 @@ body.wx-severe { background: var(--bg-severe); background-attachment:fixed; }
         <div class="section-label">Boletim Meteorológico</div>
         <div id="narrativa-box">Carregando análise...</div>
 
-        <!-- Termômetro -->
+        <!-- Termômetro da Opinião — sentimento dos posts -->
         <div class="section-label">Termômetro da Opinião</div>
         <div class="card">
           <div class="card-title">
@@ -1017,26 +1031,55 @@ body.wx-severe { background: var(--bg-severe); background-attachment:fixed; }
           </div>
         </div>
 
-        <!-- Reação nos comentários -->
-        <div class="card">
-          <div class="card-title">
-            <div class="dot" style="background:var(--sky)"></div>
-            Reação nos Comentários
-            <span class="card-sub">por perfil de origem</span>
+        <!-- Termômetro de Comentários — com seletor de período -->
+        <div class="section-label">Termômetro dos Comentários</div>
+        <div class="card" id="card-termometro-comentarios">
+
+          <!-- Cabeçalho com seletor de período -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="dot" style="background:var(--sky)"></div>
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--txt-3)">Clima dos Comentários</span>
+            </div>
+            <div id="tc-period-pills" style="display:flex;gap:5px">
+              <button class="tc-pill" data-dias="1"  onclick="setTermometroPeriodo(1,this)">24h</button>
+              <button class="tc-pill active" data-dias="7"  onclick="setTermometroPeriodo(7,this)">7 dias</button>
+              <button class="tc-pill" data-dias="30" onclick="setTermometroPeriodo(30,this)">30 dias</button>
+            </div>
           </div>
-          <div class="comment-stacked-bar" id="comment-stacked-bar">
+
+          <!-- Score grande do período -->
+          <div id="tc-score-wrap" style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+            <div id="tc-score-circle" style="
+              width:72px;height:72px;border-radius:50%;flex-shrink:0;
+              display:flex;flex-direction:column;align-items:center;justify-content:center;
+              background:rgba(255,255,255,0.07);border:2px solid rgba(255,255,255,0.14);
+              transition:border-color 0.5s,background 0.5s">
+              <span id="tc-score-num" style="font-size:22px;font-weight:900;color:var(--txt-1);line-height:1">—</span>
+              <span style="font-size:8px;font-weight:700;color:var(--txt-3);letter-spacing:0.5px">score</span>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div id="tc-label" style="font-size:14px;font-weight:800;color:var(--txt-1);margin-bottom:3px">Calculando...</div>
+              <div id="tc-sub" style="font-size:11px;color:var(--txt-3);line-height:1.5">Aguardando dados de comentários</div>
+            </div>
+          </div>
+
+          <!-- Barra empilhada -->
+          <div class="comment-stacked-bar" id="comment-stacked-bar" style="margin-bottom:12px">
             <div class="comment-bar-seg" id="cseg-pos" style="width:0%;background:var(--green)"></div>
             <div class="comment-bar-seg" id="cseg-neg" style="width:0%;background:var(--red)"></div>
             <div class="comment-bar-seg" id="cseg-neu" style="width:0%;background:rgba(255,255,255,0.05)"></div>
           </div>
+
+          <!-- Stats -->
           <div class="comment-stat-row">
             <div class="comment-dot" style="background:var(--green)"></div>
-            <div class="comment-stat-label">Comentários positivos</div>
+            <div class="comment-stat-label">Aprovação cidadã</div>
             <div class="comment-stat-pct" id="cstat-pos" style="color:var(--green)">—</div>
           </div>
           <div class="comment-stat-row">
             <div class="comment-dot" style="background:var(--red)"></div>
-            <div class="comment-stat-label">Comentários negativos</div>
+            <div class="comment-stat-label">Reprovação / crítica</div>
             <div class="comment-stat-pct" id="cstat-neg" style="color:var(--red)">—</div>
           </div>
           <div class="comment-stat-row">
@@ -1044,8 +1087,23 @@ body.wx-severe { background: var(--bg-severe); background-attachment:fixed; }
             <div class="comment-stat-label">Neutros / sem comentários</div>
             <div class="comment-stat-pct" id="cstat-neu" style="color:var(--txt-3)">—</div>
           </div>
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;color:var(--txt-3);margin:12px 0 8px">Origem por perfil</div>
+
+          <!-- Queixa dominante -->
+          <div id="tc-queixa-wrap" style="display:none;margin-top:12px;padding:10px 12px;background:rgba(248,113,113,0.07);border-left:2px solid var(--red);border-radius:0 6px 6px 0">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--red);margin-bottom:3px">🔥 Queixa dominante no período</div>
+            <div id="tc-queixa-text" style="font-size:12px;color:var(--txt-2);line-height:1.5"></div>
+          </div>
+
+          <!-- Comentário mais impactante -->
+          <div id="tc-destaque-wrap" style="display:none;margin-top:8px;padding:10px 12px;background:rgba(96,165,250,0.06);border-left:2px solid var(--sky);border-radius:0 6px 6px 0">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--sky);margin-bottom:3px">💬 Comentário mais representativo</div>
+            <div id="tc-destaque-text" style="font-size:12px;color:var(--txt-2);line-height:1.5;font-style:italic"></div>
+          </div>
+
+          <!-- Origem por perfil -->
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;color:var(--txt-3);margin:14px 0 8px">Origem por perfil</div>
           <div id="comm-by-profile"></div>
+
         </div>
 
         <!-- Frentes de pressão -->
@@ -1495,6 +1553,7 @@ function renderDashboard() {
   renderFiltroAtivo(total);
   renderSentimentChart(pos.length, neg.length, neu.length, t);
   renderComentarios(dados);
+  renderTermometroComentarios(DADOS); // usa TC_DIAS próprio, não DIAS global
   renderThemesChart(dados);
   renderRanking(dados);
   renderTendencia(dados);
@@ -1910,6 +1969,166 @@ function criarPostCard(p, isUrgente) {
         escHtml(p.comentarios_destaque)+
       '</div>':'');
   return card;
+}
+
+/* ── TERMÔMETRO DE COMENTÁRIOS ───────────────────────────────── */
+var TC_DIAS = 7; // período independente do filtro global
+
+function setTermometroPeriodo(dias, btn) {
+  TC_DIAS = dias;
+  document.querySelectorAll('.tc-pill').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  renderTermometroComentarios(DADOS);
+}
+
+function filtrarDadosPorDias(dados, dias) {
+  if (!dados || !dados.length) return [];
+  var cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - dias);
+  cutoff.setHours(0,0,0,0);
+  return dados.filter(function(d) {
+    var dt = parseDataPost(d.data_post);
+    return dt ? dt >= cutoff : true;
+  });
+}
+
+function renderTermometroComentarios(dados) {
+  var filtered = filtrarDadosPorDias(dados, TC_DIAS);
+  var total    = filtered.length || 1;
+
+  // Agrega comentários usando campos existentes no Sheets
+  var totalCPos = 0, totalCNeg = 0, totalCNeu = 0, totalComents = 0;
+  var byPerfil  = {};
+  var queixas   = {};
+  var destaque  = '';
+  var destaqueScore = -1;
+
+  filtered.forEach(function(d) {
+    var nComents = parseInt(d.comentarios_total || d.comentarios || 0);
+    var pPos = parseFloat(d.comentarios_positivos || d.comentarios_pct_pos || 0) / 100;
+    var pNeg = parseFloat(d.comentarios_negativos || d.comentarios_pct_neg || 0) / 100;
+    if (pPos > 1) pPos = pPos / 100; // já era percentual 0-100
+    if (pNeg > 1) pNeg = pNeg / 100;
+    var pNeu = Math.max(0, 1 - pPos - pNeg);
+
+    var cPos = Math.round(nComents * pPos);
+    var cNeg = Math.round(nComents * pNeg);
+    var cNeu = Math.round(nComents * pNeu);
+
+    totalCPos   += cPos;
+    totalCNeg   += cNeg;
+    totalCNeu   += cNeu;
+    totalComents += nComents;
+
+    // Ranking por perfil
+    var autor = d.autor || 'desconhecido';
+    if (!byPerfil[autor]) byPerfil[autor] = { pos:0, neg:0, neu:0, total:0 };
+    byPerfil[autor].pos   += cPos;
+    byPerfil[autor].neg   += cNeg;
+    byPerfil[autor].neu   += cNeu;
+    byPerfil[autor].total += nComents;
+
+    // Queixa dominante
+    var tema = d.tema || '';
+    if (tema && norm(d.sentimento_post) === 'negativo') {
+      queixas[tema] = (queixas[tema] || 0) + nComents;
+    }
+
+    // Comentário destaque
+    var cd = d.comentarios_destaque || d.comentario_destaque || '';
+    if (cd && nComents > destaqueScore) {
+      destaque = cd;
+      destaqueScore = nComents;
+    }
+  });
+
+  var totalC = totalCPos + totalCNeg + totalCNeu || 1;
+  var pPos   = Math.round(totalCPos / totalC * 100);
+  var pNeg   = Math.round(totalCNeg / totalC * 100);
+  var pNeu   = Math.round(totalCNeu / totalC * 100);
+
+  // Score de aprovação cidadã 0-100 (ponderado: comentários positivos vs negativos)
+  var score  = Math.round(pPos);
+
+  // Atualiza círculo de score
+  var circle = document.getElementById('tc-score-circle');
+  var scoreEl= document.getElementById('tc-score-num');
+  var labelEl= document.getElementById('tc-label');
+  var subEl  = document.getElementById('tc-sub');
+  if (scoreEl) scoreEl.textContent = score;
+
+  var cor, rotulo, sub;
+  if (score >= 70) { cor='var(--green)';  rotulo='Aprovação Alta';    sub='A maioria dos comentários cidadãos é favorável.'; }
+  else if (score >= 55) { cor='var(--sky)'; rotulo='Aprovação Moderada'; sub='Clima positivo com críticas pontuais.'; }
+  else if (score >= 40) { cor='var(--amber)'; rotulo='Opiniões Divididas'; sub='Equilíbrio instável — monitorar tendência.'; }
+  else if (score >= 25) { cor='var(--orange)'; rotulo='Reprovação Crescente'; sub='Insatisfação predomina nos comentários.'; }
+  else { cor='var(--red)'; rotulo='Crise de Imagem'; sub='Alerta: maioria dos comentários é negativa.'; }
+
+  if (circle) { circle.style.borderColor = cor; circle.style.background = cor.replace(')',',0.12)').replace('var(','rgba(').replace('--green','52,211,153').replace('--sky','96,165,250').replace('--amber','251,191,36').replace('--orange','251,146,60').replace('--red','248,113,113'); }
+  if (labelEl) { labelEl.textContent = rotulo; labelEl.style.color = cor; }
+  if (subEl)   subEl.textContent = sub + ' (' + totalComents + ' comentários no período)';
+
+  // Barras
+  setTimeout(function(){
+    var sp = document.getElementById('cseg-pos');
+    var sn = document.getElementById('cseg-neg');
+    var su = document.getElementById('cseg-neu');
+    if (sp) sp.style.width = pPos + '%';
+    if (sn) sn.style.width = pNeg + '%';
+    if (su) su.style.width = pNeu + '%';
+  }, 150);
+
+  var ep = document.getElementById('cstat-pos');
+  var en = document.getElementById('cstat-neg');
+  var eu = document.getElementById('cstat-neu');
+  if (ep) ep.textContent = pPos + '%';
+  if (en) en.textContent = pNeg + '%';
+  if (eu) eu.textContent = pNeu + '%';
+
+  // Queixa dominante
+  var queixaEntries = Object.entries(queixas).sort(function(a,b){ return b[1]-a[1]; });
+  var qWrap = document.getElementById('tc-queixa-wrap');
+  var qText = document.getElementById('tc-queixa-text');
+  if (queixaEntries.length && qWrap && qText) {
+    qWrap.style.display = 'block';
+    qText.textContent   = queixaEntries[0][0] + ' — tema mais frequente nos posts negativos do período.';
+  } else if (qWrap) { qWrap.style.display = 'none'; }
+
+  // Comentário destaque
+  var dWrap = document.getElementById('tc-destaque-wrap');
+  var dText = document.getElementById('tc-destaque-text');
+  if (destaque && dWrap && dText) {
+    dWrap.style.display = 'block';
+    dText.textContent   = '"' + destaque + '"';
+  } else if (dWrap) { dWrap.style.display = 'none'; }
+
+  // Origem por perfil
+  var profEl = document.getElementById('comm-by-profile');
+  if (profEl) {
+    profEl.innerHTML = '';
+    var sorted = Object.entries(byPerfil)
+      .filter(function(e){ return e[1].total > 0; })
+      .sort(function(a,b){ return b[1].total - a[1].total; })
+      .slice(0, 6);
+    if (!sorted.length) { profEl.innerHTML = '<div class="empty">Sem dados de comentários.</div>'; return; }
+    var maxTotal = sorted[0][1].total;
+    sorted.forEach(function(e) {
+      var name = e[0]; var s = e[1];
+      var pP = s.total ? Math.round(s.pos / s.total * 100) : 0;
+      var pN = s.total ? Math.round(s.neg / s.total * 100) : 0;
+      var pU = Math.max(0, 100 - pP - pN);
+      var row = document.createElement('div'); row.className = 'comm-profile-row';
+      row.innerHTML =
+        '<div class="comm-profile-name">@'+escHtml(name)+'</div>'+
+        '<div class="comm-profile-bar">'+
+          '<div class="comm-profile-seg" style="width:'+pP+'%;background:var(--green)"></div>'+
+          '<div class="comm-profile-seg" style="width:'+pN+'%;background:var(--red)"></div>'+
+          '<div class="comm-profile-seg" style="width:'+pU+'%;background:rgba(255,255,255,0.07)"></div>'+
+        '</div>'+
+        '<div style="font-size:10px;font-weight:700;color:'+(pP>=pN?'var(--green)':'var(--red)')+';;width:30px;text-align:right">'+s.total+'</div>';
+      profEl.appendChild(row);
+    });
+  }
 }
 
 /* ── FEEDBACK ────────────────────────────────────────────────── */
