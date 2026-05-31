@@ -35,12 +35,12 @@ jobs:
         env:
           SOCIAVAULT_API_KEY:   ${{ secrets.SOCIAVAULT_API_KEY }}
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
-          SPREADSHEET_ID:       ${{ secrets.SPREADSHEET_ID }}
-          GOOGLE_CREDENTIALS:   ${{ secrets.GOOGLE_CREDENTIALS }}
+          SPREADSHEET_ID:       ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_CREDENTIALS:   ${{ secrets.GOOGLE_SA_JSON }}
           EVOLUTION_API_URL:    ${{ secrets.EVOLUTION_API_URL }}
           EVOLUTION_API_KEY:    ${{ secrets.EVOLUTION_API_KEY }}
           EVOLUTION_INSTANCE:   ${{ secrets.EVOLUTION_INSTANCE }}
-          WHATSAPP_NUMBER:      ${{ secrets.WHATSAPP_NUMBER }}
+          WHATSAPP_NUMBER:      ${{ secrets.EVOLUTION_GROUP_ID }}
         run: python agora.py
 
       - name: Notifica falha no WhatsApp
@@ -49,7 +49,7 @@ jobs:
           EVOLUTION_API_URL:  ${{ secrets.EVOLUTION_API_URL }}
           EVOLUTION_API_KEY:  ${{ secrets.EVOLUTION_API_KEY }}
           EVOLUTION_INSTANCE: ${{ secrets.EVOLUTION_INSTANCE }}
-          WHATSAPP_NUMBER:    ${{ secrets.WHATSAPP_NUMBER }}
+          WHATSAPP_NUMBER:    ${{ secrets.EVOLUTION_GROUP_ID }}
         run: |
           curl -s -X POST "$EVOLUTION_API_URL/message/sendText/$EVOLUTION_INSTANCE" \
             -H "Content-Type: application/json" \
