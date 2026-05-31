@@ -41,12 +41,12 @@ PERFIS = {
     "gustavoascarmo":       {"categoria": "Prefeito",   "filtro": "governo"},
     "prefeituraalagoinhas": {"categoria": "Prefeitura", "filtro": "governo"},
     # Oposição
-    "soulucianoalmeida":    {"categoria": "Oposição",   "filtro": "oposicao"},
-    "oficialjoaquimneto":   {"categoria": "Oposi��o",   "filtro": "oposicao"},
-    "paulocezar_oficial":   {"categoria": "Oposi��o",   "filtro": "oposicao"},
-    "jaldicenunes":         {"categoria": "Oposi��o",   "filtro": "oposicao"},
-    "eulumamenezes":        {"categoria": "Oposi��o",   "filtro": "oposicao"},
-    "gleysersoares":        {"categoria": "Oposi��o",   "filtro": "oposicao"},
+    "soulucianoalmeida":    {"categoria": "Oposição",   "filtro": "Oposição"},
+    "oficialjoaquimneto":   {"categoria": "Oposição",   "filtro": "Oposição"},
+    "paulocezar_oficial":   {"categoria": "Oposição",   "filtro": "Oposição"},
+    "jaldicenunes":         {"categoria": "Oposição",   "filtro": "Oposição"},
+    "eulumamenezes":        {"categoria": "Oposição",   "filtro": "Oposição"},
+    "gleysersoares":        {"categoria": "Oposição",   "filtro": "Oposição"},
     "jornalalagoinhas":     {"categoria": "Imprensa",   "filtro": "imprensa"},
     "suacidade":            {"categoria": "Imprensa",   "filtro": "imprensa"},
     # Imprensa
@@ -59,7 +59,7 @@ PERFIS = {
 # Palavras-chave de relevância por filtro
 KEYWORDS_GOVERNO  = ["prefeitura", "prefeito", "gustavo", "gestão", "alagoinhas",
                      "obra", "serviço", "municipal", "secretaria", "secom"]
-KEYWORDS_OPOSICAO = ["prefeitura", "prefeito", "gustavo carmo", "gestão municipal",
+KEYWORDS_Oposição = ["prefeitura", "prefeito", "gustavo carmo", "gestão municipal",
                      "alagoinhas", "administração"]
 KEYWORDS_IMPRENSA = ["prefeitura de alagoinhas", "gustavo carmo", "gestão municipal",
                      "prefeito de alagoinhas"]
@@ -121,8 +121,8 @@ def filtrar_relevante(caption, categoria_filtro):
     texto = caption.lower()
     if categoria_filtro == "governo":
         return any(kw in texto for kw in KEYWORDS_GOVERNO)
-    if categoria_filtro == "oposicao":
-        return any(kw in texto for kw in KEYWORDS_OPOSICAO)
+    if categoria_filtro == "Oposição":
+        return any(kw in texto for kw in KEYWORDS_Oposição)
     if categoria_filtro == "imprensa":
         return any(kw in texto for kw in KEYWORDS_IMPRENSA)
     return True
@@ -216,7 +216,7 @@ def coletar_posts():
                 if not dentro_do_periodo(data_post):
                     continue
 
-                # Filtro de relevância (imprensa e oposição precisam mencionar prefeito)
+                # Filtro de relevância (imprensa e Oposição precisam mencionar prefeito)
                 if filtro != "governo" and not filtrar_relevante(caption, filtro):
                     continue
 
