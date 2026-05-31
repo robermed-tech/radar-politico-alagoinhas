@@ -1,0 +1,57 @@
+name: ÁGORA — Radar Político Alagoinhas
+
+on:
+  schedule:
+    # Roda 4x/dia (BRT = UTC-3)
+    # 05:00 BRT = 08:00 UTC
+    # 11:00 BRT = 14:00 UTC
+    # 17:00 BRT = 20:00 UTC
+    # 22:00 BRT = 01:00 UTC
+    - cron: '0 8 * * *'
+    - cron: '0 14 * * *'
+    - cron: '0 20 * * *'
+    - cron: '0 1 * * *'
+  workflow_dispatch:  # Permite executar manualmente
+
+jobs:
+  agora:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Executar ÁGORA
+        env:
+          SOCIAVAULT_API_KEY:   ${{ secrets.SOCIAVAULT_API_KEY }}
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SPREADSHEET_ID:       ${{ secrets.SPREADSHEET_ID }}
+          GOOGLE_CREDENTIALS:   ${{ secrets.GOOGLE_CREDENTIALS }}
+          EVOLUTION_API_URL:    ${{ secrets.EVOLUTION_API_URL }}
+          EVOLUTION_API_KEY:    ${{ secrets.EVOLUTION_API_KEY }}
+          EVOLUTION_INSTANCE:   ${{ secrets.EVOLUTION_INSTANCE }}
+          WHATSAPP_NUMBER:      ${{ secrets.WHATSAPP_NUMBER }}
+        run: python agora.py
+
+      - name: Notifica falha no WhatsApp
+        if: failure()
+        env:
+          EVOLUTION_API_URL:  ${{ secrets.EVOLUTION_API_URL }}
+          EVOLUTION_API_KEY:  ${{ secrets.EVOLUTION_API_KEY }}
+          EVOLUTION_INSTANCE: ${{ secrets.EVOLUTION_INSTANCE }}
+          WHATSAPP_NUMBER:    ${{ secrets.WHATSAPP_NUMBER }}
+        run: |
+          curl -s -X POST "$EVOLUTION_API_URL/message/sendText/$EVOLUTION_INSTANCE" \
+            -H "Content-Type: application/json" \
+            -H "apikey: $EVOLUTION_API_KEY" \
+            -d "{\"number\":\"$WHATSAPP_NUMBER\",\"textMessage\":{\"text\":\"⚠️ ÁGORA: falha na execução. Verifique o GitHub Actions.\"}}" || true
