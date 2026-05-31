@@ -1,4 +1,4 @@
-"""
+﻿"""
 ╔══════════════════════════════════════════════════════════════════╗
 ║  ÁGORA — Agente de Monitoramento Político                        ║
 ║  Radar Político Alagoinhas                                       ║
@@ -42,11 +42,11 @@ PERFIS = {
     "prefeituraalagoinhas": {"categoria": "Prefeitura", "filtro": "governo"},
     # Oposição
     "soulucianoalmeida":    {"categoria": "Oposição",   "filtro": "oposicao"},
-    "oficialjoaquimneto":   {"categoria": "Oposi��o",   "filtro": "oposicao"},
-    "paulocezar_oficial":   {"categoria": "Oposi��o",   "filtro": "oposicao"},
-    "jaldicenunes":         {"categoria": "Oposi��o",   "filtro": "oposicao"},
-    "eulumamenezes":        {"categoria": "Oposi��o",   "filtro": "oposicao"},
-    "gleysersoares":        {"categoria": "Oposi��o",   "filtro": "oposicao"},
+    "oficialjoaquimneto":   {"categoria": "Oposi��o",   "filtro": "oposicao"},
+    "paulocezar_oficial":   {"categoria": "Oposi��o",   "filtro": "oposicao"},
+    "jaldicenunes":         {"categoria": "Oposi��o",   "filtro": "oposicao"},
+    "eulumamenezes":        {"categoria": "Oposi��o",   "filtro": "oposicao"},
+    "gleysersoares":        {"categoria": "Oposi��o",   "filtro": "oposicao"},
     "jornalalagoinhas":     {"categoria": "Imprensa",   "filtro": "imprensa"},
     "suacidade":            {"categoria": "Imprensa",   "filtro": "imprensa"},
     # Imprensa
