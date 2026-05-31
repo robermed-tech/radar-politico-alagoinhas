@@ -42,18 +42,18 @@ PERFIS = {
     "prefeituraalagoinhas": {"categoria": "Prefeitura", "filtro": "governo"},
     # Oposi√ß√£o
     "soulucianoalmeida":    {"categoria": "Oposi√ß√£o",   "filtro": "oposicao"},
-    "alagonoticias":        {"categoria": "Oposi√ß√£o",   "filtro": "oposicao"},
-    "alagoinhasurgente":    {"categoria": "Oposi√ß√£o",   "filtro": "oposicao"},
-    "vereador.alagoinhas":  {"categoria": "Oposi√ß√£o",   "filtro": "oposicao"},
-    "politicaalagoinhas":   {"categoria": "Oposi√ß√£o",   "filtro": "oposicao"},
-    "fiscaliza.alagoinhas": {"categoria": "Oposi√ß√£o",   "filtro": "oposicao"},
-    "oposicaoalagoinhas":   {"categoria": "Oposi√ß√£o",   "filtro": "oposicao"},
-    "municipioalagoinhas":  {"categoria": "Oposi√ß√£o",   "filtro": "oposicao"},
+    "oficialjoaquimneto":   {"categoria": "OposiÁ„o",   "filtro": "oposicao"},
+    "paulocezar_oficial":   {"categoria": "OposiÁ„o",   "filtro": "oposicao"},
+    "jaldicenunes":         {"categoria": "OposiÁ„o",   "filtro": "oposicao"},
+    "eulumamenezes":        {"categoria": "OposiÁ„o",   "filtro": "oposicao"},
+    "gleysersoares":        {"categoria": "OposiÁ„o",   "filtro": "oposicao"},
+    "jornalalagoinhas":     {"categoria": "Imprensa",   "filtro": "imprensa"},
+    "suacidade":            {"categoria": "Imprensa",   "filtro": "imprensa"},
     # Imprensa
     "alagonews":            {"categoria": "Imprensa",   "filtro": "imprensa"},
     "portalalagoinhasnews": {"categoria": "Imprensa",   "filtro": "imprensa"},
     "seligaalagoinhas":     {"categoria": "Imprensa",   "filtro": "imprensa"},
-    "alagoinhasemfoco":     {"categoria": "Imprensa",   "filtro": "imprensa"},
+    "alagoinhas24h":        {"categoria": "Imprensa",   "filtro": "imprensa"},
 }
 
 # Palavras-chave de relev√¢ncia por filtro
@@ -490,7 +490,7 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
 
         try:
             resposta = cliente.messages.create(
-                model="claude-sonnet-4-5",
+                model="claude-haiku-4-5-20251001",
                 max_tokens=1000,
                 system=PROMPT_SISTEMA,
                 messages=[{"role": "user", "content": prompt}]
