@@ -474,21 +474,27 @@ Caption: {post["caption"] or "(sem legenda)"}
 
 {coments_txt if coments_txt else "Nenhum comentario coletado neste post."}
 
-Retorne APENAS este JSON:
+Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
 
 {{
-  "score_imagem": <0-100>,
-  "score_risco": <0-100>,
-  "sentimento_post": <"positivo"|"negativo"|"neutro">,
-  "sentimento_comentarios": <"positivo"|"negativo"|"neutro"|"misto">,
-  "queixa_dominante": "<queixa mais frequente ou vazio>",
+  "score_imagem": <0-100, saude da imagem do prefeito>,
+  "score_risco": <0-100, risco de crise de imagem>,
+  "risco_crise": "<alto|medio|baixo>",
+  "sentimento_post": "<positivo|negativo|neutro>",
+  "sentimento_comentarios": "<positivo|negativo|neutro|misto>",
+  "comentarios_pct_pos": <0-100, percentual de comentarios positivos>,
+  "comentarios_pct_neg": <0-100, percentual de comentarios negativos>,
+  "queixa_dominante": "<queixa mais frequente nos comentarios ou vazio>",
   "elogio_dominante": "<elogio mais frequente ou vazio>",
-  "comentario_destaque": "<comentario mais representativo>",
-  "padrao_detectado": "<campanha coordenada ou vazio>",
-  "tema": "<tema principal>",
-  "urgencia": <"alta"|"media"|"baixa">,
-  "sugestao_acao": "<acao concreta recomendada>",
-  "janela_acao": "<imediato/24h/esta semana>"
+  "comentarios_destaque": "<comentario cidadao mais representativo da opiniao publica>",
+  "resumo": "<1 frase descrevendo o tom geral dos comentarios e o impacto na imagem>",
+  "padrao_detectado": "<campanha coordenada, bot, oposicao organizada ou Isolado>",
+  "tema": "<tema principal: saude|educacao|obras|seguranca|transporte|emprego|impostos|outros>",
+  "atribuicao": "<prefeito_pessoal|prefeitura_instituicao|secretaria|camara_vereadores|oposicao|governo_estadual|governo_federal|sociedade_civil|outros>",
+  "tendencia": "<crescendo|estavel|caindo>",
+  "urgencia": "<alta|media|baixa>",
+  "sugestao_acao": "<acao concreta: monitorar|responder publicamente|acionar assessoria|conter crise|ampliar positivo>",
+  "janela_acao": "<imediato|24h|esta semana>"
 }}"""
     return prompt
 
@@ -532,13 +538,21 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
         except json.JSONDecodeError as e:
             log(f"    JSON invalido: {e}")
             resultado.append({**post, "score_imagem": 50, "score_risco": 0,
-                              "urgencia": "baixa", "tema": "", "sentimento_post": "neutro",
-                              "sentimento_comentarios": "neutro"})
+                              "risco_crise": "baixo", "tendencia": "estavel",
+                              "atribuicao": "outros", "resumo": "",
+                              "comentarios_pct_pos": 0, "comentarios_pct_neg": 0,
+                              "comentarios_destaque": "",
+                              "urgencia": "baixa", "tema": "",
+                              "sentimento_post": "neutro", "sentimento_comentarios": "neutro"})
         except Exception as e:
             log(f"    Erro AGORA: {e}")
             resultado.append({**post, "score_imagem": 50, "score_risco": 0,
-                              "urgencia": "baixa", "tema": "", "sentimento_post": "neutro",
-                              "sentimento_comentarios": "neutro"})
+                              "risco_crise": "baixo", "tendencia": "estavel",
+                              "atribuicao": "outros", "resumo": "",
+                              "comentarios_pct_pos": 0, "comentarios_pct_neg": 0,
+                              "comentarios_destaque": "",
+                              "urgencia": "baixa", "tema": "",
+                              "sentimento_post": "neutro", "sentimento_comentarios": "neutro"})
 
         time.sleep(1)
 
@@ -553,10 +567,12 @@ CABECALHO_RADAR = [
     "url", "data_post", "autor", "categoria",
     "curtidas", "comentarios_total", "total_cidadaos", "total_politicos",
     "sentimento_post", "sentimento_comentarios",
-    "score_imagem", "score_risco",
+    "comentarios_pct_pos", "comentarios_pct_neg",
+    "score_imagem", "score_risco", "risco_crise",
     "queixa_dominante", "elogio_dominante",
-    "comentario_destaque", "padrao_detectado",
-    "tema", "urgencia", "sugestao_acao", "janela_acao",
+    "comentarios_destaque", "resumo",
+    "padrao_detectado", "tema", "atribuicao", "tendencia",
+    "urgencia", "sugestao_acao", "janela_acao",
     "caption", "atualizado_em"
 ]
 
@@ -595,10 +611,14 @@ def gravar_no_sheets(planilha, posts_analisados, comentarios_por_post):
             p.get("categoria", ""), p.get("curtidas", 0), p.get("total_coments", 0),
             p.get("total_cidadaos", 0), p.get("total_politicos", 0),
             p.get("sentimento_post", ""), p.get("sentimento_comentarios", ""),
+            p.get("comentarios_pct_pos", 0), p.get("comentarios_pct_neg", 0),
             p.get("score_imagem", 50), p.get("score_risco", 0),
+            p.get("risco_crise", "baixo"),
             p.get("queixa_dominante", ""), p.get("elogio_dominante", ""),
-            p.get("comentario_destaque", ""), p.get("padrao_detectado", ""),
-            p.get("tema", ""), p.get("urgencia", ""),
+            p.get("comentarios_destaque", ""), p.get("resumo", ""),
+            p.get("padrao_detectado", ""), p.get("tema", ""),
+            p.get("atribuicao", ""), p.get("tendencia", "estavel"),
+            p.get("urgencia", "baixa"),
             p.get("sugestao_acao", ""), p.get("janela_acao", ""),
             p.get("caption", "")[:200], agora,
         ]
