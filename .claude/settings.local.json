@@ -21,7 +21,23 @@
       "Bash(Add-Content .gitignore \"`n.env`nservice_account.json\")",
       "Bash(python -m pytest test_radar.py -v)",
       "Bash(git -C \"C:\\\\Users\\\\rober\\\\radar-politico\" add radar.py run_pipeline.py requirements.txt .github/workflows/radar.yml test_radar.py RESEARCH.md)",
-      "Bash(git -C \"C:\\\\Users\\\\rober\\\\radar-politico\" diff --cached --stat)"
+      "Bash(git -C \"C:\\\\Users\\\\rober\\\\radar-politico\" diff --cached --stat)",
+      "Bash(git stash *)",
+      "Bash(git checkout *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\rober\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(ls -d C:/Users/rober/*/ | head -20)",
+      "Bash(npm --version)",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__computer",
+      "mcp__Claude_in_Chrome__javascript_tool"
     ]
   }
 }
