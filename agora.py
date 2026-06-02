@@ -219,15 +219,15 @@ def coletar_posts():
     log("=== MODULO 1 - Coletando posts via Apify ===")
 
     # Monta URLs dos perfis
-    urls_perfis = [f"https://www.instagram.com/{handle}/"
+    usernames = [f"https://www.instagram.com/{handle}/"
                    for handle in PERFIS.keys()]
 
     input_data = {
-        "directUrls": urls_perfis,
+        "username": usernames,
         "resultsLimit": MAX_POSTS_POR_PERFIL,
     }
 
-    log(f"  Enviando {len(urls_perfis)} perfis para o Apify...")
+    log(f"  Enviando {len(usernames)} perfis para o Apify...")
     run_id = apify_iniciar_run(ACTOR_POSTS, input_data)
     if not run_id:
         log("  Falha ao iniciar coleta de posts")
@@ -312,7 +312,7 @@ def coletar_comentarios(posts):
     log(f"  Enviando {len(urls_posts)} posts para coleta de comentarios...")
 
     input_data = {
-        "directUrls": urls_posts,
+        "username": urls_posts,
         "resultsLimit": MAX_COMENTARIOS_POR_POST,
     }
 
