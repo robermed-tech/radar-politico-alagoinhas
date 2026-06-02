@@ -312,7 +312,7 @@ def coletar_comentarios(posts):
     log(f"  Enviando {len(urls_posts)} posts para coleta de comentarios...")
 
     input_data = {
-        "username": urls_posts,
+        "directUrls": urls_posts,
         "resultsLimit": MAX_COMENTARIOS_POR_POST,
     }
 
