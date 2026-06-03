@@ -1450,7 +1450,7 @@ function filtrarPorPeriodo(dados) {
   });
   if (KWS.length) {
     filtered = filtered.filter(function(d) {
-      var hay = ((d.resumo||'')+(d.tema||'')+(d.atribuicao||'')).toLowerCase();
+      var hay = ((d.resumo||'')+(d.tema||'')+(d.atribuicao||'')+(d.caption||'')+(d.autor||'')+(d.queixa_dominante||'')+(d.comentarios_destaque||'')).toLowerCase();
       return KWS.some(function(kw){ return hay.includes(kw); });
     });
   }
@@ -1531,6 +1531,13 @@ window.onload = function() {
   applyTheme(localStorage.getItem('radar_theme') || 'light');
   var savedKws = localStorage.getItem('radar_kws');
   if (savedKws) try { KWS = JSON.parse(savedKws); } catch(e){}
+  /* Repara keywords salvas como string única com vírgulas (bug legado).
+     Divide cada entry que contenha vírgula em keywords individuais. */
+  KWS = KWS.reduce(function(acc, kw) {
+    return acc.concat(String(kw).split(',').map(function(k){ return k.trim().toLowerCase(); }).filter(Boolean));
+  }, []);
+  KWS = KWS.filter(function(k, i){ return k && KWS.indexOf(k) === i; }); /* dedupe */
+  localStorage.setItem('radar_kws', JSON.stringify(KWS)); /* persiste corrigido */
   syncPeriodButtons();
   if (SCRIPT_URL) {
     document.getElementById('cfg-url').value = SCRIPT_URL;
@@ -2477,8 +2484,12 @@ function renderKwTags() {
 }
 function addKeyword() {
   var input = document.getElementById('kw-input');
-  var val   = input.value.trim().toLowerCase();
-  if (val && KWS.indexOf(val)===-1) { KWS.push(val); renderKwTags(); }
+  /* Aceita múltiplas keywords separadas por vírgula */
+  var vals = input.value.split(',').map(function(v){ return v.trim().toLowerCase(); }).filter(Boolean);
+  vals.forEach(function(val){
+    if (val && KWS.indexOf(val) === -1) KWS.push(val);
+  });
+  renderKwTags();
   input.value = '';
 }
 function removeKeyword(i) { KWS.splice(i,1); renderKwTags(); }
