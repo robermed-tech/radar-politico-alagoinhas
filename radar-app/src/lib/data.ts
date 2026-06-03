@@ -265,6 +265,31 @@ export async function fetchNarratives(): Promise<Narrative[]> {
   return (await res.json()) as Narrative[];
 }
 
+export interface DailyTheme {
+  dia: string;
+  tema: string;
+  volume_posts: number;
+  volume_coments: number;
+  curtidas: number;
+  pct_pos: number;
+  pct_neg: number;
+  pct_neu: number;
+  score_risco: number;
+}
+
+/** Histórico tema/dia (Tendências). */
+export async function fetchDailyThemes(): Promise<DailyTheme[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/daily_themes?tenant=eq.${TENANT}` +
+    `&select=*&order=dia.asc&limit=5000`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  return (await res.json()) as DailyTheme[];
+}
+
 export function filtrarPorPeriodo(posts: Post[], dias: number): Post[] {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dias);

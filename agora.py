@@ -1191,6 +1191,55 @@ def gravar_narratives(posts_analisados, comentarios_por_post):
     ativas = sum(1 for r in rows if r["status"] == "ativa")
     log(f"  Narrativas gravadas: {n} ({ativas} ativas)")
 
+
+# ==============================================================
+# MODULO 10 - DAILY_THEMES (Tendências por tema)
+# ==============================================================
+
+def gravar_daily_themes(posts_analisados):
+    """Agrega volume + sentimento por (dia, tema). Base para a página Tendências."""
+    if not SUPABASE_URL or not SUPABASE_KEY or not posts_analisados:
+        return
+    log("=== MODULO 10 - Daily Themes (Tendencias) ===")
+
+    by_dia_tema = {}
+    for p in posts_analisados:
+        dia = _dia_iso(p.get("data_post", ""))
+        tema = (p.get("tema") or "").strip().title()
+        if not dia or not tema:
+            continue
+        k = (dia, tema)
+        d = by_dia_tema.setdefault(k, {
+            "posts": 0, "coments": 0, "curtidas": 0,
+            "pos": 0, "neg": 0, "neu": 0, "risco_sum": 0,
+        })
+        d["posts"]    += 1
+        d["coments"]  += int(p.get("total_coments", 0) or p.get("comentarios_total", 0) or 0)
+        d["curtidas"] += int(p.get("curtidas", 0) or 0)
+        d["risco_sum"] += int(p.get("score_risco", 0) or 0)
+        s = _sent(p)
+        if s == "positivo": d["pos"] += 1
+        elif s == "negativo": d["neg"] += 1
+        else: d["neu"] += 1
+
+    rows = []
+    for (dia, tema), d in by_dia_tema.items():
+        tot = d["pos"] + d["neg"] + d["neu"] or 1
+        rows.append({
+            "tenant": TENANT, "dia": dia, "tema": tema,
+            "volume_posts":   d["posts"],
+            "volume_coments": d["coments"],
+            "curtidas":       d["curtidas"],
+            "pct_pos": round(d["pos"] / tot * 100, 1),
+            "pct_neg": round(d["neg"] / tot * 100, 1),
+            "pct_neu": round(d["neu"] / tot * 100, 1),
+            "score_risco": round(d["risco_sum"] / d["posts"], 1) if d["posts"] else 0,
+            "atualizado_em": datetime.now().isoformat(),
+        })
+
+    n = _supabase_upsert("daily_themes", rows, "tenant,dia,tema")
+    log(f"  Daily themes: {n} (dia, tema) atualizados")
+
 # ==============================================================
 # MODULO 5b - BRIEFING DIARIO
 # ==============================================================
@@ -1336,6 +1385,7 @@ def main():
     gerar_briefing_estrategico(posts_analisados)                 # assistente IA (Fase 3d)
     gravar_influencers(posts_analisados, comentarios_por_post)   # ranking de influenciadores
     gravar_narratives(posts_analisados, comentarios_por_post)    # narrativas (tema + sentimento)
+    gravar_daily_themes(posts_analisados)                        # tendencias por tema (Fase 3e)
     alertas = disparar_alertas(posts_analisados)
     atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
 
