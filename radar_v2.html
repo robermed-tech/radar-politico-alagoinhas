@@ -2256,19 +2256,28 @@ function enviarFeedback(btn, url, valor) {
 
 /* ── RANKING DE COMENTÁRIOS ─────────────────────────────────── */
 function renderComentariosRanking(dados) {
-  /* Extrai o comentário destaque de cada post com curtidas como proxy de impacto */
   var positivos = [];
   var negativos = [];
   dados.forEach(function(d) {
     var sent = norm(d.sentimento_comentarios || d.sentimento_post || '');
     var cd = (d.comentarios_destaque || d.comentario_destaque || '').trim();
     if (!cd) return;
+
+    /* Prioridade: curtidas reais do comentário (campo novo do Agora).
+       Fallback: curtidas do post (proxy menos preciso — mostra com aviso). */
+    var curtComent  = parseInt(d.comentarios_destaque_curtidas) || 0;
+    var autorComent = (d.comentarios_destaque_autor || d.autor || '').trim();
+    var usandoProxy = curtComent === 0;
+    var curtExibir  = usandoProxy ? (parseInt(d.curtidas) || 0) : curtComent;
+
     var entry = {
       texto: cd,
-      autor: d.autor || '',
-      curtidas: parseInt(d.curtidas) || 0,
-      url: d.url || '',
-      tema: d.tema || ''
+      autorComent: autorComent,       /* autor do comentário */
+      autorPost:   d.autor || '',     /* dono do perfil/post */
+      curtidas:    curtExibir,
+      proxy:       usandoProxy,
+      url:         d.url || '',
+      tema:        d.tema || ''
     };
     if (sent === 'positivo') positivos.push(entry);
     else if (sent === 'negativo') negativos.push(entry);
@@ -2285,11 +2294,16 @@ function renderComentariosRanking(dados) {
       var row = document.createElement('div');
       row.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--hairline)';
       if (idx === list.length - 1 || idx === 4) row.style.borderBottom = 'none';
+      /* Aviso visual se curtidas são do post (proxy) e não do comentário */
+      var curtLabel = item.proxy
+        ? '<span class="badge" style="background:rgba(217,119,6,0.10);color:var(--amber)" title="Curtidas do post (curtidas do comentário não disponíveis neste registro)">❤️ ' + item.curtidas + ' <span style=\'font-size:10px\'>post</span></span>'
+        : '<span class="badge" style="background:rgba(255,107,107,0.10);color:var(--red)" title="Curtidas reais do comentário">❤️ ' + item.curtidas + '</span>';
       row.innerHTML =
         '<div style="font-size:15px;color:var(--txt-1);line-height:1.55;font-style:italic;margin-bottom:6px">"' + escHtml(item.texto) + '"</div>' +
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-          '<span style="font-size:13px;font-weight:700;color:var(--sky)">@' + escHtml(item.autor) + '</span>' +
-          '<span class="badge" style="background:rgba(255,107,107,0.10);color:var(--red)">❤️ ' + item.curtidas + '</span>' +
+          '<span style="font-size:13px;font-weight:700;color:var(--sky)">@' + escHtml(item.autorComent) + '</span>' +
+          '<span style="font-size:12px;color:var(--txt-3)">em @' + escHtml(item.autorPost) + '</span>' +
+          curtLabel +
           (item.tema ? '<span style="font-size:12px;color:var(--txt-3)">📌 ' + escHtml(item.tema) + '</span>' : '') +
           (item.url ? '<a class="btn-ver" href="' + escHtml(item.url) + '" target="_blank" rel="noopener">Ver post ↗</a>' : '') +
         '</div>';

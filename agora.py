@@ -486,7 +486,9 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
   "comentarios_pct_neg": <0-100, percentual de comentarios negativos>,
   "queixa_dominante": "<queixa mais frequente nos comentarios ou vazio>",
   "elogio_dominante": "<elogio mais frequente ou vazio>",
-  "comentarios_destaque": "<comentario cidadao mais representativo da opiniao publica>",
+  "comentarios_destaque": "<comentario cidadao mais representativo da opiniao publica — copie o texto exato>",
+  "comentarios_destaque_curtidas": <numero exato de curtidas desse comentario, conforme listado acima>,
+  "comentarios_destaque_autor": "<username do autor desse comentario>",
   "resumo": "<1 frase descrevendo o tom geral dos comentarios e o impacto na imagem>",
   "padrao_detectado": "<campanha coordenada, bot, oposicao organizada ou Isolado>",
   "tema": "<tema principal: saude|educacao|obras|seguranca|transporte|emprego|impostos|outros>",
@@ -541,7 +543,7 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
                               "risco_crise": "baixo", "tendencia": "estavel",
                               "atribuicao": "outros", "resumo": "",
                               "comentarios_pct_pos": 0, "comentarios_pct_neg": 0,
-                              "comentarios_destaque": "",
+                              "comentarios_destaque": "", "comentarios_destaque_curtidas": 0, "comentarios_destaque_autor": "",
                               "urgencia": "baixa", "tema": "",
                               "sentimento_post": "neutro", "sentimento_comentarios": "neutro"})
         except Exception as e:
@@ -550,7 +552,7 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
                               "risco_crise": "baixo", "tendencia": "estavel",
                               "atribuicao": "outros", "resumo": "",
                               "comentarios_pct_pos": 0, "comentarios_pct_neg": 0,
-                              "comentarios_destaque": "",
+                              "comentarios_destaque": "", "comentarios_destaque_curtidas": 0, "comentarios_destaque_autor": "",
                               "urgencia": "baixa", "tema": "",
                               "sentimento_post": "neutro", "sentimento_comentarios": "neutro"})
 
@@ -570,7 +572,7 @@ CABECALHO_RADAR = [
     "comentarios_pct_pos", "comentarios_pct_neg",
     "score_imagem", "score_risco", "risco_crise",
     "queixa_dominante", "elogio_dominante",
-    "comentarios_destaque", "resumo",
+    "comentarios_destaque", "comentarios_destaque_curtidas", "comentarios_destaque_autor", "resumo",
     "padrao_detectado", "tema", "atribuicao", "tendencia",
     "urgencia", "sugestao_acao", "janela_acao",
     "caption", "atualizado_em"
@@ -615,7 +617,10 @@ def gravar_no_sheets(planilha, posts_analisados, comentarios_por_post):
             p.get("score_imagem", 50), p.get("score_risco", 0),
             p.get("risco_crise", "baixo"),
             p.get("queixa_dominante", ""), p.get("elogio_dominante", ""),
-            p.get("comentarios_destaque", ""), p.get("resumo", ""),
+            p.get("comentarios_destaque", ""),
+            p.get("comentarios_destaque_curtidas", 0),
+            p.get("comentarios_destaque_autor", ""),
+            p.get("resumo", ""),
             p.get("padrao_detectado", ""), p.get("tema", ""),
             p.get("atribuicao", ""), p.get("tendencia", "estavel"),
             p.get("urgencia", "baixa"),
