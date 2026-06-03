@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
-import { fetchRadar, filtrarPorPeriodo, parseData, type Post } from "@/lib/data";
+import {
+  fetchRadar,
+  filtrarPorPeriodo,
+  parseData,
+  getScriptUrl,
+  setScriptUrl,
+  type Post,
+} from "@/lib/data";
 import { calcIndices, NIVEL_COLOR, NIVEL_LABEL } from "@/lib/indices";
 import { Gauge } from "@/components/Gauge";
 import { KpiStat } from "@/components/KpiStat";
@@ -36,14 +43,52 @@ function serieDiaria(posts: Post[]) {
   }));
 }
 
+function ConfigUrl({ onSaved }: { onSaved: () => void }) {
+  const [url, setUrl] = useState(getScriptUrl());
+  return (
+    <div className="grid min-h-[60vh] place-items-center p-6">
+      <div className="w-full max-w-lg rounded-2xl border border-line bg-bg-1 p-6">
+        <h2 className="text-lg font-extrabold">Conectar fonte de dados</h2>
+        <p className="mt-1 text-sm text-txt-2">
+          Cole a URL do Google Apps Script (a mesma usada em <b>Ajustes</b> do dashboard
+          atual). Fica salva só neste dispositivo.
+        </p>
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://script.google.com/macros/s/.../exec"
+          className="mt-4 w-full rounded-lg border border-line bg-bg-2 px-3 py-2.5 text-sm outline-none focus:border-brand"
+        />
+        <button
+          onClick={() => {
+            setScriptUrl(url);
+            onSaved();
+          }}
+          disabled={!url.trim()}
+          className="mt-3 w-full rounded-lg bg-brand py-2.5 font-bold text-white disabled:opacity-50"
+        >
+          Conectar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function CommandCenter() {
   const [dias, setDias] = useState(7);
+  const qc = useQueryClient();
+  const hasUrl = !!getScriptUrl();
   const { data, isLoading, error } = useQuery({
     queryKey: ["radar"],
     queryFn: fetchRadar,
     staleTime: 5 * 60 * 1000,
     refetchInterval: 30 * 60 * 1000,
+    enabled: hasUrl,
+    retry: false,
   });
+
+  if (!hasUrl || (error as Error | undefined)?.message === "NO_URL")
+    return <ConfigUrl onSaved={() => qc.invalidateQueries({ queryKey: ["radar"] })} />;
 
   const view = useMemo(() => {
     if (!data) return null;

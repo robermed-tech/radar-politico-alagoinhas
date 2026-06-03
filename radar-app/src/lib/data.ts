@@ -50,7 +50,17 @@ export interface RadarPayload {
   perfis: Perfil[];
 }
 
-const SCRIPT_URL = import.meta.env.VITE_SCRIPT_URL as string | undefined;
+const LS_KEY = "radar_script_url";
+
+/** URL do Apps Script: localStorage (runtime) tem prioridade sobre env (build). */
+export function getScriptUrl(): string {
+  const fromLs = typeof localStorage !== "undefined" ? localStorage.getItem(LS_KEY) : null;
+  return (fromLs || (import.meta.env.VITE_SCRIPT_URL as string | undefined) || "").trim();
+}
+
+export function setScriptUrl(url: string): void {
+  localStorage.setItem(LS_KEY, url.trim());
+}
 
 function num(v: unknown): number {
   const n = parseFloat(String(v ?? "").replace(",", "."));
@@ -92,12 +102,11 @@ function normalizePost(r: Record<string, unknown>): Post {
 }
 
 export async function fetchRadar(): Promise<RadarPayload> {
-  if (!SCRIPT_URL) {
-    throw new Error(
-      "VITE_SCRIPT_URL não configurado. Copie .env.example para .env e cole a URL do Apps Script."
-    );
+  const url = getScriptUrl();
+  if (!url) {
+    throw new Error("NO_URL");
   }
-  const res = await fetch(`${SCRIPT_URL}?action=list`);
+  const res = await fetch(`${url}?action=list`);
   if (!res.ok) throw new Error(`Falha ao carregar dados (HTTP ${res.status})`);
   const json = (await res.json()) as { data?: unknown[]; perfis?: Perfil[] };
   return {
