@@ -15,6 +15,7 @@
 import os
 import json
 import time
+import math
 import requests
 from datetime import datetime, timedelta
 from anthropic import Anthropic
@@ -754,6 +755,113 @@ def gravar_no_supabase(posts_analisados, comentarios_por_post):
     n_coments = _supabase_upsert("comments", coment_rows, "id")
     log(f"  Supabase: {n_posts} posts, {n_coments} comentarios espelhados")
 
+
+# ==============================================================
+# MODULO 5d - INDICES + DAILY_METRICS (Fase 3 - Central de Crises)
+# ==============================================================
+
+def _sent(p):
+    return str(p.get("sentimento_post", "")).strip().lower()
+
+def _dia_iso(s):
+    """dd/mm/yyyy [hh:mm] -> 'yyyy-mm-dd' (ou None)."""
+    try:
+        parts = str(s).split(" ")[0].split("/")
+        if len(parts) == 3:
+            return f"{int(parts[2]):04d}-{int(parts[1]):02d}-{int(parts[0]):02d}"
+    except Exception:
+        pass
+    return None
+
+def calc_iad(posts):
+    """Indice de Aprovacao Digital (0-100) — sentimento de comentarios ponderado por volume."""
+    sPos = sNeg = sNeu = 0.0
+    for p in posts:
+        n = int(p.get("total_coments", 0) or p.get("comentarios_total", 0) or 0)
+        peso = 1 + math.log10(1 + n)
+        pPos = float(p.get("comentarios_pct_pos", 0) or 0) / 100
+        pNeg = float(p.get("comentarios_pct_neg", 0) or 0) / 100
+        pNeu = max(0.0, 1 - pPos - pNeg)
+        sPos += peso * pPos
+        sNeg += peso * pNeg
+        sNeu += peso * pNeu
+    tot = sPos + sNeg + sNeu
+    if tot == 0:
+        return 0.0
+    return max(0.0, min(100.0, 100 * (sPos + 0.5 * sNeu) / tot))
+
+def calc_ica(posts):
+    """Indice de Confianca da Amostra (0-100)."""
+    if not posts:
+        return 0.0
+    nComents = sum(int(p.get("total_coments", 0) or 0) for p in posts)
+    fVol = min(1.0, math.log10(1 + nComents) / math.log10(1 + 500))
+    perfis = len(set(p.get("autor", "") for p in posts))
+    fFontes = min(1.0, perfis / 8)
+    # recencia
+    dias = [d for d in (_dia_iso(p.get("data_post", "")) for p in posts) if d]
+    fRec = 1.0
+    if dias:
+        mais_recente = max(dias)
+        try:
+            dt = datetime.strptime(mais_recente, "%Y-%m-%d")
+            horas = max(0, (datetime.now() - dt).total_seconds() / 3600)
+            fRec = math.exp(-horas / 48)
+        except Exception:
+            fRec = 1.0
+    tot = len(posts)
+    pPos = sum(1 for p in posts if _sent(p) == "positivo") / tot * 100
+    pNeg = sum(1 for p in posts if _sent(p) == "negativo") / tot * 100
+    fBal = 1 - abs(pPos - pNeg) / 100 * 0.3
+    return max(0.0, min(100.0, 100 * (0.45 * fVol + 0.25 * fFontes + 0.20 * fRec + 0.10 * fBal)))
+
+def calc_risco(posts, iad, ica):
+    """Risco politico (0-100) + nivel de crise."""
+    tot = len(posts) or 1
+    pctRiscoAlto = sum(1 for p in posts if str(p.get("risco_crise", "")).strip().lower() == "alto") / tot * 100
+    risco = max(0.0, min(100.0, 0.35 * (100 - iad) + 0.25 * pctRiscoAlto + 0.05 * (100 - ica)))
+    if risco >= 80:
+        nivel = "critico"
+    elif risco >= 60:
+        nivel = "alto"
+    elif risco >= 40:
+        nivel = "moderado"
+    else:
+        nivel = "baixo"
+    if ica < 40 and nivel == "critico":
+        nivel = "alto"
+    return risco, nivel
+
+def gravar_daily_metrics(posts_analisados):
+    """Calcula e grava os indices por dia no Supabase (historico da Central de Crises)."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+    by_day = {}
+    for p in posts_analisados:
+        d = _dia_iso(p.get("data_post", ""))
+        if d:
+            by_day.setdefault(d, []).append(p)
+    rows = []
+    for dia, ps in by_day.items():
+        iad = calc_iad(ps)
+        ica = calc_ica(ps)
+        risco, nivel = calc_risco(ps, iad, ica)
+        tot = len(ps) or 1
+        pos = sum(1 for p in ps if _sent(p) == "positivo")
+        neg = sum(1 for p in ps if _sent(p) == "negativo")
+        neu = tot - pos - neg
+        rows.append({
+            "tenant": TENANT, "dia": dia,
+            "iad": round(iad, 1), "ica": round(ica, 1), "risco": round(risco, 1),
+            "nivel_crise": nivel,
+            "volume_posts": len(ps),
+            "volume_coments": sum(int(p.get("total_coments", 0) or 0) for p in ps),
+            "pct_pos": round(pos / tot * 100), "pct_neg": round(neg / tot * 100),
+            "pct_neu": round(neu / tot * 100),
+        })
+    n = _supabase_upsert("daily_metrics", rows, "tenant,dia")
+    log(f"  Supabase daily_metrics: {n} dias atualizados")
+
 # ==============================================================
 # MODULO 5b - BRIEFING DIARIO
 # ==============================================================
@@ -895,6 +1003,7 @@ def main():
     posts_analisados = analisar_com_agora(posts, comentarios_por_post, memoria)
     novos_radar, novos_coments = gravar_no_sheets(planilha, posts_analisados, comentarios_por_post)
     gravar_no_supabase(posts_analisados, comentarios_por_post)  # dual-write (opcional)
+    gravar_daily_metrics(posts_analisados)                       # historico de indices (Fase 3)
     alertas = disparar_alertas(posts_analisados)
     atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
 

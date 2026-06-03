@@ -153,6 +153,32 @@ export function parseData(str: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+export interface DailyMetric {
+  dia: string;
+  iad: number;
+  ica: number;
+  risco: number;
+  nivel_crise: string;
+  volume_posts: number;
+  volume_coments: number;
+  pct_pos: number;
+  pct_neg: number;
+  pct_neu: number;
+}
+
+/** Histórico de índices (Central de Crises). Vazio se Supabase indisponível. */
+export async function fetchDailyMetrics(): Promise<DailyMetric[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/daily_metrics?tenant=eq.${TENANT}` +
+    `&select=*&order=dia.asc&limit=180`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  return (await res.json()) as DailyMetric[];
+}
+
 export function filtrarPorPeriodo(posts: Post[], dias: number): Post[] {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dias);

@@ -1,17 +1,22 @@
+import { useState } from "react";
 import { CommandCenter } from "@/pages/CommandCenter";
+import { CrisisCenter } from "@/pages/CrisisCenter";
 
-const NAV = [
+type Page = "command" | "crisis";
+
+const NAV: { id: Page | string; label: string; icon: string; active: boolean }[] = [
   { id: "command", label: "Comando", icon: "◉", active: true },
-  { id: "approval", label: "Aprovação", icon: "▲" },
-  { id: "trends", label: "Tendências", icon: "∿" },
-  { id: "risk", label: "Risco", icon: "⚠" },
-  { id: "crisis", label: "Crises", icon: "✦" },
-  { id: "influencers", label: "Influenciadores", icon: "✷" },
-  { id: "narratives", label: "Narrativas", icon: "❋" },
-  { id: "assistant", label: "Assistente IA", icon: "✧" },
+  { id: "crisis", label: "Crises", icon: "✦", active: true },
+  { id: "approval", label: "Aprovação", icon: "▲", active: false },
+  { id: "trends", label: "Tendências", icon: "∿", active: false },
+  { id: "influencers", label: "Influenciadores", icon: "✷", active: false },
+  { id: "narratives", label: "Narrativas", icon: "❋", active: false },
+  { id: "assistant", label: "Assistente IA", icon: "✧", active: false },
 ];
 
 export default function App() {
+  const [page, setPage] = useState<Page>("command");
+
   return (
     <div className="flex h-full">
       <aside className="hidden w-56 shrink-0 flex-col border-r border-line bg-bg-1 p-3 md:flex">
@@ -22,29 +27,52 @@ export default function App() {
           <span className="font-extrabold tracking-tight">Radar Político</span>
         </div>
         <nav className="flex flex-col gap-1">
-          {NAV.map((n) => (
+          {NAV.map((n) => {
+            const isCurrent = n.active && n.id === page;
+            return (
+              <button
+                key={n.id}
+                disabled={!n.active}
+                onClick={() => n.active && setPage(n.id as Page)}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold transition ${
+                  isCurrent
+                    ? "bg-bg-3 text-txt-1"
+                    : n.active
+                      ? "text-txt-2 hover:bg-bg-2 hover:text-txt-1"
+                      : "text-txt-3 disabled:cursor-not-allowed disabled:opacity-50"
+                }`}
+                title={n.active ? "" : "Em breve (Fase 3+)"}
+              >
+                <span className="w-4 text-center text-brand-2">{n.icon}</span>
+                {n.label}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="mt-auto px-2 text-[10px] text-txt-3">
+          Fase 3 · Postgres + Sheets (fallback)
+        </div>
+      </aside>
+
+      {/* Nav mobile (topo) */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex gap-1 border-b border-line bg-bg-1 p-2 md:hidden">
+          {NAV.filter((n) => n.active).map((n) => (
             <button
               key={n.id}
-              disabled={!n.active}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold transition ${
-                n.active
-                  ? "bg-bg-3 text-txt-1"
-                  : "text-txt-3 hover:text-txt-2 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => setPage(n.id as Page)}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                n.id === page ? "bg-bg-3 text-txt-1" : "text-txt-2"
               }`}
-              title={n.active ? "" : "Em breve (Fase 2+)"}
             >
-              <span className="w-4 text-center text-brand-2">{n.icon}</span>
               {n.label}
             </button>
           ))}
-        </nav>
-        <div className="mt-auto px-2 text-[10px] text-txt-3">
-          Fase 1 · lê do Google Sheets atual
         </div>
-      </aside>
-      <main className="flex-1 overflow-y-auto">
-        <CommandCenter />
-      </main>
+        <main className="flex-1 overflow-y-auto">
+          {page === "command" ? <CommandCenter /> : <CrisisCenter />}
+        </main>
+      </div>
     </div>
   );
 }
