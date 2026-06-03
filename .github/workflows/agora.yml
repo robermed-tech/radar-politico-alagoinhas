@@ -57,4 +57,4 @@ jobs:
           curl -s -X POST "$EVOLUTION_API_URL/message/sendText/$EVOLUTION_INSTANCE" \
             -H "Content-Type: application/json" \
             -H "apikey: $EVOLUTION_API_KEY" \
-            -d "{\"number\":\"$WHATSAPP_NUMBER\",\"textMessage\":{\"text\":\"⚠️ ÁGORA: falha na execução. Verifique o GitHub Actions.\"}}" || true
+            -d "{\"number\":\"$WHATSAPP_NUMBER\",\"text\":\"⚠️ ÁGORA: falha na execução. Verifique o GitHub Actions.\"}" || true

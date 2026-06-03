@@ -825,7 +825,7 @@ Queixa dominante:
 {post.get("queixa_dominante", "Nao identificada")}
 
 Comentario destaque:
-"{post.get("comentario_destaque", "")}"
+"{post.get("comentarios_destaque", post.get("comentario_destaque", ""))}"
 
 Sugestao de acao:
 {post.get("sugestao_acao", "")}
@@ -852,19 +852,18 @@ def disparar_alertas(posts_analisados):
         mensagem = formatar_mensagem_alerta(post)
 
         try:
+            # Evolution API v2: 'text' no nivel raiz (mesmo formato do gerar_relatorio.py).
             r = requests.post(
                 f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE','radar')}",
                 headers={"Content-Type": "application/json", "apikey": EVOLUTION_KEY},
-                json={"number": WHATSAPP_NUMBER,
-                      "options": {"delay": 1200, "presence": "composing"},
-                      "textMessage": {"text": mensagem}},
+                json={"number": WHATSAPP_NUMBER, "text": mensagem},
                 timeout=15
             )
             if r.status_code in (200, 201):
                 log(f"    Alerta enviado")
                 alertas_enviados += 1
             else:
-                log(f"    Erro Evolution: {r.status_code}")
+                log(f"    Erro Evolution: {r.status_code} - {r.text[:200]}")
         except Exception as e:
             log(f"    Erro ao enviar: {e}")
         time.sleep(2)
