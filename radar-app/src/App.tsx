@@ -3,17 +3,18 @@ import { CommandCenter } from "@/pages/CommandCenter";
 import { CrisisCenter } from "@/pages/CrisisCenter";
 import { AssistantPage } from "@/pages/AssistantPage";
 import { InfluencersPage } from "@/pages/InfluencersPage";
+import { NarrativesPage } from "@/pages/NarrativesPage";
 
-type Page = "command" | "crisis" | "assistant" | "influencers";
+type Page = "command" | "crisis" | "assistant" | "influencers" | "narratives";
 
 const NAV: { id: Page | string; label: string; icon: string; active: boolean }[] = [
   { id: "command", label: "Comando", icon: "◉", active: true },
   { id: "crisis", label: "Crises", icon: "✦", active: true },
   { id: "assistant", label: "Assistente IA", icon: "✧", active: true },
   { id: "influencers", label: "Influenciadores", icon: "✷", active: true },
+  { id: "narratives", label: "Narrativas", icon: "❋", active: true },
   { id: "approval", label: "Aprovação", icon: "▲", active: false },
   { id: "trends", label: "Tendências", icon: "∿", active: false },
-  { id: "narratives", label: "Narrativas", icon: "❋", active: false },
 ];
 
 export default function App() {
@@ -76,6 +77,7 @@ export default function App() {
           {page === "crisis" && <CrisisCenter />}
           {page === "assistant" && <AssistantPage />}
           {page === "influencers" && <InfluencersPage />}
+          {page === "narratives" && <NarrativesPage />}
         </main>
       </div>
     </div>

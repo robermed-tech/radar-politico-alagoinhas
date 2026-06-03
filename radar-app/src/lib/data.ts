@@ -232,6 +232,39 @@ export async function fetchInfluencers(): Promise<Influencer[]> {
   return (await res.json()) as Influencer[];
 }
 
+export interface Narrative {
+  id: string;
+  tema: string;
+  sentimento: string;
+  rotulo: string;
+  origem_handle: string;
+  origem_url: string;
+  primeiro_visto: string;
+  ultimo_visto: string;
+  volume_posts: number;
+  volume_coments: number;
+  amplificacao: number;
+  perfis_distintos: number;
+  queixa_top: string;
+  elogio_top: string;
+  comentario_top: string;
+  comentario_top_curtidas: number;
+  status: "ativa" | "esfriando" | "encerrada";
+}
+
+/** Narrativas ativas/esfriando/encerradas. */
+export async function fetchNarratives(): Promise<Narrative[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/narratives?tenant=eq.${TENANT}` +
+    `&select=*&order=amplificacao.desc&limit=100`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  return (await res.json()) as Narrative[];
+}
+
 export function filtrarPorPeriodo(posts: Post[], dias: number): Post[] {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dias);

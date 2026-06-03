@@ -1079,6 +1079,118 @@ def gravar_influencers(posts_analisados, comentarios_por_post):
     n2 = _supabase_upsert("influencers", rows_cidadaos, "tenant,handle,tipo")
     log(f"  Influencers gravados: {n1} perfis + {n2} cidadaos")
 
+
+# ==============================================================
+# MODULO 9 - NARRATIVAS (clustering por tema + sentimento)
+# ==============================================================
+
+import hashlib
+
+def _norm_tema(t):
+    return (t or "").strip().lower()
+
+def _parse_dt(s):
+    """dd/mm/yyyy [hh:mm] -> datetime (ou now)."""
+    try:
+        parts = str(s).split(" ")
+        d = parts[0].split("/")
+        hm = parts[1].split(":") if len(parts) > 1 else ["00", "00"]
+        if len(d) == 3:
+            return datetime(int(d[2]), int(d[1]), int(d[0]), int(hm[0]), int(hm[1]))
+    except Exception:
+        pass
+    return datetime.now()
+
+def _status_narrativa(ultimo_visto):
+    horas = (datetime.now() - ultimo_visto).total_seconds() / 3600
+    if horas <= 24:
+        return "ativa"
+    if horas <= 72:
+        return "esfriando"
+    return "encerrada"
+
+def gravar_narratives(posts_analisados, comentarios_por_post):
+    """
+    Agrupa posts por (tema + sentimento) e calcula:
+      - origem (post mais antigo), volume, amplificação, perfis distintos
+      - queixa/elogio dominante, comentário cidadão +curtido do cluster
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY or not posts_analisados:
+        return
+    log("=== MODULO 9 - Narrativas ===")
+
+    clusters = {}
+    for p in posts_analisados:
+        tema = _norm_tema(p.get("tema", ""))
+        sent = _sent(p)
+        if not tema:
+            continue
+        key = (tema, sent)
+        c = clusters.setdefault(key, {
+            "posts": [], "perfis": set(),
+            "queixas": {}, "elogios": {},
+            "amplificacao": 0, "vol_coments": 0,
+            "primeiro_visto": None, "ultimo_visto": None,
+            "origem_handle": "", "origem_url": "",
+            "comentario_top": "", "comentario_top_curtidas": 0,
+        })
+        c["posts"].append(p)
+        c["perfis"].add(p.get("autor", ""))
+        c["amplificacao"] += int(p.get("curtidas", 0) or 0)
+        c["vol_coments"]  += int(p.get("total_coments", 0) or p.get("comentarios_total", 0) or 0)
+
+        q = (p.get("queixa_dominante") or "").strip()
+        e = (p.get("elogio_dominante") or "").strip()
+        if q: c["queixas"][q] = c["queixas"].get(q, 0) + 1
+        if e: c["elogios"][e] = c["elogios"].get(e, 0) + 1
+
+        dt = _parse_dt(p.get("data_post", ""))
+        if not c["primeiro_visto"] or dt < c["primeiro_visto"]:
+            c["primeiro_visto"]  = dt
+            c["origem_handle"]   = p.get("autor", "")
+            c["origem_url"]      = p.get("url", "")
+        if not c["ultimo_visto"] or dt > c["ultimo_visto"]:
+            c["ultimo_visto"] = dt
+
+        # comentário cidadão +curtido do cluster
+        for cm in comentarios_por_post.get(p.get("url", ""), []):
+            if cm.get("tipo") == "cidadao":
+                cur = int(cm.get("curtidas", 0) or 0)
+                if cur > c["comentario_top_curtidas"]:
+                    c["comentario_top_curtidas"] = cur
+                    c["comentario_top"] = (cm.get("texto", "") or "")[:300]
+
+    rows = []
+    for (tema, sent), c in clusters.items():
+        # id estável: hash(tenant+tema+sentimento)
+        nid = hashlib.md5(f"{TENANT}|{tema}|{sent}".encode()).hexdigest()[:24]
+        queixa_top = max(c["queixas"].items(), key=lambda x: x[1])[0] if c["queixas"] else ""
+        elogio_top = max(c["elogios"].items(), key=lambda x: x[1])[0] if c["elogios"] else ""
+        rotulo_sent = {"positivo": "elogio", "negativo": "crítica", "neutro": "neutro"}.get(sent, sent)
+        rows.append({
+            "id": nid, "tenant": TENANT,
+            "tema": tema.title(), "sentimento": sent,
+            "rotulo": f"{tema.title()} — {rotulo_sent}",
+            "origem_handle": c["origem_handle"],
+            "origem_url": c["origem_url"],
+            "primeiro_visto": c["primeiro_visto"].isoformat() if c["primeiro_visto"] else None,
+            "ultimo_visto":   c["ultimo_visto"].isoformat()   if c["ultimo_visto"]   else None,
+            "volume_posts": len(c["posts"]),
+            "volume_coments": c["vol_coments"],
+            "amplificacao": c["amplificacao"],
+            "perfis_distintos": len(c["perfis"]),
+            "queixa_top": queixa_top,
+            "elogio_top": elogio_top,
+            "comentario_top": c["comentario_top"],
+            "comentario_top_curtidas": c["comentario_top_curtidas"],
+            "status": _status_narrativa(c["ultimo_visto"]) if c["ultimo_visto"] else "ativa",
+            "atualizado_em": datetime.now().isoformat(),
+        })
+
+    n = _supabase_upsert("narratives", rows, "id")
+    ativas = sum(1 for r in rows if r["status"] == "ativa")
+    log(f"  Narrativas gravadas: {n} ({ativas} ativas)")
+
 # ==============================================================
 # MODULO 5b - BRIEFING DIARIO
 # ==============================================================
@@ -1223,6 +1335,7 @@ def main():
     gravar_daily_metrics(posts_analisados)                       # historico de indices (Fase 3)
     gerar_briefing_estrategico(posts_analisados)                 # assistente IA (Fase 3d)
     gravar_influencers(posts_analisados, comentarios_por_post)   # ranking de influenciadores
+    gravar_narratives(posts_analisados, comentarios_por_post)    # narrativas (tema + sentimento)
     alertas = disparar_alertas(posts_analisados)
     atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
 
