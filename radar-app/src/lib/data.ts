@@ -179,6 +179,31 @@ export async function fetchDailyMetrics(): Promise<DailyMetric[]> {
   return (await res.json()) as DailyMetric[];
 }
 
+export interface Briefing {
+  dia: string;
+  nivel_crise: string;
+  risco: number;
+  diagnostico: string;
+  oportunidades: { titulo: string; acao: string; impacto?: string; esforco?: string }[];
+  alertas: { nivel: string; tema: string; janela?: string }[];
+  recomendacoes: { canal: string; mensagem: string; tom?: string; timing?: string }[];
+  gerado_em: string;
+}
+
+/** Último briefing estratégico (Assistente IA). Null se indisponível/vazio. */
+export async function fetchBriefing(): Promise<Briefing | null> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  const q =
+    `${SUPABASE_URL}/rest/v1/ai_briefings?tenant=eq.${TENANT}` +
+    `&select=*&order=dia.desc&limit=1`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return null;
+  const rows = (await res.json()) as Briefing[];
+  return rows[0] ?? null;
+}
+
 export function filtrarPorPeriodo(posts: Post[], dias: number): Post[] {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dias);

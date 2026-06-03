@@ -862,6 +862,99 @@ def gravar_daily_metrics(posts_analisados):
     n = _supabase_upsert("daily_metrics", rows, "tenant,dia")
     log(f"  Supabase daily_metrics: {n} dias atualizados")
 
+
+# ==============================================================
+# MODULO 7 - ASSISTENTE ESTRATEGICO (IA) -> ai_briefings
+# ==============================================================
+
+PROMPT_BRIEFING = """Voce e o estrategista-chefe de comunicacao politica do prefeito
+Gustavo Carmo (Alagoinhas/BA). Recebe o retrato digital do dia e produz um briefing
+ACIONAVEL para o gabinete. Seja concreto, direto e pratico — nada de generico.
+Responda APENAS com JSON valido, sem markdown."""
+
+def gerar_briefing_estrategico(posts_analisados):
+    """Gera o briefing diario com Claude e grava em ai_briefings."""
+    if not SUPABASE_URL or not SUPABASE_KEY or not posts_analisados:
+        if not posts_analisados:
+            return
+        log("  Briefing IA: Supabase nao configurado - pulando")
+        return
+    log("=== MODULO 7 - Assistente Estrategico (IA) ===")
+
+    iad = calc_iad(posts_analisados)
+    ica = calc_ica(posts_analisados)
+    risco, nivel = calc_risco(posts_analisados, iad, ica)
+    tot = len(posts_analisados) or 1
+    pos = sum(1 for p in posts_analisados if _sent(p) == "positivo")
+    neg = sum(1 for p in posts_analisados if _sent(p) == "negativo")
+
+    temas, queixas, elogios = {}, {}, {}
+    for p in posts_analisados:
+        if p.get("tema"): temas[p["tema"]] = temas.get(p["tema"], 0) + 1
+        if p.get("queixa_dominante"): queixas[p["queixa_dominante"]] = queixas.get(p["queixa_dominante"], 0) + 1
+        if p.get("elogio_dominante"): elogios[p["elogio_dominante"]] = elogios.get(p["elogio_dominante"], 0) + 1
+    top_temas   = sorted(temas.items(),   key=lambda x: -x[1])[:5]
+    top_queixas = sorted(queixas.items(), key=lambda x: -x[1])[:5]
+    top_elogios = sorted(elogios.items(), key=lambda x: -x[1])[:3]
+    top_posts   = sorted(posts_analisados, key=lambda p: int(p.get("score_risco", 0) or 0), reverse=True)[:5]
+
+    ctx  = f"INDICES DO DIA:\n"
+    ctx += f"  Aprovacao Digital (IAD): {iad:.0f}/100\n"
+    ctx += f"  Confianca da Amostra (ICA): {ica:.0f}/100\n"
+    ctx += f"  Risco Politico: {risco:.0f}/100 (nivel: {nivel})\n"
+    ctx += f"  Posts: {tot} | Positivos: {round(pos/tot*100)}% | Negativos: {round(neg/tot*100)}%\n\n"
+    ctx += "TEMAS DOMINANTES: " + ", ".join(f"{t} ({n})" for t, n in top_temas) + "\n"
+    if top_queixas:
+        ctx += "PRINCIPAIS QUEIXAS: " + " | ".join(f"{q} ({n})" for q, n in top_queixas) + "\n"
+    if top_elogios:
+        ctx += "PRINCIPAIS ELOGIOS: " + " | ".join(f"{e} ({n})" for e, n in top_elogios) + "\n"
+    ctx += "\nPOSTS MAIS CRITICOS:\n"
+    for p in top_posts:
+        ctx += f"  @{p.get('autor','')} ({p.get('categoria','')}) | tema: {p.get('tema','')} | risco: {p.get('score_risco',0)} | {p.get('sentimento_post','')}\n"
+        if p.get("comentarios_destaque"):
+            ctx += f"     comentario: \"{p.get('comentarios_destaque','')[:160]}\"\n"
+
+    prompt = ctx + """
+Retorne APENAS este JSON:
+{
+  "diagnostico": "<2-3 frases: como esta a imagem hoje e por que>",
+  "oportunidades": [{"titulo":"...","acao":"...","impacto":"alto|medio|baixo","esforco":"alto|medio|baixo"}],
+  "alertas": [{"nivel":"baixo|moderado|alto|critico","tema":"...","janela":"imediato|24h|esta semana"}],
+  "recomendacoes_comunicacao": [{"canal":"...","mensagem":"...","tom":"...","timing":"..."}]
+}
+Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
+
+    try:
+        cliente = Anthropic(api_key=ANTHROPIC_KEY)
+        resp = cliente.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1500,
+            system=PROMPT_BRIEFING,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        txt = resp.content[0].text.strip()
+        if txt.startswith("```"):
+            txt = txt.split("```")[1]
+            if txt.startswith("json"):
+                txt = txt[4:]
+        data = json.loads(txt.strip())
+    except Exception as e:
+        log(f"  Briefing IA: erro {e}")
+        return
+
+    hoje = datetime.now().strftime("%Y-%m-%d")
+    row = [{
+        "tenant": TENANT, "dia": hoje,
+        "nivel_crise": nivel, "risco": round(risco, 1),
+        "diagnostico": data.get("diagnostico", ""),
+        "oportunidades": data.get("oportunidades", []),
+        "alertas": data.get("alertas", []),
+        "recomendacoes": data.get("recomendacoes_comunicacao", data.get("recomendacoes", [])),
+        "gerado_em": datetime.now().isoformat(),
+    }]
+    n = _supabase_upsert("ai_briefings", row, "tenant,dia")
+    log(f"  Briefing IA gravado: {n} (nivel {nivel}, {len(data.get('recomendacoes_comunicacao', []))} recomendacoes)")
+
 # ==============================================================
 # MODULO 5b - BRIEFING DIARIO
 # ==============================================================
@@ -1004,6 +1097,7 @@ def main():
     novos_radar, novos_coments = gravar_no_sheets(planilha, posts_analisados, comentarios_por_post)
     gravar_no_supabase(posts_analisados, comentarios_por_post)  # dual-write (opcional)
     gravar_daily_metrics(posts_analisados)                       # historico de indices (Fase 3)
+    gerar_briefing_estrategico(posts_analisados)                 # assistente IA (Fase 3d)
     alertas = disparar_alertas(posts_analisados)
     atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
 
