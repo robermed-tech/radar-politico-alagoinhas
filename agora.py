@@ -31,6 +31,10 @@ SPREADSHEET_ID   = os.environ["SPREADSHEET_ID"]
 EVOLUTION_URL    = os.environ.get("EVOLUTION_API_URL", "")
 EVOLUTION_KEY    = os.environ.get("EVOLUTION_API_KEY", "")
 WHATSAPP_NUMBER  = os.environ.get("WHATSAPP_NUMBER", "")
+# Supabase (Fase 2 — dual-write). Se vazio, o dual-write é ignorado (Sheets segue normal).
+SUPABASE_URL     = os.environ.get("SUPABASE_URL", "").rstrip("/")
+SUPABASE_KEY     = os.environ.get("SUPABASE_SERVICE_KEY", "")
+TENANT           = os.environ.get("RADAR_TENANT", "alagoinhas")
 
 APIFY_BASE = "https://api.apify.com/v2"
 
@@ -665,6 +669,92 @@ def gravar_no_sheets(planilha, posts_analisados, comentarios_por_post):
     return novos_radar, novos_coments
 
 # ==============================================================
+# MODULO 5c - DUAL-WRITE SUPABASE (opcional, nao quebra se ausente)
+# ==============================================================
+
+def _supabase_upsert(tabela, linhas, on_conflict):
+    """Upsert via PostgREST. Retorna qtd gravada ou 0 em falha/desativado."""
+    if not SUPABASE_URL or not SUPABASE_KEY or not linhas:
+        return 0
+    url = f"{SUPABASE_URL}/rest/v1/{tabela}?on_conflict={on_conflict}"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    }
+    try:
+        r = requests.post(url, headers=headers, data=json.dumps(linhas), timeout=30)
+        if r.status_code in (200, 201, 204):
+            return len(linhas)
+        log(f"    Supabase {tabela}: HTTP {r.status_code} {r.text[:160]}")
+        return 0
+    except Exception as e:
+        log(f"    Supabase {tabela}: erro {e}")
+        return 0
+
+def gravar_no_supabase(posts_analisados, comentarios_por_post):
+    """Espelha os dados no Postgres do Supabase. Sheets continua como fonte da verdade."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log("  Supabase nao configurado - dual-write ignorado")
+        return
+    log("=== MODULO 5c - Dual-write Supabase ===")
+    agora = datetime.now().isoformat()
+
+    posts_rows = []
+    for p in posts_analisados:
+        if not p.get("url"):
+            continue
+        posts_rows.append({
+            "url": p.get("url"), "tenant": TENANT,
+            "data_post": p.get("data_post", ""), "autor": p.get("autor", ""),
+            "categoria": p.get("categoria", ""),
+            "curtidas": int(p.get("curtidas", 0) or 0),
+            "comentarios_total": int(p.get("total_coments", 0) or 0),
+            "total_cidadaos": int(p.get("total_cidadaos", 0) or 0),
+            "total_politicos": int(p.get("total_politicos", 0) or 0),
+            "sentimento_post": p.get("sentimento_post", ""),
+            "sentimento_comentarios": p.get("sentimento_comentarios", ""),
+            "comentarios_pct_pos": float(p.get("comentarios_pct_pos", 0) or 0),
+            "comentarios_pct_neg": float(p.get("comentarios_pct_neg", 0) or 0),
+            "score_imagem": int(p.get("score_imagem", 50) or 50),
+            "score_risco": int(p.get("score_risco", 0) or 0),
+            "risco_crise": p.get("risco_crise", "baixo"),
+            "queixa_dominante": p.get("queixa_dominante", ""),
+            "elogio_dominante": p.get("elogio_dominante", ""),
+            "comentarios_destaque": p.get("comentarios_destaque", ""),
+            "comentarios_destaque_curtidas": int(p.get("comentarios_destaque_curtidas", 0) or 0),
+            "comentarios_destaque_autor": p.get("comentarios_destaque_autor", ""),
+            "resumo": p.get("resumo", ""),
+            "padrao_detectado": p.get("padrao_detectado", ""),
+            "tema": p.get("tema", ""), "atribuicao": p.get("atribuicao", ""),
+            "tendencia": p.get("tendencia", "estavel"),
+            "urgencia": p.get("urgencia", "baixa"),
+            "sugestao_acao": p.get("sugestao_acao", ""),
+            "janela_acao": p.get("janela_acao", ""),
+            "caption": (p.get("caption", "") or "")[:500],
+            "atualizado_em": agora,
+        })
+    n_posts = _supabase_upsert("posts", posts_rows, "url")
+
+    coment_rows = []
+    for post in posts_analisados:
+        url = post.get("url", "")
+        for c in comentarios_por_post.get(url, []):
+            cid = str(c.get("id", "")).strip()
+            if not cid:
+                continue
+            coment_rows.append({
+                "id": cid, "tenant": TENANT, "url_post": url,
+                "autor_post": post.get("autor", ""), "categoria_post": post.get("categoria", ""),
+                "username": c.get("username", ""), "tipo": c.get("tipo", ""),
+                "texto": c.get("texto", ""), "curtidas": int(c.get("curtidas", 0) or 0),
+                "data_comentario": str(c.get("data", "")), "atualizado_em": agora,
+            })
+    n_coments = _supabase_upsert("comments", coment_rows, "id")
+    log(f"  Supabase: {n_posts} posts, {n_coments} comentarios espelhados")
+
+# ==============================================================
 # MODULO 5b - BRIEFING DIARIO
 # ==============================================================
 
@@ -805,6 +895,7 @@ def main():
     memoria = carregar_memoria(planilha)
     posts_analisados = analisar_com_agora(posts, comentarios_por_post, memoria)
     novos_radar, novos_coments = gravar_no_sheets(planilha, posts_analisados, comentarios_por_post)
+    gravar_no_supabase(posts_analisados, comentarios_por_post)  # dual-write (opcional)
     alertas = disparar_alertas(posts_analisados)
     atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
 
