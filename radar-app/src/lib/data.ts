@@ -48,6 +48,7 @@ export interface Perfil {
 export interface RadarPayload {
   data: Post[];
   perfis: Perfil[];
+  source?: "supabase" | "sheets";
 }
 
 const LS_KEY = "radar_script_url";
@@ -101,11 +102,28 @@ function normalizePost(r: Record<string, unknown>): Post {
   };
 }
 
-export async function fetchRadar(): Promise<RadarPayload> {
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/$/, "");
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY as string | undefined;
+const TENANT = (import.meta.env.VITE_TENANT as string | undefined) || "alagoinhas";
+
+/** Lê do Postgres (Supabase) via PostgREST. Retorna [] se vazio/indisponível. */
+async function fetchFromSupabase(): Promise<Post[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/posts?tenant=eq.${TENANT}` +
+    `&select=*&order=data_post.desc&limit=3000`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!res.ok) return [];
+  const rows = (await res.json()) as Record<string, unknown>[];
+  return rows.map(normalizePost);
+}
+
+/** Lê do Apps Script (Sheets) — fonte original. */
+async function fetchFromAppsScript(): Promise<RadarPayload> {
   const url = getScriptUrl();
-  if (!url) {
-    throw new Error("NO_URL");
-  }
+  if (!url) throw new Error("NO_URL");
   const res = await fetch(`${url}?action=list`);
   if (!res.ok) throw new Error(`Falha ao carregar dados (HTTP ${res.status})`);
   const json = (await res.json()) as { data?: unknown[]; perfis?: Perfil[] };
@@ -113,6 +131,17 @@ export async function fetchRadar(): Promise<RadarPayload> {
     data: (json.data ?? []).map((r) => normalizePost(r as Record<string, unknown>)),
     perfis: json.perfis ?? [],
   };
+}
+
+/**
+ * Fonte de dados com fallback: tenta Supabase (Postgres) primeiro; se vazio
+ * (ainda sem dual-write) ou indisponível, cai para o Apps Script (Sheets).
+ */
+export async function fetchRadar(): Promise<RadarPayload> {
+  const supa = await fetchFromSupabase().catch(() => [] as Post[]);
+  if (supa.length > 0) return { data: supa, perfis: [], source: "supabase" } as RadarPayload;
+  const sheets = await fetchFromAppsScript();
+  return { ...sheets, source: "sheets" };
 }
 
 /** Parse pt-BR/ISO de data_post para Date (ou null). */

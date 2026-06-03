@@ -147,7 +147,19 @@ export function CommandCenter() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold">Centro de Comando</h1>
-          <p className="text-sm text-txt-2">Alagoinhas/BA · inteligência política</p>
+          <p className="text-sm text-txt-2">
+            Alagoinhas/BA · inteligência política
+            <span
+              className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+              style={{
+                background: data?.source === "supabase" ? "#14532d" : "#1A2233",
+                color: data?.source === "supabase" ? "#22C55E" : "#9FB0CC",
+              }}
+              title="Fonte dos dados"
+            >
+              {data?.source === "supabase" ? "Postgres" : "Sheets"}
+            </span>
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <div
