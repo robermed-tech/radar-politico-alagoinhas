@@ -579,11 +579,11 @@ body.theme-dark .tc-pill.active{background:rgba(96,165,250,0.20);border-color:rg
 .cli-item{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--txt-2);}
 .cli-swatch{width:12px;height:12px;border-radius:4px;flex-shrink:0;}
 
-.chart-tendencia-wrap{display:flex;gap:8px;align-items:flex-end;height:150px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
+.chart-tendencia-wrap{display:flex;gap:10px;align-items:flex-end;height:260px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
 .chart-tendencia-wrap::-webkit-scrollbar{display:none;}
 .trend-day-group{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;}
-.trend-bars{display:flex;gap:3px;align-items:flex-end;height:120px;}
-.trend-bar{width:12px;border-radius:4px 4px 0 0;min-height:3px;transition:height 650ms cubic-bezier(0.4,0,0.2,1);}
+.trend-bars{display:flex;gap:4px;align-items:flex-end;height:220px;}
+.trend-bar{width:18px;border-radius:5px 5px 0 0;min-height:3px;transition:height 650ms cubic-bezier(0.4,0,0.2,1);}
 .trend-day-label{font-size:11px;color:var(--txt-3);font-weight:600;white-space:nowrap;}
 
 /* ── Atribuição ── */
@@ -855,11 +855,6 @@ body.theme-dark #modal-box{background:rgba(20,28,46,0.92);}
           <span id="sync-label">Aguardando...</span>
         </div>
         <button class="icon-btn" id="sync-btn" onclick="carregarDados()" title="Atualizar dados">↻</button>
-        <div class="user-pill">
-          <div class="user-avatar">RP</div>
-          <span class="user-name">Gestão</span>
-          <span class="user-chev">▾</span>
-        </div>
       </div>
     </header>
 
@@ -872,7 +867,6 @@ body.theme-dark #modal-box{background:rgba(20,28,46,0.92);}
         <!-- ════════ VISÃO GERAL ════════ -->
         <div id="section-resumo">
 
-          <div id="filtro-ativo"></div>
 
           <!-- HERO CLIMA — card score grande -->
           <div id="hero-card">
@@ -980,9 +974,8 @@ body.theme-dark #modal-box{background:rgba(20,28,46,0.92);}
                   </div>
                 </div>
                 <div class="card">
-                  <div class="card-title"><div class="dot" style="background:var(--red)"></div>Atribuição</div>
+                  <div class="card-title"><div class="dot" style="background:var(--red)"></div>Responsável pela Crise</div>
                   <div id="attr-bars"></div>
-                  <div style="font-size:13px;color:var(--txt-3);margin-top:12px;line-height:1.5">A quem o público direciona a mensagem (prefeito, prefeitura, câmara, oposição…).</div>
                 </div>
               </div>
 
@@ -994,6 +987,19 @@ body.theme-dark #modal-box{background:rgba(20,28,46,0.92);}
                 <div class="card">
                   <div class="card-title"><div class="dot" style="background:var(--red)"></div>Top Perfis 🌧️ críticos</div>
                   <div id="ranking-neg"></div>
+                </div>
+              </div>
+
+              <!-- Ranking de Comentários -->
+              <div class="section-label">Comentários em Destaque</div>
+              <div class="row-two">
+                <div class="card">
+                  <div class="card-title"><div class="dot" style="background:var(--green)"></div>Comentários mais curtidos ☀️</div>
+                  <div id="ranking-coments-pos"><div class="empty">Carregando...</div></div>
+                </div>
+                <div class="card">
+                  <div class="card-title"><div class="dot" style="background:var(--red)"></div>Comentários mais curtidos 🌧️</div>
+                  <div id="ranking-coments-neg"><div class="empty">Carregando...</div></div>
                 </div>
               </div>
 
@@ -1108,12 +1114,6 @@ body.theme-dark #modal-box{background:rgba(20,28,46,0.92);}
             </div>
           </div>
 
-          <!-- Critérios -->
-          <div class="criteria-footer">
-            <div class="criteria-footer-label">🔍 Critérios de monitoramento</div>
-            <div id="kw-footer-display" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
-            <div>Análise baseada em posts e comentários das redes sociais monitoradas nos perfis configurados. Os dados refletem o sentimento público em relação à Prefeitura de Alagoinhas, ao Prefeito e à gestão municipal.</div>
-          </div>
 
         </div><!-- /section-resumo -->
 
@@ -1121,11 +1121,7 @@ body.theme-dark #modal-box{background:rgba(20,28,46,0.92);}
         <div id="section-positivos" class="hidden">
           <div class="section-page-title" style="color:var(--green)">☀️ Clima Bom</div>
           <div class="section-page-sub">Posts com sentimento favorável à gestão</div>
-          <div id="filter-pos" class="filter-tabs">
-            <button class="filter-tab active" onclick="filtrarLista('pos','todos',this)">Todos</button>
-            <button class="filter-tab" onclick="filtrarLista('pos','alta',this)">Urgência Alta</button>
-            <button class="filter-tab" onclick="filtrarLista('pos','media',this)">Urgência Média</button>
-          </div>
+          <div id="filter-pos" class="filter-tabs" style="display:none"></div>
           <div class="post-list" id="lista-positivos"><div class="empty">Nenhum post positivo no período.</div></div>
         </div>
 
@@ -1133,11 +1129,7 @@ body.theme-dark #modal-box{background:rgba(20,28,46,0.92);}
         <div id="section-negativos" class="hidden">
           <div class="section-page-title" style="color:var(--red)">🌧️ Clima Ruim</div>
           <div class="section-page-sub">Publicações críticas ou de risco — requerem monitoramento</div>
-          <div id="filter-neg" class="filter-tabs">
-            <button class="filter-tab active" onclick="filtrarLista('neg','todos',this)">Todos</button>
-            <button class="filter-tab" onclick="filtrarLista('neg','alta',this)">Urgência Alta</button>
-            <button class="filter-tab" onclick="filtrarLista('neg','crise',this)">Risco Alto</button>
-          </div>
+          <div id="filter-neg" class="filter-tabs" style="display:none"></div>
           <div class="post-list" id="lista-negativos"><div class="empty">Nenhum post negativo no período.</div></div>
         </div>
 
@@ -1670,11 +1662,13 @@ function renderDashboard() {
   if (SECTION === 'positivos') renderLista('lista-positivos', pos, 'todos');
   if (SECTION === 'negativos') renderLista('lista-negativos', neg, 'todos');
   renderPerfis();
+  renderComentariosRanking(dados);
 }
 
 /* ── FILTRO ATIVO ────────────────────────────────────────────── */
 function renderFiltroAtivo(n) {
   var wrap = document.getElementById('filtro-ativo');
+  if (!wrap) return;
   wrap.innerHTML = '';
   if (KWS.length) {
     KWS.forEach(function(kw){
@@ -1759,7 +1753,7 @@ function renderThemesChart(dados) {
       }]
     },
     options: {
-      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      responsive:true, maintainAspectRatio:false,
       animation:{ duration:900, easing:'easeInOutQuart' },
       plugins: {
         legend:{ display:false },
@@ -1770,8 +1764,8 @@ function renderThemesChart(dados) {
         }
       },
       scales: {
-        x:{ grid:{ color:ink.grid }, ticks:{ color:ink.tickM, font:{family:'Inter',size:13}, precision:0 }, border:{display:false} },
-        y:{ grid:{ display:false }, ticks:{ color:ink.tick, font:{family:'Inter',size:14,weight:'600'} }, border:{display:false} }
+        x:{ grid:{ display:false }, ticks:{ color:ink.tick, font:{family:'Inter',size:12,weight:'600'}, maxRotation:45, minRotation:20 }, border:{display:false} },
+        y:{ grid:{ color:ink.grid }, ticks:{ color:ink.tickM, font:{family:'Inter',size:13}, precision:0 }, border:{display:false} }
       }
     }
   });
@@ -1855,25 +1849,20 @@ function renderAtribuicao(dados) {
     }
     if (label) counts[label] = (counts[label]||0)+1;
   });
-  var sorted = Object.entries(counts).sort(function(a,b){return b[1]-a[1];}).slice(0,7);
-  var max = sorted.length ? sorted[0][1] : 1;
+  var sorted = Object.entries(counts).sort(function(a,b){return b[1]-a[1];});
+  var total  = sorted.reduce(function(s,e){return s+e[1];},0) || 1;
   var container = document.getElementById('attr-bars');
   container.innerHTML = '';
-  if (!sorted.length) { container.innerHTML = '<div class="empty">Sem dados</div>'; return; }
-  sorted.forEach(function(e){
-    var row = document.createElement('div'); row.className = 'attr-row';
-    var pct = Math.round(e[1]/max*100);
-    row.innerHTML =
-      '<div class="attr-label" title="'+escHtml(e[0])+'">'+escHtml(e[0])+'</div>'+
-      '<div class="attr-track"><div class="attr-fill" data-pct="'+pct+'" style="width:0%"></div></div>'+
-      '<div class="attr-count">'+e[1]+'</div>';
-    container.appendChild(row);
-  });
-  setTimeout(function(){
-    container.querySelectorAll('.attr-fill').forEach(function(el){
-      el.style.width = el.dataset.pct+'%';
-    });
-  }, 300);
+  if (!sorted.length) { container.innerHTML = '<div class="empty">Sem dados de atribuição</div>'; return; }
+  var top = sorted[0];
+  container.innerHTML =
+    '<div style="text-align:center;padding:12px 0">' +
+      '<div style="font-size:36px;font-weight:900;color:var(--red);line-height:1">' + escHtml(top[0]) + '</div>' +
+      '<div style="font-size:15px;color:var(--txt-2);margin-top:8px">' +
+        '<b style="color:var(--txt-1)">' + top[1] + ' menções</b> de ' + total + ' (' + Math.round(top[1]/total*100) + '% dos posts)' +
+      '</div>' +
+      '<div style="font-size:13px;color:var(--txt-3);margin-top:6px">Principal responsável apontado pela população</div>' +
+    '</div>';
 }
 
 /* ── TENDÊNCIA DIÁRIA ────────────────────────────────────────── */
@@ -1896,9 +1885,9 @@ function renderTendencia(dados) {
   container.innerHTML = '';
   days.forEach(function(day){
     var v    = byDay[day];
-    var hPos = Math.round(v.pos/maxVal*70);
-    var hNeg = Math.round(v.neg/maxVal*70);
-    var hNeu = Math.round(v.neu/maxVal*70);
+    var hPos = Math.round(v.pos/maxVal*180);
+    var hNeg = Math.round(v.neg/maxVal*180);
+    var hNeu = Math.round(v.neu/maxVal*180);
     var dLabel = day.slice(5).replace('-','/');
     var grp = document.createElement('div'); grp.className = 'trend-day-group';
     grp.innerHTML =
@@ -1936,8 +1925,10 @@ function renderRanking(dados) {
              pctPos:Math.round(s.pos/t*100), pctNeg:Math.round(s.neg/t*100) };
   }).filter(function(p){ return p.total >= 1; });
 
-  var topPos = profiles.slice().sort(function(a,b){return b.pctPos-a.pctPos;}).slice(0,5);
-  var topNeg = profiles.slice().sort(function(a,b){return b.pctNeg-a.pctNeg;}).slice(0,5);
+  /* Só mostra no ranking positivo quem tem pelo menos 1 post positivo,
+     e no negativo quem tem pelo menos 1 post negativo */
+  var topPos = profiles.filter(function(p){return p.pos>0;}).sort(function(a,b){return b.pctPos-a.pctPos;}).slice(0,5);
+  var topNeg = profiles.filter(function(p){return p.neg>0;}).sort(function(a,b){return b.pctNeg-a.pctNeg;}).slice(0,5);
 
   function makeList(containerId, list, type) {
     var c = document.getElementById(containerId);
@@ -2044,41 +2035,40 @@ function criarPostCard(p, isUrgente) {
   var scoreBg   = score>=70?'rgba(255,107,107,0.12)':score>=40?'rgba(255,190,118,0.12)':'rgba(0,207,168,0.12)';
   var padrao    = (p.aprendizado_aplicado||p.contexto_usado||'').trim();
 
+  /* Comentário destaque como conteúdo principal (não mais o resumo do post) */
+  var comentDestaque = (p.comentarios_destaque||p.comentario_destaque||'').trim();
+  var queixa = (p.queixa_dominante||'').trim();
+  var elogio = (p.elogio_dominante||'').trim();
+
   card.innerHTML =
     '<div class="post-meta">'+
       '<span class="post-autor">@'+escHtml(p.autor||'')+'</span>'+
       (data?'<span class="post-data">'+data+'</span>':'')+
       '<span class="badge badge-'+norm(sent)+'">'+escHtml(norm(sent)||'neutro')+'</span>'+
-      '<span class="badge badge-'+urgStr+'">'+escHtml(urg||'baixa')+'</span>'+
-      (cs&&cs!=='sem comentários'?'<span class="badge badge-'+norm(cs)+' txt" title="Sentimento dos comentários">💬 '+norm(cs)+'</span>':'')+
       (risco==='alto'?'<span class="badge badge-risk-alto">⚡ risco alto</span>':'')+
       (tendencia==='crescendo'?'<span class="badge badge-trend-crescendo">↑ crescendo</span>':'')+
     '</div>'+
-    (p.resumo?'<div class="post-resumo">'+escHtml(p.resumo)+'</div>':'')+
+    /* Comentário da população como destaque principal */
+    (comentDestaque?
+      '<div style="padding:10px 14px;margin:6px 0;background:rgba(37,99,235,0.06);border-left:3px solid var(--sky);border-radius:0 8px 8px 0;font-size:15px;color:var(--txt-1);line-height:1.6;font-style:italic">'+
+        '"'+escHtml(comentDestaque)+'"'+
+      '</div>':'')+
+    (queixa?'<div style="font-size:13px;color:var(--red);margin:4px 0">🔥 '+escHtml(queixa)+'</div>':'')+
+    (elogio?'<div style="font-size:13px;color:var(--green);margin:4px 0">👏 '+escHtml(elogio)+'</div>':'')+
     (p.tema?'<div class="post-tema">📌 '+escHtml(p.tema)+'</div>':'')+
-    (p.atribuicao?'<div class="post-tema" style="margin-top:2px">🎯 '+escHtml(p.atribuicao)+'</div>':'')+
     '<div class="post-stats">'+
       (p.curtidas>0?'<span class="badge" style="background:rgba(255,107,107,0.10);color:var(--red)">❤️ '+Number(p.curtidas).toLocaleString('pt-BR')+'</span>':'')+
       (p.comentarios_count>0?'<span class="badge" style="background:rgba(116,185,255,0.09);color:var(--sky)">💬 '+Number(p.comentarios_count).toLocaleString('pt-BR')+'</span>':'')+
-      (p.total_comentarios>0?'<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--txt-3)">📊 '+p.total_comentarios+' analisados</span>':'')+
       (score>0?'<span class="badge" style="background:'+scoreBg+';color:'+scoreCor+';font-weight:700" title="Score de risco (0-100)">⚡ '+score+'</span>':'')+
-      (padrao&&padrao!=='Isolado'&&padrao.length>3?'<span class="badge" style="background:rgba(162,155,254,0.12);color:var(--purple);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(padrao)+'">🧠 '+escHtml(padrao.slice(0,35))+(padrao.length>35?'…':'')+'</span>':'')+
-      (p.engajamento?'<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--txt-3)">Eng: '+escHtml(p.engajamento)+'</span>':'')+
       (acao?'<span class="post-action">'+acao+'</span>':'')+
       (p.url?'<a class="btn-ver" href="'+escHtml(p.url)+'" target="_blank" rel="noopener">Ver post ↗</a>':'')+
     '</div>'+
-    (p.justificativa_acao?'<div style="margin-top:5px;font-size:11px;color:var(--txt-3)"><span style="font-weight:600;color:var(--txt-2)">Por quê: </span>'+escHtml(p.justificativa_acao)+'</div>':'')+
-    '<div class="post-stats" style="margin-top:8px;padding-top:8px;border-top:0.5px solid rgba(255,255,255,0.05)">'+
+    '<div class="post-stats" style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--hairline)">'+
       '<span style="font-size:10px;color:var(--txt-3)">Esta análise foi útil?</span>'+
       '<button class="btn-feedback btn-util"  onclick="enviarFeedback(this,\''+escHtml(p.url)+'\',\'útil\')">👍 Útil</button>'+
       '<button class="btn-feedback btn-inutl" onclick="enviarFeedback(this,\''+escHtml(p.url)+'\',\'inútil\')">👎 Inútil</button>'+
       '<span class="feedback-ok" id="fb-'+btoa(encodeURIComponent(p.url||'')).replace(/[^a-zA-Z0-9]/g,'').slice(0,16)+'"></span>'+
-    '</div>'+
-    (p.comentarios_destaque?
-      '<div style="margin-top:8px;padding:8px 12px;background:rgba(116,185,255,0.05);border-left:2px solid var(--sky);border-radius:0 6px 6px 0;font-size:11px;color:var(--txt-2);line-height:1.5">'+
-        '<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--sky);display:block;margin-bottom:3px">💡 Destaque</span>'+
-        escHtml(p.comentarios_destaque)+
-      '</div>':'');
+    '</div>';
   return card;
 }
 
@@ -2262,6 +2252,52 @@ function enviarFeedback(btn, url, valor) {
       localStorage.setItem('radar_feedbacks', JSON.stringify(feedbacks));
       if (fbEl) fbEl.textContent = '✓ Salvo localmente';
     });
+}
+
+/* ── RANKING DE COMENTÁRIOS ─────────────────────────────────── */
+function renderComentariosRanking(dados) {
+  /* Extrai o comentário destaque de cada post com curtidas como proxy de impacto */
+  var positivos = [];
+  var negativos = [];
+  dados.forEach(function(d) {
+    var sent = norm(d.sentimento_comentarios || d.sentimento_post || '');
+    var cd = (d.comentarios_destaque || d.comentario_destaque || '').trim();
+    if (!cd) return;
+    var entry = {
+      texto: cd,
+      autor: d.autor || '',
+      curtidas: parseInt(d.curtidas) || 0,
+      url: d.url || '',
+      tema: d.tema || ''
+    };
+    if (sent === 'positivo') positivos.push(entry);
+    else if (sent === 'negativo') negativos.push(entry);
+  });
+  positivos.sort(function(a,b){return b.curtidas - a.curtidas;});
+  negativos.sort(function(a,b){return b.curtidas - a.curtidas;});
+
+  function renderList(containerId, list) {
+    var c = document.getElementById(containerId);
+    if (!c) return;
+    c.innerHTML = '';
+    if (!list.length) { c.innerHTML = '<div class="empty">Sem comentários no período.</div>'; return; }
+    list.slice(0,5).forEach(function(item, idx) {
+      var row = document.createElement('div');
+      row.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--hairline)';
+      if (idx === list.length - 1 || idx === 4) row.style.borderBottom = 'none';
+      row.innerHTML =
+        '<div style="font-size:15px;color:var(--txt-1);line-height:1.55;font-style:italic;margin-bottom:6px">"' + escHtml(item.texto) + '"</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          '<span style="font-size:13px;font-weight:700;color:var(--sky)">@' + escHtml(item.autor) + '</span>' +
+          '<span class="badge" style="background:rgba(255,107,107,0.10);color:var(--red)">❤️ ' + item.curtidas + '</span>' +
+          (item.tema ? '<span style="font-size:12px;color:var(--txt-3)">📌 ' + escHtml(item.tema) + '</span>' : '') +
+          (item.url ? '<a class="btn-ver" href="' + escHtml(item.url) + '" target="_blank" rel="noopener">Ver post ↗</a>' : '') +
+        '</div>';
+      c.appendChild(row);
+    });
+  }
+  renderList('ranking-coments-pos', positivos);
+  renderList('ranking-coments-neg', negativos);
 }
 
 /* ── PERFIS ──────────────────────────────────────────────────── */
