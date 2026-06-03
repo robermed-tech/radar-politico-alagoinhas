@@ -170,6 +170,34 @@ body.theme-dark::before{
   opacity:1;
 }
 
+/* ── NUVENS DE FUNDO (tela cheia) conforme o clima ── */
+body::after{
+  content:'';position:fixed;inset:-6%;z-index:0;pointer-events:none;
+  opacity:0;transition:opacity 1.4s ease;
+  background-repeat:no-repeat;
+}
+/* CLIMA BOM — céu limpo com nuvens brancas fofas (poucas, sky aberto) */
+body.wx-sunny::after, body.wx-partly::after{
+  opacity:1;
+  background-image:
+    radial-gradient(ellipse 17% 10% at 15% 17%, rgba(255,255,255,0.96), rgba(255,255,255,0) 70%),
+    radial-gradient(ellipse 13% 8% at 23% 14%, rgba(255,255,255,0.90), rgba(255,255,255,0) 72%),
+    radial-gradient(ellipse 15% 9% at 31% 19%, rgba(255,255,255,0.88), rgba(255,255,255,0) 70%),
+    radial-gradient(ellipse 19% 11% at 73% 12%, rgba(255,255,255,0.92), rgba(255,255,255,0) 72%),
+    radial-gradient(ellipse 13% 8% at 83% 16%, rgba(255,255,255,0.82), rgba(255,255,255,0) 70%);
+}
+/* CLIMA RUIM — céu cinza escuro com nuvens carregadas (densas, baixas) */
+body.wx-rain::after, body.wx-storm::after, body.wx-severe::after{
+  opacity:1;
+  background-image:
+    radial-gradient(ellipse 27% 17% at 15% 13%, rgba(42,46,54,0.96), rgba(42,46,54,0) 72%),
+    radial-gradient(ellipse 23% 15% at 27% 18%, rgba(28,31,38,0.94), rgba(28,31,38,0) 74%),
+    radial-gradient(ellipse 29% 18% at 43% 11%, rgba(50,54,62,0.92), rgba(50,54,62,0) 72%),
+    radial-gradient(ellipse 31% 19% at 67% 15%, rgba(24,27,33,0.95), rgba(24,27,33,0) 74%),
+    radial-gradient(ellipse 25% 16% at 85% 11%, rgba(46,50,58,0.92), rgba(46,50,58,0) 72%),
+    radial-gradient(ellipse 36% 22% at 50% 26%, rgba(20,22,28,0.88), rgba(20,22,28,0) 76%);
+}
+
 /* ── APP SHELL ─────────────────────────────── */
 #app{
   position:relative;z-index:1;
@@ -1389,6 +1417,24 @@ function norm(s) {
 function escHtml(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+/* True se o texto é placeholder de "sem comentário" (não deve ser exibido como comentário real) */
+function comentarioVazio(txt) {
+  var n = norm(txt);
+  if (!n) return true;
+  return n.indexOf('nenhum coment') !== -1 ||
+         n.indexOf('sem coment')    !== -1 ||
+         n.indexOf('nao coletado')  !== -1 ||
+         n === 'n/a' || n === 'na' || n === '-';
+}
+/* Observações genéricas/templated que o usuário pediu para ocultar de todos os posts */
+var OBS_BLOQUEADAS = [
+  'falha na prestacao de servicos basicos apesar de pagamento de impostos'
+];
+function obsBloqueada(txt) {
+  var n = norm(txt);
+  if (!n) return true;
+  return OBS_BLOQUEADAS.some(function(b){ return n.indexOf(b) !== -1; });
+}
 function setText(id, v) {
   var el = document.getElementById(id);
   if (el) el.textContent = v;
@@ -2072,10 +2118,14 @@ function criarPostCard(p, isUrgente) {
   var scoreBg   = score>=70?'rgba(255,107,107,0.12)':score>=40?'rgba(255,190,118,0.12)':'rgba(0,207,168,0.12)';
   var padrao    = (p.aprendizado_aplicado||p.contexto_usado||'').trim();
 
-  /* Comentário destaque como conteúdo principal (não mais o resumo do post) */
-  var comentDestaque = (p.comentarios_destaque||p.comentario_destaque||'').trim();
-  var queixa = (p.queixa_dominante||'').trim();
-  var elogio = (p.elogio_dominante||'').trim();
+  /* Comentário destaque — só exibe se for comentário real (não placeholder) */
+  var comentDestaqueRaw = (p.comentarios_destaque||p.comentario_destaque||'').trim();
+  var comentDestaque = comentarioVazio(comentDestaqueRaw) ? '' : comentDestaqueRaw;
+  /* Queixa só em posts negativos; elogio só em positivos. Observações bloqueadas ocultas. */
+  var queixaRaw = (p.queixa_dominante||'').trim();
+  var elogioRaw = (p.elogio_dominante||'').trim();
+  var queixa = (sent==='negativo' && queixaRaw && !obsBloqueada(queixaRaw)) ? queixaRaw : '';
+  var elogio = (sent==='positivo' && elogioRaw && !obsBloqueada(elogioRaw)) ? elogioRaw : '';
 
   card.innerHTML =
     '<div class="post-meta">'+
@@ -2298,7 +2348,7 @@ function renderComentariosRanking(dados) {
   dados.forEach(function(d) {
     var sent = norm(d.sentimento_comentarios || d.sentimento_post || '');
     var cd = (d.comentarios_destaque || d.comentario_destaque || '').trim();
-    if (!cd) return;
+    if (comentarioVazio(cd)) return;  /* ignora placeholders "nenhum comentário coletado" */
 
     /* Prioridade: curtidas reais do comentário (campo novo do Agora).
        Fallback: curtidas do post (proxy menos preciso — mostra com aviso). */
