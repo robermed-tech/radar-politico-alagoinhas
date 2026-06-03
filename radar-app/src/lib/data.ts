@@ -204,6 +204,34 @@ export async function fetchBriefing(): Promise<Briefing | null> {
   return rows[0] ?? null;
 }
 
+export interface Influencer {
+  handle: string;
+  tipo: "perfil_monitorado" | "cidadao";
+  categoria: string;
+  alcance: number;
+  engajamento: number;
+  frequencia: number;
+  influencia_score: number;
+  classe: string;
+  alinhamento: string;
+  pct_positivo: number;
+  pct_negativo: number;
+  atualizado_em: string;
+}
+
+/** Ranking de influenciadores (perfis monitorados + cidadãos). */
+export async function fetchInfluencers(): Promise<Influencer[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/influencers?tenant=eq.${TENANT}` +
+    `&select=*&order=influencia_score.desc&limit=100`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  return (await res.json()) as Influencer[];
+}
+
 export function filtrarPorPeriodo(posts: Post[], dias: number): Post[] {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dias);

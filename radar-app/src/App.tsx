@@ -2,16 +2,17 @@ import { useState } from "react";
 import { CommandCenter } from "@/pages/CommandCenter";
 import { CrisisCenter } from "@/pages/CrisisCenter";
 import { AssistantPage } from "@/pages/AssistantPage";
+import { InfluencersPage } from "@/pages/InfluencersPage";
 
-type Page = "command" | "crisis" | "assistant";
+type Page = "command" | "crisis" | "assistant" | "influencers";
 
 const NAV: { id: Page | string; label: string; icon: string; active: boolean }[] = [
   { id: "command", label: "Comando", icon: "◉", active: true },
   { id: "crisis", label: "Crises", icon: "✦", active: true },
   { id: "assistant", label: "Assistente IA", icon: "✧", active: true },
+  { id: "influencers", label: "Influenciadores", icon: "✷", active: true },
   { id: "approval", label: "Aprovação", icon: "▲", active: false },
   { id: "trends", label: "Tendências", icon: "∿", active: false },
-  { id: "influencers", label: "Influenciadores", icon: "✷", active: false },
   { id: "narratives", label: "Narrativas", icon: "❋", active: false },
 ];
 
@@ -74,6 +75,7 @@ export default function App() {
           {page === "command" && <CommandCenter />}
           {page === "crisis" && <CrisisCenter />}
           {page === "assistant" && <AssistantPage />}
+          {page === "influencers" && <InfluencersPage />}
         </main>
       </div>
     </div>

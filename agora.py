@@ -955,6 +955,130 @@ Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
     n = _supabase_upsert("ai_briefings", row, "tenant,dia")
     log(f"  Briefing IA gravado: {n} (nivel {nivel}, {len(data.get('recomendacoes_comunicacao', []))} recomendacoes)")
 
+
+# ==============================================================
+# MODULO 8 - INFLUENCIADORES (ranking)
+# ==============================================================
+
+def _classe_influenciador(categoria, alcance):
+    """macro >10k | micro 1k-10k | nano <1k | formador (imprensa/politico)."""
+    cat = (categoria or "").lower()
+    if cat in ("imprensa",):
+        return "formador"
+    if alcance >= 10000:
+        return "macro"
+    if alcance >= 1000:
+        return "micro"
+    return "nano"
+
+def _alinhamento(pct_pos, pct_neg):
+    if pct_pos >= 55:
+        return "aliado"
+    if pct_neg >= 40:
+        return "opositor"
+    return "neutro"
+
+def _normalizar(v, ref):
+    return min(100.0, (v / ref) * 100) if ref > 0 else 0.0
+
+def gravar_influencers(posts_analisados, comentarios_por_post):
+    """
+    Calcula ranking de influenciadores:
+      - Perfis monitorados (14 contas): alcance, engajamento, frequência, alinhamento
+      - Cidadãos: top comentaristas por curtidas dos comentários
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+    log("=== MODULO 8 - Influenciadores ===")
+
+    # ── PERFIS MONITORADOS ─────────────────────────────────
+    by_autor = {}
+    for p in posts_analisados:
+        a = p.get("autor", "")
+        if not a:
+            continue
+        d = by_autor.setdefault(a, {
+            "categoria": p.get("categoria", ""),
+            "posts": 0, "curtidas": 0, "coments": 0,
+            "pos": 0, "neg": 0, "neu": 0,
+        })
+        d["posts"]    += 1
+        d["curtidas"] += int(p.get("curtidas", 0) or 0)
+        d["coments"]  += int(p.get("total_coments", 0) or p.get("comentarios_total", 0) or 0)
+        s = _sent(p)
+        if s == "positivo": d["pos"] += 1
+        elif s == "negativo": d["neg"] += 1
+        else: d["neu"] += 1
+
+    if not by_autor:
+        log("  Sem perfis para ranquear")
+        return
+
+    max_alc  = max((d["curtidas"] for d in by_autor.values()), default=1)
+    max_eng  = max(((d["coments"] / d["posts"]) if d["posts"] else 0 for d in by_autor.values()), default=1)
+    max_freq = max((d["posts"] for d in by_autor.values()), default=1)
+
+    rows_perfis = []
+    for handle, d in by_autor.items():
+        engaj  = (d["coments"] / d["posts"]) if d["posts"] else 0
+        score  = (
+            0.4 * _normalizar(d["curtidas"], max_alc) +
+            0.4 * _normalizar(engaj,         max_eng) +
+            0.2 * _normalizar(d["posts"],    max_freq)
+        )
+        tot = d["pos"] + d["neg"] + d["neu"] or 1
+        pct_pos = round(d["pos"] / tot * 100, 1)
+        pct_neg = round(d["neg"] / tot * 100, 1)
+        rows_perfis.append({
+            "tenant": TENANT, "handle": handle, "tipo": "perfil_monitorado",
+            "categoria": d["categoria"],
+            "alcance": d["curtidas"],
+            "engajamento": round(engaj, 1),
+            "frequencia": d["posts"],
+            "influencia_score": round(score, 1),
+            "classe": _classe_influenciador(d["categoria"], d["curtidas"]),
+            "alinhamento": _alinhamento(pct_pos, pct_neg),
+            "pct_positivo": pct_pos,
+            "pct_negativo": pct_neg,
+            "atualizado_em": datetime.now().isoformat(),
+        })
+
+    # ── CIDADÃOS COMENTARISTAS ────────────────────────────
+    by_user = {}
+    for url, lista in comentarios_por_post.items():
+        for c in lista:
+            if c.get("tipo") != "cidadao":
+                continue
+            u = c.get("username", "")
+            if not u:
+                continue
+            d = by_user.setdefault(u, {"curtidas": 0, "n": 0})
+            d["curtidas"] += int(c.get("curtidas", 0) or 0)
+            d["n"]        += 1
+
+    rows_cidadaos = []
+    if by_user:
+        # top 30 cidadãos por curtidas totais
+        top = sorted(by_user.items(), key=lambda x: -x[1]["curtidas"])[:30]
+        max_c = top[0][1]["curtidas"] or 1
+        for u, d in top:
+            score = _normalizar(d["curtidas"], max_c) * 0.7 + _normalizar(d["n"], 10) * 0.3
+            rows_cidadaos.append({
+                "tenant": TENANT, "handle": u, "tipo": "cidadao",
+                "categoria": "Cidadao",
+                "alcance": d["curtidas"],
+                "engajamento": d["curtidas"] / max(1, d["n"]),
+                "frequencia": d["n"],
+                "influencia_score": round(score, 1),
+                "classe": "nano",
+                "alinhamento": "cidadao",
+                "atualizado_em": datetime.now().isoformat(),
+            })
+
+    n1 = _supabase_upsert("influencers", rows_perfis,   "tenant,handle,tipo")
+    n2 = _supabase_upsert("influencers", rows_cidadaos, "tenant,handle,tipo")
+    log(f"  Influencers gravados: {n1} perfis + {n2} cidadaos")
+
 # ==============================================================
 # MODULO 5b - BRIEFING DIARIO
 # ==============================================================
@@ -1098,6 +1222,7 @@ def main():
     gravar_no_supabase(posts_analisados, comentarios_por_post)  # dual-write (opcional)
     gravar_daily_metrics(posts_analisados)                       # historico de indices (Fase 3)
     gerar_briefing_estrategico(posts_analisados)                 # assistente IA (Fase 3d)
+    gravar_influencers(posts_analisados, comentarios_por_post)   # ranking de influenciadores
     alertas = disparar_alertas(posts_analisados)
     atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
 
