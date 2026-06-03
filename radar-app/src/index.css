@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bg-0 text-txt-1 font-sans antialiased;
+}
+
+/* Números sempre tabulares (alinhamento de métricas) */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
