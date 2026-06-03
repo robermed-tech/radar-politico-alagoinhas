@@ -5,6 +5,7 @@ import { AssistantPage } from "@/pages/AssistantPage";
 import { InfluencersPage } from "@/pages/InfluencersPage";
 import { NarrativesPage } from "@/pages/NarrativesPage";
 import { TrendsPage } from "@/pages/TrendsPage";
+import { ApprovalPage } from "@/pages/ApprovalPage";
 
 type Page =
   | "command"
@@ -12,16 +13,17 @@ type Page =
   | "assistant"
   | "influencers"
   | "narratives"
-  | "trends";
+  | "trends"
+  | "approval";
 
 const NAV: { id: Page | string; label: string; icon: string; active: boolean }[] = [
   { id: "command", label: "Comando", icon: "◉", active: true },
   { id: "crisis", label: "Crises", icon: "✦", active: true },
   { id: "assistant", label: "Assistente IA", icon: "✧", active: true },
+  { id: "approval", label: "Aprovação", icon: "▲", active: true },
+  { id: "trends", label: "Tendências", icon: "∿", active: true },
   { id: "influencers", label: "Influenciadores", icon: "✷", active: true },
   { id: "narratives", label: "Narrativas", icon: "❋", active: true },
-  { id: "trends", label: "Tendências", icon: "∿", active: true },
-  { id: "approval", label: "Aprovação", icon: "▲", active: false },
 ];
 
 export default function App() {
@@ -83,9 +85,10 @@ export default function App() {
           {page === "command" && <CommandCenter />}
           {page === "crisis" && <CrisisCenter />}
           {page === "assistant" && <AssistantPage />}
+          {page === "approval" && <ApprovalPage />}
+          {page === "trends" && <TrendsPage />}
           {page === "influencers" && <InfluencersPage />}
           {page === "narratives" && <NarrativesPage />}
-          {page === "trends" && <TrendsPage />}
         </main>
       </div>
     </div>

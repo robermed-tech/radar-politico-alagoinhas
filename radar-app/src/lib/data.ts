@@ -290,6 +290,32 @@ export async function fetchDailyThemes(): Promise<DailyTheme[]> {
   return (await res.json()) as DailyTheme[];
 }
 
+export interface Comment {
+  id: string;
+  url_post: string;
+  autor_post: string;
+  categoria_post: string;
+  username: string;
+  tipo: string;
+  texto: string;
+  curtidas: number;
+  sentimento: string;
+  data_comentario: string;
+}
+
+/** Comentários (cidadão/político) para drill-down de Aprovação. */
+export async function fetchComments(limit = 1000): Promise<Comment[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
+    `&select=*&order=curtidas.desc&limit=${limit}`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  return (await res.json()) as Comment[];
+}
+
 export function filtrarPorPeriodo(posts: Post[], dias: number): Post[] {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dias);
