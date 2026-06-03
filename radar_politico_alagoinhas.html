@@ -1360,6 +1360,20 @@ function renderHeroWeather(pctPos) {
   }
 }
 
+/* Estado neutro quando não há dados no período — evita "Severíssimo" enganoso */
+function renderHeroSemDados() {
+  var WX_CLASSES = ['wx-sunny','wx-partly','wx-cloudy','wx-rain','wx-storm','wx-severe','wx-cresc'];
+  WX_CLASSES.forEach(function(c){ document.getElementById('app').classList.remove(c); document.body.classList.remove(c); });
+  document.body.classList.remove('show-wind');
+  document.getElementById('app').classList.remove('show-wind');
+  document.getElementById('hero-icon').textContent            = '🔭';
+  document.getElementById('hero-condition-label').textContent = 'Sem dados no período';
+  document.getElementById('hero-pct').innerHTML               = '--<span>%</span>';
+  document.getElementById('hero-sub').textContent             = 'Amplie o período ou aguarde a próxima coleta';
+  var pill = document.getElementById('ds-weather-pill');
+  if (pill) pill.textContent = '🔭 Sem dados';
+}
+
 function renderDestaque(pctPos, topTema, topAtrib) {
   var cond = getWeatherCondition(pctPos);
   document.getElementById('destaque-icon').textContent = cond.icon;
@@ -1633,8 +1647,12 @@ function renderDashboard() {
   if (dPos) { dPos.textContent = pos.length; dPos.classList.toggle('show', pos.length > 0); }
   if (dNeg) { dNeg.textContent = neg.length; dNeg.classList.toggle('show', neg.length > 0); }
 
-  /* Weather hero */
-  renderHeroWeather(pPos);
+  /* Weather hero — só aplica condição climática se houver dados reais */
+  if (total === 0) {
+    renderHeroSemDados();
+  } else {
+    renderHeroWeather(pPos);
+  }
 
   /* Vento com folhas quando há tendência crescendo */
   toggleWind(cresc.length > 0);
@@ -1657,7 +1675,7 @@ function renderDashboard() {
   renderTendencia(dados);
   renderAtribuicao(dados);
   renderUrgencias(urg);
-  renderNarrativa(dados, pos.length, neg.length, neu.length, urg.length, t);
+  renderNarrativa(dados, pos.length, neg.length, neu.length, urg.length, total);
 
   if (SECTION === 'positivos') renderLista('lista-positivos', pos, 'todos');
   if (SECTION === 'negativos') renderLista('lista-negativos', neg, 'todos');
@@ -1981,8 +1999,20 @@ function renderUrgencias(urgPosts) {
 
 /* ── NARRATIVA ───────────────────────────────────────────────── */
 function renderNarrativa(dados, posN, negN, neuN, urgN, total) {
-  var pPos   = Math.round(posN/total*100);
-  var pNeg   = Math.round(negN/total*100);
+  var narrativaBox = document.getElementById('narrativa-box');
+  /* Sem dados no período — mostra estado neutro em vez de simular crise */
+  if (!total || total === 0) {
+    narrativaBox.innerHTML =
+      '<div style="display:flex;flex-direction:column;gap:6px">' +
+        '<span>📭 <b>Sem posts</b> no período selecionado ('+(DIAS===1?'últimas 24h':'últimos '+DIAS+' dias')+').</span>' +
+        '<span style="color:var(--txt-3);font-size:14px">Tente ampliar o período ou aguarde a próxima coleta do AGORA (4x/dia).</span>' +
+      '</div>';
+    return;
+  }
+
+  var t      = total; /* total real, nunca 0 aqui */
+  var pPos   = Math.round(posN/t*100);
+  var pNeg   = Math.round(negN/t*100);
   var tom    = pPos>=60 ? 'predominantemente positivo' : pNeg>=60 ? 'predominantemente negativo' : 'equilibrado';
   var corTom = pPos>=60 ? 'var(--green)' : pNeg>=60 ? 'var(--red)' : 'var(--amber)';
 
@@ -1996,12 +2026,12 @@ function renderNarrativa(dados, posN, negN, neuN, urgN, total) {
   var html = '<div style="display:flex;flex-direction:column;gap:6px">';
   html += '<span>📊 <b>'+total+' posts</b> monitorados '+(DIAS===1?'nas últimas 24h':'nos últimos '+DIAS+' dias')+'&nbsp;—&nbsp;sentimento <span style="color:'+corTom+';font-weight:700">'+tom+'</span> ('+pPos+'% positivo · '+pNeg+'% negativo).</span>';
   if (topTema)  html += '<span>🏷️ <b>Tema dominante:</b> <b>'+escHtml(topTema[0])+'</b> ('+topTema[1]+' posts).</span>';
-  if (topAtrib) html += '<span>🎯 <b>Atribuição principal:</b> <b>'+escHtml(topAtrib[0])+'</b> em '+(Math.round(topAtrib[1]/total*100))+'% das menções.</span>';
+  if (topAtrib) html += '<span>🎯 <b>Atribuição principal:</b> <b>'+escHtml(topAtrib[0])+'</b> em '+(Math.round(topAtrib[1]/t*100))+'% das menções.</span>';
   if (urgN>0)   html += '<span>⚠️ <span style="color:var(--amber);font-weight:700">'+urgN+' post'+(urgN>1?'s':'')+' requer'+(urgN>1?'em':'')+' atenção imediata.</span>'+(riscoAlto>0?' <b style="color:var(--orange)">'+riscoAlto+' com risco de crise alto.</b>':'')+'</span>';
   if (crescendo>0) html += '<span>📈 <b>'+crescendo+' post'+(crescendo>1?'s':'')+' com tendência crescente</b> de engajamento — monitorar.</span>';
   html += '</div>';
 
-  document.getElementById('narrativa-box').innerHTML = html;
+  narrativaBox.innerHTML = html;
 }
 
 /* ── LISTA DE POSTS ──────────────────────────────────────────── */
