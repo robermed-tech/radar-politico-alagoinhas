@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchRadar, filtrarPorPeriodo, type Post } from "@/lib/data";
 import { calcIAD, distribuicao } from "@/lib/indices";
 import { getWeather, getDestaque } from "@/lib/weather";
+import { fmtInt } from "@/lib/format";
 
 const PERIODOS = [
   { dias: 1, label: "24h" },
@@ -32,12 +33,14 @@ export function ClimaPage() {
     const iad = Math.round(calcIAD(posts));
     const dist = distribuicao(posts);
     const wx = getWeather(iad);
+    const totalComents = posts.reduce((s, p) => s + (p.comentarios_total || 0), 0);
     return {
       vazio: false as const,
       iad, ...dist,
       wx,
       destaque: getDestaque(iad, temaDominante(posts)),
       posts: posts.length,
+      comentarios: totalComents,
     };
   }, [data, dias]);
 
@@ -55,10 +58,9 @@ export function ClimaPage() {
     );
 
   const { wx } = view;
-  const txt1 = wx.dark ? "#FFFFFF" : "#0B1220";
-  const txt2 = wx.dark ? "rgba(255,255,255,0.82)" : "rgba(11,18,32,0.66)";
-  const glass = wx.dark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.5)";
-  const glassBorder = wx.dark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.7)";
+  // Texto do HERO depende da luminosidade do gradiente do hero (não do app)
+  const txt1 = wx.heroDark ? "#FFFFFF" : "#0B1220";
+  const txt2 = wx.heroDark ? "rgba(255,255,255,0.82)" : "rgba(11,18,32,0.66)";
 
   return (
     <div className="space-y-4 p-5">
@@ -67,13 +69,13 @@ export function ClimaPage() {
           <h1 className="text-2xl font-extrabold">Clima Político</h1>
           <p className="text-sm text-txt-2">Alagoinhas/BA · termômetro visual da opinião</p>
         </div>
-        <div className="flex rounded-lg border border-line bg-bg-1 p-1">
+        <div className="flex rounded-lg p-1 glass-btn">
           {PERIODOS.map((p) => (
             <button
               key={p.dias}
               onClick={() => setDias(p.dias)}
               className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
-                dias === p.dias ? "bg-brand text-white" : "text-txt-2 hover:text-txt-1"
+                dias === p.dias ? "bg-white/20 text-txt-1" : "text-txt-2 hover:text-txt-1"
               }`}
             >
               {p.label}
@@ -136,15 +138,32 @@ export function ClimaPage() {
         </div>
       </div>
 
+      {/* Volume coletado no período — DESTAQUE */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-line bg-bg-1 p-5 text-center">
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">Posts analisados</div>
+          <div className="tnum mt-1 text-5xl font-extrabold text-txt-1" style={{ textShadow: "0 2px 16px rgba(0,0,0,0.25)" }}>
+            {fmtInt(view.posts)}
+          </div>
+          <div className="mt-1 text-xs text-txt-2">publicações no período</div>
+        </div>
+        <div className="rounded-2xl border border-line bg-bg-1 p-5 text-center">
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">Comentários da população</div>
+          <div className="tnum mt-1 text-5xl font-extrabold" style={{ color: wx.accent, textShadow: "0 2px 16px rgba(0,0,0,0.25)" }}>
+            {fmtInt(view.comentarios)}
+          </div>
+          <div className="mt-1 text-xs text-txt-2">vozes ouvidas no período</div>
+        </div>
+      </div>
+
       {/* O que a população diz agora */}
       <div
-        className="rounded-2xl p-6"
-        style={{ background: glass, border: `1px solid ${glassBorder}`, backdropFilter: "blur(10px)" }}
+        className="rounded-2xl border border-line bg-bg-1 p-6"
       >
-        <div className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: "#EA580C" }}>
+        <div className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: wx.accent }}>
           O que a população diz agora
         </div>
-        <div className="mt-2 text-lg font-bold" style={{ color: wx.dark ? "#fff" : "#0B1220" }}>
+        <div className="mt-2 text-lg font-bold text-txt-1">
           {view.destaque}
         </div>
       </div>

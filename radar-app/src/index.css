@@ -4,6 +4,8 @@
 
 :root {
   color-scheme: dark;
+  /* Background global controlado pelo clima (App seta --wx-bg) */
+  --wx-bg: linear-gradient(160deg, #0B0F17 0%, #121826 100%);
 }
 
 html,
@@ -13,7 +15,39 @@ body,
 }
 
 body {
-  @apply bg-bg-0 text-txt-1 font-sans antialiased;
+  @apply text-txt-1 font-sans antialiased;
+  background: var(--wx-bg);
+  background-attachment: fixed;
+  transition: background 1.2s ease;
+}
+
+/* ── GLASSMORPHISM GLOBAL ─────────────────────────────
+   Todo card usa bg-bg-1/bg-bg-2 (translúcidos no tailwind.config).
+   Aqui adicionamos o blur do vidro automaticamente. */
+.bg-bg-1,
+.bg-bg-2,
+.bg-bg-3 {
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+/* Sombra suave de vidro nos cards arredondados */
+.rounded-xl.bg-bg-1,
+.rounded-2xl.bg-bg-1,
+.rounded-xl.bg-bg-2 {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Botões/pílulas de vidro */
+.glass-btn {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: background 200ms ease, border-color 200ms ease;
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 /* Números sempre tabulares (alinhamento de métricas) */

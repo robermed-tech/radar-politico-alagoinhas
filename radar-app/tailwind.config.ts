@@ -6,8 +6,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: { 0: "#0B0F17", 1: "#121826", 2: "#1A2233", 3: "#232E44" },
-        line: { DEFAULT: "#2A364E", strong: "#3A496B" },
+        // bg-0 fica transparente (deixa o gradiente de clima aparecer);
+        // bg-1/bg-2 translúcidos = vidro (backdrop-blur aplicado no index.css)
+        bg: {
+          0: "transparent",
+          1: "rgba(255,255,255,0.07)",
+          2: "rgba(255,255,255,0.05)",
+          3: "rgba(255,255,255,0.10)",
+        },
+        line: { DEFAULT: "rgba(255,255,255,0.14)", strong: "rgba(255,255,255,0.24)" },
         txt: { 1: "#EAF0FA", 2: "#9FB0CC", 3: "#5F6E8C" },
         brand: { DEFAULT: "#3B82F6", 2: "#06B6D4" },
         accent: "#A855F7",

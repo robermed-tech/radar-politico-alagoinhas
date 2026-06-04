@@ -8,8 +8,11 @@ export interface WeatherCond {
   label: string;
   sub: string;
   cls: string;
-  bg: string; // gradiente de fundo
-  dark: boolean; // fundo escuro => texto branco
+  bg: string;       // gradiente do hero do Clima
+  bgApp: string;    // gradiente ESCURO p/ background global (texto branco legível)
+  accent: string;   // cor de destaque do clima
+  dark: boolean;    // background global é escuro (sempre true) => texto branco no app
+  heroDark: boolean; // gradiente do HERO é escuro => texto branco no hero
 }
 
 export function getWeather(pct: number): WeatherCond {
@@ -18,41 +21,47 @@ export function getWeather(pct: number): WeatherCond {
       icon: "☀️", label: "Céu Aberto", sub: "Clima excelente — opinião muito favorável",
       cls: "sunny",
       bg: "linear-gradient(155deg, #AEE0FF 0%, #CDEBFF 26%, #EAF2E0 52%, #FCEFA6 78%, #FFE074 100%)",
-      dark: false,
+      bgApp: "linear-gradient(160deg, #06243F 0%, #0A3358 30%, #0E4D7A 60%, #0B2E4E 100%)",
+      accent: "#38BDF8", dark: true, heroDark: false,
     };
   if (pct >= 60)
     return {
       icon: "⛅", label: "Parcialmente Nublado", sub: "Clima estável — tendência positiva",
       cls: "partly",
       bg: "linear-gradient(155deg, #CDE8FF 0%, #DDEEFB 34%, #ECEFE6 66%, #FBEFC4 100%)",
-      dark: false,
+      bgApp: "linear-gradient(160deg, #0B1E44 0%, #122A5E 35%, #1E3A6E 70%, #0E1E40 100%)",
+      accent: "#60A5FA", dark: true, heroDark: false,
     };
   if (pct >= 45)
     return {
       icon: "☁️", label: "Nublado", sub: "Clima incerto — opiniões divididas",
       cls: "cloudy",
       bg: "linear-gradient(155deg, #EDEFF2 0%, #DEE1E6 40%, #CFD3DA 72%, #C2C7CF 100%)",
-      dark: false,
+      bgApp: "linear-gradient(160deg, #1A1F2B 0%, #232A38 38%, #2C3445 70%, #161A24 100%)",
+      accent: "#94A3B8", dark: true, heroDark: false,
     };
   if (pct >= 30)
     return {
       icon: "🌧️", label: "Chuva", sub: "Clima ruim — predominância negativa",
       cls: "rain",
       bg: "linear-gradient(155deg, #6E747C 0%, #565B63 38%, #41454C 70%, #2F3239 100%)",
-      dark: true,
+      bgApp: "linear-gradient(160deg, #14202E 0%, #18293A 38%, #1B3147 70%, #0E1822 100%)",
+      accent: "#38BDF8", dark: true, heroDark: true,
     };
   if (pct >= 15)
     return {
       icon: "⛈️", label: "Tempestade", sub: "Alerta máximo — crise de imagem detectada",
       cls: "storm",
       bg: "linear-gradient(155deg, #2C2F35 0%, #212429 36%, #16181C 70%, #0C0D10 100%)",
-      dark: true,
+      bgApp: "linear-gradient(160deg, #1A0E2E 0%, #201038 38%, #2A0F4E 70%, #120720 100%)",
+      accent: "#A855F7", dark: true, heroDark: true,
     };
   return {
     icon: "🌑", label: "Severíssimo", sub: "Crise iminente — ação urgente necessária",
     cls: "severe",
     bg: "linear-gradient(155deg, #1A1C20 0%, #121316 38%, #0A0B0D 72%, #050506 100%)",
-    dark: true,
+    bgApp: "linear-gradient(160deg, #1A0410 0%, #200512 38%, #2A0818 70%, #120308 100%)",
+    accent: "#EF4444", dark: true, heroDark: true,
   };
 }
 
