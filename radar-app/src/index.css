@@ -20,3 +20,31 @@ body {
 .tnum {
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Animação de chuva no hero do Clima ── */
+.rain-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.raindrop {
+  position: absolute;
+  top: -12%;
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: linear-gradient(transparent, rgba(255, 255, 255, 0.5));
+  animation-name: rain-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+@keyframes rain-fall {
+  0% { transform: translate3d(0, -20px, 0); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translate3d(14px, 300px, 0); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .raindrop { display: none; }
+}

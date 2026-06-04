@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CommandCenter } from "@/pages/CommandCenter";
+import { ClimaPage } from "@/pages/ClimaPage";
 import { CrisisCenter } from "@/pages/CrisisCenter";
 import { AssistantPage } from "@/pages/AssistantPage";
 import { InfluencersPage } from "@/pages/InfluencersPage";
@@ -9,6 +10,7 @@ import { ApprovalPage } from "@/pages/ApprovalPage";
 
 type Page =
   | "command"
+  | "clima"
   | "crisis"
   | "assistant"
   | "influencers"
@@ -18,6 +20,7 @@ type Page =
 
 const NAV: { id: Page | string; label: string; icon: string; active: boolean }[] = [
   { id: "command", label: "Comando", icon: "◉", active: true },
+  { id: "clima", label: "Clima Político", icon: "☀", active: true },
   { id: "crisis", label: "Crises", icon: "✦", active: true },
   { id: "assistant", label: "Assistente IA", icon: "✧", active: true },
   { id: "approval", label: "Aprovação", icon: "▲", active: true },
@@ -83,6 +86,7 @@ export default function App() {
         </div>
         <main className="flex-1 overflow-y-auto">
           {page === "command" && <CommandCenter />}
+          {page === "clima" && <ClimaPage />}
           {page === "crisis" && <CrisisCenter />}
           {page === "assistant" && <AssistantPage />}
           {page === "approval" && <ApprovalPage />}
