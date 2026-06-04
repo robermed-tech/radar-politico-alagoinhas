@@ -1205,10 +1205,15 @@ def rodar_cacador_crises(posts_analisados, comentarios_por_post):
         data = agente_cacador_crises(p, comentarios_por_post.get(p.get("url", ""), []), tend)
         if not data:
             continue
+        # Normaliza o nível (Claude às vezes retorna 'moderato', 'critico ', etc.)
+        _NIVEIS_OK = {"baixo": "baixo", "moderado": "moderado", "moderato": "moderado",
+                      "medio": "moderado", "alto": "alto", "critico": "critico", "crítico": "critico"}
+        nivel_raw = str(data.get("nivel", "alto")).strip().lower()
+        nivel_norm = _NIVEIS_OK.get(nivel_raw, "alto")
         _supabase_upsert("crisis_plans", [{
             "post_url": p.get("url", ""), "tenant": TENANT, "autor": p.get("autor", ""),
             "e_crise_real": bool(data.get("e_crise_real", True)),
-            "nivel": data.get("nivel", "alto"),
+            "nivel": nivel_norm,
             "pavio": data.get("pavio", ""),
             "velocidade": data.get("velocidade", ""),
             "janela_resposta": data.get("janela_resposta", ""),

@@ -13,18 +13,24 @@ const VEL_ICON: Record<string, string> = {
 
 function PlanosContencao({ planos }: { planos: CrisisPlan[] }) {
   const reais = planos.filter((p) => p.e_crise_real);
-  if (reais.length === 0) return null;
+  const descartados = planos.filter((p) => !p.e_crise_real);
+  if (planos.length === 0) return null;
   return (
     <div className="rounded-xl border p-4" style={{ borderColor: "rgba(249,115,22,0.4)", background: "rgba(249,115,22,0.05)" }}>
       <div className="mb-1 flex items-center gap-2">
         <span className="text-lg">🚨</span>
         <h2 className="text-base font-extrabold" style={{ color: "#F97316" }}>
-          Agente Caçador de Crises — {reais.length} plano(s) de contenção
+          Agente Caçador de Crises — {reais.length} crise(s) real(is)
         </h2>
       </div>
       <p className="mb-3 text-xs text-txt-2">
-        Posts de alto risco analisados por um agente de IA especializado, com plano de ação concreto.
+        Posts de alto risco analisados por um agente de IA especializado. Ele separa crise real de ruído e gera plano de ação.
       </p>
+      {reais.length === 0 && (
+        <div className="mb-3 rounded-lg border border-risk-low/30 bg-risk-low/5 p-3 text-sm text-txt-2">
+          ✅ Nenhuma crise real no momento — todos os posts de alto risco foram avaliados como ruído/monitoramento.
+        </div>
+      )}
       <div className="space-y-3">
         {reais.map((p) => {
           const cor = NIVEL_COLOR[(p.nivel as NivelCrise) ?? "alto"] ?? "#F97316";
@@ -68,6 +74,23 @@ function PlanosContencao({ planos }: { planos: CrisisPlan[] }) {
           );
         })}
       </div>
+
+      {/* Avaliados e descartados (o agente olhou e classificou como não-crise) */}
+      {descartados.length > 0 && (
+        <div className="mt-3 border-t border-line/40 pt-3">
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-txt-3">
+            ✅ {descartados.length} post(s) de alto risco avaliado(s) — não é crise (monitorar)
+          </div>
+          <div className="space-y-1.5">
+            {descartados.map((p) => (
+              <div key={p.post_url} className="flex items-start gap-2 text-[12px] text-txt-2">
+                <span className="text-txt-3">@{p.autor} · risco {p.score_risco} →</span>
+                <span>{p.pavio}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
