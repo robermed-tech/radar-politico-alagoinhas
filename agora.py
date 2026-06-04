@@ -788,6 +788,24 @@ def _supabase_upsert(tabela, linhas, on_conflict):
         log(f"    Supabase {tabela}: erro {e}")
         return 0
 
+def _supabase_patch(tabela, filtro, payload):
+    """PATCH (update) em massa via PostgREST. Ex: filtro='tenant=eq.alagoinhas'."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return False
+    url = f"{SUPABASE_URL}/rest/v1/{tabela}?{filtro}"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+    try:
+        r = requests.patch(url, headers=headers, data=json.dumps(payload), timeout=30)
+        return r.status_code in (200, 204)
+    except Exception as e:
+        log(f"    Supabase PATCH {tabela}: erro {e}")
+        return False
+
 def gravar_no_supabase(posts_analisados, comentarios_por_post):
     """Espelha os dados no Postgres do Supabase. Sheets continua como fonte da verdade."""
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -1353,6 +1371,9 @@ def detectar_grupos_coordenados(comentarios, limiar_sim=0.6, min_tokens_inter=3,
         if ra != rb:
             parent[rb] = ra
 
+    # Dupla condição (evita meme/citação curta como falso-positivo):
+    #   (A) >=4 tokens em comum E Jaccard >=0.55  -> muitas palavras especificas iguais
+    #   (B) >=3 tokens em comum E Jaccard >=0.70  -> textos quase identicos
     for i in range(n):
         if len(toks[i]) < min_tokens_texto:
             continue
@@ -1360,9 +1381,10 @@ def detectar_grupos_coordenados(comentarios, limiar_sim=0.6, min_tokens_inter=3,
             if len(toks[j]) < min_tokens_texto:
                 continue
             inter = len(toks[i] & toks[j])
-            if inter < min_tokens_inter:
-                continue
-            if _jaccard(toks[i], toks[j]) >= limiar_sim:
+            jac = _jaccard(toks[i], toks[j])
+            forte = (inter >= 4 and jac >= 0.55)
+            quase_identico = (inter >= 3 and jac >= 0.70)
+            if forte or quase_identico:
                 union(i, j)
 
     # Agrupa por raiz
@@ -1396,14 +1418,10 @@ def detectar_grupos_coordenados(comentarios, limiar_sim=0.6, min_tokens_inter=3,
             if cid:
                 flagged[cid] = "texto quase identico a outras contas (campanha coordenada)"
 
-    # Bônus: usernames com padrão de bot tambem entram como flag (mesmo sem grupo)
-    for c in comentarios:
-        if _username_suspeito(c.get("username", "")):
-            cid = str(c.get("id", "")).strip()
-            if cid and cid not in flagged:
-                flagged[cid] = "username com padrao de bot"
+    # NOTA: heurística de username-bot foi removida — no Brasil, ano de nascimento
+    # no @ (ex: luziasantos1958, paulinha2008) é comum e NÃO indica bot.
+    # Só flaga comentários que fazem parte de um grupo de texto coordenado (sinal real).
 
-    # ordena grupos por tamanho
     grupos.sort(key=lambda g: -g["n_comentarios"])
     return {"grupos": grupos, "flagged": flagged}
 
@@ -1493,6 +1511,10 @@ def gravar_narratives(posts_analisados, comentarios_por_post):
     coord_global = detectar_grupos_coordenados(todos_cidadaos)
     grupos = coord_global["grupos"]
     suspeitos_globais = coord_global["flagged"]  # id -> motivo
+
+    # Reset GLOBAL das flags antigas (alcança comentarios de runs anteriores tambem)
+    _supabase_patch("comments", f"tenant=eq.{TENANT}&suspeito_coordenacao=eq.true",
+                    {"suspeito_coordenacao": False, "motivo_suspeita": ""})
     # username por id (p/ atribuir suspeitos a cada narrativa)
     user_por_id = {str(cm.get("id", "")): cm.get("username", "") for cm in todos_cidadaos}
 
