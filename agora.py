@@ -1218,7 +1218,7 @@ def _username_suspeito(u):
         return False
     return bool(_RE_USERNAME_GENERICO.match(u.lower().replace("_", "")))
 
-def detectar_coordenacao(comentarios, limiar_sim=0.55):
+def detectar_coordenacao(comentarios, limiar_sim=0.6, min_tokens_inter=4, min_tokens_texto=4):
     """
     Detecta sinais de coordenação num grupo de comentários (de um cluster/narrativa).
     Retorna:
@@ -1238,19 +1238,31 @@ def detectar_coordenacao(comentarios, limiar_sim=0.55):
     suspeitos = set()
     sinais = []
 
-    # ── 1. COPIA-COLA: pares com Jaccard >= limiar ──────────────────
-    pares_similares = 0
+    # ── 1. COPIA-COLA: pares com Jaccard >= limiar E interseção >= N tokens ─
+    # 3 defesas contra falso-positivo:
+    #   (a) ambos os textos têm pelo menos min_tokens_texto tokens distintos
+    #   (b) interseção de ≥4 tokens (impede match em 2-3 palavras genéricas)
+    #   (c) Jaccard ≥ 0.6 (forte similaridade estrutural)
     idx_similares = set()
+    pares_similares = 0
     for i in range(n):
+        if len(tokens_por_idx[i]) < min_tokens_texto:
+            continue
         for j in range(i + 1, n):
-            sim = _jaccard(tokens_por_idx[i], tokens_por_idx[j])
+            if len(tokens_por_idx[j]) < min_tokens_texto:
+                continue
+            a, b = tokens_por_idx[i], tokens_por_idx[j]
+            inter = len(a & b)
+            if inter < min_tokens_inter:
+                continue
+            sim = _jaccard(a, b)
             if sim >= limiar_sim:
-                pares_similares += 1
                 idx_similares.add(i)
                 idx_similares.add(j)
-    pct_copia = (len(idx_similares) / n) * 100 if n else 0
-    if pct_copia >= 20:
-        sinais.append(f"copia_cola ({len(idx_similares)} comentarios similares)")
+                pares_similares += 1
+    n_similares = len(idx_similares)
+    if n_similares >= 2:
+        sinais.append(f"copia_cola ({n_similares} comentarios similares, {pares_similares} pares)")
     for i in idx_similares:
         u = comentarios[i].get("username", "")
         if u:
@@ -1259,9 +1271,10 @@ def detectar_coordenacao(comentarios, limiar_sim=0.55):
 
     # ── 2. USERNAMES GENERICOS (regex de bot) ──────────────────────
     user_gen = [i for i, c in enumerate(comentarios) if _username_suspeito(c.get("username", ""))]
-    pct_user_gen = (len(user_gen) / n) * 100
-    if pct_user_gen >= 25 and len(user_gen) >= 3:
-        sinais.append(f"usernames_genericos ({len(user_gen)} contas suspeitas)")
+    n_user_gen = len(user_gen)
+    pct_user_gen = (n_user_gen / n) * 100
+    if n_user_gen >= 2:
+        sinais.append(f"usernames_genericos ({n_user_gen} contas suspeitas)")
     for i in user_gen:
         u = comentarios[i].get("username", "")
         if u:
@@ -1275,16 +1288,21 @@ def detectar_coordenacao(comentarios, limiar_sim=0.55):
         if d:
             by_data.setdefault(d, []).append(i)
     burst_dias = [d for d, lst in by_data.items() if len(lst) >= 5]
+    max_burst = max((len(by_data[d]) for d in burst_dias), default=0)
     if burst_dias and len(comentarios) >= 8:
-        max_burst = max(len(by_data[d]) for d in burst_dias)
         sinais.append(f"burst_temporal ({max_burst} coments mesmo dia)")
 
-    # ── SCORE COMPOSTO (so dispara acima de limiares minimos) ───────
-    # cópia-cola só conta a partir de 20% similar; usernames só a partir de 25%
-    score_copia = 0 if pct_copia < 20 else min(100, (pct_copia - 20) * 1.5)
-    score_user  = 0 if pct_user_gen < 25 else min(100, (pct_user_gen - 25) * 1.5)
-    score_burst = 100 if burst_dias and len(comentarios) >= 8 else 0
-    score = 0.5 * score_copia + 0.3 * score_user + 0.2 * score_burst
+    # ── SCORE COMPOSTO ─────────────────────────────────────────────
+    # Cada par similar vale 18 pts (max 90 com 5+ pares = forte coordenação)
+    score_copia = min(100, pares_similares * 18)
+    # Cada username genérico vale 12 pts
+    score_user  = min(100, n_user_gen * 12)
+    # Burst SOZINHO não conta (qualquer post viral tem burst); só quando combinado
+    # com outros sinais multiplica a relevância
+    score_burst = 0
+    if burst_dias and len(comentarios) >= 8 and (n_similares >= 2 or n_user_gen >= 2):
+        score_burst = 60  # burst + outro sinal = padrão real de campanha
+    score = 0.55 * score_copia + 0.30 * score_user + 0.15 * score_burst
 
     # Dedupe marcados (mesmo idx, motivos diferentes)
     seen = {}

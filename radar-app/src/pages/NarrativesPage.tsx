@@ -47,7 +47,7 @@ function Card({ n, maxAmp }: { n: Narrative; maxAmp: number }) {
             >
               {n.status}
             </span>
-            {(n.coordenacao_score ?? 0) >= 40 && (
+            {(n.coordenacao_score ?? 0) >= 30 && (
               <span
                 className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
                 style={{
@@ -123,7 +123,7 @@ function Card({ n, maxAmp }: { n: Narrative; maxAmp: number }) {
       )}
 
       {/* Painel de coordenação detalhada */}
-      {(n.coordenacao_score ?? 0) >= 40 && (
+      {(n.coordenacao_score ?? 0) >= 30 && (
         <div className="mt-3 rounded-lg border border-purple-500/30 bg-purple-500/5 p-2.5">
           <div className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: "#A855F7" }}>
             ⚠ Possível campanha coordenada
@@ -185,7 +185,7 @@ export function NarrativesPage() {
   const esfriando = lista.filter((n) => n.status === "esfriando");
   const positivas = lista.filter((n) => n.sentimento === "positivo").length;
   const negativas = lista.filter((n) => n.sentimento === "negativo").length;
-  const coordenadas = lista.filter((n) => (n.coordenacao_score ?? 0) >= 40);
+  const coordenadas = lista.filter((n) => (n.coordenacao_score ?? 0) >= 30);
 
   const filtrada = filtro === "ativa" ? ativas : lista;
   const maxAmp = Math.max(...filtrada.map((n) => n.amplificacao), 1);
