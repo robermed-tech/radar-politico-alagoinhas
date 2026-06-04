@@ -255,6 +255,28 @@ export interface Narrative {
   suspeitos_usernames?: string[];
 }
 
+export interface CoordinationGroup {
+  id: string;
+  texto_representativo: string;
+  n_comentarios: number;
+  usernames: string[];
+  sentimento: string;
+  autor_posts: string[];
+}
+
+/** Grupos de comentários coordenados (campanhas detectadas). */
+export async function fetchCoordinationGroups(): Promise<CoordinationGroup[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/coordination_groups?tenant=eq.${TENANT}` +
+    `&select=*&order=n_comentarios.desc&limit=50`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  return (await res.json()) as CoordinationGroup[];
+}
+
 /** Narrativas ativas/esfriando/encerradas. */
 export async function fetchNarratives(): Promise<Narrative[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];

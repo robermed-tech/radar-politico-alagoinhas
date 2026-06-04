@@ -845,6 +845,8 @@ def gravar_no_supabase(posts_analisados, comentarios_por_post):
                 "username": c.get("username", ""), "tipo": c.get("tipo", ""),
                 "texto": c.get("texto", ""), "curtidas": int(c.get("curtidas", 0) or 0),
                 "sentimento": c.get("sentimento", "neutro"),
+                # Reseta flags de coordenação a cada execução (gravar_narratives remarca depois)
+                "suspeito_coordenacao": False, "motivo_suspeita": "",
                 "data_comentario": str(c.get("data", "")), "atualizado_em": agora,
             })
     n_coments = _supabase_upsert("comments", coment_rows, "id")
@@ -1321,6 +1323,91 @@ def detectar_coordenacao(comentarios, limiar_sim=0.6, min_tokens_inter=4, min_to
     }
 
 
+def detectar_grupos_coordenados(comentarios, limiar_sim=0.6, min_tokens_inter=3, min_tokens_texto=3):
+    """
+    Detecção GLOBAL: encontra grupos de comentários quase-idênticos em TODO o
+    conjunto (componentes conexos por similaridade), independente do tema.
+    Um grupo coordenado = >=2 comentarios similares de >=2 contas distintas.
+
+    Retorna:
+      {
+        "grupos": [ {texto, n_comentarios, usernames[], ids[], sentimento, autor_posts[]}, ... ],
+        "flagged": { comentario_id: motivo },
+      }
+    """
+    if not comentarios:
+        return {"grupos": [], "flagged": {}}
+
+    n = len(comentarios)
+    toks = [_tokens(c.get("texto", "")) for c in comentarios]
+
+    # União-busca (union-find) para componentes conexos
+    parent = list(range(n))
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    for i in range(n):
+        if len(toks[i]) < min_tokens_texto:
+            continue
+        for j in range(i + 1, n):
+            if len(toks[j]) < min_tokens_texto:
+                continue
+            inter = len(toks[i] & toks[j])
+            if inter < min_tokens_inter:
+                continue
+            if _jaccard(toks[i], toks[j]) >= limiar_sim:
+                union(i, j)
+
+    # Agrupa por raiz
+    comps = {}
+    for i in range(n):
+        comps.setdefault(find(i), []).append(i)
+
+    grupos = []
+    flagged = {}
+    for raiz, idxs in comps.items():
+        if len(idxs) < 2:
+            continue
+        usernames = {comentarios[i].get("username", "") for i in idxs if comentarios[i].get("username")}
+        if len(usernames) < 2:
+            continue  # mesma conta repetindo nao e coordenacao entre contas
+        # sentimento predominante do grupo
+        sents = [comentarios[i].get("sentimento", "neutro") for i in idxs]
+        sent_pred = max(set(sents), key=sents.count) if sents else "neutro"
+        # representante = comentario mais curtido do grupo
+        rep = max(idxs, key=lambda i: int(comentarios[i].get("curtidas", 0) or 0))
+        grupos.append({
+            "texto": (comentarios[rep].get("texto", "") or "")[:280],
+            "n_comentarios": len(idxs),
+            "usernames": sorted(usernames),
+            "ids": [str(comentarios[i].get("id", "")) for i in idxs],
+            "sentimento": sent_pred,
+            "autor_posts": sorted({comentarios[i].get("autor_post", comentarios[i].get("autor", "")) for i in idxs}),
+        })
+        for i in idxs:
+            cid = str(comentarios[i].get("id", "")).strip()
+            if cid:
+                flagged[cid] = "texto quase identico a outras contas (campanha coordenada)"
+
+    # Bônus: usernames com padrão de bot tambem entram como flag (mesmo sem grupo)
+    for c in comentarios:
+        if _username_suspeito(c.get("username", "")):
+            cid = str(c.get("id", "")).strip()
+            if cid and cid not in flagged:
+                flagged[cid] = "username com padrao de bot"
+
+    # ordena grupos por tamanho
+    grupos.sort(key=lambda g: -g["n_comentarios"])
+    return {"grupos": grupos, "flagged": flagged}
+
+
 def _norm_tema(t):
     return (t or "").strip().lower()
 
@@ -1397,17 +1484,33 @@ def gravar_narratives(posts_analisados, comentarios_por_post):
                     c["comentario_top"] = (cm.get("texto", "") or "")[:300]
                 c["todos_coments"].append(cm)
 
-    # ── Detecção de coordenação por cluster + marcação de comentários suspeitos ──
-    suspeitos_globais = {}  # id_comentario -> motivo
-    coord_por_cluster = {}
-    for key, c in clusters.items():
-        coord = detectar_coordenacao(c["todos_coments"])
-        coord_por_cluster[key] = coord
-        for idx, motivo in coord["marcados"]:
-            cm = c["todos_coments"][idx]
-            cid = str(cm.get("id", "")).strip()
-            if cid:
-                suspeitos_globais[cid] = motivo
+    # ── DETECÇÃO GLOBAL DE COORDENAÇÃO (todos os comentários, não por tema) ──
+    todos_cidadaos = []
+    for url, lista in comentarios_por_post.items():
+        for cm in lista:
+            if cm.get("tipo") == "cidadao":
+                todos_cidadaos.append(cm)
+    coord_global = detectar_grupos_coordenados(todos_cidadaos)
+    grupos = coord_global["grupos"]
+    suspeitos_globais = coord_global["flagged"]  # id -> motivo
+    # username por id (p/ atribuir suspeitos a cada narrativa)
+    user_por_id = {str(cm.get("id", "")): cm.get("username", "") for cm in todos_cidadaos}
+
+    # Grava os grupos coordenados (tabela dedicada)
+    if grupos:
+        grupo_rows = []
+        for g in grupos:
+            gid = hashlib.md5(f"{TENANT}|{'|'.join(sorted(g['ids']))}".encode()).hexdigest()[:24]
+            grupo_rows.append({
+                "id": gid, "tenant": TENANT,
+                "texto_representativo": g["texto"],
+                "n_comentarios": g["n_comentarios"],
+                "usernames": g["usernames"],
+                "sentimento": g["sentimento"],
+                "autor_posts": g["autor_posts"],
+                "atualizado_em": datetime.now().isoformat(),
+            })
+        _supabase_upsert("coordination_groups", grupo_rows, "id")
 
     rows = []
     for (tema, sent), c in clusters.items():
@@ -1416,7 +1519,19 @@ def gravar_narratives(posts_analisados, comentarios_por_post):
         queixa_top = max(c["queixas"].items(), key=lambda x: x[1])[0] if c["queixas"] else ""
         elogio_top = max(c["elogios"].items(), key=lambda x: x[1])[0] if c["elogios"] else ""
         rotulo_sent = {"positivo": "elogio", "negativo": "crítica", "neutro": "neutro"}.get(sent, sent)
-        coord = coord_por_cluster[(tema, sent)]
+        # Coordenação por narrativa = comentários DESTA narrativa que estão flagged globalmente
+        flagged_na_narr = [
+            cm for cm in c["todos_coments"]
+            if str(cm.get("id", "")) in suspeitos_globais
+        ]
+        n_flag = len(flagged_na_narr)
+        coord_score = min(100, n_flag * 25)  # 2 flagged=50, 3=75, 4+=100
+        coord_susp = sorted({cm.get("username", "") for cm in flagged_na_narr if cm.get("username")})
+        coord_sinais = []
+        if n_flag >= 2:
+            coord_sinais.append(f"{n_flag} comentarios coordenados nesta narrativa")
+        elif n_flag == 1:
+            coord_sinais.append("1 comentario suspeito")
         rows.append({
             "id": nid, "tenant": TENANT,
             "tema": tema.title(), "sentimento": sent,
@@ -1434,9 +1549,9 @@ def gravar_narratives(posts_analisados, comentarios_por_post):
             "comentario_top": c["comentario_top"],
             "comentario_top_curtidas": c["comentario_top_curtidas"],
             "status": _status_narrativa(c["ultimo_visto"]) if c["ultimo_visto"] else "ativa",
-            "coordenacao_score": coord["score"],
-            "coordenacao_sinais": coord["sinais"],
-            "suspeitos_usernames": coord["suspeitos"],
+            "coordenacao_score": coord_score,
+            "coordenacao_sinais": coord_sinais,
+            "suspeitos_usernames": coord_susp,
             "atualizado_em": datetime.now().isoformat(),
         })
 
@@ -1450,8 +1565,7 @@ def gravar_narratives(posts_analisados, comentarios_por_post):
 
     n = _supabase_upsert("narratives", rows, "id")
     ativas = sum(1 for r in rows if r["status"] == "ativa")
-    coord_alertas = sum(1 for r in rows if r["coordenacao_score"] >= 40)
-    log(f"  Narrativas gravadas: {n} ({ativas} ativas) | {coord_alertas} c/ coordenacao | {len(suspeitos_globais)} coments suspeitos")
+    log(f"  Narrativas gravadas: {n} ({ativas} ativas) | {len(grupos)} grupos coordenados | {len(suspeitos_globais)} coments suspeitos")
 
 
 # ==============================================================

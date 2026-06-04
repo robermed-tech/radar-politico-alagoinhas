@@ -1,7 +1,66 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchNarratives, type Narrative } from "@/lib/data";
+import {
+  fetchNarratives,
+  fetchCoordinationGroups,
+  type Narrative,
+  type CoordinationGroup,
+} from "@/lib/data";
 import { fmtInt } from "@/lib/format";
+
+const SENT_COR_G: Record<string, string> = {
+  positivo: "#22C55E",
+  negativo: "#EF4444",
+  neutro: "#9FB0CC",
+};
+
+function CoordinationPanel({ grupos }: { grupos: CoordinationGroup[] }) {
+  if (grupos.length === 0) return null;
+  return (
+    <div className="rounded-xl border p-4" style={{ borderColor: "rgba(168,85,247,0.4)", background: "rgba(168,85,247,0.06)" }}>
+      <div className="mb-1 flex items-center gap-2">
+        <span className="text-lg">🕵️</span>
+        <h2 className="text-base font-extrabold" style={{ color: "#A855F7" }}>
+          {grupos.length} campanha(s) coordenada(s) detectada(s)
+        </h2>
+      </div>
+      <p className="mb-3 text-xs text-txt-2">
+        Grupos de contas diferentes que postaram comentários quase idênticos — indício de mobilização organizada (bot, militância ou disparo coordenado).
+      </p>
+      <div className="grid gap-3 md:grid-cols-2">
+        {grupos.map((g) => {
+          const cor = SENT_COR_G[g.sentimento] ?? "#9FB0CC";
+          return (
+            <div key={g.id} className="rounded-lg border border-line bg-bg-2 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                  style={{ background: `${cor}1A`, color: cor }}
+                >
+                  {g.sentimento}
+                </span>
+                <span className="tnum text-sm font-bold" style={{ color: "#A855F7" }}>
+                  {g.n_comentarios} contas
+                </span>
+              </div>
+              <p className="mt-2 text-[13px] italic text-txt-1">"{g.texto_representativo}"</p>
+              <div className="mt-2 text-[11px] text-txt-3">
+                <span className="font-semibold text-txt-2">Contas: </span>
+                {g.usernames.slice(0, 6).map((u) => `@${u}`).join(", ")}
+                {g.usernames.length > 6 && ` +${g.usernames.length - 6}`}
+              </div>
+              {g.autor_posts.length > 0 && (
+                <div className="mt-1 text-[10px] text-txt-3">
+                  em: {g.autor_posts.map((a) => `@${a}`).join(", ")}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 type Filtro = "ativa" | "todas";
 
@@ -166,6 +225,13 @@ export function NarrativesPage() {
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });
+  const { data: gruposData } = useQuery({
+    queryKey: ["coordination-groups"],
+    queryFn: fetchCoordinationGroups,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 15 * 60 * 1000,
+  });
+  const grupos = gruposData ?? [];
 
   if (isLoading) return <div className="p-8 text-txt-2">Carregando narrativas…</div>;
   const lista = data ?? [];
@@ -185,7 +251,6 @@ export function NarrativesPage() {
   const esfriando = lista.filter((n) => n.status === "esfriando");
   const positivas = lista.filter((n) => n.sentimento === "positivo").length;
   const negativas = lista.filter((n) => n.sentimento === "negativo").length;
-  const coordenadas = lista.filter((n) => (n.coordenacao_score ?? 0) >= 30);
 
   const filtrada = filtro === "ativa" ? ativas : lista;
   const maxAmp = Math.max(...filtrada.map((n) => n.amplificacao), 1);
@@ -199,22 +264,8 @@ export function NarrativesPage() {
         </p>
       </div>
 
-      {/* Alerta de coordenação (destaque) */}
-      {coordenadas.length > 0 && (
-        <div
-          className="rounded-xl border p-3 text-sm"
-          style={{
-            background: "rgba(168,85,247,0.08)",
-            borderColor: "rgba(168,85,247,0.4)",
-            color: "#A855F7",
-          }}
-        >
-          <span className="font-bold">⚠ {coordenadas.length} narrativa(s) com sinais de coordenação detectados.</span>{" "}
-          <span className="text-txt-2">
-            Possível campanha organizada (texto duplicado, contas suspeitas ou burst temporal). Veja o detalhe nos cards abaixo.
-          </span>
-        </div>
-      )}
+      {/* Painel de campanhas coordenadas (detecção global) */}
+      <CoordinationPanel grupos={grupos} />
 
       {/* Resumo */}
       <div className="grid grid-cols-4 gap-3">
