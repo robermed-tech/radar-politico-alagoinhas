@@ -443,6 +443,43 @@ Seu objetivo principal e analisar os COMENTARIOS dos cidadaos nos posts do Insta
 pois a reacao do cidadao comum e o verdadeiro termometro da imagem do prefeito.
 O post e apenas o gatilho - o que importa e o que o povo respondeu.
 
+═══════════════════════════════════════════════════════════════════════
+REGRA CENTRAL DE POLARIDADE (CRITICA - APLIQUE EM TODAS AS ANALISES):
+═══════════════════════════════════════════════════════════════════════
+O alvo da analise e SEMPRE o prefeito Gustavo Carmo e sua gestao municipal.
+Todo sentimento e classificado sob a OTICA DO PREFEITO ATUAL, independente
+de em qual perfil o comentario foi feito.
+
+  POSITIVO = favorece a imagem do prefeito Gustavo Carmo
+    - Elogio direto ao prefeito ou a gestao municipal
+    - Defesa do prefeito contra criticas
+    - Critica/ataque a OPOSITORES de Gustavo (vereadores opositores,
+      Luciano Almeida, Joaquim Neto, Jaldice Nunes, Paulo Cezar, etc.)
+    - Apoio a obras, programas ou secretarias da prefeitura
+    - Lembrar realizacoes da gestao positivamente
+
+  NEGATIVO = prejudica a imagem do prefeito Gustavo Carmo
+    - Critica direta ao prefeito ou a gestao municipal
+    - APOIO/elogio a opositores ("vai ser nosso proximo prefeito",
+      "Luciano e melhor", "Joaquim ja deveria estar na prefeitura")
+    - Queixas concretas sobre servicos municipais (saude, educacao,
+      obras, limpeza, IPTU, transporte)
+    - Comparacoes desfavoraveis com outras gestoes/cidades
+    - Sarcasmo, ironia ou descrenca sobre promessas
+
+  NEUTRO = nao tem polaridade clara sobre o prefeito
+    - Pergunta sobre horario, endereco, informacao pratica
+    - Comentario off-topic (sem relacao com gestao)
+    - Mencao factual sem juizo de valor
+
+EXEMPLOS para nao errar:
+  "Acompanho voce Luciano, vai ser nosso prefeito"      -> NEGATIVO
+  "Luciano e incompetente, prefiro Gustavo"             -> POSITIVO
+  "SUS de Alagoinhas da certo, parabens equipe!"        -> POSITIVO
+  "Prefeitura abandonou minha rua, ha 2 meses sem luz"  -> NEGATIVO
+  "Que horas abre o posto de saude?"                    -> NEUTRO
+═══════════════════════════════════════════════════════════════════════
+
 Regras de analise:
 1. Priorize comentarios de cidadaos comuns (tipo=cidadao) sobre perfis politicos
 2. Identifique a queixa ou elogio mais frequente, nao apenas o sentimento medio
@@ -471,11 +508,22 @@ def montar_prompt(post, comentarios, memoria):
         for c in politicos[:5]:
             coments_txt += f'  @{c["username"]}: "{c["texto"]}"\n'
 
+    # Contexto politico explicito do autor (ajuda o Claude a aplicar a regra de polaridade)
+    cat_lower = (post.get("categoria") or "").lower()
+    if cat_lower == "oposicao":
+        lado = "OPOSITOR de Gustavo Carmo — apoio a esse perfil = NEGATIVO p/ Gustavo"
+    elif cat_lower in ("prefeito", "prefeitura", "governo"):
+        lado = "ALIADO/GESTAO de Gustavo Carmo — apoio a esse perfil = POSITIVO p/ Gustavo"
+    elif cat_lower == "imprensa":
+        lado = "IMPRENSA — analise o conteudo do comentario, nao o perfil"
+    else:
+        lado = "neutro/indeterminado"
+
     prompt = f"""
 {memoria}
 
 POST PARA ANALISE
-Perfil: @{post["autor"]} ({post["categoria"]})
+Perfil: @{post["autor"]} ({post["categoria"]}) — LADO POLITICO: {lado}
 Data: {post["data_post"]}
 URL: {post["url"]}
 Curtidas: {post["curtidas"]} | Comentarios totais: {post["total_coments"]}
@@ -509,9 +557,21 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
   "sentimentos_comentarios": [
     /* array com o sentimento de CADA comentario de cidadao listado acima, na MESMA ORDEM dos indices [0], [1], [2]...
        Use apenas: "positivo" | "negativo" | "neutro".
-       Considere positivo = apoio/elogio/defesa do prefeito ou gestao.
-       Considere negativo = critica/queixa/oposicao ao prefeito ou gestao.
-       Considere neutro = pergunta, comentario sem polaridade clara, off-topic.
+
+       APLIQUE A REGRA CENTRAL DE POLARIDADE (do system prompt):
+       sempre sob a otica do PREFEITO GUSTAVO CARMO.
+
+       - positivo = favorece a imagem do prefeito Gustavo (elogio ao prefeito,
+         critica a opositores como Luciano/Joaquim/Jaldice, defesa da gestao).
+       - negativo = prejudica a imagem (critica a Gustavo/prefeitura, APOIO a
+         opositores, queixa de servico municipal, comparacao desfavoravel).
+       - neutro = pergunta pratica, off-topic, sem polaridade clara.
+
+       ATENCAO: se o comentario foi feito em perfil de OPOSITOR e APOIA esse
+       opositor, classifique como NEGATIVO (e ruim para Gustavo).
+       Se o comentario foi feito em perfil de OPOSITOR e CRITICA esse opositor,
+       classifique como POSITIVO (e bom para Gustavo).
+
        O array DEVE ter exatamente {{LEN}} itens (1 por comentario numerado). */
   ]
 }}""".replace("{{LEN}}", str(len(cidadaos_top)))
