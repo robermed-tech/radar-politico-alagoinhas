@@ -806,6 +806,32 @@ def _supabase_patch(tabela, filtro, payload):
         log(f"    Supabase PATCH {tabela}: erro {e}")
         return False
 
+def _supabase_get(tabela, params):
+    """SELECT via PostgREST. params ex: 'tenant=eq.x&select=*&limit=2000'. Retorna lista."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return []
+    url = f"{SUPABASE_URL}/rest/v1/{tabela}?{params}"
+    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
+    try:
+        r = requests.get(url, headers=headers, timeout=30)
+        return r.json() if r.status_code == 200 else []
+    except Exception as e:
+        log(f"    Supabase GET {tabela}: erro {e}")
+        return []
+
+def _supabase_delete(tabela, filtro):
+    """DELETE em massa via PostgREST."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return False
+    url = f"{SUPABASE_URL}/rest/v1/{tabela}?{filtro}"
+    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Prefer": "return=minimal"}
+    try:
+        r = requests.delete(url, headers=headers, timeout=30)
+        return r.status_code in (200, 204)
+    except Exception as e:
+        log(f"    Supabase DELETE {tabela}: erro {e}")
+        return False
+
 def gravar_no_supabase(posts_analisados, comentarios_por_post):
     """Espelha os dados no Postgres do Supabase. Sheets continua como fonte da verdade."""
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -1502,21 +1528,22 @@ def gravar_narratives(posts_analisados, comentarios_por_post):
                     c["comentario_top"] = (cm.get("texto", "") or "")[:300]
                 c["todos_coments"].append(cm)
 
-    # ── DETECÇÃO GLOBAL DE COORDENAÇÃO (todos os comentários, não por tema) ──
-    todos_cidadaos = []
-    for url, lista in comentarios_por_post.items():
-        for cm in lista:
-            if cm.get("tipo") == "cidadao":
-                todos_cidadaos.append(cm)
-    coord_global = detectar_grupos_coordenados(todos_cidadaos)
+    # ── DETECÇÃO GLOBAL DE COORDENAÇÃO sobre o BANCO COMPLETO ──────
+    # Coordenação é cumulativa: roda sobre TODOS os comentários cidadãos já
+    # gravados (não só este scrape), pois campanhas se espalham por vários dias.
+    coments_db = _supabase_get("comments",
+        f"tenant=eq.{TENANT}&tipo=eq.cidadao&select=id,username,texto,sentimento,curtidas,autor_post&limit=5000")
+    base_coments = coments_db if coments_db else [
+        cm for lista in comentarios_por_post.values() for cm in lista if cm.get("tipo") == "cidadao"
+    ]
+    coord_global = detectar_grupos_coordenados(base_coments)
     grupos = coord_global["grupos"]
     suspeitos_globais = coord_global["flagged"]  # id -> motivo
 
-    # Reset GLOBAL das flags antigas (alcança comentarios de runs anteriores tambem)
+    # Reset GLOBAL: zera flags antigas e apaga grupos antigos antes de regravar
     _supabase_patch("comments", f"tenant=eq.{TENANT}&suspeito_coordenacao=eq.true",
                     {"suspeito_coordenacao": False, "motivo_suspeita": ""})
-    # username por id (p/ atribuir suspeitos a cada narrativa)
-    user_por_id = {str(cm.get("id", "")): cm.get("username", "") for cm in todos_cidadaos}
+    _supabase_delete("coordination_groups", f"tenant=eq.{TENANT}")
 
     # Grava os grupos coordenados (tabela dedicada)
     if grupos:
