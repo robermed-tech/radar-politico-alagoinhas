@@ -457,11 +457,15 @@ def montar_prompt(post, comentarios, memoria):
     politicos = [c for c in comentarios if c["tipo"] == "politico"]
     cidadaos_sorted = sorted(cidadaos, key=lambda x: x["curtidas"], reverse=True)
 
+    # Limita a 20 cidadaos para o prompt nao explodir; o restante herda o
+    # sentimento_comentarios geral (fallback no analisar_com_agora).
+    cidadaos_top = cidadaos_sorted[:20]
+
     coments_txt = ""
-    if cidadaos_sorted:
-        coments_txt += f"\nCOMENTARIOS DE CIDADAOS ({len(cidadaos_sorted)} total):\n"
-        for c in cidadaos_sorted[:20]:
-            coments_txt += f'  {c["curtidas"]} curtidas @{c["username"]}: "{c["texto"]}"\n'
+    if cidadaos_top:
+        coments_txt += f"\nCOMENTARIOS DE CIDADAOS (top {len(cidadaos_top)} por curtidas; NUMERADOS para classificacao):\n"
+        for idx, c in enumerate(cidadaos_top):
+            coments_txt += f'  [{idx}] {c["curtidas"]}❤ @{c["username"]}: "{c["texto"]}"\n'
     if politicos:
         coments_txt += f"\nCOMENTARIOS DE PERFIS POLITICOS ({len(politicos)} total):\n"
         for c in politicos[:5]:
@@ -501,8 +505,16 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
   "tendencia": "<crescendo|estavel|caindo>",
   "urgencia": "<alta|media|baixa>",
   "sugestao_acao": "<acao concreta: monitorar|responder publicamente|acionar assessoria|conter crise|ampliar positivo>",
-  "janela_acao": "<imediato|24h|esta semana>"
-}}"""
+  "janela_acao": "<imediato|24h|esta semana>",
+  "sentimentos_comentarios": [
+    /* array com o sentimento de CADA comentario de cidadao listado acima, na MESMA ORDEM dos indices [0], [1], [2]...
+       Use apenas: "positivo" | "negativo" | "neutro".
+       Considere positivo = apoio/elogio/defesa do prefeito ou gestao.
+       Considere negativo = critica/queixa/oposicao ao prefeito ou gestao.
+       Considere neutro = pergunta, comentario sem polaridade clara, off-topic.
+       O array DEVE ter exatamente {{LEN}} itens (1 por comentario numerado). */
+  ]
+}}""".replace("{{LEN}}", str(len(cidadaos_top)))
     return prompt
 
 def analisar_com_agora(posts, comentarios_por_post, memoria):
@@ -520,7 +532,7 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
         try:
             resposta = cliente.messages.create(
                 model="claude-haiku-4-5-20251001",
-                max_tokens=1000,
+                max_tokens=1400,  # +400 p/ caber o array sentimentos_comentarios (até 20 itens)
                 system=PROMPT_SISTEMA,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -538,9 +550,31 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
             post_enriquecido["total_politicos"] = len([c for c in comentarios if c["tipo"] == "politico"])
             resultado.append(post_enriquecido)
 
+            # Aplica sentimento individual em cada comentario cidadao (top 20 analisados).
+            # Os demais (>20 ou politicos) recebem o sentimento_comentarios geral como fallback.
+            cidadaos_lista = sorted(
+                [c for c in comentarios if c["tipo"] == "cidadao"],
+                key=lambda x: x["curtidas"], reverse=True
+            )
+            sentimentos = analise.get("sentimentos_comentarios", []) or []
+            fallback = analise.get("sentimento_comentarios", "neutro")
+            if fallback == "misto":
+                fallback = "neutro"
+            classificados = 0
+            for idx, c in enumerate(cidadaos_lista):
+                if idx < len(sentimentos) and sentimentos[idx] in ("positivo", "negativo", "neutro"):
+                    c["sentimento"] = sentimentos[idx]
+                    classificados += 1
+                else:
+                    c["sentimento"] = fallback
+            # Politicos herdam o sentimento geral (raramente sao monitorados)
+            for c in comentarios:
+                if c["tipo"] != "cidadao" and not c.get("sentimento"):
+                    c["sentimento"] = fallback
+
             score_img = analise.get("score_imagem", 50)
             score_risco = analise.get("score_risco", 0)
-            log(f"    Score imagem: {score_img} | Risco: {score_risco} | {analise.get('sentimento_comentarios','')}")
+            log(f"    Score imagem: {score_img} | Risco: {score_risco} | sent_geral={analise.get('sentimento_comentarios','')} | {classificados}/{len(cidadaos_lista)} coments classificados")
 
         except json.JSONDecodeError as e:
             log(f"    JSON invalido: {e}")
@@ -750,6 +784,7 @@ def gravar_no_supabase(posts_analisados, comentarios_por_post):
                 "autor_post": post.get("autor", ""), "categoria_post": post.get("categoria", ""),
                 "username": c.get("username", ""), "tipo": c.get("tipo", ""),
                 "texto": c.get("texto", ""), "curtidas": int(c.get("curtidas", 0) or 0),
+                "sentimento": c.get("sentimento", "neutro"),
                 "data_comentario": str(c.get("data", "")), "atualizado_em": agora,
             })
     n_coments = _supabase_upsert("comments", coment_rows, "id")
