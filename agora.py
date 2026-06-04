@@ -36,6 +36,11 @@ WHATSAPP_NUMBER  = os.environ.get("WHATSAPP_NUMBER", "")
 SUPABASE_URL     = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY     = os.environ.get("SUPABASE_SERVICE_KEY", "")
 TENANT           = os.environ.get("RADAR_TENANT", "alagoinhas")
+# Multi-agente: modelo do Caçador de Crises. Default = Haiku (garante funcionamento).
+# Para mais raciocínio, defina CRISIS_MODEL=claude-sonnet-... como secret/env.
+MODELO_ANALISTA  = "claude-haiku-4-5-20251001"
+CRISIS_MODEL     = os.environ.get("CRISIS_MODEL", MODELO_ANALISTA)
+MAX_CRISES_RUN   = 3   # teto de chamadas do Caçador por execução (controle de custo)
 
 APIFY_BASE = "https://api.apify.com/v2"
 
@@ -1098,6 +1103,126 @@ Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
 
 
 # ==============================================================
+# AGENTE: CAÇADOR DE CRISES (multi-agente, Fase B)
+# ==============================================================
+
+PROMPT_CACADOR = """Voce e o CAÇADOR DE CRISES, agente especializado em gestao de crises de
+imagem do prefeito Gustavo Carmo (Alagoinhas/BA). Recebe um post sinalizado como ALTO RISCO
+e decide, com frieza tatica, se e crise real e o que fazer.
+
+Sua missao NAO e alarmar — e separar ruido de crise verdadeira e dar um plano acionavel.
+Considere o historico de risco: risco subindo + comentarios organizados = crise real.
+Reclamacao isolada, mesmo agressiva, raramente e crise.
+
+Responda APENAS com JSON valido, sem markdown."""
+
+def _registrar_agente(agente, modelo, gatilho, input_ref, tokens_in, tokens_out):
+    """Auditoria de execução de agente (agent_runs)."""
+    _supabase_upsert("agent_runs", [{
+        "tenant": TENANT, "agente": agente, "modelo": modelo,
+        "gatilho": gatilho, "input_ref": input_ref,
+        "tokens_in": tokens_in, "tokens_out": tokens_out,
+        "criado_em": datetime.now().isoformat(),
+    }], "id")
+
+def _chamar_claude(modelo, system, prompt, max_tokens=1200):
+    """Chama Claude com fallback p/ Haiku se o modelo configurado falhar."""
+    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    try:
+        r = cliente.messages.create(model=modelo, max_tokens=max_tokens,
+                                    system=system, messages=[{"role": "user", "content": prompt}])
+        return r, modelo
+    except Exception as e:
+        if modelo != MODELO_ANALISTA:
+            log(f"    {modelo} falhou ({str(e)[:60]}) — fallback p/ Haiku")
+            r = cliente.messages.create(model=MODELO_ANALISTA, max_tokens=max_tokens,
+                                        system=system, messages=[{"role": "user", "content": prompt}])
+            return r, MODELO_ANALISTA
+        raise
+
+def agente_cacador_crises(post, comentarios, tendencia_risco):
+    """Analisa 1 post de alto risco e gera plano de contenção."""
+    cidadaos = sorted([c for c in comentarios if c.get("tipo") == "cidadao"],
+                      key=lambda x: int(x.get("curtidas", 0) or 0), reverse=True)
+    coments_txt = ""
+    for c in cidadaos[:12]:
+        coments_txt += f'  {c.get("curtidas",0)}❤ @{c.get("username","")}: "{c.get("texto","")[:160]}"\n'
+
+    prompt = f"""POST DE ALTO RISCO
+Perfil: @{post.get('autor','')} ({post.get('categoria','')})
+Tema: {post.get('tema','')} | Score de risco: {post.get('score_risco',0)}/100
+Caption: {post.get('caption','') or '(sem legenda)'}
+Sentimento dos comentarios: {post.get('sentimento_comentarios','')}
+
+COMENTARIOS MAIS CURTIDOS:
+{coments_txt or '  (nenhum comentario)'}
+
+CONTEXTO — risco dos ultimos dias: {tendencia_risco}
+
+Retorne APENAS este JSON:
+{{
+  "e_crise_real": <true|false>,
+  "nivel": "<baixo|moderado|alto|critico>",
+  "pavio": "<o que exatamente disparou — 1 frase>",
+  "velocidade": "<acelerando|estavel|esfriando>",
+  "janela_resposta": "<imediato|24h|esta semana>",
+  "plano_contencao": ["<passo concreto 1>", "<passo 2>", "<passo 3>"],
+  "risco_se_ignorar": "<o que acontece se nada for feito — 1 frase>"
+}}"""
+    try:
+        resp, modelo_usado = _chamar_claude(CRISIS_MODEL, PROMPT_CACADOR, prompt, max_tokens=1000)
+        txt = resp.content[0].text.strip()
+        if txt.startswith("```"):
+            txt = txt.split("```")[1]
+            if txt.startswith("json"): txt = txt[4:]
+        data = json.loads(txt.strip())
+        _registrar_agente("cacador_crises", modelo_usado, f"score_risco={post.get('score_risco',0)}",
+                          post.get("url", ""), resp.usage.input_tokens, resp.usage.output_tokens)
+        return data
+    except Exception as e:
+        log(f"    Cacador de Crises: erro {e}")
+        return None
+
+def rodar_cacador_crises(posts_analisados, comentarios_por_post):
+    """Orquestra o Caçador: dispara só nos posts de alto risco (teto MAX_CRISES_RUN)."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+    # Gatilho: score_risco >= 70 OU risco_crise == alto
+    candidatos = [p for p in posts_analisados
+                  if int(p.get("score_risco", 0) or 0) >= 70
+                  or str(p.get("risco_crise", "")).lower() == "alto"]
+    if not candidatos:
+        return
+    log("=== AGENTE - Cacador de Crises ===")
+    candidatos.sort(key=lambda p: int(p.get("score_risco", 0) or 0), reverse=True)
+
+    # Tendência de risco recente (contexto p/ o agente)
+    hist = _supabase_get("daily_metrics", f"tenant=eq.{TENANT}&select=dia,risco&order=dia.desc&limit=5")
+    tend = " → ".join(f"{h['dia'][5:]}:{round(h.get('risco',0))}" for h in reversed(hist)) or "sem historico"
+
+    planos = 0
+    for p in candidatos[:MAX_CRISES_RUN]:
+        data = agente_cacador_crises(p, comentarios_por_post.get(p.get("url", ""), []), tend)
+        if not data:
+            continue
+        _supabase_upsert("crisis_plans", [{
+            "post_url": p.get("url", ""), "tenant": TENANT, "autor": p.get("autor", ""),
+            "e_crise_real": bool(data.get("e_crise_real", True)),
+            "nivel": data.get("nivel", "alto"),
+            "pavio": data.get("pavio", ""),
+            "velocidade": data.get("velocidade", ""),
+            "janela_resposta": data.get("janela_resposta", ""),
+            "plano_contencao": data.get("plano_contencao", []),
+            "risco_se_ignorar": data.get("risco_se_ignorar", ""),
+            "score_risco": int(p.get("score_risco", 0) or 0),
+            "gerado_em": datetime.now().isoformat(),
+        }], "post_url")
+        planos += 1
+        time.sleep(1)
+    log(f"  Cacador de Crises: {planos} plano(s) de contencao gerado(s) de {len(candidatos)} candidato(s)")
+
+
+# ==============================================================
 # MODULO 8 - INFLUENCIADORES (ranking)
 # ==============================================================
 
@@ -1808,6 +1933,7 @@ def main():
     gravar_no_supabase(posts_analisados, comentarios_por_post)  # dual-write (opcional)
     gravar_daily_metrics(posts_analisados)                       # historico de indices (Fase 3)
     gerar_briefing_estrategico(posts_analisados)                 # assistente IA (Fase 3d)
+    rodar_cacador_crises(posts_analisados, comentarios_por_post) # agente caçador de crises (Fase B)
     gravar_influencers(posts_analisados, comentarios_por_post)   # ranking de influenciadores
     gravar_narratives(posts_analisados, comentarios_por_post)    # narrativas (tema + sentimento)
     gravar_daily_themes(posts_analisados)                        # tendencias por tema (Fase 3e)

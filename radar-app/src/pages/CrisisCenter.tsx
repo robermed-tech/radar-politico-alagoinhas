@@ -1,9 +1,76 @@
 import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
-import { fetchDailyMetrics } from "@/lib/data";
+import { fetchDailyMetrics, fetchCrisisPlans, type CrisisPlan } from "@/lib/data";
 import { NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
 
 const NIVEIS: NivelCrise[] = ["baixo", "moderado", "alto", "critico"];
+
+const VEL_ICON: Record<string, string> = {
+  acelerando: "📈",
+  estavel: "➡️",
+  esfriando: "📉",
+};
+
+function PlanosContencao({ planos }: { planos: CrisisPlan[] }) {
+  const reais = planos.filter((p) => p.e_crise_real);
+  if (reais.length === 0) return null;
+  return (
+    <div className="rounded-xl border p-4" style={{ borderColor: "rgba(249,115,22,0.4)", background: "rgba(249,115,22,0.05)" }}>
+      <div className="mb-1 flex items-center gap-2">
+        <span className="text-lg">🚨</span>
+        <h2 className="text-base font-extrabold" style={{ color: "#F97316" }}>
+          Agente Caçador de Crises — {reais.length} plano(s) de contenção
+        </h2>
+      </div>
+      <p className="mb-3 text-xs text-txt-2">
+        Posts de alto risco analisados por um agente de IA especializado, com plano de ação concreto.
+      </p>
+      <div className="space-y-3">
+        {reais.map((p) => {
+          const cor = NIVEL_COLOR[(p.nivel as NivelCrise) ?? "alto"] ?? "#F97316";
+          return (
+            <div key={p.post_url} className="rounded-lg border border-line bg-bg-2 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: `${cor}1A`, color: cor }}>
+                  {NIVEL_LABEL[(p.nivel as NivelCrise) ?? "alto"] ?? p.nivel}
+                </span>
+                <span className="text-[11px] text-txt-3">{VEL_ICON[p.velocidade] ?? ""} {p.velocidade}</span>
+                <span className="text-[11px] font-semibold" style={{ color: "#F97316" }}>
+                  janela: {p.janela_resposta}
+                </span>
+                <span className="ml-auto text-[11px] text-txt-3">@{p.autor} · risco {p.score_risco}</span>
+              </div>
+              <div className="mt-2 text-[13px] text-txt-1">
+                <span className="font-semibold text-txt-2">🔥 Pavio: </span>{p.pavio}
+              </div>
+              {p.plano_contencao?.length > 0 && (
+                <ol className="mt-2 space-y-1">
+                  {p.plano_contencao.map((passo, i) => (
+                    <li key={i} className="flex gap-2 text-[13px] text-txt-1">
+                      <span className="font-bold" style={{ color: "#F97316" }}>{i + 1}.</span>
+                      <span>{passo}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {p.risco_se_ignorar && (
+                <div className="mt-2 rounded border border-risk-crit/20 bg-risk-crit/5 px-2 py-1.5 text-[12px] text-txt-2">
+                  <span className="font-semibold text-risk-crit">Se ignorar: </span>{p.risco_se_ignorar}
+                </div>
+              )}
+              {p.post_url && (
+                <a href={p.post_url} target="_blank" rel="noopener noreferrer"
+                   className="mt-2 inline-block text-[11px] font-semibold text-brand hover:underline">
+                  Ver post ↗
+                </a>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function CrisisCenter() {
   const { data, isLoading } = useQuery({
@@ -12,6 +79,13 @@ export function CrisisCenter() {
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });
+  const { data: planosData } = useQuery({
+    queryKey: ["crisis-plans"],
+    queryFn: fetchCrisisPlans,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 15 * 60 * 1000,
+  });
+  const planos = planosData ?? [];
 
   if (isLoading) return <div className="p-8 text-txt-2">Carregando histórico…</div>;
 
@@ -132,6 +206,9 @@ export function CrisisCenter() {
           );
         })}
       </div>
+
+      {/* Planos de contenção do Agente Caçador de Crises */}
+      <PlanosContencao planos={planos} />
 
       {/* Histórico de risco */}
       <div className="rounded-xl border border-line bg-bg-1 p-4">

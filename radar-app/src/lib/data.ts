@@ -166,6 +166,33 @@ export interface DailyMetric {
   pct_neu: number;
 }
 
+export interface CrisisPlan {
+  post_url: string;
+  autor: string;
+  e_crise_real: boolean;
+  nivel: string;
+  pavio: string;
+  velocidade: string;
+  janela_resposta: string;
+  plano_contencao: string[];
+  risco_se_ignorar: string;
+  score_risco: number;
+  gerado_em: string;
+}
+
+/** Planos de contenção gerados pelo Agente Caçador de Crises. */
+export async function fetchCrisisPlans(): Promise<CrisisPlan[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/crisis_plans?tenant=eq.${TENANT}` +
+    `&select=*&order=score_risco.desc&limit=20`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  return (await res.json()) as CrisisPlan[];
+}
+
 /** Histórico de índices (Central de Crises). Vazio se Supabase indisponível. */
 export async function fetchDailyMetrics(): Promise<DailyMetric[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
