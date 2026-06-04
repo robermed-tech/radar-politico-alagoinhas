@@ -207,16 +207,24 @@ agentes Sonnet são **condicionais e raros**.
 
 ## 8. Rollout incremental (NÃO reescrever — adicionar 1 agente por vez)
 
-| Fase | Entrega | Esforço |
-|---|---|---|
-| A | Tabela `agent_runs` + refatorar Analista/Estrategista para registrar execução | P |
-| B | **Agente Caçador de Crises** (maior valor) + card de contenção | M |
-| C | **Agente Redator** + Sala de Redação | M |
-| D | **Agente Monitor de Oposição** + Inteligência Adversária | M |
-| E | **Agente Verificador** + selos nos comentários | P |
-| F | Painel de Agentes (auditoria + custo) | P |
+| Fase | Entrega | Esforço | Status |
+|---|---|---|---|
+| A | Tabela `agent_runs` + auditoria de execução | P | ✅ Feito (junto da B) |
+| B | **Agente Caçador de Crises** + card de contenção | M | ✅ **Feito** (commit 035ce1e/34c2276) |
+| C | **Agente Redator** + Sala de Redação | M | ⏳ Próxima atualização |
+| D | **Agente Monitor de Oposição** + Inteligência Adversária | M | ⏳ Backlog |
+| E | **Agente Verificador** + selos nos comentários | P | ⏳ Backlog |
+| F | Painel de Agentes (auditoria + custo) | P | ⏳ Backlog |
 
 Cada fase é independente e reversível. O pipeline atual continua funcionando o tempo todo.
+
+### Estado em 04/06/2026
+- **2 agentes ativos:** Analista (Haiku) + Caçador de Crises (Haiku/Sonnet) + Estrategista (Haiku).
+- Caçador validado em produção: separou 1 crise real (vacinação @prefeituraalagoinhas)
+  de 2 falso-alarmes da oposição (obras/tarifa, risco alto mas sem massa).
+- Tabelas no Supabase: agent_runs, crisis_plans (+ todas as fases anteriores).
+- Para retomar a Fase C: o Redator consome `crisis_plans` (crises reais) + diretrizes
+  de comunicação → grava em `drafts` → nova aba "Sala de Redação". Spec na seção 3.
 
 ---
 
