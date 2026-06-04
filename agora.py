@@ -1180,6 +1180,128 @@ def gravar_influencers(posts_analisados, comentarios_por_post):
 # ==============================================================
 
 import hashlib
+import re
+
+# ════════════════════════════════════════════════════════════════
+# DETECCAO DE COORDENACAO E BOTS (heuristica local, zero IA)
+# ════════════════════════════════════════════════════════════════
+
+_STOPWORDS = {
+    "a", "o", "e", "de", "da", "do", "das", "dos", "que", "se", "em", "no",
+    "na", "nos", "nas", "com", "para", "por", "um", "uma", "uns", "umas",
+    "eu", "tu", "ele", "ela", "voce", "voces", "nos", "eles", "elas",
+    "esse", "essa", "isso", "este", "esta", "isto", "aquele", "aquela",
+    "mas", "ou", "se", "ja", "tambem", "muito", "mais", "menos", "sim",
+    "nao", "ne", "ai", "la", "aqui", "ali", "so", "ate", "como", "pra",
+}
+
+def _tokens(texto):
+    """Tokeniza para Jaccard: minusculas, sem pontuacao, sem stopwords, len>=3."""
+    if not texto:
+        return set()
+    s = re.sub(r"[^\w\s]", " ", texto.lower())
+    return {w for w in s.split() if len(w) >= 3 and w not in _STOPWORDS}
+
+def _jaccard(a, b):
+    """Similaridade de Jaccard entre dois conjuntos de tokens (0-1)."""
+    if not a or not b:
+        return 0.0
+    inter = len(a & b)
+    union = len(a | b)
+    return inter / union if union else 0.0
+
+_RE_USERNAME_GENERICO = re.compile(r"^[a-z]{2,}\d{4,}$|^[a-z]+[._]?\d{4,}$")
+
+def _username_suspeito(u):
+    """Heuristica de username de bot: letras+4+digitos no fim."""
+    if not u:
+        return False
+    return bool(_RE_USERNAME_GENERICO.match(u.lower().replace("_", "")))
+
+def detectar_coordenacao(comentarios, limiar_sim=0.55):
+    """
+    Detecta sinais de coordenação num grupo de comentários (de um cluster/narrativa).
+    Retorna:
+      {
+        "score": 0-100,
+        "sinais": [...],
+        "suspeitos": [usernames],
+        "marcados": [(idx, motivo), ...]   # para marcar comments.suspeito_coordenacao
+      }
+    """
+    if not comentarios or len(comentarios) < 3:
+        return {"score": 0, "sinais": [], "suspeitos": [], "marcados": []}
+
+    n = len(comentarios)
+    tokens_por_idx = [_tokens(c.get("texto", "")) for c in comentarios]
+    marcados = []
+    suspeitos = set()
+    sinais = []
+
+    # ── 1. COPIA-COLA: pares com Jaccard >= limiar ──────────────────
+    pares_similares = 0
+    idx_similares = set()
+    for i in range(n):
+        for j in range(i + 1, n):
+            sim = _jaccard(tokens_por_idx[i], tokens_por_idx[j])
+            if sim >= limiar_sim:
+                pares_similares += 1
+                idx_similares.add(i)
+                idx_similares.add(j)
+    pct_copia = (len(idx_similares) / n) * 100 if n else 0
+    if pct_copia >= 20:
+        sinais.append(f"copia_cola ({len(idx_similares)} comentarios similares)")
+    for i in idx_similares:
+        u = comentarios[i].get("username", "")
+        if u:
+            suspeitos.add(u)
+            marcados.append((i, "texto similar a outros comentarios"))
+
+    # ── 2. USERNAMES GENERICOS (regex de bot) ──────────────────────
+    user_gen = [i for i, c in enumerate(comentarios) if _username_suspeito(c.get("username", ""))]
+    pct_user_gen = (len(user_gen) / n) * 100
+    if pct_user_gen >= 25 and len(user_gen) >= 3:
+        sinais.append(f"usernames_genericos ({len(user_gen)} contas suspeitas)")
+    for i in user_gen:
+        u = comentarios[i].get("username", "")
+        if u:
+            suspeitos.add(u)
+            marcados.append((i, "username com padrao de bot"))
+
+    # ── 3. BURST TEMPORAL (>= 5 coments na mesma data) ─────────────
+    by_data = {}
+    for i, c in enumerate(comentarios):
+        d = str(c.get("data", "")).strip()[:10]
+        if d:
+            by_data.setdefault(d, []).append(i)
+    burst_dias = [d for d, lst in by_data.items() if len(lst) >= 5]
+    if burst_dias and len(comentarios) >= 8:
+        max_burst = max(len(by_data[d]) for d in burst_dias)
+        sinais.append(f"burst_temporal ({max_burst} coments mesmo dia)")
+
+    # ── SCORE COMPOSTO (so dispara acima de limiares minimos) ───────
+    # cópia-cola só conta a partir de 20% similar; usernames só a partir de 25%
+    score_copia = 0 if pct_copia < 20 else min(100, (pct_copia - 20) * 1.5)
+    score_user  = 0 if pct_user_gen < 25 else min(100, (pct_user_gen - 25) * 1.5)
+    score_burst = 100 if burst_dias and len(comentarios) >= 8 else 0
+    score = 0.5 * score_copia + 0.3 * score_user + 0.2 * score_burst
+
+    # Dedupe marcados (mesmo idx, motivos diferentes)
+    seen = {}
+    for idx, mot in marcados:
+        if idx not in seen:
+            seen[idx] = mot
+        else:
+            seen[idx] = f"{seen[idx]}; {mot}"
+    marcados = list(seen.items())
+
+    return {
+        "score": round(score, 1),
+        "sinais": sinais,
+        "suspeitos": sorted(suspeitos),
+        "marcados": marcados,
+    }
+
 
 def _norm_tema(t):
     return (t or "").strip().lower()
@@ -1228,6 +1350,7 @@ def gravar_narratives(posts_analisados, comentarios_por_post):
             "primeiro_visto": None, "ultimo_visto": None,
             "origem_handle": "", "origem_url": "",
             "comentario_top": "", "comentario_top_curtidas": 0,
+            "todos_coments": [],  # p/ detecção de coordenação
         })
         c["posts"].append(p)
         c["perfis"].add(p.get("autor", ""))
@@ -1247,13 +1370,26 @@ def gravar_narratives(posts_analisados, comentarios_por_post):
         if not c["ultimo_visto"] or dt > c["ultimo_visto"]:
             c["ultimo_visto"] = dt
 
-        # comentário cidadão +curtido do cluster
+        # comentário cidadão +curtido do cluster + acumula todos p/ coordenação
         for cm in comentarios_por_post.get(p.get("url", ""), []):
             if cm.get("tipo") == "cidadao":
                 cur = int(cm.get("curtidas", 0) or 0)
                 if cur > c["comentario_top_curtidas"]:
                     c["comentario_top_curtidas"] = cur
                     c["comentario_top"] = (cm.get("texto", "") or "")[:300]
+                c["todos_coments"].append(cm)
+
+    # ── Detecção de coordenação por cluster + marcação de comentários suspeitos ──
+    suspeitos_globais = {}  # id_comentario -> motivo
+    coord_por_cluster = {}
+    for key, c in clusters.items():
+        coord = detectar_coordenacao(c["todos_coments"])
+        coord_por_cluster[key] = coord
+        for idx, motivo in coord["marcados"]:
+            cm = c["todos_coments"][idx]
+            cid = str(cm.get("id", "")).strip()
+            if cid:
+                suspeitos_globais[cid] = motivo
 
     rows = []
     for (tema, sent), c in clusters.items():
@@ -1262,6 +1398,7 @@ def gravar_narratives(posts_analisados, comentarios_por_post):
         queixa_top = max(c["queixas"].items(), key=lambda x: x[1])[0] if c["queixas"] else ""
         elogio_top = max(c["elogios"].items(), key=lambda x: x[1])[0] if c["elogios"] else ""
         rotulo_sent = {"positivo": "elogio", "negativo": "crítica", "neutro": "neutro"}.get(sent, sent)
+        coord = coord_por_cluster[(tema, sent)]
         rows.append({
             "id": nid, "tenant": TENANT,
             "tema": tema.title(), "sentimento": sent,
@@ -1279,12 +1416,24 @@ def gravar_narratives(posts_analisados, comentarios_por_post):
             "comentario_top": c["comentario_top"],
             "comentario_top_curtidas": c["comentario_top_curtidas"],
             "status": _status_narrativa(c["ultimo_visto"]) if c["ultimo_visto"] else "ativa",
+            "coordenacao_score": coord["score"],
+            "coordenacao_sinais": coord["sinais"],
+            "suspeitos_usernames": coord["suspeitos"],
             "atualizado_em": datetime.now().isoformat(),
         })
 
+    # Atualiza comments com flag de suspeita (segundo upsert separado, leve)
+    if suspeitos_globais:
+        comments_susp = [
+            {"id": cid, "suspeito_coordenacao": True, "motivo_suspeita": motivo}
+            for cid, motivo in suspeitos_globais.items()
+        ]
+        _supabase_upsert("comments", comments_susp, "id")
+
     n = _supabase_upsert("narratives", rows, "id")
     ativas = sum(1 for r in rows if r["status"] == "ativa")
-    log(f"  Narrativas gravadas: {n} ({ativas} ativas)")
+    coord_alertas = sum(1 for r in rows if r["coordenacao_score"] >= 40)
+    log(f"  Narrativas gravadas: {n} ({ativas} ativas) | {coord_alertas} c/ coordenacao | {len(suspeitos_globais)} coments suspeitos")
 
 
 # ==============================================================

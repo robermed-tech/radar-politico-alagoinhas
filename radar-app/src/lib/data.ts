@@ -250,6 +250,9 @@ export interface Narrative {
   comentario_top: string;
   comentario_top_curtidas: number;
   status: "ativa" | "esfriando" | "encerrada";
+  coordenacao_score?: number;
+  coordenacao_sinais?: string[];
+  suspeitos_usernames?: string[];
 }
 
 /** Narrativas ativas/esfriando/encerradas. */

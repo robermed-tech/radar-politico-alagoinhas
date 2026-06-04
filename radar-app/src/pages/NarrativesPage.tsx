@@ -36,7 +36,7 @@ function Card({ n, maxAmp }: { n: Narrative; maxAmp: number }) {
       {/* Cabeçalho */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="h-2 w-2 rounded-full" style={{ background: corSent }} />
             <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: corSent }}>
               {n.sentimento}
@@ -47,6 +47,19 @@ function Card({ n, maxAmp }: { n: Narrative; maxAmp: number }) {
             >
               {n.status}
             </span>
+            {(n.coordenacao_score ?? 0) >= 40 && (
+              <span
+                className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                style={{
+                  background: "rgba(168,85,247,0.15)",
+                  color: "#A855F7",
+                  border: "1px solid rgba(168,85,247,0.4)",
+                }}
+                title={(n.coordenacao_sinais ?? []).join(" · ")}
+              >
+                ⚠ Coordenação {Math.round(n.coordenacao_score!)}
+              </span>
+            )}
           </div>
           <h3 className="mt-1 text-base font-bold text-txt-1">{n.rotulo}</h3>
         </div>
@@ -109,6 +122,28 @@ function Card({ n, maxAmp }: { n: Narrative; maxAmp: number }) {
         </div>
       )}
 
+      {/* Painel de coordenação detalhada */}
+      {(n.coordenacao_score ?? 0) >= 40 && (
+        <div className="mt-3 rounded-lg border border-purple-500/30 bg-purple-500/5 p-2.5">
+          <div className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: "#A855F7" }}>
+            ⚠ Possível campanha coordenada
+          </div>
+          <div className="space-y-0.5">
+            {(n.coordenacao_sinais ?? []).map((s, i) => (
+              <div key={i} className="text-[12px] text-txt-2">
+                • {s}
+              </div>
+            ))}
+          </div>
+          {(n.suspeitos_usernames ?? []).length > 0 && (
+            <div className="mt-1.5 text-[10px] text-txt-3">
+              Suspeitos: {(n.suspeitos_usernames ?? []).slice(0, 5).map((u) => `@${u}`).join(", ")}
+              {(n.suspeitos_usernames ?? []).length > 5 && ` +${n.suspeitos_usernames!.length - 5}`}
+            </div>
+          )}
+        </div>
+      )}
+
       {n.origem_url && (
         <a
           href={n.origem_url}
@@ -150,6 +185,7 @@ export function NarrativesPage() {
   const esfriando = lista.filter((n) => n.status === "esfriando");
   const positivas = lista.filter((n) => n.sentimento === "positivo").length;
   const negativas = lista.filter((n) => n.sentimento === "negativo").length;
+  const coordenadas = lista.filter((n) => (n.coordenacao_score ?? 0) >= 40);
 
   const filtrada = filtro === "ativa" ? ativas : lista;
   const maxAmp = Math.max(...filtrada.map((n) => n.amplificacao), 1);
@@ -162,6 +198,23 @@ export function NarrativesPage() {
           Temas em circulação · origem, amplificação e tom dominante
         </p>
       </div>
+
+      {/* Alerta de coordenação (destaque) */}
+      {coordenadas.length > 0 && (
+        <div
+          className="rounded-xl border p-3 text-sm"
+          style={{
+            background: "rgba(168,85,247,0.08)",
+            borderColor: "rgba(168,85,247,0.4)",
+            color: "#A855F7",
+          }}
+        >
+          <span className="font-bold">⚠ {coordenadas.length} narrativa(s) com sinais de coordenação detectados.</span>{" "}
+          <span className="text-txt-2">
+            Possível campanha organizada (texto duplicado, contas suspeitas ou burst temporal). Veja o detalhe nos cards abaixo.
+          </span>
+        </div>
+      )}
 
       {/* Resumo */}
       <div className="grid grid-cols-4 gap-3">
