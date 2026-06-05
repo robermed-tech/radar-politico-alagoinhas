@@ -58,9 +58,11 @@ export function ClimaPage() {
     );
 
   const { wx } = view;
-  // Texto do HERO depende da luminosidade do gradiente do hero (não do app)
-  const txt1 = wx.heroDark ? "#FFFFFF" : "#0B1220";
-  const txt2 = wx.heroDark ? "rgba(255,255,255,0.82)" : "rgba(11,18,32,0.66)";
+  // Hero usa foto de céu + scrim escuro => texto SEMPRE branco (contraste garantido)
+  const txt1 = "#FFFFFF";
+  const txt2 = "rgba(255,255,255,0.86)";
+  // scrim (overlay) + foto + gradiente de fallback (se a foto não carregar)
+  const heroBg = `linear-gradient(105deg, rgba(8,11,18,0.68) 0%, rgba(8,11,18,0.30) 52%, rgba(8,11,18,0.55) 100%), url("${wx.image}") center/cover no-repeat, ${wx.bg}`;
 
   return (
     <div className="space-y-4 p-5">
@@ -86,8 +88,8 @@ export function ClimaPage() {
 
       {/* HERO do clima */}
       <div
-        className={`relative overflow-hidden rounded-2xl p-8 ${wx.cls === "rain" || wx.cls === "storm" ? "wx-raining" : ""}`}
-        style={{ background: wx.bg, minHeight: 280 }}
+        className="relative overflow-hidden rounded-2xl p-8"
+        style={{ background: heroBg, minHeight: 300 }}
       >
         {/* Animação de chuva */}
         {(wx.cls === "rain" || wx.cls === "storm" || wx.cls === "severe") && (
