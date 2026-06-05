@@ -13,6 +13,8 @@ import { calcIAD, calcICA } from "@/lib/indices";
 import { Gauge } from "@/components/Gauge";
 import { KpiStat } from "@/components/KpiStat";
 import { fmtInt } from "@/lib/format";
+import { useThemeStore } from "@/stores/theme";
+import { chartInk } from "@/lib/chartTheme";
 
 interface AprovBucket {
   rotulo: string;
@@ -107,6 +109,7 @@ function ComentarioRow({ c, color }: { c: Comment; color: string }) {
 
 export function ApprovalPage() {
   const dias = 30;
+  const ink = chartInk(useThemeStore((s) => s.theme));
 
   const { data: radar, isLoading: lr } = useQuery({
     queryKey: ["radar"],
@@ -172,19 +175,19 @@ export function ApprovalPage() {
     const serie = (hist ?? []).slice(-30);
     return {
       grid: { left: 36, right: 12, top: 16, bottom: 28 },
-      tooltip: { trigger: "axis" },
+      tooltip: { trigger: "axis", backgroundColor: ink.tooltipBg, borderColor: ink.tooltipBorder, textStyle: { color: ink.tooltipText } },
       xAxis: {
         type: "category",
         data: serie.map((s) => s.dia.slice(5)),
-        axisLine: { lineStyle: { color: "#2A364E" } },
-        axisLabel: { color: "#5F6E8C" },
+        axisLine: { lineStyle: { color: ink.axisLine } },
+        axisLabel: { color: ink.axis },
       },
       yAxis: {
         type: "value",
         min: 0,
         max: 100,
-        splitLine: { lineStyle: { color: "#1A2233" } },
-        axisLabel: { color: "#5F6E8C" },
+        splitLine: { lineStyle: { color: ink.grid } },
+        axisLabel: { color: ink.axis },
       },
       series: [
         {
@@ -193,13 +196,13 @@ export function ApprovalPage() {
           smooth: true,
           symbol: "circle",
           symbolSize: 5,
-          lineStyle: { width: 3, color: "#3B82F6" },
-          areaStyle: { color: "rgba(59,130,246,0.15)" },
+          lineStyle: { width: 3, color: "#2563EB" },
+          areaStyle: { color: "rgba(37,99,235,0.15)" },
           data: serie.map((s) => s.iad),
         },
       ],
     };
-  }, [hist]);
+  }, [hist, ink]);
 
   if (lr) return <div className="p-8 text-txt-2">Carregando aprovação…</div>;
   if (!view) return null;

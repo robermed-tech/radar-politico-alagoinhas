@@ -1,4 +1,6 @@
 import ReactECharts from "echarts-for-react";
+import { useThemeStore } from "@/stores/theme";
+import { chartInk } from "@/lib/chartTheme";
 
 interface GaugeProps {
   value: number; // 0-100
@@ -7,8 +9,10 @@ interface GaugeProps {
   suffix?: string;
 }
 
-/** Gauge ECharts minimalista — o ÚNICO lugar com gradiente (regra de design). */
-export function Gauge({ value, label, color = "#3B82F6", suffix = "" }: GaugeProps) {
+/** Gauge ECharts minimalista — cores adaptam ao tema (número e trilho legíveis). */
+export function Gauge({ value, label, color = "#2563EB", suffix = "" }: GaugeProps) {
+  const theme = useThemeStore((s) => s.theme);
+  const ink = chartInk(theme);
   const option = {
     series: [
       {
@@ -18,7 +22,7 @@ export function Gauge({ value, label, color = "#3B82F6", suffix = "" }: GaugePro
         min: 0,
         max: 100,
         progress: { show: true, width: 10, roundCap: true, itemStyle: { color } },
-        axisLine: { lineStyle: { width: 10, color: [[1, "#232E44"]] } },
+        axisLine: { lineStyle: { width: 10, color: [[1, ink.track]] } },
         pointer: { show: false },
         axisTick: { show: false },
         splitLine: { show: false },
@@ -29,14 +33,14 @@ export function Gauge({ value, label, color = "#3B82F6", suffix = "" }: GaugePro
           fontSize: 30,
           fontWeight: 800,
           fontFamily: "JetBrains Mono, monospace",
-          color: "#EAF0FA",
+          color: ink.detail,
           offsetCenter: [0, "10%"],
           formatter: (v: number) => `${Math.round(v)}${suffix}`,
         },
         title: {
           show: true,
           offsetCenter: [0, "55%"],
-          color: "#9FB0CC",
+          color: ink.title,
           fontSize: 11,
           fontWeight: 600,
         },

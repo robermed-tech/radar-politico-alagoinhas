@@ -12,6 +12,7 @@ import { GlossaryPage } from "@/pages/GlossaryPage";
 import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
 import { calcIAD } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
+import { useThemeStore } from "@/stores/theme";
 
 type Page =
   | "clima"
@@ -23,8 +24,6 @@ type Page =
   | "trends"
   | "approval"
   | "glossary";
-
-type Theme = "dark" | "light";
 
 const NAV: { id: Page | string; label: string; icon: string; active: boolean }[] = [
   { id: "clima", label: "Clima Político", icon: "☀", active: true },
@@ -56,9 +55,8 @@ function MoonIcon() {
 
 export default function App() {
   const [page, setPage] = useState<Page>("clima");
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem("radar_theme") as Theme) || "dark"
-  );
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggle);
 
   // Aplica tema no <html> + persiste
   useEffect(() => {
@@ -80,7 +78,7 @@ export default function App() {
 
   const ThemeToggle = ({ compact = false }: { compact?: boolean }) => (
     <button
-      onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+      onClick={toggleTheme}
       className={`glass-btn flex items-center gap-2 rounded-lg text-txt-1 ${compact ? "px-2 py-1.5" : "px-3 py-2 text-sm font-semibold"}`}
       title={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
       aria-label="Alternar tema claro/escuro"

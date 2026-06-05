@@ -66,7 +66,7 @@ export function getWeather(pct: number): WeatherCond {
       bgApp: "linear-gradient(160deg, #1A0E2E 0%, #201038 38%, #2A0F4E 70%, #120720 100%)",
       bgLight: "linear-gradient(160deg, #EFEAF5 0%, #E7E0F0 50%, #DFD6EC 100%)",
       image: "/sky/storm.webp",
-      accent: "#A855F7", dark: true, heroDark: true,
+      accent: "#8B5CF6", dark: true, heroDark: true,
     };
   return {
     icon: "🌑", label: "Severíssimo", sub: "Crise iminente — ação urgente necessária",

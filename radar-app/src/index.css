@@ -12,12 +12,16 @@
   --g3: rgba(255, 255, 255, 0.10);
   --line: rgba(255, 255, 255, 0.14);
   --line-strong: rgba(255, 255, 255, 0.24);
-  --txt1: #eaf0fa;
-  --txt2: #9fb0cc;
-  --txt3: #5f6e8c;
+  --txt1: #f1f5fb;
+  --txt2: #b4c2da;
+  --txt3: #8693ad;
   --glass-btn: rgba(255, 255, 255, 0.08);
   --glass-btn-border: rgba(255, 255, 255, 0.14);
   --glass-btn-hover: rgba(255, 255, 255, 0.14);
+  /* Violeta acessível (substitui o lilás de baixo contraste) */
+  --violet: #a78bfa;
+  --violet-soft: rgba(167, 139, 250, 0.12);
+  --violet-border: rgba(167, 139, 250, 0.38);
 }
 
 /* ── TEMA CLARO ── */
@@ -30,11 +34,15 @@
   --line: rgba(15, 23, 42, 0.12);
   --line-strong: rgba(15, 23, 42, 0.22);
   --txt1: #0b1220;
-  --txt2: #475569;
-  --txt3: #64748b;
+  --txt2: #3f4b5e;
+  --txt3: #586577;
   --glass-btn: rgba(255, 255, 255, 0.70);
   --glass-btn-border: rgba(15, 23, 42, 0.12);
   --glass-btn-hover: rgba(255, 255, 255, 0.92);
+  /* Violeta acessível no tema claro (violet-700 ~6:1) */
+  --violet: #6d28d9;
+  --violet-soft: rgba(109, 40, 217, 0.07);
+  --violet-border: rgba(109, 40, 217, 0.28);
 }
 
 html,

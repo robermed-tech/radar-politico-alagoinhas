@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import { fetchDailyMetrics, fetchCrisisPlans, type CrisisPlan } from "@/lib/data";
 import { NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
+import { useThemeStore } from "@/stores/theme";
+import { chartInk, violetLine } from "@/lib/chartTheme";
 
 const NIVEIS: NivelCrise[] = ["baixo", "moderado", "alto", "critico"];
 
@@ -109,6 +111,8 @@ export function CrisisCenter() {
     refetchInterval: 15 * 60 * 1000,
   });
   const planos = planosData ?? [];
+  const theme = useThemeStore((s) => s.theme);
+  const ink = chartInk(theme);
 
   if (isLoading) return <div className="p-8 text-txt-2">Carregando histórico…</div>;
 
@@ -129,30 +133,36 @@ export function CrisisCenter() {
       </div>
     );
 
+  const tip = {
+    trigger: "axis" as const,
+    backgroundColor: ink.tooltipBg,
+    borderColor: ink.tooltipBorder,
+    textStyle: { color: ink.tooltipText },
+  };
   const riscoOption = {
     grid: { left: 36, right: 16, top: 16, bottom: 28 },
-    tooltip: { trigger: "axis" },
+    tooltip: tip,
     xAxis: {
       type: "category",
       data: serie.map((s) => s.dia.slice(5)),
-      axisLine: { lineStyle: { color: "#2A364E" } },
-      axisLabel: { color: "#5F6E8C" },
+      axisLine: { lineStyle: { color: ink.axisLine } },
+      axisLabel: { color: ink.axis },
     },
     yAxis: {
       type: "value",
       min: 0,
       max: 100,
-      splitLine: { lineStyle: { color: "#1A2233" } },
-      axisLabel: { color: "#5F6E8C" },
+      splitLine: { lineStyle: { color: ink.grid } },
+      axisLabel: { color: ink.axis },
     },
     visualMap: {
       show: false,
       dimension: 1,
       pieces: [
-        { lte: 40, color: "#22C55E" },
-        { gt: 40, lte: 60, color: "#EAB308" },
-        { gt: 60, lte: 80, color: "#F97316" },
-        { gt: 80, color: "#EF4444" },
+        { lte: 40, color: "#16A34A" },
+        { gt: 40, lte: 60, color: "#D97706" },
+        { gt: 60, lte: 80, color: "#EA580C" },
+        { gt: 80, color: "#DC2626" },
       ],
     },
     series: [
@@ -163,12 +173,12 @@ export function CrisisCenter() {
         symbol: "circle",
         symbolSize: 6,
         lineStyle: { width: 3 },
-        areaStyle: { opacity: 0.08 },
+        areaStyle: { opacity: 0.1 },
         data: serie.map((s) => s.risco),
         markLine: {
           silent: true,
           symbol: "none",
-          lineStyle: { color: "#3A496B", type: "dashed" },
+          lineStyle: { color: ink.axisLine, type: "dashed" },
           data: [{ yAxis: 60 }, { yAxis: 80 }],
         },
       },
@@ -176,19 +186,19 @@ export function CrisisCenter() {
   };
 
   const iadOption = {
-    grid: { left: 36, right: 16, top: 16, bottom: 28 },
-    tooltip: { trigger: "axis" },
-    legend: { data: ["IAD", "ICA"], textStyle: { color: "#9FB0CC" }, right: 0, top: 0 },
+    grid: { left: 36, right: 16, top: 24, bottom: 28 },
+    tooltip: tip,
+    legend: { data: ["IAD", "ICA"], textStyle: { color: ink.axis }, right: 0, top: 0 },
     xAxis: {
       type: "category",
       data: serie.map((s) => s.dia.slice(5)),
-      axisLine: { lineStyle: { color: "#2A364E" } },
-      axisLabel: { color: "#5F6E8C" },
+      axisLine: { lineStyle: { color: ink.axisLine } },
+      axisLabel: { color: ink.axis },
     },
-    yAxis: { type: "value", min: 0, max: 100, splitLine: { lineStyle: { color: "#1A2233" } }, axisLabel: { color: "#5F6E8C" } },
+    yAxis: { type: "value", min: 0, max: 100, splitLine: { lineStyle: { color: ink.grid } }, axisLabel: { color: ink.axis } },
     series: [
-      { name: "IAD", type: "line", smooth: true, data: serie.map((s) => s.iad), itemStyle: { color: "#3B82F6" } },
-      { name: "ICA", type: "line", smooth: true, data: serie.map((s) => s.ica), itemStyle: { color: "#A855F7" } },
+      { name: "IAD", type: "line", smooth: true, lineStyle: { width: 3 }, data: serie.map((s) => s.iad), itemStyle: { color: "#2563EB" } },
+      { name: "ICA", type: "line", smooth: true, lineStyle: { width: 3 }, data: serie.map((s) => s.ica), itemStyle: { color: violetLine(theme) } },
     ],
   };
 

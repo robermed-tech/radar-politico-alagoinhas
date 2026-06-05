@@ -13,6 +13,8 @@ import { calcIndices, NIVEL_COLOR, NIVEL_LABEL } from "@/lib/indices";
 import { Gauge } from "@/components/Gauge";
 import { KpiStat } from "@/components/KpiStat";
 import { fmtInt } from "@/lib/format";
+import { useThemeStore } from "@/stores/theme";
+import { chartInk } from "@/lib/chartTheme";
 
 const PERIODOS = [
   { dias: 1, label: "24h" },
@@ -77,6 +79,7 @@ function ConfigUrl({ onSaved }: { onSaved: () => void }) {
 export function CommandCenter() {
   const [dias, setDias] = useState(7);
   const qc = useQueryClient();
+  const ink = chartInk(useThemeStore((s) => s.theme));
   const hasUrl = !!getScriptUrl();
   const { data, isLoading, error } = useQuery({
     queryKey: ["radar"],
@@ -116,27 +119,27 @@ export function CommandCenter() {
 
   const timelineOption = {
     grid: { left: 36, right: 12, top: 24, bottom: 28 },
-    tooltip: { trigger: "axis" },
+    tooltip: { trigger: "axis", backgroundColor: ink.tooltipBg, borderColor: ink.tooltipBorder, textStyle: { color: ink.tooltipText } },
     legend: {
       data: ["Positivos", "Negativos", "Neutros"],
-      textStyle: { color: "#9FB0CC" },
+      textStyle: { color: ink.axis },
       top: 0,
       right: 0,
     },
     xAxis: {
       type: "category",
       data: serie.map((s) => s.dia.slice(5)),
-      axisLine: { lineStyle: { color: "#2A364E" } },
-      axisLabel: { color: "#5F6E8C" },
+      axisLine: { lineStyle: { color: ink.axisLine } },
+      axisLabel: { color: ink.axis },
     },
     yAxis: {
       type: "value",
-      splitLine: { lineStyle: { color: "#1A2233" } },
-      axisLabel: { color: "#5F6E8C" },
+      splitLine: { lineStyle: { color: ink.grid } },
+      axisLabel: { color: ink.axis },
     },
     series: [
-      { name: "Positivos", type: "bar", stack: "s", data: serie.map((s) => s.pos), itemStyle: { color: "#22C55E" } },
-      { name: "Negativos", type: "bar", stack: "s", data: serie.map((s) => s.neg), itemStyle: { color: "#EF4444" } },
+      { name: "Positivos", type: "bar", stack: "s", data: serie.map((s) => s.pos), itemStyle: { color: "#16A34A" } },
+      { name: "Negativos", type: "bar", stack: "s", data: serie.map((s) => s.neg), itemStyle: { color: "#DC2626" } },
       { name: "Neutros", type: "bar", stack: "s", data: serie.map((s) => s.neu), itemStyle: { color: "#64748B" } },
     ],
   };

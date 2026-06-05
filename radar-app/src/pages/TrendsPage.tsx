@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import { fetchDailyThemes, type DailyTheme } from "@/lib/data";
 import { fmtInt } from "@/lib/format";
+import { useThemeStore } from "@/stores/theme";
+import { chartInk, SERIES_PALETTE } from "@/lib/chartTheme";
 
 type Metrica = "volume" | "pct_neg" | "pct_pos" | "score_risco";
 
@@ -13,10 +15,7 @@ const METRICAS: { id: Metrica; label: string; campo: keyof DailyTheme; cor: stri
   { id: "score_risco", label: "Risco médio",     campo: "score_risco",  cor: "#F97316" },
 ];
 
-const PALETA = [
-  "#3B82F6", "#22C55E", "#EAB308", "#EF4444", "#A855F7",
-  "#06B6D4", "#F97316", "#EC4899", "#84CC16", "#14B8A6",
-];
+const PALETA = SERIES_PALETTE;
 
 /** Regressão linear simples — retorna slope (taxa de variação por dia). */
 function slope(serie: number[]): number {
@@ -51,6 +50,7 @@ interface TemaStats {
 export function TrendsPage() {
   const [metrica, setMetrica] = useState<Metrica>("volume");
   const [janela, setJanela] = useState(14); // dias
+  const ink = chartInk(useThemeStore((s) => s.theme));
   const { data, isLoading } = useQuery({
     queryKey: ["daily-themes"],
     queryFn: fetchDailyThemes,
@@ -107,23 +107,23 @@ export function TrendsPage() {
 
   const option = {
     grid: { left: 40, right: 16, top: 32, bottom: 36 },
-    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+    tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, backgroundColor: ink.tooltipBg, borderColor: ink.tooltipBorder, textStyle: { color: ink.tooltipText } },
     legend: {
       data: topGrafico.map((s) => s.tema),
-      textStyle: { color: "#9FB0CC", fontSize: 11 },
+      textStyle: { color: ink.axis, fontSize: 11 },
       top: 0,
       type: "scroll",
     },
     xAxis: {
       type: "category",
       data: dias.map((d) => d.slice(5)),
-      axisLine: { lineStyle: { color: "#2A364E" } },
-      axisLabel: { color: "#5F6E8C" },
+      axisLine: { lineStyle: { color: ink.axisLine } },
+      axisLabel: { color: ink.axis },
     },
     yAxis: {
       type: "value",
-      splitLine: { lineStyle: { color: "#1A2233" } },
-      axisLabel: { color: "#5F6E8C" },
+      splitLine: { lineStyle: { color: ink.grid } },
+      axisLabel: { color: ink.axis },
       ...(metrica.startsWith("pct") || metrica === "score_risco" ? { min: 0, max: 100 } : {}),
     },
     series: topGrafico.map((s, i) => ({

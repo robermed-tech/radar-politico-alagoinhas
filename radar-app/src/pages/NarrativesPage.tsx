@@ -17,10 +17,10 @@ const SENT_COR_G: Record<string, string> = {
 function CoordinationPanel({ grupos }: { grupos: CoordinationGroup[] }) {
   if (grupos.length === 0) return null;
   return (
-    <div className="rounded-xl border p-4" style={{ borderColor: "rgba(168,85,247,0.4)", background: "rgba(168,85,247,0.06)" }}>
+    <div className="rounded-xl border p-4" style={{ borderColor: "var(--violet-border)", background: "var(--violet-soft)" }}>
       <div className="mb-1 flex items-center gap-2">
         <span className="text-lg">🕵️</span>
-        <h2 className="text-base font-extrabold" style={{ color: "#A855F7" }}>
+        <h2 className="text-base font-extrabold" style={{ color: "var(--violet)" }}>
           {grupos.length} campanha(s) coordenada(s) detectada(s)
         </h2>
       </div>
@@ -39,7 +39,7 @@ function CoordinationPanel({ grupos }: { grupos: CoordinationGroup[] }) {
                 >
                   {g.sentimento}
                 </span>
-                <span className="tnum text-sm font-bold" style={{ color: "#A855F7" }}>
+                <span className="tnum text-sm font-bold" style={{ color: "var(--violet)" }}>
                   {g.n_comentarios} contas
                 </span>
               </div>
@@ -110,9 +110,9 @@ function Card({ n, maxAmp }: { n: Narrative; maxAmp: number }) {
               <span
                 className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
                 style={{
-                  background: "rgba(168,85,247,0.15)",
-                  color: "#A855F7",
-                  border: "1px solid rgba(168,85,247,0.4)",
+                  background: "var(--violet-soft)",
+                  color: "var(--violet)",
+                  border: "1px solid var(--violet-border)",
                 }}
                 title={(n.coordenacao_sinais ?? []).join(" · ")}
               >
@@ -183,8 +183,8 @@ function Card({ n, maxAmp }: { n: Narrative; maxAmp: number }) {
 
       {/* Painel de coordenação detalhada */}
       {(n.coordenacao_score ?? 0) >= 30 && (
-        <div className="mt-3 rounded-lg border border-purple-500/30 bg-purple-500/5 p-2.5">
-          <div className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: "#A855F7" }}>
+        <div className="mt-3 rounded-lg border p-2.5" style={{ borderColor: "var(--violet-border)", background: "var(--violet-soft)" }}>
+          <div className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--violet)" }}>
             ⚠ Possível campanha coordenada
           </div>
           <div className="space-y-0.5">
