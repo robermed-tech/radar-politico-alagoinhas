@@ -1,7 +1,8 @@
 # Imagens de céu do hero do Clima Político
 
-Salve as 5 imagens que você enviou nesta pasta, com EXATAMENTE estes nomes
-(tudo minúsculo, extensão .jpg). Cada uma corresponde a um clima:
+As 6 imagens estão otimizadas em `.webp` (geradas a partir dos `.jpg` enviados,
+~98% menores: 12 MB → 236 KB). Para trocar uma foto: substitua o `.webp`
+correspondente (largura ~1600px, qualidade 80). Cada uma corresponde a um clima:
 
 | Arquivo        | Imagem enviada                              | Quando aparece (IAD) |
 |----------------|---------------------------------------------|----------------------|
