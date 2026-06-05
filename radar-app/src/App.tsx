@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useIsFetching } from "@tanstack/react-query";
 import { CommandCenter } from "@/pages/CommandCenter";
 import { ClimaPage } from "@/pages/ClimaPage";
 import { CrisisCenter } from "@/pages/CrisisCenter";
@@ -52,11 +52,26 @@ function MoonIcon() {
     </svg>
   );
 }
+function RefreshIcon({ spinning }: { spinning?: boolean }) {
+  return (
+    <svg
+      width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={spinning ? "animate-spin" : undefined}
+    >
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 3v6h-6" />
+    </svg>
+  );
+}
 
 export default function App() {
   const [page, setPage] = useState<Page>("clima");
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
+  const qc = useQueryClient();
+  const fetching = useIsFetching() > 0;
+  const atualizar = () => qc.invalidateQueries();
 
   // Aplica tema no <html> + persiste
   useEffect(() => {
@@ -76,7 +91,7 @@ export default function App() {
   const ThemeToggle = ({ compact = false }: { compact?: boolean }) => (
     <button
       onClick={toggleTheme}
-      className={`glass-btn flex items-center gap-2 rounded-lg text-txt-1 ${compact ? "px-2 py-1.5" : "px-3 py-2 text-sm font-semibold"}`}
+      className={`glass-btn flex items-center justify-center gap-2 rounded-lg text-txt-1 ${compact ? "px-2 py-1.5" : "w-full px-3 py-2 text-sm font-semibold"}`}
       title={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
       aria-label="Alternar tema claro/escuro"
     >
@@ -85,19 +100,35 @@ export default function App() {
     </button>
   );
 
+  const RefreshButton = ({ compact = false }: { compact?: boolean }) => (
+    <button
+      onClick={atualizar}
+      disabled={fetching}
+      className={`glass-btn flex items-center justify-center gap-2 rounded-lg text-txt-1 ${compact ? "px-2 py-1.5" : "w-full px-3 py-2 text-sm font-semibold"}`}
+      title="Atualizar com os dados mais recentes"
+      aria-label="Atualizar dados"
+    >
+      <RefreshIcon spinning={fetching} />
+      {!compact && <span>{fetching ? "Atualizando…" : "Atualizar dados"}</span>}
+    </button>
+  );
+
   return (
     <div className="flex h-full">
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-line bg-bg-1 p-3 md:flex">
+      <aside
+        className="hidden w-56 shrink-0 flex-col border-r border-line bg-bg-1 p-3 md:flex"
+        style={{ boxShadow: "6px 0 28px -10px rgba(0,0,0,0.30)" }}
+      >
         <div className="mb-6 flex items-center gap-2 px-2">
           <span
-            className="grid h-8 w-8 place-items-center rounded-lg font-bold text-white"
+            className="grid h-8 w-8 place-items-center rounded-lg font-bold text-white shadow-md"
             style={{ background: wx.accent }}
           >
             ◉
           </span>
           <span className="font-extrabold tracking-tight">Radar Político</span>
         </div>
-        <nav className="flex flex-col gap-1">
+        <nav className="flex flex-col gap-1.5">
           {NAV.map((n) => {
             const isCurrent = n.active && n.id === page;
             return (
@@ -105,11 +136,11 @@ export default function App() {
                 key={n.id}
                 disabled={!n.active}
                 onClick={() => n.active && setPage(n.id as Page)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold transition ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-all duration-200 ${
                   isCurrent
-                    ? "glass-btn text-txt-1"
+                    ? "bg-bg-3 text-txt-1 shadow-md ring-1 ring-line"
                     : n.active
-                      ? "text-txt-2 hover:bg-bg-3 hover:text-txt-1"
+                      ? "bg-bg-2 text-txt-2 shadow-sm hover:bg-bg-3 hover:text-txt-1 hover:shadow-md"
                       : "text-txt-3 disabled:cursor-not-allowed disabled:opacity-50"
                 }`}
               >
@@ -121,9 +152,12 @@ export default function App() {
             );
           })}
         </nav>
-        <div className="mt-auto space-y-2">
+        <div className="mt-auto space-y-2 pt-3">
+          <RefreshButton />
           <ThemeToggle />
-          <div className="px-2 text-[10px] text-txt-3">{wx.icon} {wx.label} · Postgres</div>
+          <div className="px-2 text-[10px] text-txt-3">
+            {wx.icon} {wx.label} · {fetching ? "atualizando…" : "Postgres"}
+          </div>
         </div>
       </aside>
 
@@ -144,6 +178,7 @@ export default function App() {
               </button>
             ))}
           </div>
+          <RefreshButton compact />
           <ThemeToggle compact />
         </div>
         <main className="flex-1 overflow-y-auto">
