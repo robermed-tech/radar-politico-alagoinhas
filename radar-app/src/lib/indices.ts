@@ -99,12 +99,15 @@ export function calcRisco(
 ): { risco: number; nivel: NivelCrise } {
   const tot = posts.length || 1;
   const pctRiscoAlto = (posts.filter((p) => p.risco_crise === "alto").length / tot) * 100;
+  // Velocidade do negativo AMORTECIDA pela confiança (ICA): com amostra fraca,
+  // um pico de % negativo num dia não dispara o risco (evita "Crítico" falso).
+  const velTerm = Math.min(100, Math.max(0, negVelocity * 4)) * (ica / 100);
   const risco = clamp(
     0,
     100,
     0.35 * (100 - iad) +
       0.25 * pctRiscoAlto +
-      0.2 * Math.max(0, negVelocity * 4) +
+      0.2 * velTerm +
       0.15 * 0 + // amplificação negativa: Fase 2 (precisa de comentários granulares)
       0.05 * (100 - ica)
   );
