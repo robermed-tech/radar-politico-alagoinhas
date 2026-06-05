@@ -2,10 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* ── TEMA ESCURO (padrão) ── */
+:root,
+.theme-dark {
   color-scheme: dark;
-  /* Background global controlado pelo clima (App seta --wx-bg) */
   --wx-bg: linear-gradient(160deg, #0B0F17 0%, #121826 100%);
+  --g1: rgba(255, 255, 255, 0.07);
+  --g2: rgba(255, 255, 255, 0.05);
+  --g3: rgba(255, 255, 255, 0.10);
+  --line: rgba(255, 255, 255, 0.14);
+  --line-strong: rgba(255, 255, 255, 0.24);
+  --txt1: #eaf0fa;
+  --txt2: #9fb0cc;
+  --txt3: #5f6e8c;
+  --glass-btn: rgba(255, 255, 255, 0.08);
+  --glass-btn-border: rgba(255, 255, 255, 0.14);
+  --glass-btn-hover: rgba(255, 255, 255, 0.14);
+}
+
+/* ── TEMA CLARO ── */
+.theme-light {
+  color-scheme: light;
+  --wx-bg: linear-gradient(160deg, #eef2f7 0%, #e6ebf2 100%);
+  --g1: rgba(255, 255, 255, 0.78);
+  --g2: rgba(255, 255, 255, 0.60);
+  --g3: rgba(15, 23, 42, 0.06);
+  --line: rgba(15, 23, 42, 0.12);
+  --line-strong: rgba(15, 23, 42, 0.22);
+  --txt1: #0b1220;
+  --txt2: #475569;
+  --txt3: #64748b;
+  --glass-btn: rgba(255, 255, 255, 0.70);
+  --glass-btn-border: rgba(15, 23, 42, 0.12);
+  --glass-btn-hover: rgba(255, 255, 255, 0.92);
 }
 
 html,
@@ -37,17 +66,16 @@ body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/* Botões/pílulas de vidro */
+/* Botões/pílulas de vidro (sensíveis ao tema) */
 .glass-btn {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--glass-btn);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--glass-btn-border);
   transition: background 200ms ease, border-color 200ms ease;
 }
 .glass-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.28);
+  background: var(--glass-btn-hover);
 }
 
 /* Números sempre tabulares (alinhamento de métricas) */

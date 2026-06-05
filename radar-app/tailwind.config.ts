@@ -6,16 +6,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        // bg-0 fica transparente (deixa o gradiente de clima aparecer);
-        // bg-1/bg-2 translúcidos = vidro (backdrop-blur aplicado no index.css)
+        // Tokens sensíveis ao tema (CSS vars definidas em index.css: .theme-dark / .theme-light)
         bg: {
           0: "transparent",
-          1: "rgba(255,255,255,0.07)",
-          2: "rgba(255,255,255,0.05)",
-          3: "rgba(255,255,255,0.10)",
+          1: "var(--g1)",
+          2: "var(--g2)",
+          3: "var(--g3)",
         },
-        line: { DEFAULT: "rgba(255,255,255,0.14)", strong: "rgba(255,255,255,0.24)" },
-        txt: { 1: "#EAF0FA", 2: "#9FB0CC", 3: "#5F6E8C" },
+        line: { DEFAULT: "var(--line)", strong: "var(--line-strong)" },
+        txt: { 1: "var(--txt1)", 2: "var(--txt2)", 3: "var(--txt3)" },
         brand: { DEFAULT: "#3B82F6", 2: "#06B6D4" },
         accent: "#A855F7",
         risk: { low: "#22C55E", mod: "#EAB308", high: "#F97316", crit: "#EF4444" },
