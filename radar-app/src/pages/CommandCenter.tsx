@@ -80,19 +80,16 @@ export function CommandCenter() {
   const [dias, setDias] = useState(7);
   const qc = useQueryClient();
   const ink = chartInk(useThemeStore((s) => s.theme));
-  const hasUrl = !!getScriptUrl();
+  // Lê do Postgres (Supabase) com fallback p/ Sheets — não depende mais de URL fixa.
   const { data, isLoading, error } = useQuery({
     queryKey: ["radar"],
     queryFn: fetchRadar,
     staleTime: 5 * 60 * 1000,
     refetchInterval: 30 * 60 * 1000,
-    enabled: hasUrl,
     retry: false,
   });
 
-  if (!hasUrl || (error as Error | undefined)?.message === "NO_URL")
-    return <ConfigUrl onSaved={() => qc.invalidateQueries({ queryKey: ["radar"] })} />;
-
+  // useMemo SEMPRE chamado (antes de qualquer return) — regras de hooks
   const view = useMemo(() => {
     if (!data) return null;
     const posts = filtrarPorPeriodo(data.data, dias);
@@ -104,15 +101,44 @@ export function CommandCenter() {
     return { posts, serie, ind, negVelocity };
   }, [data, dias]);
 
+  // ConfigUrl só aparece se NÃO houver fonte alguma (nem Postgres nem Sheets)
+  if ((error as Error | undefined)?.message === "NO_URL")
+    return <ConfigUrl onSaved={() => qc.invalidateQueries({ queryKey: ["radar"] })} />;
   if (isLoading)
     return <div className="p-8 text-txt-2">Carregando inteligência…</div>;
   if (error)
     return (
-      <div className="p-8 text-risk-crit">
-        {(error as Error).message}
-      </div>
+      <div className="p-8 text-risk-crit">{(error as Error).message}</div>
     );
   if (!view) return null;
+
+  // Período sem dados — evita mostrar "Severíssimo 0%" enganoso
+  if (view.posts.length === 0)
+    return (
+      <div className="space-y-4 p-5">
+        <h1 className="text-2xl font-extrabold">Centro de Comando</h1>
+        <div className="rounded-2xl border border-line bg-bg-1 p-8 text-center">
+          <div className="text-lg font-bold text-txt-1">📭 Sem posts no período</div>
+          <p className="mx-auto mt-2 max-w-md text-sm text-txt-2">
+            Nenhuma publicação foi coletada {dias === 1 ? "nas últimas 24h" : `nos últimos ${dias} dias`}.
+            Tente ampliar o período ou aguarde a próxima coleta do AGORA (4x/dia).
+          </p>
+          <div className="mt-4 flex justify-center gap-1 rounded-lg border border-line bg-bg-2 p-1" style={{ width: "fit-content", margin: "16px auto 0" }}>
+            {PERIODOS.map((p) => (
+              <button
+                key={p.dias}
+                onClick={() => setDias(p.dias)}
+                className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
+                  dias === p.dias ? "bg-brand text-white" : "text-txt-2 hover:text-txt-1"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
 
   const { ind, serie } = view;
   const nivelColor = NIVEL_COLOR[ind.nivel];

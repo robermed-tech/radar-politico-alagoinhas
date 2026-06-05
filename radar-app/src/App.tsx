@@ -81,7 +81,10 @@ export default function App() {
 
   // Clima predominante (7 dias) — usado no accent e no rodapé (o background é
   // um degradê azul fixo, definido no index.css por tema).
-  const { data } = useQuery({ queryKey: ["radar"], queryFn: fetchRadar, staleTime: 5 * 60 * 1000 });
+  const { data, dataUpdatedAt } = useQuery({ queryKey: ["radar"], queryFn: fetchRadar, staleTime: 5 * 60 * 1000 });
+  const horaAtualizado = dataUpdatedAt
+    ? new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : null;
   const wx = useMemo(() => {
     if (!data) return getWeather(50);
     const posts = filtrarPorPeriodo(data.data, 7);
@@ -156,7 +159,7 @@ export default function App() {
           <RefreshButton />
           <ThemeToggle />
           <div className="px-2 text-[10px] text-txt-3">
-            {wx.icon} {wx.label} · {fetching ? "atualizando…" : "Postgres"}
+            {wx.icon} {wx.label} · {fetching ? "atualizando…" : horaAtualizado ? `atualizado ${horaAtualizado}` : "Postgres"}
           </div>
         </div>
       </aside>
