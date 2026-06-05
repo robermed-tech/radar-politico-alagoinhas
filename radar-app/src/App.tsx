@@ -64,17 +64,14 @@ export default function App() {
     localStorage.setItem("radar_theme", theme);
   }, [theme]);
 
-  // Clima predominante (7 dias) controla o background global
+  // Clima predominante (7 dias) — usado no accent e no rodapé (o background é
+  // um degradê azul fixo, definido no index.css por tema).
   const { data } = useQuery({ queryKey: ["radar"], queryFn: fetchRadar, staleTime: 5 * 60 * 1000 });
   const wx = useMemo(() => {
     if (!data) return getWeather(50);
     const posts = filtrarPorPeriodo(data.data, 7);
     return getWeather(posts.length ? Math.round(calcIAD(posts)) : 50);
   }, [data]);
-
-  useEffect(() => {
-    document.documentElement.style.setProperty("--wx-bg", theme === "light" ? wx.bgLight : wx.bgApp);
-  }, [wx, theme]);
 
   const ThemeToggle = ({ compact = false }: { compact?: boolean }) => (
     <button

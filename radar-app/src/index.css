@@ -6,7 +6,8 @@
 :root,
 .theme-dark {
   color-scheme: dark;
-  --wx-bg: linear-gradient(160deg, #0B0F17 0%, #121826 100%);
+  /* Degradê azul-escuro → preto (azul + preto) */
+  --wx-bg: linear-gradient(160deg, #0B2A52 0%, #0A1B34 36%, #070F1E 70%, #02050B 100%);
   --g1: rgba(255, 255, 255, 0.07);
   --g2: rgba(255, 255, 255, 0.05);
   --g3: rgba(255, 255, 255, 0.10);
@@ -27,8 +28,9 @@
 /* ── TEMA CLARO ── */
 .theme-light {
   color-scheme: light;
-  --wx-bg: linear-gradient(160deg, #eef2f7 0%, #e6ebf2 100%);
-  --g1: rgba(255, 255, 255, 0.78);
+  /* Degradê azul-claro → branco (azul + branco) */
+  --wx-bg: linear-gradient(160deg, #CFE3FF 0%, #E5F0FF 35%, #F5F9FF 70%, #FFFFFF 100%);
+  --g1: rgba(255, 255, 255, 0.85);
   --g2: rgba(255, 255, 255, 0.60);
   --g3: rgba(15, 23, 42, 0.06);
   --line: rgba(15, 23, 42, 0.12);
@@ -56,6 +58,25 @@ body {
   background: var(--wx-bg);
   background-attachment: fixed;
   transition: background 1.2s ease;
+}
+
+/* ── UX GLOBAL: cursor + focus visível (acessibilidade) ── */
+button:not(:disabled),
+a,
+[role="button"] {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* Não mostrar outline em clique de mouse, só em navegação por teclado */
+:focus:not(:focus-visible) {
+  outline: none;
 }
 
 /* ── GLASSMORPHISM GLOBAL ─────────────────────────────
