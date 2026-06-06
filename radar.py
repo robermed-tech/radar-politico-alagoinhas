@@ -255,9 +255,10 @@ def analisar_post(texto, comentarios_lista, autor, categoria):
         c.split(":")[0].strip() for c in comentarios_lista[:20] if ":" in c
     )) or "nenhum"
 
+    amostra = comentarios_lista[:50]  # cap: evita prompt gigante em posts virais
     comentarios_texto = "\n".join(
-        f"- {c}" for c in comentarios_lista
-    ) if comentarios_lista else "Sem comentários coletados."
+        f"- {c}" for c in amostra
+    ) if amostra else "Sem comentários coletados."
 
     prompt = ANALYSIS_PROMPT.format(
         nome_cliente=NOME_CLIENTE,
@@ -271,7 +272,7 @@ def analisar_post(texto, comentarios_lista, autor, categoria):
 
     msg = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=900,
+        max_tokens=1500,
         messages=[{"role": "user", "content": prompt}],
     )
     raw = msg.content[0].text.strip()
@@ -300,7 +301,7 @@ def coletar_comentarios(urls_posts):
         print(f"  Aviso: falha ao coletar comentários — {e}")
         return {}
 
-    # Agrupa por URL, filtrando apenas comentários politicamente relevantes
+    # Agrupa por URL — passa tudo com conteúdo real (≥15 chars); Claude avalia o sentimento
     mapa = {}
     ignorados = 0
     for item in items:
@@ -310,13 +311,10 @@ def coletar_comentarios(urls_posts):
         if not post_url or not texto:
             continue
         texto_limpo = limpar_texto(texto)
-        tem_conteudo = len(texto_limpo) > 10
-        tem_politica = any(k in texto_limpo.lower() for k in KEYWORDS_CONTEXTO)
-        if tem_politica or (tem_conteudo and tem_keyword(texto_limpo)):
-            entrada = f"{username}: {texto_limpo}"
-            mapa.setdefault(post_url, []).append(entrada)
-        else:
+        if len(texto_limpo) < 15:
             ignorados += 1
+            continue
+        mapa.setdefault(post_url, []).append(f"{username}: {texto_limpo}")
 
     total_coletados = sum(len(v) for v in mapa.values())
     print(f"  {len(items)} brutos -> {total_coletados} relevantes em {len(mapa)} posts ({ignorados} ignorados).")
