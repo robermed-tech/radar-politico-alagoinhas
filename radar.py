@@ -94,6 +94,7 @@ Comentários ({total} comentários de: {comentaristas}):
 
 Retorne exatamente este JSON:
 {{
+  "relevante": "Sim" | "Não",
   "sentimento_post": "Positivo" | "Negativo" | "Neutro",
   "sentimento_comentarios": "Positivo" | "Negativo" | "Neutro" | "Sem comentários",
   "comentarios_negativos_pct": "<percentual estimado, ex: 35%>",
@@ -113,6 +114,7 @@ Retorne exatamente este JSON:
 }}
 
 Critérios importantes:
+- "relevante": Sim quando o post aborda gestão municipal, políticas públicas, obras, serviços da cidade, crítica ou elogio à administração, ou disputa político-eleitoral com impacto local. Não para posts de presença (político em evento sem crítica ao poder público), conteúdo pessoal, religiosos, culturais ou posts que apenas usam hashtags locais sem relação com a governança da cidade
 - "tema_sensivel": marque Sim quando o tema pode gerar repercussão negativa ampla
 - "risco_crise": Alto quando há comentários negativos crescentes + tema sensível + urgência alta
 - "tendencia": avalie se o tom dos comentários está piorando, estável ou melhorando
@@ -435,6 +437,10 @@ def processar():
         except Exception as e:
             print(f"  ✗ Erro ao analisar {url}: {e}")
             erros += 1
+            continue
+
+        if analise.get("relevante") == "Não":
+            print(f"  ↷ [{categoria}] {autor} — descartado (não relevante para radar municipal)")
             continue
 
         comentaristas_unicos = ", ".join(sorted(set(
