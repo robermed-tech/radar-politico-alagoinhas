@@ -89,8 +89,13 @@ Analise o post e os comentários abaixo com profundidade estratégica e retorne 
 Post (publicado por: {autor} — categoria: {categoria}):
 {texto}
 
-Comentários ({total} comentários de: {comentaristas}):
+Métricas reais do Instagram: {curtidas} curtidas | {comentarios_count} comentários totais
+Comentários analisados ({total} de {comentaristas}):
 {comentarios}
+
+ATENÇÃO: Se este post NÃO for relevante para o radar municipal, retorne SOMENTE:
+{{"relevante": "Não"}}
+Caso contrário, preencha o JSON completo abaixo.
 
 Retorne exatamente este JSON:
 {{
@@ -118,7 +123,7 @@ Critérios importantes:
 - "tema_sensivel": marque Sim quando o tema pode gerar repercussão negativa ampla
 - "risco_crise": Alto quando há comentários negativos crescentes + tema sensível + urgência alta
 - "tendencia": avalie se o tom dos comentários está piorando, estável ou melhorando
-- "engajamento": Alto acima de 50 comentários/curtidas, Médio entre 10-50, Baixo abaixo de 10
+- "engajamento": use as métricas reais do Instagram (curtidas + comentários totais); Alto acima de 100, Médio entre 20-100, Baixo abaixo de 20
 - "sugestao_acao": baseie na combinação de sentimento + risco + tendência
 - "comentarios_positivos_texto" e "comentarios_negativos_texto": transcreva trechos reais dos comentários
 - Se não houver comentários de determinado sentimento, retorne string vazia ""
@@ -128,12 +133,22 @@ Critérios importantes:
 # ── Utilitários ───────────────────────────────────────────────────────────────
 
 def limpar_texto(texto):
+    """Limpeza para captions: remove URLs e caracteres problemáticos para keyword matching."""
     if not texto:
         return "sem texto"
     texto = re.sub(r"http\S+", "", texto)
     texto = re.sub(r"[^\w\s\.,!?;:\-áéíóúàâêôãõüçÁÉÍÓÚÀÂÊÔÃÕÜÇ@]", " ", texto)
     texto = re.sub(r"\s+", " ", texto).strip()
     return texto or "sem texto"
+
+
+def limpar_comentario(texto):
+    """Limpeza para comentários: preserva emojis e expressões curtas — são sinal de sentimento."""
+    if not texto:
+        return ""
+    texto = re.sub(r"http\S+", "", texto)   # remove URLs
+    texto = re.sub(r"\s+", " ", texto).strip()
+    return texto
 
 
 def tem_keyword(texto):
@@ -249,8 +264,17 @@ def urls_existentes(ws):
 
 # ── Claude API ────────────────────────────────────────────────────────────────
 
-def analisar_post(texto, comentarios_lista, autor, categoria):
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+_anthropic_client = None
+
+def _get_client():
+    global _anthropic_client
+    if _anthropic_client is None:
+        _anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    return _anthropic_client
+
+
+def analisar_post(texto, comentarios_lista, autor, categoria, curtidas=0, comentarios_count=0):
+    client = _get_client()
 
     total = len(comentarios_lista)
     comentaristas = ", ".join(set(
@@ -267,19 +291,29 @@ def analisar_post(texto, comentarios_lista, autor, categoria):
         texto=texto,
         autor=autor,
         categoria=categoria,
+        curtidas=curtidas,
+        comentarios_count=comentarios_count,
         total=total,
         comentaristas=comentaristas,
         comentarios=comentarios_texto,
     )
 
-    msg = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1500,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = msg.content[0].text.strip()
-    raw = re.sub(r"```(?:json)?|```", "", raw).strip()
-    return json.loads(raw)
+    for tentativa in range(2):
+        try:
+            msg = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=1500,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw = msg.content[0].text.strip()
+            raw = re.sub(r"```(?:json)?|```", "", raw).strip()
+            return json.loads(raw)
+        except (json.JSONDecodeError, anthropic.APIError) as e:
+            if tentativa == 0:
+                print(f"  ⚠ Tentativa 1 falhou ({type(e).__name__}), retrying...")
+                time.sleep(5)
+            else:
+                raise
 
 
 # ── Coleta de comentários ─────────────────────────────────────────────────────
@@ -312,8 +346,8 @@ def coletar_comentarios(urls_posts):
         username = item.get("ownerUsername") or item.get("username") or "anon"
         if not post_url or not texto:
             continue
-        texto_limpo = limpar_texto(texto)
-        if len(texto_limpo) < 15:
+        texto_limpo = limpar_comentario(texto)
+        if len(texto_limpo) < 5:   # filtra apenas vazios e spam de 1-4 chars
             ignorados += 1
             continue
         mapa.setdefault(post_url, []).append(f"{username}: {texto_limpo}")
@@ -433,7 +467,10 @@ def processar():
         comentarios_lista = mapa_comentarios.get(url, [])
 
         try:
-            analise = analisar_post(post["caption"], comentarios_lista, autor, categoria)
+            analise = analisar_post(
+                post["caption"], comentarios_lista, autor, categoria,
+                curtidas=post["curtidas"], comentarios_count=post["comentarios_count"],
+            )
         except Exception as e:
             print(f"  ✗ Erro ao analisar {url}: {e}")
             erros += 1
