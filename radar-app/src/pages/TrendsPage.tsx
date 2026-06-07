@@ -30,13 +30,14 @@ function slope(serie: number[]): number {
 }
 
 function direcao(s: number): "subindo" | "estavel" | "caindo" {
-  if (s > 0.5) return "subindo";
-  if (s < -0.5) return "caindo";
+  if (s > 0.1) return "subindo";
+  if (s < -0.1) return "caindo";
   return "estavel";
 }
 
 const DIR_ICON: Record<string, string> = { subindo: "▲", estavel: "─", caindo: "▼" };
 const DIR_COR: Record<string, string> = { subindo: "#22C55E", estavel: "#9FB0CC", caindo: "#EF4444" };
+const COR_OUTROS = "#94A3B8";
 
 interface TemaStats {
   tema: string;
@@ -83,11 +84,18 @@ export function TrendsPage() {
       return { tema: t, serie, dias, total, s: slope(serie), ultimo: serie.at(-1) ?? 0 };
     });
 
-    // Ordena por relevância (total) e pega top 8 para o gráfico
+    // Ordena por relevância (total); top 7 individuais + OUTROS agregado no gráfico
     stats.sort((a, b) => b.total - a.total);
-    const topGrafico = stats.slice(0, 8);
+    const topIndiv = stats.slice(0, 7);
+    const outrosStats = stats.slice(7);
+    const outrosSerie = dias.map((_, i) =>
+      outrosStats.reduce((sum, s) => sum + (s.serie[i] ?? 0), 0)
+    );
+    const outrosTotal = outrosSerie.reduce((s, v) => s + v, 0);
+    const outrosTemas = outrosStats.map(s => s.tema);
+    const outrosTemasSet = new Set(outrosTemas);
 
-    return { stats, topGrafico, dias, metr };
+    return { stats, topIndiv, outrosSerie, outrosTotal, outrosTemas, outrosTemasSet, dias, metr };
   }, [data, metrica, janela]);
 
   if (isLoading) return <div className="p-8 text-txt-2">Carregando tendências…</div>;
@@ -103,13 +111,54 @@ export function TrendsPage() {
       </div>
     );
 
-  const { stats, topGrafico, dias, metr } = view;
+  const { stats, topIndiv, outrosSerie, outrosTotal, outrosTemas, outrosTemasSet, dias, metr } = view;
+
+  const seriesData = [
+    ...topIndiv.map((s, i) => ({
+      name: s.tema,
+      type: "line" as const,
+      smooth: true,
+      symbol: "circle",
+      symbolSize: 4,
+      lineStyle: { width: 2 },
+      itemStyle: { color: PALETA[i % PALETA.length] },
+      data: s.serie,
+    })),
+    ...(outrosTotal > 0 ? [{
+      name: "Outros",
+      type: "line" as const,
+      smooth: true,
+      symbol: "circle",
+      symbolSize: 4,
+      lineStyle: { width: 2, type: "dashed" },
+      itemStyle: { color: COR_OUTROS },
+      data: outrosSerie,
+    }] : []),
+  ];
 
   const option = {
     grid: { left: 40, right: 16, top: 32, bottom: 36 },
-    tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, backgroundColor: ink.tooltipBg, borderColor: ink.tooltipBorder, textStyle: { color: ink.tooltipText } },
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      backgroundColor: ink.tooltipBg,
+      borderColor: ink.tooltipBorder,
+      textStyle: { color: ink.tooltipText },
+      formatter: (params: any) => {
+        const arr: any[] = Array.isArray(params) ? params : [params];
+        let html = `<b>${arr[0]?.axisValue ?? ""}</b><br/>`;
+        for (const p of arr) {
+          if (p.seriesName === "Outros" && outrosTemas.length > 0) {
+            html += `<span style="color:${COR_OUTROS}">●</span> <b>Outros</b> (${outrosTemas.join(", ")}): <b>${p.value}</b><br/>`;
+          } else {
+            html += `<span style="color:${p.color}">●</span> ${p.seriesName}: <b>${p.value}</b><br/>`;
+          }
+        }
+        return html;
+      },
+    },
     legend: {
-      data: topGrafico.map((s) => s.tema),
+      data: [...topIndiv.map(s => s.tema), ...(outrosTotal > 0 ? ["Outros"] : [])],
       textStyle: { color: ink.axis, fontSize: 11 },
       top: 0,
       type: "scroll",
@@ -126,16 +175,7 @@ export function TrendsPage() {
       axisLabel: { color: ink.axis },
       ...(metrica.startsWith("pct") || metrica === "score_risco" ? { min: 0, max: 100 } : {}),
     },
-    series: topGrafico.map((s, i) => ({
-      name: s.tema,
-      type: "line",
-      smooth: true,
-      symbol: "circle",
-      symbolSize: 4,
-      lineStyle: { width: 2 },
-      itemStyle: { color: PALETA[i % PALETA.length] },
-      data: s.serie,
-    })),
+    series: seriesData,
   };
 
   const subindo = stats.filter((s) => direcao(s.s) === "subindo");
@@ -187,12 +227,22 @@ export function TrendsPage() {
             ▲ Subindo ({subindo.length})
           </div>
           <div className="space-y-1.5">
-            {subindo.slice(0, 5).map((s) => (
-              <div key={s.tema} className="flex items-center justify-between text-sm">
-                <span className="text-txt-1">{s.tema}</span>
-                <span className="tnum font-bold text-risk-low">+{s.s.toFixed(1)}/dia</span>
-              </div>
-            ))}
+            {subindo.slice(0, 5).map((s) => {
+              const isOutros = outrosTemasSet.has(s.tema);
+              return (
+                <div key={s.tema} className="flex items-center justify-between text-sm">
+                  <span className="text-txt-1" style={isOutros ? { color: COR_OUTROS } : {}}>
+                    {s.tema}
+                  </span>
+                  <span
+                    className="tnum font-bold"
+                    style={{ color: isOutros ? COR_OUTROS : "#22C55E" }}
+                  >
+                    +{s.s.toFixed(1)}/dia
+                  </span>
+                </div>
+              );
+            })}
             {subindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em alta.</div>}
           </div>
         </div>
@@ -201,12 +251,22 @@ export function TrendsPage() {
             ▼ Caindo ({caindo.length})
           </div>
           <div className="space-y-1.5">
-            {caindo.slice(0, 5).map((s) => (
-              <div key={s.tema} className="flex items-center justify-between text-sm">
-                <span className="text-txt-1">{s.tema}</span>
-                <span className="tnum font-bold text-risk-crit">{s.s.toFixed(1)}/dia</span>
-              </div>
-            ))}
+            {caindo.slice(0, 5).map((s) => {
+              const isOutros = outrosTemasSet.has(s.tema);
+              return (
+                <div key={s.tema} className="flex items-center justify-between text-sm">
+                  <span className="text-txt-1" style={isOutros ? { color: COR_OUTROS } : {}}>
+                    {s.tema}
+                  </span>
+                  <span
+                    className="tnum font-bold"
+                    style={{ color: isOutros ? COR_OUTROS : "#EF4444" }}
+                  >
+                    {s.s.toFixed(1)}/dia
+                  </span>
+                </div>
+              );
+            })}
             {caindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em queda.</div>}
           </div>
         </div>
@@ -234,9 +294,19 @@ export function TrendsPage() {
             <tbody>
               {stats.map((s) => {
                 const dir = direcao(s.s);
+                const isOutros = outrosTemasSet.has(s.tema);
                 return (
                   <tr key={s.tema} className="border-b border-line/40">
-                    <td className="py-2 text-txt-1">{s.tema}</td>
+                    <td className="py-2 text-txt-1">
+                      {isOutros && (
+                        <span
+                          className="mr-1 inline-block h-2 w-2 rounded-full align-middle"
+                          style={{ background: COR_OUTROS }}
+                          title="Incluso em Outros"
+                        />
+                      )}
+                      {s.tema}
+                    </td>
                     <td className="tnum py-2 text-right text-txt-2">{fmtInt(s.total)}</td>
                     <td className="tnum py-2 text-right text-txt-2">{fmtInt(s.ultimo)}</td>
                     <td
