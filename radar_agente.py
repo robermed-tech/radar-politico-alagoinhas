@@ -47,6 +47,16 @@ EVOLUTION_INSTANCE     = os.environ.get("EVOLUTION_INSTANCE", "radar-politico")
 EVOLUTION_GROUP_ID     = os.environ.get("EVOLUTION_GROUP_ID", "")
 SCORE_ALERTA_CRITICO   = 70  # score mínimo para disparar alerta no WhatsApp
 
+# ── Override de alerta para crises de alta responsabilidade (SCCT) ─────────────
+# Crises de cluster "intencional" com alta responsabilidade atribuída tendem a
+# ficar em score ~62 (risco "Médio") e nunca cruzar 70 — ficando silenciosas.
+# Este override dispara o alerta MESMO abaixo de 70, mas só quando o caso já tem
+# tração real (evita fadiga de alarme). Ajuste estes 4 valores para calibrar:
+OVERRIDE_ALERTA_ATIVO        = True      # liga/desliga o override
+OVERRIDE_RESPONSABILIDADE_MIN = 70       # responsabilidade_atribuida mínima
+OVERRIDE_SCORE_MIN           = 55        # piso de score (abaixo disso, ignora)
+OVERRIDE_EXIGE_TRACAO        = True      # exige tendência "Crescendo" OU engajamento "Alto"
+
 # ── Abas de memória ───────────────────────────────────────────────────────────
 SHEET_MEMORIA    = "Memoria_Contexto"
 SHEET_FEEDBACK   = "Feedback"
@@ -83,7 +93,10 @@ SHEET_HEADERS = [
     "tema", "tema_sensivel", "urgencia",
     "risco_crise", "score_risco", "tendencia", "engajamento",
     "resumo", "atribuicao", "sugestao_acao",
-    "contexto_usado", "aprendizado_aplicado"
+    "contexto_usado", "aprendizado_aplicado",
+    # ── camada de inteligência SCCT (Coombs) / Image Repair (Benoit) ──
+    "cluster_crise", "responsabilidade_atribuida", "confianca",
+    "abordagem_recomendada", "por_que_funciona", "motivo_alerta"
 ]
 
 FEEDBACK_HEADERS = [
@@ -164,6 +177,15 @@ PERFIS_OPOSICAO = {
 }
 
 
+def _tem_termo(texto, termo):
+    """
+    True se 'termo' aparece como palavra/expressão inteira em 'texto'.
+    Evita que keywords curtas casem dentro de outras palavras
+    (ex.: 'band' em 'abandonada', 'missa' em 'comissão', 'culto' em 'dificulto').
+    """
+    return re.search(r"(?<!\w)" + re.escape(termo) + r"(?!\w)", texto) is not None
+
+
 def e_relevante_para_radar(texto, autor):
     """
     Filtro de relevância em 4 camadas:
@@ -175,18 +197,29 @@ def e_relevante_para_radar(texto, autor):
     t = texto.lower()
     a = autor.lower()
 
-    # Camada 0 — exclusão imediata por tema irrelevante
-    if any(k in t for k in KEYWORDS_EXCLUSAO):
+    # Camada 0 — exclusão imediata por tema irrelevante (palavra inteira, não substring)
+    if any(_tem_termo(t, k) for k in KEYWORDS_EXCLUSAO):
         return False
 
     # Camada 1 — perfis da gestão: qualquer keyword de gestão passa
     if a in PERFIS_GESTAO:
         return any(k in t for k in KEYWORDS_GESTAO)
 
-    # Camada 2 — perfis de oposição: menção direta ao prefeito/prefeitura
+    # Camada 2 — perfis de oposição (atores políticos locais já conhecidos):
+    # o próprio perfil já é uma âncora; basta que o post trate de gestão/serviço público.
+    # Aceita menções INDIRETAS ("a gestão", "a prefeitura", "nossa cidade", "no seu bairro"),
+    # porque a oposição frequentemente critica sem citar "Alagoinhas" ou "Gustavo" no texto.
     if a in PERFIS_OPOSICAO:
-        tem_ancora = any(k in t for k in KEYWORDS_ANCORA) or "prefeit" in t
-        return tem_ancora and any(k in t for k in KEYWORDS_GESTAO)
+        ancora_oposicao = (
+            any(k in t for k in KEYWORDS_ANCORA)
+            or "prefeit" in t or "gestao" in t or "gestão" in t
+            or "nossa cidade" in t or "no seu bairro" in t
+            or "municipio" in t or "município" in t or "dinheiro publico" in t
+        )
+        tem_tema = (
+            any(k in t for k in KEYWORDS_GESTAO) or any(k in t for k in KEYWORDS_CONTEXTO)
+        )
+        return ancora_oposicao and tem_tema
 
     # Camada 3 — imprensa e outros: critério mais rigoroso
     # Precisa de âncora forte (Gustavo Carmo / prefeito Gustavo) OU
@@ -233,20 +266,6 @@ def categoria_perfil(autor):
     return PERFIS_CATEGORIAS.get(autor.lower(), "Outro")
 
 
-def e_relevante_para_radar(texto, autor):
-    t = texto.lower()
-    if autor.lower() in PERFIS_GESTAO:
-        return any(k in t for k in KEYWORDS_GESTAO)
-    tem_ancora = any(k in t for k in KEYWORDS_ANCORA)
-    if not tem_ancora:
-        return False
-    if "gustavo" in t:
-        return any(k in t for k in KEYWORDS_GESTAO)
-    tem_gestao   = any(k in t for k in KEYWORDS_GESTAO)
-    tem_contexto = any(k in t for k in KEYWORDS_CONTEXTO)
-    return tem_gestao or tem_contexto
-
-
 def calcular_score_risco(analise, curtidas, n_comentarios, tem_crise_keywords):
     """
     Score de risco composto 0-100 baseado em múltiplos fatores.
@@ -284,6 +303,77 @@ def calcular_score_risco(analise, curtidas, n_comentarios, tem_crise_keywords):
         score += 5
 
     return min(score, 100)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  RECOMENDAÇÃO DE ABORDAGEM — SCCT (Coombs) → Image Repair (Benoit)
+#  A ABORDAGEM (qual estratégia) é determinística: depende só do cluster da crise,
+#  não do humor do modelo. O Claude apenas preenche o cluster; a recomendação sai
+#  desta tabela fixa e auditável. É hipótese fundamentada, não garantia.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ABORDAGEM_POR_CLUSTER = {
+    "vitima": {
+        "abordagem": "Esclarecer com evidência factual (negação factual + ação corretiva)",
+        "por_que": "A gestão é vítima do episódio (boato/ataque). Confrontar rápido com fato funciona melhor que o silêncio — boato não confrontado vira verdade percebida.",
+    },
+    "acidental": {
+        "abordagem": "Corrigir e contextualizar (ação corretiva + redução da ofensa)",
+        "por_que": "Erro não-intencional. Mostrar a correção e o contexto preserva mais a imagem do que negar — negar soa como arrogância.",
+    },
+    "intencional": {
+        "abordagem": "Reconhecer e apresentar plano (mortificação + ação corretiva)",
+        "por_que": "O público atribui alta responsabilidade. Reconhecer e mostrar plano reduz o dano; negar ou minimizar amplia a crise (efeito bumerangue).",
+    },
+    "nenhum": {
+        "abordagem": "Nenhuma ação reativa — monitorar",
+        "por_que": "Conteúdo neutro/positivo. Se for positivo relevante, vale amplificar nos canais próprios.",
+    },
+}
+
+def recomendar_abordagem(cluster: str) -> dict:
+    """Retorna {abordagem, por_que} a partir do cluster SCCT. Regra fixa, auditável."""
+    return ABORDAGEM_POR_CLUSTER.get((cluster or "nenhum").lower(), ABORDAGEM_POR_CLUSTER["nenhum"])
+
+
+def deve_disparar_alerta(score: int, analise: dict) -> bool:
+    """
+    Decide se um post dispara alerta no WhatsApp.
+    Regra 1 (sempre): score >= SCORE_ALERTA_CRITICO.
+    Regra 2 (override criterioso): crise 'intencional' com alta responsabilidade
+    que já tem tração — captura ataques de oposição eficazes que ficam em ~62 e
+    não cruzariam 70. Os limiares ficam nas constantes do topo do arquivo.
+    """
+    if score >= SCORE_ALERTA_CRITICO:
+        return True
+    if not OVERRIDE_ALERTA_ATIVO:
+        return False
+    if analise.get("cluster_crise") != "intencional":
+        return False
+    if analise.get("responsabilidade_atribuida", 0) < OVERRIDE_RESPONSABILIDADE_MIN:
+        return False
+    if score < OVERRIDE_SCORE_MIN:
+        return False
+    if OVERRIDE_EXIGE_TRACAO:
+        tracao = (analise.get("tendencia") == "Crescendo"
+                  or analise.get("engajamento") == "Alto")
+        if not tracao:
+            return False
+    return True
+
+
+def motivo_do_alerta(score: int, analise: dict) -> str:
+    """
+    Explica EM TEXTO por que o post disparou o alerta. Vai para o Sheets
+    (coluna motivo_alerta), para o console e para o WhatsApp — assim quem vê
+    no app entende a razão sem precisar deduzir dos números.
+    """
+    if score >= SCORE_ALERTA_CRITICO:
+        return f"Score {score} ≥ {SCORE_ALERTA_CRITICO} (risco {analise.get('risco_crise','')})".strip()
+    tracao = "tendência em alta" if analise.get("tendencia") == "Crescendo" else "engajamento alto"
+    return (f"Override SCCT — crise {analise.get('cluster_crise','')}, "
+            f"responsabilidade {analise.get('responsabilidade_atribuida','?')}/100, "
+            f"{tracao} (score {score})")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -676,6 +766,16 @@ NÃO é relevante e deve ter urgencia="Baixa" + risco_crise="Baixo" + sugestao_a
 ❌ Notícias sobre o estado ou federal sem impacto direto na gestão Gustavo Carmo
 ❌ Conteúdo de entretenimento ou interesse pessoal dos perfis monitorados
 
+═══════════════════════════════════════════════
+CLASSIFICAÇÃO DA CRISE — SCCT (Timothy Coombs)
+═══════════════════════════════════════════════
+Se o post representar risco à gestão, classifique o TIPO de crise (cluster), que define quanta culpa o público atribui ao prefeito:
+• "vitima": a gestão SOFRE o episódio (boato, ataque coordenado, desinformação, desastre). Baixa responsabilidade.
+• "acidental": erro NÃO-intencional (declaração mal interpretada, falha operacional pontual). Responsabilidade média.
+• "intencional": ação vista como deliberada ou negligente (descaso, promessa quebrada, má gestão conhecida). Alta responsabilidade.
+• "nenhum": sem crise (conteúdo neutro, positivo ou irrelevante).
+Informe também responsabilidade_atribuida (0-100, quanto o público culpa a gestão) e sua confianca (0-100) nesta leitura — baixe a confiança se o texto for ambíguo, irônico ou faltar contexto.
+
 {contexto_historico}
 {aprendizado}
 
@@ -723,7 +823,10 @@ Retorne SOMENTE um JSON válido, sem texto extra, sem markdown:
   "sugestao_acao": "Monitorar" | "Responder publicamente" | "Acionar assessoria" | "Conter crise" | "Ampliar positivo",
   "justificativa_acao": "<por que essa ação em até 20 palavras>",
   "padrao_detectado": "<se faz parte de padrão ou campanha; senão: 'Isolado'>",
-  "janela_acao": "<quando agir: ex: 'próximas 2h', 'até 18h de hoje', 'monitorar 24h'>"
+  "janela_acao": "<quando agir: ex: 'próximas 2h', 'até 18h de hoje', 'monitorar 24h'>",
+  "cluster_crise": "vitima" | "acidental" | "intencional" | "nenhum",
+  "responsabilidade_atribuida": <número 0-100>,
+  "confianca": <número 0-100>
 }}"""
 
 
@@ -806,6 +909,7 @@ def formatar_alerta_critico(post: dict, analise: dict, score: int) -> str:
         f"🚨 *ALERTA RADAR POLÍTICO* 🚨",
         f"",
         f"{emoji_score} *Score de Risco: {score}/100*",
+        f"🔎 *Por que alertou:* {motivo_do_alerta(score, analise)}",
         f"{emoji_cat} *Perfil:* @{post.get('autor', '')} ({categoria})",
         f"📌 *Tema:* {analise.get('tema', '')}",
         f"⚡ *Urgência:* {analise.get('urgencia', '')}",
@@ -823,8 +927,11 @@ def formatar_alerta_critico(post: dict, analise: dict, score: int) -> str:
     if destaque and destaque != "Nenhum comentário relevante":
         linhas += [f"💬 *Comentário destaque:*", f"_{destaque}_", f""]
 
+    rec = recomendar_abordagem(analise.get("cluster_crise", "nenhum"))
     linhas += [
         f"✅ *Ação recomendada:* {analise.get('sugestao_acao', '')}",
+        f"🎯 *Como abordar:* {rec['abordagem']}",
+        f"💡 _{rec['por_que']}_",
         f"⏰ *Janela:* {analise.get('janela_acao', 'Monitorar')}",
         f"",
         f"🔗 {post.get('url', '')}",
@@ -1049,8 +1156,13 @@ def processar():
             c.split(":")[0].strip() for c in comentarios_lista if ":" in c
         ))[:10])
 
-        # Coleta alertas de crise para log final e dispara WhatsApp
-        if score >= 70:
+        # Recomendação de abordagem (SCCT → IRT), determinística pelo cluster
+        rec = recomendar_abordagem(analise.get("cluster_crise", "nenhum"))
+
+        # Decisão de alerta + motivo (texto explicativo para Sheets/app/WhatsApp)
+        disparar = deve_disparar_alerta(score, analise)
+        motivo_alerta = motivo_do_alerta(score, analise) if disparar else ""
+        if disparar:
             alertas_crise.append({
                 "autor": post["autor"],
                 "tema":  analise.get("tema", ""),
@@ -1060,8 +1172,7 @@ def processar():
                 "janela": analise.get("janela_acao", ""),
                 "padrao": analise.get("padrao_detectado", ""),
             })
-            # Dispara alerta imediato no WhatsApp
-            print(f"  🚨 Score {score} — disparando alerta WhatsApp...")
+            print(f"  🚨 Alerta — {motivo_alerta} — disparando WhatsApp...")
             msg_alerta = formatar_alerta_critico(post, analise, score)
             enviar_whatsapp(msg_alerta)
 
@@ -1093,6 +1204,12 @@ def processar():
             analise.get("sugestao_acao", ""),
             analise.get("justificativa_acao", ""),
             analise.get("padrao_detectado", ""),
+            analise.get("cluster_crise", "nenhum"),
+            analise.get("responsabilidade_atribuida", ""),
+            analise.get("confianca", ""),
+            rec["abordagem"],
+            rec["por_que"],
+            motivo_alerta,
         ]
         linhas.append(linha)
         existentes.add(url)

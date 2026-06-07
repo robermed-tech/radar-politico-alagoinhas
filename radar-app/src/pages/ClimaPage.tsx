@@ -19,7 +19,7 @@ function temaDominante(posts: Post[]): string {
 }
 
 export function ClimaPage() {
-  const [dias, setDias] = useState(7);
+  const [dias, setDias] = useState(1); // padrão 24h (era 7 dias)
   const { data, isLoading } = useQuery({
     queryKey: ["radar"],
     queryFn: fetchRadar,

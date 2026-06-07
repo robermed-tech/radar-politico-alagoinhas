@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import {
@@ -107,8 +107,17 @@ function ComentarioRow({ c, color }: { c: Comment; color: string }) {
   );
 }
 
+const PERIODOS = [
+  { dias: 1, label: "24h" },
+  { dias: 7, label: "7d" },
+  { dias: 30, label: "30d" },
+] as const;
+
 export function ApprovalPage() {
-  const dias = 30;
+  // Período em destaque — padrão 24h (leitura mais próxima do tempo real).
+  // O seletor permite ampliar para 7d/30d quando a amostra de 24h for pequena.
+  const [dias, setDias] = useState<number>(1);
+  const periodoLabel = PERIODOS.find((p) => p.dias === dias)?.label ?? `${dias}d`;
   const ink = chartInk(useThemeStore((s) => s.theme));
 
   const { data: radar, isLoading: lr } = useQuery({
@@ -160,7 +169,7 @@ export function ApprovalPage() {
       pctPos, pctNeg, pctNeu,
       porCategoria, porPerfil, porTema,
     };
-  }, [radar]);
+  }, [radar, dias]);
 
   // Comentários cidadãos: top positivos e negativos
   const cms = useMemo(() => {
@@ -219,11 +228,33 @@ export function ApprovalPage() {
 
   return (
     <div className="space-y-4 p-5">
-      <div>
-        <h1 className="text-2xl font-extrabold">Aprovação Digital</h1>
-        <p className="text-sm text-txt-2">
-          Drill-down do IAD · quem aprova, quem rejeita e por quais temas
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold">Aprovação Digital</h1>
+          <p className="text-sm text-txt-2">
+            Drill-down do IAD · quem aprova, quem rejeita e por quais temas
+          </p>
+        </div>
+        <div
+          className="inline-flex rounded-lg border border-line bg-bg-2 p-0.5"
+          role="group"
+          aria-label="Período em destaque"
+        >
+          {PERIODOS.map((p) => (
+            <button
+              key={p.dias}
+              onClick={() => setDias(p.dias)}
+              aria-pressed={dias === p.dias}
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
+                dias === p.dias
+                  ? "bg-bg-1 text-txt-1 shadow-sm"
+                  : "text-txt-3 hover:text-txt-1"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Header com índice + KPIs */}
@@ -236,7 +267,7 @@ export function ApprovalPage() {
           value={view.ica}
           sub={view.ica < 40 ? "⚠ amostra insuficiente" : "amostra confiável"}
         />
-        <KpiStat label="Comentários" value={fmtInt(view.coments)} sub={`${view.posts} posts (30d)`} />
+        <KpiStat label="Comentários" value={fmtInt(view.coments)} sub={`${view.posts} posts (${periodoLabel})`} />
         <KpiStat
           label="Aprova / Reprova"
           value={`${view.pctPos}% / ${view.pctNeg}%`}
