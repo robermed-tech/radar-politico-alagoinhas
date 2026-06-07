@@ -1,0 +1,60 @@
+name: Deploy Radar Político — GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "radar-app/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:   # permite disparar manualmente pelo GitHub
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: radar-app/package-lock.json
+
+      - name: Instalar dependências
+        run: cd radar-app && npm ci
+
+      - name: Build (Vite + TypeScript)
+        env:
+          VITE_SCRIPT_URL: ${{ secrets.VITE_SCRIPT_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
+          VITE_TENANT: alagoinhas
+        run: cd radar-app && npm run build
+
+      - name: Fallback SPA (404 → index)
+        run: |
+          cp radar-app/dist/index.html radar-app/dist/404.html
+          cp radar-app/dist/index.html radar-app/dist/200.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: radar-app/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

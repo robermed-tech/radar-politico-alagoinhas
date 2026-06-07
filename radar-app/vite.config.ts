@@ -8,4 +8,6 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   server: { port: 5180 },
+  // GitHub Pages: ajusta base para /radar-politico-alagoinhas/ em produção
+  base: process.env.GITHUB_ACTIONS ? "/radar-politico-alagoinhas/" : "/",
 });
