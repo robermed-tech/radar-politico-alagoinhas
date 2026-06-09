@@ -24,13 +24,14 @@ interface AprovBucket {
   pNeu: number;
   posts: number;
   coments: number;
+  cat: string;
 }
 
 function agrupar(posts: Post[], chave: (p: Post) => string, limite = 8): AprovBucket[] {
-  const map: Record<string, { pos: number; neg: number; neu: number; posts: number; coments: number }> = {};
+  const map: Record<string, { pos: number; neg: number; neu: number; posts: number; coments: number; cat: string }> = {};
   for (const p of posts) {
     const k = chave(p) || "—";
-    map[k] ??= { pos: 0, neg: 0, neu: 0, posts: 0, coments: 0 };
+    map[k] ??= { pos: 0, neg: 0, neu: 0, posts: 0, coments: 0, cat: "" };
     const pPos = (p.comentarios_pct_pos || 0) / 100;
     const pNeg = (p.comentarios_pct_neg || 0) / 100;
     const pNeu = Math.max(0, 1 - pPos - pNeg);
@@ -40,6 +41,7 @@ function agrupar(posts: Post[], chave: (p: Post) => string, limite = 8): AprovBu
     map[k].neu += w * pNeu;
     map[k].posts += 1;
     map[k].coments += p.comentarios_total || 0;
+    if (p.categoria) map[k].cat = p.categoria; // categoria do perfil (consistente p/ perfil)
   }
   return Object.entries(map)
     .map(([rotulo, v]) => {
@@ -51,39 +53,84 @@ function agrupar(posts: Post[], chave: (p: Post) => string, limite = 8): AprovBu
         pNeu: Math.round((v.neu / tot) * 100),
         posts: v.posts,
         coments: v.coments,
+        cat: v.cat,
       };
     })
     .sort((a, b) => b.pPos - a.pPos || b.coments - a.coments)
     .slice(0, limite);
 }
 
-function Barra({ pPos, pNeg, pNeu }: { pPos: number; pNeg: number; pNeu: number }) {
+/** Classifica o lado político a partir da categoria do perfil. */
+function classificaLado(cat: string): { label: string; cor: string } | null {
+  const c = (cat || "").toLowerCase();
+  if (c.includes("prefeit")) return { label: "Situação", cor: "#22C55E" };
+  if (c.includes("oposi")) return { label: "Oposição", cor: "#EF4444" };
+  if (c.includes("imprensa")) return { label: "Imprensa", cor: "#EAB308" };
+  return null;
+}
+
+/**
+ * Barra divergente: críticas crescem para a ESQUERDA (vermelho), elogios para a
+ * DIREITA (verde), a partir de um eixo central. Leitura instantânea de quem é
+ * net-positivo (barra puxa p/ direita) vs net-negativo (puxa p/ esquerda).
+ */
+function BarraDivergente({ pPos, pNeg }: { pPos: number; pNeg: number }) {
   return (
-    <div className="flex h-2 overflow-hidden rounded-full bg-bg-3">
-      <div className="bg-risk-low" style={{ width: `${pPos}%` }} title={`${pPos}% pos`} />
-      <div style={{ width: `${pNeu}%`, background: "#5F6E8C" }} title={`${pNeu}% neu`} />
-      <div className="bg-risk-crit" style={{ width: `${pNeg}%` }} title={`${pNeg}% neg`} />
+    <div className="relative flex h-3 overflow-hidden rounded-full bg-bg-3">
+      {/* metade esquerda — críticas (alinhadas à direita, crescem p/ esquerda) */}
+      <div className="flex w-1/2 items-center justify-end">
+        <div
+          className="h-3 rounded-l-full bg-risk-crit"
+          style={{ width: `${pNeg}%` }}
+          title={`${pNeg}% críticas`}
+        />
+      </div>
+      {/* metade direita — elogios (alinhados à esquerda, crescem p/ direita) */}
+      <div className="flex w-1/2 items-center justify-start">
+        <div
+          className="h-3 rounded-r-full bg-risk-low"
+          style={{ width: `${pPos}%` }}
+          title={`${pPos}% elogios`}
+        />
+      </div>
+      {/* marcador do eixo central */}
+      <div
+        className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2"
+        style={{ background: "rgba(159,176,204,0.45)" }}
+      />
     </div>
   );
 }
 
-function Bucket({ b }: { b: AprovBucket }) {
+function Bucket({ b, mostrarLado }: { b: AprovBucket; mostrarLado?: boolean }) {
+  const lado = mostrarLado ? classificaLado(b.cat || b.rotulo) : null;
   return (
     <div className="rounded-lg border border-line bg-bg-2 p-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="truncate font-semibold text-txt-1" title={b.rotulo}>
-          {b.rotulo}
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-semibold text-txt-1" title={b.rotulo}>
+            {b.rotulo}
+          </span>
+          {lado && (
+            <span
+              className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+              style={{ background: `${lado.cor}1A`, color: lado.cor }}
+            >
+              {lado.label}
+            </span>
+          )}
         </div>
-        <div className="tnum text-right">
+        <div className="tnum shrink-0 text-right">
           <span className="text-sm font-bold text-risk-low">{b.pPos}%</span>
           <span className="ml-2 text-xs text-risk-crit">{b.pNeg}%</span>
         </div>
       </div>
       <div className="mt-2">
-        <Barra {...b} />
+        <BarraDivergente pPos={b.pPos} pNeg={b.pNeg} />
       </div>
-      <div className="mt-1 text-[10px] text-txt-3">
-        {b.posts} posts · {fmtInt(b.coments)} comentários
+      <div className="mt-1 flex items-center justify-between text-[10px] text-txt-3">
+        <span>◀ críticas · elogios ▶</span>
+        <span>{b.posts} posts · {fmtInt(b.coments)} coment.</span>
       </div>
     </div>
   );
@@ -336,15 +383,19 @@ export function ApprovalPage() {
           <div className="mb-3 text-sm font-bold">Por categoria</div>
           <div className="space-y-2">
             {view.porCategoria.map((b) => (
-              <Bucket key={b.rotulo} b={b} />
+              <Bucket key={b.rotulo} b={b} mostrarLado />
             ))}
           </div>
         </div>
         <div className="rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-3 text-sm font-bold">Por perfil</div>
+          <div className="mb-1 text-sm font-bold">Por perfil</div>
+          <p className="mb-3 text-[10px] leading-snug text-txt-3">
+            A barra mostra o <b>sentimento dos comentários</b> no perfil — não o lado
+            político. Verde = elogios, vermelho = críticas. A tag indica o lado.
+          </p>
           <div className="space-y-2">
             {view.porPerfil.map((b) => (
-              <Bucket key={b.rotulo} b={b} />
+              <Bucket key={b.rotulo} b={b} mostrarLado />
             ))}
           </div>
         </div>
