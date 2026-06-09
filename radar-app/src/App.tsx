@@ -37,6 +37,12 @@ const NAV: { id: Page | string; label: string; icon: string; active: boolean }[]
   { id: "glossary", label: "Glossário", icon: "❔", active: true },
 ];
 
+/** Iluminação azul no item ativo do menu (referência de design fornecida). */
+const NAV_GLOW = {
+  background: "linear-gradient(135deg, rgba(59,130,246,0.28), rgba(59,130,246,0.07))",
+  boxShadow: "0 0 18px rgba(59,130,246,0.5), inset 0 0 0 1px rgba(59,130,246,0.55)",
+} as const;
+
 function SunIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -141,13 +147,17 @@ export default function App() {
                 onClick={() => n.active && setPage(n.id as Page)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-all duration-200 ${
                   isCurrent
-                    ? "bg-bg-3 text-txt-1 shadow-md ring-1 ring-line"
+                    ? "text-white"
                     : n.active
                       ? "bg-bg-2 text-txt-2 shadow-sm hover:bg-bg-3 hover:text-txt-1 hover:shadow-md"
                       : "text-txt-3 disabled:cursor-not-allowed disabled:opacity-50"
                 }`}
+                style={isCurrent ? NAV_GLOW : undefined}
               >
-                <span className="w-4 text-center" style={{ color: isCurrent ? wx.accent : "var(--txt2)" }}>
+                <span
+                  className="w-4 text-center"
+                  style={{ color: isCurrent ? "#93C5FD" : "var(--txt2)" }}
+                >
                   {n.icon}
                 </span>
                 {n.label}
@@ -173,9 +183,10 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => setPage(n.id as Page)}
-                className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold ${
-                  n.id === page ? "glass-btn text-txt-1" : "text-txt-2"
+                className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all duration-200 ${
+                  n.id === page ? "text-white" : "text-txt-2"
                 }`}
+                style={n.id === page ? NAV_GLOW : undefined}
               >
                 {n.label}
               </button>

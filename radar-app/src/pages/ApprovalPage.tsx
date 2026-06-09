@@ -275,39 +275,51 @@ export function ApprovalPage() {
           sub={view.ica < 40 ? "⚠ amostra insuficiente" : "amostra confiável"}
         />
         <KpiStat label="Comentários" value={fmtInt(view.coments)} sub={`${view.posts} posts (${periodoLabel})`} />
-        {/* Donut verde/vermelho — aprovação vs reprovação */}
+        {/* Donut verde/vermelho — Aprova e Reprova em destaque, Neutro discreto */}
         <div className="rounded-xl border border-line bg-bg-1 p-3">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">
             Aprova / Reprova
           </div>
-          <ReactECharts
-            option={{
-              tooltip: { show: false },
-              series: [{
-                type: "pie",
-                radius: ["52%", "78%"],
-                center: ["50%", "52%"],
-                label: { show: false },
-                labelLine: { show: false },
-                data: [
-                  { value: view.pctPos, itemStyle: { color: "#22C55E" } },
-                  { value: view.pctNeu, itemStyle: { color: "#5F6E8C" } },
-                  { value: view.pctNeg, itemStyle: { color: "#EF4444" } },
-                ],
-              }],
-            }}
-            style={{ height: 90 }}
-            notMerge
-          />
-          <div className="flex justify-around text-[11px] font-bold">
-            <span style={{ color: "#22C55E" }}>{view.pctPos}%</span>
-            <span className="text-txt-3">{view.pctNeu}%</span>
-            <span style={{ color: "#EF4444" }}>{view.pctNeg}%</span>
+          <div className="mt-1 flex items-center justify-between gap-1">
+            {/* Aprova — número grande verde */}
+            <div className="flex flex-col items-center">
+              <span className="tnum text-3xl font-extrabold leading-none" style={{ color: "#22C55E" }}>
+                {view.pctPos}%
+              </span>
+              <span className="mt-0.5 text-[10px] font-semibold text-txt-3">Aprova</span>
+            </div>
+            {/* Donut central — menor, só como apoio visual */}
+            <ReactECharts
+              option={{
+                tooltip: { show: false },
+                series: [{
+                  type: "pie",
+                  radius: ["56%", "82%"],
+                  center: ["50%", "50%"],
+                  label: { show: false },
+                  labelLine: { show: false },
+                  silent: true,
+                  data: [
+                    { value: view.pctPos, itemStyle: { color: "#22C55E" } },
+                    { value: view.pctNeu, itemStyle: { color: "#5F6E8C" } },
+                    { value: view.pctNeg, itemStyle: { color: "#EF4444" } },
+                  ],
+                }],
+              }}
+              style={{ height: 64, width: 64 }}
+              notMerge
+            />
+            {/* Reprova — número grande vermelho */}
+            <div className="flex flex-col items-center">
+              <span className="tnum text-3xl font-extrabold leading-none" style={{ color: "#EF4444" }}>
+                {view.pctNeg}%
+              </span>
+              <span className="mt-0.5 text-[10px] font-semibold text-txt-3">Reprova</span>
+            </div>
           </div>
-          <div className="flex justify-around text-[9px] text-txt-3 mt-0.5">
-            <span>Aprova</span>
-            <span>Neutro</span>
-            <span>Reprova</span>
+          {/* Neutro — discreto, abaixo */}
+          <div className="mt-1.5 text-center text-[10px] text-txt-3">
+            Neutro <span className="font-semibold">{view.pctNeu}%</span>
           </div>
         </div>
       </div>

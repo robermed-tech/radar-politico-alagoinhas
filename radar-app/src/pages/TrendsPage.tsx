@@ -4,7 +4,7 @@ import ReactECharts from "echarts-for-react";
 import { fetchDailyThemes, type DailyTheme } from "@/lib/data";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk, SERIES_PALETTE } from "@/lib/chartTheme";
+import { chartInk } from "@/lib/chartTheme";
 
 type Metrica = "volume" | "pct_neg" | "pct_pos" | "score_risco";
 
@@ -14,8 +14,6 @@ const METRICAS: { id: Metrica; label: string; campo: keyof DailyTheme; cor: stri
   { id: "pct_pos",     label: "% Positivo",      campo: "pct_pos",      cor: "#22C55E" },
   { id: "score_risco", label: "Risco médio",     campo: "score_risco",  cor: "#F97316" },
 ];
-
-const PALETA = SERIES_PALETTE;
 
 /** Regressão linear simples — retorna slope (taxa de variação por dia). */
 function slope(serie: number[]): number {
@@ -113,69 +111,86 @@ export function TrendsPage() {
 
   const { stats, topIndiv, outrosSerie, outrosTotal, outrosTemas, outrosTemasSet, dias, metr } = view;
 
-  const seriesData = [
-    ...topIndiv.map((s, i) => ({
-      name: s.tema,
-      type: "line" as const,
-      smooth: true,
-      symbol: "circle",
-      symbolSize: 4,
-      lineStyle: { width: 2 },
-      itemStyle: { color: PALETA[i % PALETA.length] },
-      data: s.serie,
-    })),
-    ...(outrosTotal > 0 ? [{
-      name: "Outros",
-      type: "line" as const,
-      smooth: true,
-      symbol: "circle",
-      symbolSize: 4,
-      lineStyle: { width: 2, type: "dashed" },
-      itemStyle: { color: COR_OUTROS },
-      data: outrosSerie,
-    }] : []),
+  // Mapa de calor (tema × dia) — leitura muito mais clara que o "espaguete" de
+  // linhas sobrepostas. Linhas = temas (mais relevante no topo), colunas = dias,
+  // cor = intensidade da métrica. Cada célula é independente e legível.
+  const heatThemes = [
+    ...(outrosTotal > 0 ? [{ name: "Outros", serie: outrosSerie }] : []),
+    ...[...topIndiv].reverse().map((s) => ({ name: s.tema, serie: s.serie })),
   ];
+  const heatData: [number, number, number][] = [];
+  heatThemes.forEach((row, yi) => {
+    row.serie.forEach((v, xi) => heatData.push([xi, yi, Math.round(v)]));
+  });
+  const isPct = metrica.startsWith("pct") || metrica === "score_risco";
+  const maxVal = isPct ? 100 : Math.max(1, ...heatData.map((d) => d[2]));
+  // Escala de cor com semântica (verde = bom · vermelho = ruim · azul = volume)
+  const heatColors =
+    metrica === "pct_pos"
+      ? ["#1F2937", "#7F1D1D", "#B45309", "#15803D", "#22C55E"] // baixo→alto: ruim→bom
+      : metrica === "pct_neg" || metrica === "score_risco"
+        ? ["#1F2937", "#15803D", "#B45309", "#7F1D1D", "#EF4444"] // baixo→alto: bom→ruim
+        : ["#0B2447", "#1E40AF", "#2563EB", "#3B82F6", "#60A5FA"]; // volume: sequencial azul
+  const showLabels = dias.length <= 16;
 
   const option = {
-    grid: { left: 40, right: 16, top: 32, bottom: 36 },
+    grid: { left: 104, right: 20, top: 12, bottom: 64 },
     tooltip: {
-      trigger: "axis",
-      axisPointer: { type: "shadow" },
+      position: "top",
       backgroundColor: ink.tooltipBg,
       borderColor: ink.tooltipBorder,
       textStyle: { color: ink.tooltipText },
-      formatter: (params: any) => {
-        const arr: any[] = Array.isArray(params) ? params : [params];
-        let html = `<b>${arr[0]?.axisValue ?? ""}</b><br/>`;
-        for (const p of arr) {
-          if (p.seriesName === "Outros" && outrosTemas.length > 0) {
-            html += `<span style="color:${COR_OUTROS}">●</span> <b>Outros</b> (${outrosTemas.join(", ")}): <b>${p.value}</b><br/>`;
-          } else {
-            html += `<span style="color:${p.color}">●</span> ${p.seriesName}: <b>${p.value}</b><br/>`;
-          }
-        }
-        return html;
+      formatter: (p: any) => {
+        const tema = heatThemes[p.value[1]]?.name ?? "";
+        const dia = dias[p.value[0]] ?? "";
+        const extra =
+          tema === "Outros" && outrosTemas.length > 0
+            ? `<br/><span style="opacity:.7">(${outrosTemas.join(", ")})</span>`
+            : "";
+        return `<b>${tema}</b>${extra}<br/>${dia.slice(5)}: <b>${p.value[2]}</b>`;
       },
-    },
-    legend: {
-      data: [...topIndiv.map(s => s.tema), ...(outrosTotal > 0 ? ["Outros"] : [])],
-      textStyle: { color: ink.axis, fontSize: 11 },
-      top: 0,
-      type: "scroll",
     },
     xAxis: {
       type: "category",
       data: dias.map((d) => d.slice(5)),
+      splitArea: { show: true },
       axisLine: { lineStyle: { color: ink.axisLine } },
-      axisLabel: { color: ink.axis },
+      axisLabel: { color: ink.axis, fontSize: 11 },
     },
     yAxis: {
-      type: "value",
-      splitLine: { lineStyle: { color: ink.grid } },
-      axisLabel: { color: ink.axis },
-      ...(metrica.startsWith("pct") || metrica === "score_risco" ? { min: 0, max: 100 } : {}),
+      type: "category",
+      data: heatThemes.map((t) => t.name),
+      splitArea: { show: true },
+      axisLine: { lineStyle: { color: ink.axisLine } },
+      axisLabel: { color: ink.axis, fontSize: 11 },
     },
-    series: seriesData,
+    visualMap: {
+      min: 0,
+      max: maxVal,
+      calculable: true,
+      orient: "horizontal",
+      left: "center",
+      bottom: 4,
+      itemWidth: 14,
+      itemHeight: 160,
+      textStyle: { color: ink.axis, fontSize: 10 },
+      inRange: { color: heatColors },
+    },
+    series: [
+      {
+        type: "heatmap",
+        data: heatData,
+        label: {
+          show: showLabels,
+          color: "#E5E7EB",
+          fontSize: 10,
+          fontWeight: "bold" as const,
+          formatter: (p: any) => (p.value[2] ? p.value[2] : ""),
+        },
+        itemStyle: { borderColor: ink.tooltipBg, borderWidth: 2, borderRadius: 3 },
+        emphasis: { itemStyle: { shadowBlur: 10, shadowColor: "rgba(0,0,0,0.45)" } },
+      },
+    ],
   };
 
   const subindo = stats.filter((s) => direcao(s.s) === "subindo");
@@ -272,10 +287,23 @@ export function TrendsPage() {
         </div>
       </div>
 
-      {/* Gráfico de linhas */}
+      {/* Mapa de calor tema × dia */}
       <div className="rounded-xl border border-line bg-bg-1 p-4">
-        <div className="mb-1 text-sm font-bold">{metr.label} · top 8 temas (janela {janela}d)</div>
-        <ReactECharts option={option} style={{ height: 340 }} notMerge />
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm font-bold">{metr.label} · mapa de calor por tema (janela {janela}d)</div>
+          <div className="text-[10px] text-txt-3">
+            {metrica === "volume"
+              ? "azul mais claro = maior volume de posts"
+              : metrica === "pct_pos"
+                ? "verde = mais positivo · cinza = sem dados"
+                : "vermelho = mais crítico · verde = saudável"}
+          </div>
+        </div>
+        <ReactECharts
+          option={option}
+          style={{ height: Math.max(220, heatThemes.length * 34 + 110) }}
+          notMerge
+        />
       </div>
 
       {/* Tabela completa */}
