@@ -1913,6 +1913,44 @@ def disparar_alertas(posts_analisados):
     return alertas_enviados
 
 # ==============================================================
+# MODULO 6b - UPDATE DE COMENTARIOS NOVOS
+# ==============================================================
+
+def enviar_update_coments(post, delta_coments):
+    """Alerta resumido de novos comentarios em post de alto risco ja analisado."""
+    if not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER:
+        return
+    log(f"  Update coments: @{post.get('autor','')} +{delta_coments} comentarios")
+    msg = f"""🔔 *NOVOS COMENTARIOS - Radar Politico Alagoinhas*
+
+Perfil: @{post.get("autor","")} ({post.get("categoria","")})
+{post.get("url","")}
+
++{delta_coments} novos comentarios desde ultima analise
+Score de Risco: {post.get("score_risco", 0)}/100
+
+Comentario destaque:
+"{post.get("comentarios_destaque", "")}"
+
+Sugestao de acao: {post.get("sugestao_acao", "")}
+
+_Mensagem automatica do AGORA_"""
+    try:
+        r = requests.post(
+            f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE','radar')}",
+            headers={"Content-Type": "application/json", "apikey": EVOLUTION_KEY},
+            json={"number": WHATSAPP_NUMBER, "text": msg},
+            timeout=15
+        )
+        if r.status_code in (200, 201):
+            log(f"    Update enviado")
+        else:
+            log(f"    Erro update: {r.status_code}")
+    except Exception as e:
+        log(f"    Erro ao enviar update: {e}")
+
+
+# ==============================================================
 # PIPELINE PRINCIPAL
 # ==============================================================
 
@@ -1925,6 +1963,18 @@ def main():
     log("  Conectando ao Google Sheets...")
     planilha = conectar_sheets()
     log(f"  Conectado: {planilha.title}")
+
+    # Carrega URLs ja analisados com contagem de comentarios (para filtrar alertas repetidos)
+    existentes_radar = {}  # url -> total_coments gravados
+    try:
+        aba_r = garantir_aba(planilha, "Radar", CABECALHO_RADAR)
+        for r in aba_r.get_all_records():
+            u = r.get("url", "")
+            if u:
+                existentes_radar[u] = int(r.get("comentarios_total", 0) or 0)
+        log(f"  {len(existentes_radar)} posts ja analisados carregados")
+    except Exception as e:
+        log(f"  Aviso: nao foi possivel carregar existentes ({e})")
 
     posts = coletar_posts()
     if not posts:
@@ -1942,7 +1992,18 @@ def main():
     gravar_influencers(posts_analisados, comentarios_por_post)   # ranking de influenciadores
     gravar_narratives(posts_analisados, comentarios_por_post)    # narrativas (tema + sentimento)
     gravar_daily_themes(posts_analisados)                        # tendencias por tema (Fase 3e)
-    alertas = disparar_alertas(posts_analisados)
+    # Apenas posts NOVOS recebem alerta; posts existentes com muitos novos comentarios recebem update
+    posts_novos = [p for p in posts_analisados if p.get("url") not in existentes_radar]
+    posts_com_update = [
+        p for p in posts_analisados
+        if p.get("url") in existentes_radar
+        and p.get("score_risco", 0) >= SCORE_RISCO_ALERTA
+        and (p.get("total_coments", 0) - existentes_radar.get(p.get("url", ""), 0)) >= 5
+    ]
+    alertas = disparar_alertas(posts_novos)
+    for p in posts_com_update:
+        delta = p.get("total_coments", 0) - existentes_radar.get(p.get("url", ""), 0)
+        enviar_update_coments(p, delta)
     atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
 
     fim = datetime.now()
