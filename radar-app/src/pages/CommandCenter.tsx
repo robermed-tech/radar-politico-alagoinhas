@@ -217,7 +217,11 @@ export function CommandCenter() {
       {/* Gauges + KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div className="rounded-xl border border-line bg-bg-1 p-2">
-          <Gauge value={ind.iad} label="Aprovação Digital" color="#3B82F6" />
+          <Gauge
+            value={ind.iad}
+            label="Aprovação Digital"
+            color={ind.iad >= 60 ? "#22C55E" : ind.iad >= 40 ? "#EAB308" : "#EF4444"}
+          />
         </div>
         <div className="rounded-xl border border-line bg-bg-1 p-2">
           <Gauge value={ind.risco} label="Risco Político" color={nivelColor} />

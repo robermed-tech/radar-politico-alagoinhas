@@ -116,7 +116,7 @@ const PERIODOS = [
 export function ApprovalPage() {
   // Período em destaque — padrão 24h (leitura mais próxima do tempo real).
   // O seletor permite ampliar para 7d/30d quando a amostra de 24h for pequena.
-  const [dias, setDias] = useState<number>(1);
+  const [dias, setDias] = useState<number>(7);
   const periodoLabel = PERIODOS.find((p) => p.dias === dias)?.label ?? `${dias}d`;
   const ink = chartInk(useThemeStore((s) => s.theme));
 
@@ -259,8 +259,13 @@ export function ApprovalPage() {
 
       {/* Header com índice + KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {/* Gauge IAD — cor semafórica: verde ≥60, amarelo 40-59, vermelho <40 */}
         <div className="rounded-xl border border-line bg-bg-1 p-2">
-          <Gauge value={view.iad} label="IAD (Aprovação)" color="#3B82F6" />
+          <Gauge
+            value={view.iad}
+            label="IAD (Aprovação)"
+            color={view.iad >= 60 ? "#22C55E" : view.iad >= 40 ? "#EAB308" : "#EF4444"}
+          />
         </div>
         <KpiStat
           label="Confiança"
@@ -268,11 +273,41 @@ export function ApprovalPage() {
           sub={view.ica < 40 ? "⚠ amostra insuficiente" : "amostra confiável"}
         />
         <KpiStat label="Comentários" value={fmtInt(view.coments)} sub={`${view.posts} posts (${periodoLabel})`} />
-        <KpiStat
-          label="Aprova / Reprova"
-          value={`${view.pctPos}% / ${view.pctNeg}%`}
-          sub={`${view.pctNeu}% neutro`}
-        />
+        {/* Donut verde/vermelho — aprovação vs reprovação */}
+        <div className="rounded-xl border border-line bg-bg-1 p-3">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">
+            Aprova / Reprova
+          </div>
+          <ReactECharts
+            option={{
+              tooltip: { show: false },
+              series: [{
+                type: "pie",
+                radius: ["52%", "78%"],
+                center: ["50%", "52%"],
+                label: { show: false },
+                labelLine: { show: false },
+                data: [
+                  { value: view.pctPos, itemStyle: { color: "#22C55E" } },
+                  { value: view.pctNeu, itemStyle: { color: "#5F6E8C" } },
+                  { value: view.pctNeg, itemStyle: { color: "#EF4444" } },
+                ],
+              }],
+            }}
+            style={{ height: 90 }}
+            notMerge
+          />
+          <div className="flex justify-around text-[11px] font-bold">
+            <span style={{ color: "#22C55E" }}>{view.pctPos}%</span>
+            <span className="text-txt-3">{view.pctNeu}%</span>
+            <span style={{ color: "#EF4444" }}>{view.pctNeg}%</span>
+          </div>
+          <div className="flex justify-around text-[9px] text-txt-3 mt-0.5">
+            <span>Aprova</span>
+            <span>Neutro</span>
+            <span>Reprova</span>
+          </div>
+        </div>
       </div>
 
       {/* Histórico */}
