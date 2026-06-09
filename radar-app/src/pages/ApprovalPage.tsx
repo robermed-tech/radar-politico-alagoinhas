@@ -12,6 +12,7 @@ import {
 import { calcIAD, calcICA } from "@/lib/indices";
 import { Gauge } from "@/components/Gauge";
 import { KpiStat } from "@/components/KpiStat";
+import { AlertaCrise } from "@/components/AlertaCrise";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk } from "@/lib/chartTheme";
@@ -147,7 +148,8 @@ export function ApprovalPage() {
     // Drill-downs
     const porCategoria = agrupar(posts, (p) => p.categoria, 6);
     const porPerfil    = agrupar(posts, (p) => `@${p.autor}`, 8);
-    const porTema      = agrupar(posts, (p) => p.tema, 8);
+    // porTema ordenado por negatividade ↓ — tema mais crítico aparece no topo
+    const porTema      = agrupar(posts, (p) => p.tema, 8).sort((a, b) => b.pNeg - a.pNeg);
 
     // Drivers do IAD: % positivo geral
     const totalComents = posts.reduce((s, p) => s + (p.comentarios_total || 0), 0);
@@ -335,7 +337,18 @@ export function ApprovalPage() {
           </div>
         </div>
         <div className="rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-3 text-sm font-bold">Por tema</div>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="text-sm font-bold">Por tema <span className="text-[10px] font-normal text-txt-3">(+ crítico no topo)</span></div>
+            {/* Botão de alerta: aparece quando o tema mais crítico tem ≥ 35% negatividade */}
+            {view.porTema[0] && view.porTema[0].pNeg >= 35 && (
+              <AlertaCrise
+                tema={view.porTema[0].rotulo}
+                pNeg={view.porTema[0].pNeg}
+                posts={view.posts}
+                iad={view.iad}
+              />
+            )}
+          </div>
           <div className="space-y-2">
             {view.porTema.map((b) => (
               <Bucket key={b.rotulo} b={b} />

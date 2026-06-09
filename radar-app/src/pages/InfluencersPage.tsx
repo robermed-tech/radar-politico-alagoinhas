@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import ReactECharts from "echarts-for-react";
 import { fetchInfluencers, type Influencer } from "@/lib/data";
 import { fmtInt } from "@/lib/format";
+import { useThemeStore } from "@/stores/theme";
+import { chartInk } from "@/lib/chartTheme";
 
 type Filtro = "todos" | "perfil_monitorado" | "cidadao";
 
@@ -102,6 +105,7 @@ function Row({ inf, maxScore }: { inf: Influencer; maxScore: number }) {
 
 export function InfluencersPage() {
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  const ink = chartInk(useThemeStore((s) => s.theme));
   const { data, isLoading } = useQuery({
     queryKey: ["influencers"],
     queryFn: fetchInfluencers,
@@ -111,6 +115,63 @@ export function InfluencersPage() {
 
   if (isLoading) return <div className="p-8 text-txt-2">Carregando influenciadores…</div>;
   const lista = data ?? [];
+
+  // Gráfico horizontal de ranking — top 10 por score, colorido por alinhamento
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const rankingOption = useMemo(() => {
+    const filtrada = filtro === "todos" ? lista : lista.filter((i) => i.tipo === filtro);
+    const top10 = [...filtrada]
+      .sort((a, b) => b.influencia_score - a.influencia_score)
+      .slice(0, 10)
+      .reverse(); // ECharts horizontal bar: último item aparece no topo
+    return {
+      grid: { left: 90, right: 56, top: 8, bottom: 24 },
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        backgroundColor: ink.tooltipBg,
+        borderColor: ink.tooltipBorder,
+        textStyle: { color: ink.tooltipText },
+        formatter: (params: { name: string; value: number }[]) => {
+          const p = params[0];
+          return `@${p.name}<br/><b>${p.value}</b> pts`;
+        },
+      },
+      xAxis: {
+        type: "value",
+        axisLabel: { color: ink.axis, fontSize: 10 },
+        splitLine: { lineStyle: { color: ink.grid } },
+      },
+      yAxis: {
+        type: "category",
+        data: top10.map((i) => i.handle),
+        axisLabel: {
+          color: ink.axis,
+          fontSize: 11,
+          formatter: (v: string) => `@${v}`,
+        },
+        axisLine: { lineStyle: { color: ink.axisLine } },
+      },
+      series: [
+        {
+          type: "bar",
+          barMaxWidth: 18,
+          data: top10.map((i) => ({
+            value: Math.round(i.influencia_score),
+            itemStyle: { color: ALIN_COR[i.alinhamento] || "#9FB0CC", borderRadius: [0, 4, 4, 0] },
+          })),
+          label: {
+            show: true,
+            position: "right",
+            color: ink.axis,
+            fontSize: 11,
+            formatter: "{c}",
+          },
+        },
+      ],
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lista, filtro, ink]);
 
   if (lista.length === 0)
     return (
@@ -194,7 +255,22 @@ export function InfluencersPage() {
         ))}
       </div>
 
-      {/* Lista */}
+      {/* Mapa de ranking — visão comparativa rápida */}
+      <div className="rounded-xl border border-line bg-bg-1 p-4">
+        <div className="mb-1 text-sm font-bold">
+          Mapa de Influência
+          <span className="ml-2 text-[10px] font-normal text-txt-3">
+            top 10 por score · verde=aliado · vermelho=opositor · amarelo=neutro · azul=cidadão
+          </span>
+        </div>
+        <ReactECharts
+          option={rankingOption}
+          style={{ height: Math.max(160, Math.min(filtrada.length, 10) * 34 + 32) }}
+          notMerge
+        />
+      </div>
+
+      {/* Lista detalhada */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filtrada.map((inf, i) => (
           <Row key={`${inf.tipo}-${inf.handle}-${i}`} inf={inf} maxScore={maxScore} />

@@ -12,6 +12,7 @@ import {
 import { calcIndices, NIVEL_COLOR, NIVEL_LABEL } from "@/lib/indices";
 import { Gauge } from "@/components/Gauge";
 import { KpiStat } from "@/components/KpiStat";
+import { AlertaCrise } from "@/components/AlertaCrise";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk } from "@/lib/chartTheme";
@@ -100,6 +101,25 @@ export function CommandCenter() {
     const ind = calcIndices(posts, negVelocity);
     return { posts, serie, ind, negVelocity };
   }, [data, dias]);
+
+  /** Tema com maior negatividade no período — para o botão de alerta */
+  const temaCrise = useMemo(() => {
+    if (!view || view.posts.length === 0) return null;
+    const map: Record<string, { neg: number; tot: number }> = {};
+    for (const p of view.posts) {
+      const t = p.tema || "";
+      if (!t || t === "—") continue;
+      map[t] ??= { neg: 0, tot: 0 };
+      map[t].neg += (p.comentarios_pct_neg || 0) / 100;
+      map[t].tot += 1;
+    }
+    let best: { tema: string; pNeg: number } | null = null;
+    for (const [tema, v] of Object.entries(map)) {
+      const pNeg = v.tot > 0 ? Math.round((v.neg / v.tot) * 100) : 0;
+      if (!best || pNeg > best.pNeg) best = { tema, pNeg };
+    }
+    return best && best.pNeg >= 35 ? best : null;
+  }, [view]);
 
   // ConfigUrl só aparece se NÃO houver fonte alguma (nem Postgres nem Sheets)
   if ((error as Error | undefined)?.message === "NO_URL")
@@ -190,7 +210,7 @@ export function CommandCenter() {
             </span>
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div
             className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-bold"
             style={{ borderColor: nivelColor, color: nivelColor }}
@@ -198,6 +218,15 @@ export function CommandCenter() {
             <span className="h-2 w-2 rounded-full" style={{ background: nivelColor }} />
             Crise: {NIVEL_LABEL[ind.nivel]}
           </div>
+          {/* Botão de alerta aparece quando crise é alta e há tema identificado */}
+          {(ind.nivel === "alto" || ind.nivel === "critico") && temaCrise && (
+            <AlertaCrise
+              tema={temaCrise.tema}
+              pNeg={temaCrise.pNeg}
+              posts={ind.volumePosts}
+              iad={ind.iad}
+            />
+          )}
           <div className="flex rounded-lg border border-line bg-bg-1 p-1">
             {PERIODOS.map((p) => (
               <button
