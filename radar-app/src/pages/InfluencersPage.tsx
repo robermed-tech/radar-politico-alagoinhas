@@ -113,13 +113,13 @@ export function InfluencersPage() {
     refetchInterval: 15 * 60 * 1000,
   });
 
-  if (isLoading) return <div className="p-8 text-txt-2">Carregando influenciadores…</div>;
+  // Todos os hooks ANTES de qualquer return condicional (Rules of Hooks)
   const lista = data ?? [];
+  const filtrada = filtro === "todos" ? lista : lista.filter((i) => i.tipo === filtro);
+  const maxScore = Math.max(...filtrada.map((i) => i.influencia_score), 1);
 
   // Gráfico horizontal de ranking — top 10 por score, colorido por alinhamento
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const rankingOption = useMemo(() => {
-    const filtrada = filtro === "todos" ? lista : lista.filter((i) => i.tipo === filtro);
     const top10 = [...filtrada]
       .sort((a, b) => b.influencia_score - a.influencia_score)
       .slice(0, 10)
@@ -170,8 +170,10 @@ export function InfluencersPage() {
         },
       ],
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lista, filtro, ink]);
+  }, [filtrada, ink]);
+
+  // Early returns depois de todos os hooks
+  if (isLoading) return <div className="p-8 text-txt-2">Carregando influenciadores…</div>;
 
   if (lista.length === 0)
     return (
@@ -183,10 +185,6 @@ export function InfluencersPage() {
         </div>
       </div>
     );
-
-  const filtrada =
-    filtro === "todos" ? lista : lista.filter((i) => i.tipo === filtro);
-  const maxScore = Math.max(...filtrada.map((i) => i.influencia_score), 1);
 
   const perfis = lista.filter((i) => i.tipo === "perfil_monitorado");
   const aliados = perfis.filter((i) => i.alinhamento === "aliado").length;
