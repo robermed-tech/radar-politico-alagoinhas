@@ -81,6 +81,14 @@ KEYWORDS_IMPRENSA = ["prefeitura de alagoinhas", "gustavo carmo", "gestao munici
 SCORE_IMAGEM_ALERTA = 30
 SCORE_RISCO_ALERTA  = 70
 
+# Override SCCT criterioso — alerta crises intencionais de alta responsabilidade
+# mesmo quando o score nao atinge 70 (posts de oposicao eficazes ficam em ~62).
+# Ajuste estes 4 valores para calibrar (veja GUIA_CALIBRACAO_ALERTAS.md):
+OVERRIDE_ALERTA_ATIVO         = True   # False volta ao comportamento antigo
+OVERRIDE_RESPONSABILIDADE_MIN = 70     # responsabilidade_atribuida minima
+OVERRIDE_SCORE_MIN            = 55     # piso de score (abaixo disso, ignora)
+OVERRIDE_EXIGE_TRACAO         = True   # exige tendencia crescendo OU engajamento alto
+
 # Limites de coleta
 MAX_POSTS_POR_PERFIL    = 5
 MAX_COMENTARIOS_POR_POST = 50
@@ -559,6 +567,9 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
   "urgencia": "<alta|media|baixa>",
   "sugestao_acao": "<acao concreta: monitorar|responder publicamente|acionar assessoria|conter crise|ampliar positivo>",
   "janela_acao": "<imediato|24h|esta semana>",
+  "cluster_crise": "<vitima|acidental|intencional|nenhum — tipo de crise: vitima=gestao sofre ataque/boato; acidental=erro nao-intencional; intencional=descaso/negligencia percebida; nenhum=sem crise>",
+  "responsabilidade_atribuida": <numero 0-100, quanto o publico culpa o prefeito Gustavo por esta situacao>,
+  "confianca": <numero 0-100, sua confianca nesta classificacao — baixe se texto for ambiguo, ironico ou faltar contexto>,
   "sentimentos_comentarios": [
     /* array com o sentimento de CADA comentario de cidadao listado acima, na MESMA ORDEM dos indices [0], [1], [2]...
        Use apenas: "positivo" | "negativo" | "neutro".
@@ -613,6 +624,16 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
             post_enriquecido = {**post, **analise}
             post_enriquecido["total_cidadaos"]  = len([c for c in comentarios if c["tipo"] == "cidadao"])
             post_enriquecido["total_politicos"] = len([c for c in comentarios if c["tipo"] == "politico"])
+
+            # Camada SCCT: abordagem deterministica + pre-calcula motivo de alerta
+            _rec = recomendar_abordagem(analise.get("cluster_crise", "nenhum"))
+            post_enriquecido["abordagem_recomendada"] = _rec["abordagem"]
+            post_enriquecido["por_que_funciona"]      = _rec["por_que"]
+            _sc = int(analise.get("score_risco", 0) or 0)
+            if deve_disparar_alerta(_sc, post_enriquecido):
+                post_enriquecido["motivo_alerta"] = motivo_do_alerta(_sc, post_enriquecido)
+            else:
+                post_enriquecido["motivo_alerta"] = ""
             resultado.append(post_enriquecido)
 
             # Aplica sentimento individual em cada comentario cidadao (top 20 analisados).
@@ -649,7 +670,9 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
                               "comentarios_pct_pos": 0, "comentarios_pct_neg": 0,
                               "comentarios_destaque": "", "comentarios_destaque_curtidas": 0, "comentarios_destaque_autor": "",
                               "urgencia": "baixa", "tema": "",
-                              "sentimento_post": "neutro", "sentimento_comentarios": "neutro"})
+                              "sentimento_post": "neutro", "sentimento_comentarios": "neutro",
+                              "cluster_crise": "nenhum", "responsabilidade_atribuida": 0, "confianca": 0,
+                              "abordagem_recomendada": "", "por_que_funciona": "", "motivo_alerta": ""})
         except Exception as e:
             log(f"    Erro AGORA: {e}")
             resultado.append({**post, "score_imagem": 50, "score_risco": 0,
@@ -658,12 +681,74 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
                               "comentarios_pct_pos": 0, "comentarios_pct_neg": 0,
                               "comentarios_destaque": "", "comentarios_destaque_curtidas": 0, "comentarios_destaque_autor": "",
                               "urgencia": "baixa", "tema": "",
-                              "sentimento_post": "neutro", "sentimento_comentarios": "neutro"})
+                              "sentimento_post": "neutro", "sentimento_comentarios": "neutro",
+                              "cluster_crise": "nenhum", "responsabilidade_atribuida": 0, "confianca": 0,
+                              "abordagem_recomendada": "", "por_que_funciona": "", "motivo_alerta": ""})
 
         time.sleep(1)
 
     log(f"  {len(resultado)} posts analisados pelo AGORA")
     return resultado
+
+# ==============================================================
+# MODULO SCCT - RECOMENDACAO DE ABORDAGEM E OVERRIDE DE ALERTA
+# ==============================================================
+# Baseado em: SCCT (Coombs) + Image Repair Theory (Benoit).
+# A ABORDAGEM (qual estrategia) e deterministica — depende so do cluster,
+# nao do humor do modelo. O Claude preenche o cluster; a regra fixa recomenda.
+
+ABORDAGEM_POR_CLUSTER = {
+    "vitima": {
+        "abordagem": "Esclarecer com evidencia factual (negacao factual + acao corretiva)",
+        "por_que": "A gestao e vitima do episodio. Confrontar rapido com fato funciona melhor que o silencio — boato nao confrontado vira verdade percebida.",
+    },
+    "acidental": {
+        "abordagem": "Corrigir e contextualizar (acao corretiva + reducao da ofensa)",
+        "por_que": "Erro nao-intencional. Mostrar a correcao e o contexto preserva mais a imagem do que negar — negar soa como arrogancia.",
+    },
+    "intencional": {
+        "abordagem": "Reconhecer e apresentar plano (mortificacao + acao corretiva)",
+        "por_que": "O publico atribui alta responsabilidade. Reconhecer e mostrar plano reduz o dano; negar ou minimizar amplia a crise.",
+    },
+    "nenhum": {
+        "abordagem": "Nenhuma acao reativa — monitorar",
+        "por_que": "Conteudo neutro/positivo. Se for positivo relevante, vale amplificar nos canais proprios.",
+    },
+}
+
+def recomendar_abordagem(cluster: str) -> dict:
+    """Retorna {abordagem, por_que} pelo cluster SCCT. Regra fixa e auditavel."""
+    return ABORDAGEM_POR_CLUSTER.get((cluster or "nenhum").lower(), ABORDAGEM_POR_CLUSTER["nenhum"])
+
+def deve_disparar_alerta(score_risco: int, post: dict) -> bool:
+    """Decide se o post dispara alerta no WhatsApp (score ou override SCCT)."""
+    if score_risco >= SCORE_RISCO_ALERTA:
+        return True
+    if not OVERRIDE_ALERTA_ATIVO:
+        return False
+    if post.get("cluster_crise") != "intencional":
+        return False
+    if (post.get("responsabilidade_atribuida") or 0) < OVERRIDE_RESPONSABILIDADE_MIN:
+        return False
+    if score_risco < OVERRIDE_SCORE_MIN:
+        return False
+    if OVERRIDE_EXIGE_TRACAO:
+        crescendo  = post.get("tendencia", "") == "crescendo"
+        engaj_alto = (int(post.get("curtidas", 0) or 0) > 300
+                      or int(post.get("total_coments", 0) or 0) > 100)
+        if not crescendo and not engaj_alto:
+            return False
+    return True
+
+def motivo_do_alerta(score_risco: int, post: dict) -> str:
+    """Explica em texto por que o post disparou alerta (Sheets + WhatsApp)."""
+    if score_risco >= SCORE_RISCO_ALERTA:
+        return f"Score risco {score_risco} >= {SCORE_RISCO_ALERTA}"
+    tracao = "tendencia em alta" if post.get("tendencia") == "crescendo" else "engajamento alto"
+    return (f"Override SCCT — crise {post.get('cluster_crise', '')}, "
+            f"responsabilidade {post.get('responsabilidade_atribuida', '?')}/100, "
+            f"{tracao} (score {score_risco})")
+
 
 # ==============================================================
 # MODULO 5 - GRAVACAO NO SHEETS
@@ -679,7 +764,10 @@ CABECALHO_RADAR = [
     "comentarios_destaque", "comentarios_destaque_curtidas", "comentarios_destaque_autor", "resumo",
     "padrao_detectado", "tema", "atribuicao", "tendencia",
     "urgencia", "sugestao_acao", "janela_acao",
-    "caption", "atualizado_em"
+    "caption", "atualizado_em",
+    # camada de inteligencia SCCT (Coombs / Benoit)
+    "cluster_crise", "responsabilidade_atribuida", "confianca",
+    "abordagem_recomendada", "por_que_funciona", "motivo_alerta",
 ]
 
 CABECALHO_COMENTARIOS = [
@@ -730,6 +818,10 @@ def gravar_no_sheets(planilha, posts_analisados, comentarios_por_post):
             p.get("urgencia", "baixa"),
             p.get("sugestao_acao", ""), p.get("janela_acao", ""),
             p.get("caption", "")[:200], agora,
+            # SCCT
+            p.get("cluster_crise", "nenhum"), p.get("responsabilidade_atribuida", 0),
+            p.get("confianca", 0), p.get("abordagem_recomendada", ""),
+            p.get("por_que_funciona", ""), p.get("motivo_alerta", ""),
         ]
         aba_radar.append_row(linha, value_input_option="RAW")
         existentes.add(p["url"])
@@ -1871,6 +1963,11 @@ Comentario destaque:
 Sugestao de acao:
 {post.get("sugestao_acao", "")}
 
+Abordagem recomendada (SCCT):
+{post.get("abordagem_recomendada", "") or "—"}
+
+Por que alertou: {post.get("motivo_alerta", "") or f"Score imagem {post.get('score_imagem',0)} / risco {post.get('score_risco',0)}"}
+
 Janela: {post.get("janela_acao", "")}
 
 _Mensagem automatica do AGORA_"""
@@ -1886,8 +1983,13 @@ def disparar_alertas(posts_analisados):
     for post in posts_analisados:
         score_img   = post.get("score_imagem", 50)
         score_risco = post.get("score_risco", 0)
-        if score_img > SCORE_IMAGEM_ALERTA and score_risco < SCORE_RISCO_ALERTA:
+        dispara_por_imagem = score_img <= SCORE_IMAGEM_ALERTA
+        dispara_por_risco  = deve_disparar_alerta(score_risco, post)
+        if not dispara_por_imagem and not dispara_por_risco:
             continue
+        # Garante que o motivo_alerta esta preenchido (calculado em analisar_com_agora)
+        if not post.get("motivo_alerta") and dispara_por_risco:
+            post["motivo_alerta"] = motivo_do_alerta(score_risco, post)
 
         log(f"  Alerta: @{post['autor']} | Imagem: {score_img} | Risco: {score_risco}")
         mensagem = formatar_mensagem_alerta(post)
