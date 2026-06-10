@@ -1,6 +1,6 @@
 import ReactECharts from "echarts-for-react";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk } from "@/lib/chartTheme";
+import { chartInk, withAlpha } from "@/lib/chartTheme";
 
 interface GaugeProps {
   value: number; // 0-100
@@ -21,7 +21,7 @@ export function Gauge({ value, label, color = "#2563EB", suffix = "" }: GaugePro
         endAngle: -30,
         min: 0,
         max: 100,
-        progress: { show: true, width: 10, roundCap: true, itemStyle: { color } },
+        progress: { show: true, width: 10, roundCap: true, itemStyle: { color, shadowBlur: 14, shadowColor: withAlpha(color, 0.5) } },
         axisLine: { lineStyle: { width: 10, color: [[1, ink.track]] } },
         pointer: { show: false },
         axisTick: { show: false },

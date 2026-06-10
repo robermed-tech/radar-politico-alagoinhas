@@ -4,7 +4,7 @@ import ReactECharts from "echarts-for-react";
 import { fetchDailyThemes, type DailyTheme } from "@/lib/data";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk } from "@/lib/chartTheme";
+import { chartInk, glassBar } from "@/lib/chartTheme";
 
 type Metrica = "volume" | "pct_neg" | "pct_pos" | "score_risco";
 
@@ -109,86 +109,54 @@ export function TrendsPage() {
       </div>
     );
 
-  const { stats, topIndiv, outrosSerie, outrosTotal, outrosTemas, outrosTemasSet, dias, metr } = view;
+  const { stats, outrosTemasSet, metr } = view;
 
-  // Mapa de calor (tema × dia) — leitura muito mais clara que o "espaguete" de
-  // linhas sobrepostas. Linhas = temas (mais relevante no topo), colunas = dias,
-  // cor = intensidade da métrica. Cada célula é independente e legível.
-  const heatThemes = [
-    ...(outrosTotal > 0 ? [{ name: "Outros", serie: outrosSerie }] : []),
-    ...[...topIndiv].reverse().map((s) => ({ name: s.tema, serie: s.serie })),
-  ];
-  const heatData: [number, number, number][] = [];
-  heatThemes.forEach((row, yi) => {
-    row.serie.forEach((v, xi) => heatData.push([xi, yi, Math.round(v)]));
-  });
-  const isPct = metrica.startsWith("pct") || metrica === "score_risco";
-  const maxVal = isPct ? 100 : Math.max(1, ...heatData.map((d) => d[2]));
-  // Escala de cor com semântica (verde = bom · vermelho = ruim · azul = volume)
-  const heatColors =
-    metrica === "pct_pos"
-      ? ["#1F2937", "#7F1D1D", "#B45309", "#15803D", "#22C55E"] // baixo→alto: ruim→bom
-      : metrica === "pct_neg" || metrica === "score_risco"
-        ? ["#1F2937", "#15803D", "#B45309", "#7F1D1D", "#EF4444"] // baixo→alto: bom→ruim
-        : ["#0B2447", "#1E40AF", "#2563EB", "#3B82F6", "#60A5FA"]; // volume: sequencial azul
-  const showLabels = dias.length <= 16;
+  // Barra divergente de variação: cada tema vira uma barra cuja cor mostra o
+  // sentido da tendência (verde sobe · vermelho cai · cinza estável). Responde
+  // direto "quem sobe / quem cai?" — bem mais legível que o mapa de calor.
+  const movers = [...stats]
+    .sort((a, b) => Math.abs(b.s) - Math.abs(a.s))
+    .slice(0, 12)
+    .sort((a, b) => a.s - b.s); // horizontal: mais negativo embaixo, positivo no topo
+  const corSlope = (s: number) =>
+    s > 0.1 ? "#22C55E" : s < -0.1 ? "#EF4444" : "#9FB0CC";
 
   const option = {
-    grid: { left: 104, right: 20, top: 12, bottom: 64 },
+    grid: { left: 120, right: 48, top: 10, bottom: 28 },
     tooltip: {
-      position: "top",
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
       backgroundColor: ink.tooltipBg,
       borderColor: ink.tooltipBorder,
       textStyle: { color: ink.tooltipText },
-      formatter: (p: any) => {
-        const tema = heatThemes[p.value[1]]?.name ?? "";
-        const dia = dias[p.value[0]] ?? "";
-        const extra =
-          tema === "Outros" && outrosTemas.length > 0
-            ? `<br/><span style="opacity:.7">(${outrosTemas.join(", ")})</span>`
-            : "";
-        return `<b>${tema}</b>${extra}<br/>${dia.slice(5)}: <b>${p.value[2]}</b>`;
+      formatter: (ps: any[]) => {
+        const v = Number(ps[0].value);
+        const dir = v > 0.1 ? "subindo" : v < -0.1 ? "caindo" : "estável";
+        return `<b>${ps[0].name}</b><br/>${dir}: ${v > 0 ? "+" : ""}${v.toFixed(1)}/dia`;
       },
     },
     xAxis: {
-      type: "category",
-      data: dias.map((d) => d.slice(5)),
-      splitArea: { show: true },
-      axisLine: { lineStyle: { color: ink.axisLine } },
-      axisLabel: { color: ink.axis, fontSize: 11 },
+      type: "value",
+      splitLine: { lineStyle: { color: ink.grid } },
+      axisLabel: { color: ink.axis, fontSize: 10 },
     },
     yAxis: {
       type: "category",
-      data: heatThemes.map((t) => t.name),
-      splitArea: { show: true },
+      data: movers.map((s) => s.tema),
       axisLine: { lineStyle: { color: ink.axisLine } },
       axisLabel: { color: ink.axis, fontSize: 11 },
     },
-    visualMap: {
-      min: 0,
-      max: maxVal,
-      calculable: true,
-      orient: "horizontal",
-      left: "center",
-      bottom: 4,
-      itemWidth: 14,
-      itemHeight: 160,
-      textStyle: { color: ink.axis, fontSize: 10 },
-      inRange: { color: heatColors },
-    },
     series: [
       {
-        type: "heatmap",
-        data: heatData,
-        label: {
-          show: showLabels,
-          color: "#E5E7EB",
-          fontSize: 10,
-          fontWeight: "bold" as const,
-          formatter: (p: any) => (p.value[2] ? p.value[2] : ""),
-        },
-        itemStyle: { borderColor: ink.tooltipBg, borderWidth: 2, borderRadius: 3 },
-        emphasis: { itemStyle: { shadowBlur: 10, shadowColor: "rgba(0,0,0,0.45)" } },
+        type: "bar",
+        barMaxWidth: 16,
+        data: movers.map((s) => ({
+          value: Number(s.s.toFixed(2)),
+          itemStyle: glassBar(corSlope(s.s), {
+            horizontal: true,
+            radius: s.s < 0 ? [6, 0, 0, 6] : [0, 6, 6, 0],
+          }),
+        })),
       },
     ],
   };
@@ -287,21 +255,17 @@ export function TrendsPage() {
         </div>
       </div>
 
-      {/* Mapa de calor tema × dia */}
+      {/* Variação por tema (barra divergente) */}
       <div className="rounded-xl border border-line bg-bg-1 p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="text-sm font-bold">{metr.label} · mapa de calor por tema (janela {janela}d)</div>
+          <div className="text-sm font-bold">{metr.label} · variação por tema (janela {janela}d)</div>
           <div className="text-[10px] text-txt-3">
-            {metrica === "volume"
-              ? "azul mais claro = maior volume de posts"
-              : metrica === "pct_pos"
-                ? "verde = mais positivo · cinza = sem dados"
-                : "vermelho = mais crítico · verde = saudável"}
+            verde = subindo · vermelho = caindo · cinza = estável
           </div>
         </div>
         <ReactECharts
           option={option}
-          style={{ height: Math.max(220, heatThemes.length * 34 + 110) }}
+          style={{ height: Math.max(220, movers.length * 30 + 60) }}
           notMerge
         />
       </div>

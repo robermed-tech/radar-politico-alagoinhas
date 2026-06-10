@@ -3,7 +3,7 @@ import ReactECharts from "echarts-for-react";
 import { fetchDailyMetrics, fetchCrisisPlans, type CrisisPlan } from "@/lib/data";
 import { NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk, violetLine } from "@/lib/chartTheme";
+import { chartInk, violetLine, glassArea, glowLine } from "@/lib/chartTheme";
 
 const NIVEIS: NivelCrise[] = ["baixo", "moderado", "alto", "critico"];
 
@@ -172,8 +172,8 @@ export function CrisisCenter() {
         smooth: true,
         symbol: "circle",
         symbolSize: 6,
-        lineStyle: { width: 3 },
-        areaStyle: { opacity: 0.1 },
+        lineStyle: { width: 3, shadowBlur: 8, shadowColor: "rgba(0,0,0,0.25)" },
+        areaStyle: { opacity: 0.18 },
         data: serie.map((s) => s.risco),
         markLine: {
           silent: true,
@@ -197,8 +197,8 @@ export function CrisisCenter() {
     },
     yAxis: { type: "value", min: 0, max: 100, splitLine: { lineStyle: { color: ink.grid } }, axisLabel: { color: ink.axis } },
     series: [
-      { name: "IAD", type: "line", smooth: true, lineStyle: { width: 3 }, data: serie.map((s) => s.iad), itemStyle: { color: "#2563EB" } },
-      { name: "ICA", type: "line", smooth: true, lineStyle: { width: 3 }, data: serie.map((s) => s.ica), itemStyle: { color: violetLine(theme) } },
+      { name: "IAD", type: "line", smooth: true, lineStyle: glowLine("#2563EB"), areaStyle: glassArea("#2563EB"), data: serie.map((s) => s.iad), itemStyle: { color: "#2563EB" } },
+      { name: "ICA", type: "line", smooth: true, lineStyle: glowLine(violetLine(theme)), areaStyle: glassArea(violetLine(theme)), data: serie.map((s) => s.ica), itemStyle: { color: violetLine(theme) } },
     ],
   };
 

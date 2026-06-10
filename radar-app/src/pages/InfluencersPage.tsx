@@ -4,7 +4,7 @@ import ReactECharts from "echarts-for-react";
 import { fetchInfluencers, type Influencer } from "@/lib/data";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk } from "@/lib/chartTheme";
+import { chartInk, glassBar } from "@/lib/chartTheme";
 
 type Filtro = "todos" | "perfil_monitorado" | "cidadao";
 
@@ -158,7 +158,7 @@ export function InfluencersPage() {
           barMaxWidth: 18,
           data: top10.map((i) => ({
             value: Math.round(i.influencia_score),
-            itemStyle: { color: ALIN_COR[i.alinhamento] || "#9FB0CC", borderRadius: [0, 4, 4, 0] },
+            itemStyle: glassBar(ALIN_COR[i.alinhamento] || "#9FB0CC", { horizontal: true, radius: [0, 4, 4, 0] }),
           })),
           label: {
             show: true,

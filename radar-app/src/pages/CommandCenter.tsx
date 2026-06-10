@@ -15,7 +15,7 @@ import { KpiStat } from "@/components/KpiStat";
 import { AlertaCrise } from "@/components/AlertaCrise";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk } from "@/lib/chartTheme";
+import { chartInk, glassBar } from "@/lib/chartTheme";
 
 const PERIODOS = [
   { dias: 1, label: "24h" },
@@ -163,11 +163,20 @@ export function CommandCenter() {
   const { ind, serie } = view;
   const nivelColor = NIVEL_COLOR[ind.nivel];
 
+  // Barra divergente de sentimento: positivos sobem (verde), negativos descem
+  // (vermelho), a partir do zero — net sentiment. Muito mais legível que a
+  // empilhada, onde só o segmento de baixo partia do zero.
   const timelineOption = {
     grid: { left: 36, right: 12, top: 24, bottom: 28 },
-    tooltip: { trigger: "axis", backgroundColor: ink.tooltipBg, borderColor: ink.tooltipBorder, textStyle: { color: ink.tooltipText } },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: ink.tooltipBg,
+      borderColor: ink.tooltipBorder,
+      textStyle: { color: ink.tooltipText },
+      valueFormatter: (v: number) => `${Math.abs(Number(v))}`,
+    },
     legend: {
-      data: ["Positivos", "Negativos", "Neutros"],
+      data: ["Positivos", "Negativos"],
       textStyle: { color: ink.axis },
       top: 0,
       right: 0,
@@ -181,12 +190,11 @@ export function CommandCenter() {
     yAxis: {
       type: "value",
       splitLine: { lineStyle: { color: ink.grid } },
-      axisLabel: { color: ink.axis },
+      axisLabel: { color: ink.axis, formatter: (v: number) => `${Math.abs(v)}` },
     },
     series: [
-      { name: "Positivos", type: "bar", stack: "s", data: serie.map((s) => s.pos), itemStyle: { color: "#16A34A" } },
-      { name: "Negativos", type: "bar", stack: "s", data: serie.map((s) => s.neg), itemStyle: { color: "#DC2626" } },
-      { name: "Neutros", type: "bar", stack: "s", data: serie.map((s) => s.neu), itemStyle: { color: "#64748B" } },
+      { name: "Positivos", type: "bar", stack: "s", data: serie.map((s) => s.pos), itemStyle: glassBar("#16A34A") },
+      { name: "Negativos", type: "bar", stack: "s", data: serie.map((s) => -s.neg), itemStyle: glassBar("#DC2626", { radius: [2, 2, 6, 6] }) },
     ],
   };
 

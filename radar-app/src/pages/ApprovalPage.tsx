@@ -15,7 +15,7 @@ import { KpiStat } from "@/components/KpiStat";
 import { AlertaCrise } from "@/components/AlertaCrise";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk } from "@/lib/chartTheme";
+import { chartInk, glassArea, glowLine, glassGradient, withAlpha } from "@/lib/chartTheme";
 
 interface AprovBucket {
   rotulo: string;
@@ -254,8 +254,8 @@ export function ApprovalPage() {
           smooth: true,
           symbol: "circle",
           symbolSize: 5,
-          lineStyle: { width: 3, color: "#2563EB" },
-          areaStyle: { color: "rgba(37,99,235,0.15)" },
+          lineStyle: glowLine("#2563EB"),
+          areaStyle: glassArea("#2563EB"),
           data: serie.map((s) => s.iad),
         },
       ],
@@ -346,10 +346,11 @@ export function ApprovalPage() {
                   label: { show: false },
                   labelLine: { show: false },
                   silent: true,
+                  itemStyle: { borderRadius: 4, borderColor: withAlpha("#FFFFFF", 0.18), borderWidth: 1 },
                   data: [
-                    { value: view.pctPos, itemStyle: { color: "#22C55E" } },
-                    { value: view.pctNeu, itemStyle: { color: "#5F6E8C" } },
-                    { value: view.pctNeg, itemStyle: { color: "#EF4444" } },
+                    { value: view.pctPos, itemStyle: { color: glassGradient("#22C55E"), shadowBlur: 10, shadowColor: withAlpha("#22C55E", 0.45) } },
+                    { value: view.pctNeu, itemStyle: { color: glassGradient("#5F6E8C") } },
+                    { value: view.pctNeg, itemStyle: { color: glassGradient("#EF4444"), shadowBlur: 10, shadowColor: withAlpha("#EF4444", 0.45) } },
                   ],
                 }],
               }}

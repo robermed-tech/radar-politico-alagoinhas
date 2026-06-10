@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "-p", "3456", "."],
       "port": 3456
+    },
+    {
+      "name": "radar-app-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "radar-app", "run", "dev"],
+      "port": 5180
     }
   ]
 }
