@@ -1,0 +1,24 @@
+# Não subir código, credenciais e dados sensíveis
+*.py
+*.bat
+*.yml
+*.json
+.env
+.env.example
+.git
+.github
+.gitignore
+.claude
+.pytest_cache
+__pycache__
+clientes
+skills-lock.json
+service_account.json
+padrao_fonte.json
+apify_sample.json
+agora_resultado_gustavoascarmo.json
+RESEARCH.md
+CLAUDE.md
+*.docx
+*.jpg
+*.jsx

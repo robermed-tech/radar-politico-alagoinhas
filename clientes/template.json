@@ -1,0 +1,43 @@
+{
+  "nome": "Nome do Município/UF",
+  "nome_curto": "NomeCurto",
+  "estado": "UF",
+
+  "perfis": {
+    "username_prefeito":      "Prefeito",
+    "username_prefeitura":    "Prefeitura",
+    "username_secretaria":    "Governo",
+    "username_jornal1":       "Imprensa",
+    "username_jornal2":       "Imprensa",
+    "username_oposicao1":     "Oposição",
+    "username_oposicao2":     "Oposição"
+  },
+
+  "perfis_gestao": ["username_prefeito", "username_prefeitura"],
+
+  "keywords": [
+    "prefeitura", "nome_prefeito", "prefeito", "nome_cidade",
+    "municipio", "município", "secom", "secretar"
+  ],
+
+  "keywords_ancora": ["nome_cidade", "nome_prefeito"],
+
+  "keywords_gestao": [
+    "prefeitura", "prefeito", "nome_prefeito", "secom", "secretar",
+    "municipio", "município", "gestao", "gestão", "administracao",
+    "administração", "câmara", "camara", "vereador", "decreto",
+    "licitacao", "licitação", "obra municipal", "servidor"
+  ],
+
+  "keywords_contexto": [
+    "investimento", "investimentos", "obra", "obras", "infraestrutura",
+    "saúde", "saude", "educação", "educacao", "segurança", "seguranca",
+    "transporte", "saneamento", "habitação", "habitacao", "emprego",
+    "desenvolvimento", "recurso", "recursos", "verba", "verbas",
+    "governo", "estado", "federal", "convenio", "convênio",
+    "inauguração", "inauguracao", "entrega", "licitação", "licitacao",
+    "hospital", "escola", "creche", "posto de saúde", "ubs",
+    "pavimentação", "pavimentacao", "asfalto", "drenagem", "esgoto",
+    "iluminação", "iluminacao", "praça", "praca", "parque"
+  ]
+}

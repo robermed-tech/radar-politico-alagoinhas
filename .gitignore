@@ -1,3 +1,11 @@
 
 .env
 service_account.json
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Saídas de scraping / resultados
+agora_resultado_*.json
