@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from anthropic import Anthropic
 import gspread
 from google.oauth2.service_account import Credentials
+from boletim import gerar_boletim
 
 # ==============================================================
 # CONFIGURACAO
@@ -2056,6 +2057,106 @@ _Mensagem automatica do AGORA_"""
 # PIPELINE PRINCIPAL
 # ==============================================================
 
+# ==============================================================
+# MODULO BOLETIM - BOLETIM CLIMATICO (Radar Comando)
+# ==============================================================
+# Traduz risco/IAD/SCCT para a metafora climatica do dashboard.
+# Logica em boletim.py (puro, testavel); aqui so a coleta de dados
+# e a gravacao. Roda DEPOIS de gravar_daily_metrics (precisa do
+# risco de hoje ja persistido no historico).
+
+def _frentes_por_tema(posts_analisados):
+    """Agrupa posts por tema -> score = maior score_risco do tema."""
+    por_tema = {}
+    for p in posts_analisados:
+        tema = str(p.get("tema", "") or "").strip()
+        if not tema:
+            continue
+        sc = int(p.get("score_risco", 0) or 0)
+        atual = por_tema.setdefault(tema, {"score": 0, "crescendo": False})
+        atual["score"] = max(atual["score"], sc)
+        if str(p.get("tendencia", "")).lower() == "crescendo":
+            atual["crescendo"] = True
+    frentes = []
+    for tema, d in por_tema.items():
+        tend = "subindo" if d["crescendo"] else ("caindo" if d["score"] < 30 else "estavel")
+        frentes.append({"tema": tema, "score": float(d["score"]), "tendencia": tend})
+    return frentes
+
+def _origem_dominante(posts_analisados):
+    """Categoria com mais comentarios no dia -> origem das 'rajadas'."""
+    por_cat = {}
+    for p in posts_analisados:
+        cat = p.get("categoria", "Outros")
+        por_cat[cat] = por_cat.get(cat, 0) + int(p.get("total_coments", 0) or 0)
+    total = sum(por_cat.values()) or 1
+    cat, n = max(por_cat.items(), key=lambda kv: kv[1]) if por_cat else ("-", 0)
+    return cat, round(n / total * 100)
+
+def gravar_boletim_climatico(posts_analisados):
+    """Monta o boletim do dia e grava na tabela boletins (tenant, dia)."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+    log("=== MODULO BOLETIM - Boletim Climatico ===")
+
+    # Historico de 30 dias do daily_metrics (mais recente primeiro)
+    hist = _supabase_get(
+        "daily_metrics",
+        f"tenant=eq.{TENANT}&select=dia,risco,pct_neg,volume_coments&order=dia.desc&limit=30",
+    ) or []
+    if not hist:
+        log("  Sem historico em daily_metrics; boletim adiado.")
+        return
+    hist_asc = list(reversed(hist))
+
+    serie_7d = [float(r.get("risco", 0) or 0) for r in hist_asc[-7:]]
+    risco_hoje = serie_7d[-1]
+
+    # Termometro: pct_neg hoje vs ontem + media 30d
+    neg_hoje  = int(hist_asc[-1].get("pct_neg", 0) or 0)
+    neg_ontem = int(hist_asc[-2].get("pct_neg", 0) or 0) if len(hist_asc) >= 2 else neg_hoje
+    media_30d = round(sum(int(r.get("pct_neg", 0) or 0) for r in hist_asc) / len(hist_asc))
+    termometro = {"negativo_pct": neg_hoje, "delta_pp": neg_hoje - neg_ontem,
+                  "media_30d": media_30d}
+
+    # Rajadas: volume de comentarios hoje vs ontem + origem dominante
+    vol_hoje  = int(hist_asc[-1].get("volume_coments", 0) or 0)
+    vol_ontem = int(hist_asc[-2].get("volume_coments", 0) or 0) if len(hist_asc) >= 2 else vol_hoje
+    delta_pct = round((vol_hoje - vol_ontem) / vol_ontem * 100) if vol_ontem else 0
+    origem, origem_pct = _origem_dominante(posts_analisados)
+    rajadas = {"mencoes_24h": vol_hoje, "delta_pct": delta_pct,
+               "origem_dominante": origem, "origem_pct": origem_pct}
+
+    # Alerta ativo: post de maior risco que dispararia alerta (score ou override)
+    candidatos = [p for p in posts_analisados
+                  if deve_disparar_alerta(int(p.get("score_risco", 0) or 0), p)]
+    alerta_post = max(candidatos, key=lambda p: int(p.get("score_risco", 0) or 0)) \
+        if candidatos else None
+    if alerta_post and not alerta_post.get("motivo_alerta"):
+        alerta_post["motivo_alerta"] = motivo_do_alerta(
+            int(alerta_post.get("score_risco", 0) or 0), alerta_post)
+
+    boletim = gerar_boletim(
+        risco=risco_hoje,
+        serie_7d=serie_7d,
+        termometro=termometro,
+        rajadas=rajadas,
+        frentes=_frentes_por_tema(posts_analisados),
+        alerta_post=alerta_post,
+        override_resp_min=OVERRIDE_RESPONSABILIDADE_MIN,
+    )
+
+    dia = hist_asc[-1].get("dia") or datetime.now().strftime("%Y-%m-%d")
+    n = _supabase_upsert("boletins", [{
+        "tenant": TENANT,
+        "dia": dia,
+        "gerado_em": datetime.now().isoformat(),
+        "boletim": boletim,
+    }], "tenant,dia")
+    log(f"  Boletim gravado ({boletim['condicao']}, nivel={boletim['nivel_cor']}): {n} registro")
+
+
+
 def main():
     inicio = datetime.now()
     log("+======================================================+")
@@ -2089,6 +2190,7 @@ def main():
     novos_radar, novos_coments = gravar_no_sheets(planilha, posts_analisados, comentarios_por_post)
     gravar_no_supabase(posts_analisados, comentarios_por_post)  # dual-write (opcional)
     gravar_daily_metrics(posts_analisados)                       # historico de indices (Fase 3)
+    gravar_boletim_climatico(posts_analisados)                   # boletim climatico (Radar Comando)
     gerar_briefing_estrategico(posts_analisados)                 # assistente IA (Fase 3d)
     rodar_cacador_crises(posts_analisados, comentarios_por_post) # agente caçador de crises (Fase B)
     gravar_influencers(posts_analisados, comentarios_por_post)   # ranking de influenciadores
