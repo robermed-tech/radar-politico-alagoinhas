@@ -13,6 +13,7 @@ import { calcIndices, NIVEL_COLOR, NIVEL_LABEL } from "@/lib/indices";
 import { Gauge } from "@/components/Gauge";
 import { KpiStat } from "@/components/KpiStat";
 import { AlertaCrise } from "@/components/AlertaCrise";
+import { AvisoAmostra } from "@/components/AvisoAmostra";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
@@ -250,6 +251,9 @@ export function CommandCenter() {
           </div>
         </div>
       </div>
+
+      {/* Aviso de amostra fraca — antes de mostrar índices que podem enganar */}
+      <AvisoAmostra ica={ind.ica} posts={ind.volumePosts} />
 
       {/* Gauges + KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

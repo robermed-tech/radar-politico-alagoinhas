@@ -1,14 +1,16 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useQuery, useQueryClient, useIsFetching } from "@tanstack/react-query";
-import { CommandCenter } from "@/pages/CommandCenter";
-import { ClimaPage } from "@/pages/ClimaPage";
-import { CrisisCenter } from "@/pages/CrisisCenter";
-import { AssistantPage } from "@/pages/AssistantPage";
-import { InfluencersPage } from "@/pages/InfluencersPage";
-import { NarrativesPage } from "@/pages/NarrativesPage";
-import { TrendsPage } from "@/pages/TrendsPage";
-import { ApprovalPage } from "@/pages/ApprovalPage";
-import { GlossaryPage } from "@/pages/GlossaryPage";
+import { ClimaPage } from "@/pages/ClimaPage"; // landing eager (sem ECharts)
+// Demais páginas em lazy — cada uma vira um chunk separado (ECharts só carrega
+// quando a página que usa gráficos é aberta).
+const CommandCenter = lazy(() => import("@/pages/CommandCenter").then((m) => ({ default: m.CommandCenter })));
+const CrisisCenter = lazy(() => import("@/pages/CrisisCenter").then((m) => ({ default: m.CrisisCenter })));
+const AssistantPage = lazy(() => import("@/pages/AssistantPage").then((m) => ({ default: m.AssistantPage })));
+const InfluencersPage = lazy(() => import("@/pages/InfluencersPage").then((m) => ({ default: m.InfluencersPage })));
+const NarrativesPage = lazy(() => import("@/pages/NarrativesPage").then((m) => ({ default: m.NarrativesPage })));
+const TrendsPage = lazy(() => import("@/pages/TrendsPage").then((m) => ({ default: m.TrendsPage })));
+const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
+const GlossaryPage = lazy(() => import("@/pages/GlossaryPage").then((m) => ({ default: m.GlossaryPage })));
 import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
 import { calcIAD } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
@@ -196,15 +198,17 @@ export default function App() {
           <ThemeToggle compact />
         </div>
         <main className="flex-1 overflow-y-auto">
-          {page === "clima" && <ClimaPage />}
-          {page === "command" && <CommandCenter />}
-          {page === "crisis" && <CrisisCenter />}
-          {page === "assistant" && <AssistantPage />}
-          {page === "approval" && <ApprovalPage />}
-          {page === "trends" && <TrendsPage />}
-          {page === "influencers" && <InfluencersPage />}
-          {page === "narratives" && <NarrativesPage />}
-          {page === "glossary" && <GlossaryPage />}
+          <Suspense fallback={<div className="p-8 text-txt-2">Carregando…</div>}>
+            {page === "clima" && <ClimaPage />}
+            {page === "command" && <CommandCenter />}
+            {page === "crisis" && <CrisisCenter />}
+            {page === "assistant" && <AssistantPage />}
+            {page === "approval" && <ApprovalPage />}
+            {page === "trends" && <TrendsPage />}
+            {page === "influencers" && <InfluencersPage />}
+            {page === "narratives" && <NarrativesPage />}
+            {page === "glossary" && <GlossaryPage />}
+          </Suspense>
         </main>
       </div>
     </div>

@@ -13,6 +13,7 @@ import { calcIAD, calcICA } from "@/lib/indices";
 import { Gauge } from "@/components/Gauge";
 import { KpiStat } from "@/components/KpiStat";
 import { AlertaCrise } from "@/components/AlertaCrise";
+import { AvisoAmostra } from "@/components/AvisoAmostra";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassArea, glowLine, glassGradient, withAlpha } from "@/lib/chartTheme";
@@ -102,10 +103,28 @@ function BarraDivergente({ pPos, pNeg }: { pPos: number; pNeg: number }) {
   );
 }
 
-function Bucket({ b, mostrarLado }: { b: AprovBucket; mostrarLado?: boolean }) {
+function Bucket({
+  b,
+  mostrarLado,
+  onClick,
+  selecionado,
+}: {
+  b: AprovBucket;
+  mostrarLado?: boolean;
+  onClick?: () => void;
+  selecionado?: boolean;
+}) {
   const lado = mostrarLado ? classificaLado(b.cat || b.rotulo) : null;
   return (
-    <div className="rounded-lg border border-line bg-bg-2 p-3">
+    <div
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onClick()) : undefined}
+      className={`rounded-lg border bg-bg-2 p-3 transition ${
+        onClick ? "cursor-pointer hover:border-line-strong" : ""
+      } ${selecionado ? "ring-2 ring-brand" : "border-line"}`}
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate font-semibold text-txt-1" title={b.rotulo}>
@@ -165,6 +184,8 @@ export function ApprovalPage() {
   // Período em destaque — padrão 24h (leitura mais próxima do tempo real).
   // O seletor permite ampliar para 7d/30d quando a amostra de 24h for pequena.
   const [dias, setDias] = useState<number>(7);
+  // Drill-down: filtra as "Vozes da população" pelo perfil/categoria clicado.
+  const [filtroVoz, setFiltroVoz] = useState<{ tipo: "perfil" | "categoria"; valor: string } | null>(null);
   const periodoLabel = PERIODOS.find((p) => p.dias === dias)?.label ?? `${dias}d`;
   const ink = chartInk(useThemeStore((s) => s.theme));
 
@@ -220,13 +241,22 @@ export function ApprovalPage() {
     };
   }, [radar, dias]);
 
-  // Comentários cidadãos: top positivos e negativos
+  // Comentários cidadãos: top positivos e negativos, filtrados pelo drill-down
   const cms = useMemo(() => {
-    const lista = (coms ?? []).filter((c) => c.tipo === "cidadao");
+    let lista = (coms ?? []).filter((c) => c.tipo === "cidadao");
+    if (filtroVoz) {
+      if (filtroVoz.tipo === "perfil") {
+        const alvo = filtroVoz.valor.replace(/^@/, "").toLowerCase();
+        lista = lista.filter((c) => (c.autor_post || "").toLowerCase() === alvo);
+      } else {
+        const alvo = filtroVoz.valor.toLowerCase();
+        lista = lista.filter((c) => (c.categoria_post || "").toLowerCase() === alvo);
+      }
+    }
     const pos = lista.filter((c) => c.sentimento === "positivo").slice(0, 5);
     const neg = lista.filter((c) => c.sentimento === "negativo").slice(0, 5);
     return { pos, neg };
-  }, [coms]);
+  }, [coms, filtroVoz]);
 
   // Histórico de IAD (últimos 14 dias)
   const histOption = useMemo(() => {
@@ -306,6 +336,9 @@ export function ApprovalPage() {
         </div>
       </div>
 
+      {/* Aviso de amostra fraca */}
+      <AvisoAmostra ica={view.ica} posts={view.posts} />
+
       {/* Header com índice + KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {/* Gauge IAD — cor semafórica: verde ≥60, amarelo 40-59, vermelho <40 */}
@@ -381,10 +414,23 @@ export function ApprovalPage() {
       {/* Drill-downs */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-3 text-sm font-bold">Por categoria</div>
+          <div className="mb-1 text-sm font-bold">Por categoria</div>
+          <p className="mb-3 text-[10px] text-txt-3">Clique para ver os comentários ↓</p>
           <div className="space-y-2">
             {view.porCategoria.map((b) => (
-              <Bucket key={b.rotulo} b={b} mostrarLado />
+              <Bucket
+                key={b.rotulo}
+                b={b}
+                mostrarLado
+                selecionado={filtroVoz?.tipo === "categoria" && filtroVoz.valor === b.rotulo}
+                onClick={() =>
+                  setFiltroVoz((cur) =>
+                    cur?.tipo === "categoria" && cur.valor === b.rotulo
+                      ? null
+                      : { tipo: "categoria", valor: b.rotulo }
+                  )
+                }
+              />
             ))}
           </div>
         </div>
@@ -392,11 +438,23 @@ export function ApprovalPage() {
           <div className="mb-1 text-sm font-bold">Por perfil</div>
           <p className="mb-3 text-[10px] leading-snug text-txt-3">
             A barra mostra o <b>sentimento dos comentários</b> no perfil — não o lado
-            político. Verde = elogios, vermelho = críticas. A tag indica o lado.
+            político. Verde = elogios, vermelho = críticas. Clique para ver os comentários ↓
           </p>
           <div className="space-y-2">
             {view.porPerfil.map((b) => (
-              <Bucket key={b.rotulo} b={b} mostrarLado />
+              <Bucket
+                key={b.rotulo}
+                b={b}
+                mostrarLado
+                selecionado={filtroVoz?.tipo === "perfil" && filtroVoz.valor === b.rotulo}
+                onClick={() =>
+                  setFiltroVoz((cur) =>
+                    cur?.tipo === "perfil" && cur.valor === b.rotulo
+                      ? null
+                      : { tipo: "perfil", valor: b.rotulo }
+                  )
+                }
+              />
             ))}
           </div>
         </div>
@@ -422,6 +480,18 @@ export function ApprovalPage() {
       </div>
 
       {/* Vozes da população */}
+      {filtroVoz && (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-txt-3">Vozes filtradas por:</span>
+          <button
+            onClick={() => setFiltroVoz(null)}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-brand bg-brand/10 px-3 py-1 font-semibold text-txt-1 transition hover:bg-brand/20"
+          >
+            {filtroVoz.tipo === "perfil" ? filtroVoz.valor : `categoria: ${filtroVoz.valor}`}
+            <span aria-hidden>✕</span>
+          </button>
+        </div>
+      )}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-3 text-sm font-bold text-risk-low">
