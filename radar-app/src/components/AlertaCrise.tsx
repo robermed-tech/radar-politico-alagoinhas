@@ -163,7 +163,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
 
               {/* SMS */}
               <a
-                href={`sms:${sec.whatsapp}?body=${msgEnc}`}
+                href={`sms:${sec.whatsapp}?&body=${msgEnc}`}
                 className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line py-3 text-sm font-bold text-txt-1 transition hover:bg-bg-2"
                 onClick={() => setAberto(false)}
               >

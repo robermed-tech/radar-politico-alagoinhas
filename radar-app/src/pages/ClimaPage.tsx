@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadar, filtrarPorPeriodo, type Post } from "@/lib/data";
+import { fetchRadar, fetchBoletim, filtrarPorPeriodo, type Post, type Boletim, type BoletimAlerta } from "@/lib/data";
 import { calcIAD, distribuicao } from "@/lib/indices";
 import { getWeather, getDestaque } from "@/lib/weather";
 import { fmtInt } from "@/lib/format";
@@ -18,11 +18,133 @@ function temaDominante(posts: Post[]): string {
   return top ? top[0] : "";
 }
 
+// ── Boletim: cores por nível e ícones de frente (mesma metáfora do Clima) ──
+const COR_NIVEL: Record<string, string> = {
+  amarelo: "#EAB308",
+  laranja: "#EA580C",
+  vermelho: "#EF4444",
+};
+const ICONE_FRENTE: Record<string, string> = {
+  sol: "☀️",
+  nuvem: "☁️",
+  chuva: "🌧️",
+  tempestade: "⛈️",
+};
+const SETA_TEND: Record<string, string> = { subindo: "▲", estavel: "▬", caindo: "▼" };
+
+/** Faixa de alerta SCCT — só aparece quando há crise no boletim. */
+function AlertaSCCT({ alerta, nivelCor }: { alerta: BoletimAlerta; nivelCor: string | null }) {
+  const [aberto, setAberto] = useState(false);
+  const cor = COR_NIVEL[nivelCor ?? "laranja"] ?? COR_NIVEL.laranja;
+  const { scct } = alerta;
+  return (
+    <div
+      className="rounded-2xl border bg-bg-1 p-5"
+      style={{ borderColor: cor, borderWidth: 1 }}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-base font-extrabold text-txt-1">
+          <span style={{ color: cor }}>⚠</span>
+          Alerta localizado: "{temaDoMotivo(alerta)}"
+        </div>
+        <span
+          className="rounded-md px-2.5 py-1 text-xs font-bold"
+          style={{ background: `${cor}22`, color: cor }}
+        >
+          {scct.rotulo_cluster} · resp. {scct.responsabilidade}/100 ({scct.rotulo_responsabilidade})
+        </span>
+      </div>
+
+      <p className="mt-2 text-sm leading-relaxed text-txt-2">{alerta.motivo}</p>
+
+      <div className="mt-3 border-t border-line pt-3">
+        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">
+          Recomendação
+        </div>
+        <p className="mt-1 text-sm font-medium leading-relaxed text-txt-1">
+          {alerta.recomendacao_irt}
+        </p>
+
+        {aberto && alerta.por_que_funciona && (
+          <p className="mt-2 text-sm leading-relaxed text-txt-2">
+            <span className="font-bold">Por que funciona: </span>
+            {alerta.por_que_funciona}
+          </p>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {alerta.url_post && (
+            <a
+              href={alerta.url_post}
+              target="_blank"
+              rel="noreferrer"
+              className="glass-btn rounded-lg px-3 py-1.5 text-sm font-semibold text-txt-1"
+            >
+              Ver post ↗
+            </a>
+          )}
+          {alerta.por_que_funciona && (
+            <button
+              onClick={() => setAberto((v) => !v)}
+              className="glass-btn rounded-lg px-3 py-1.5 text-sm font-semibold text-txt-1"
+            >
+              {aberto ? "Ocultar detalhe" : "Detalhar classificação"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Extrai o tema citado na frase do boletim (entre aspas), com fallback. */
+function temaDoMotivo(alerta: BoletimAlerta): string {
+  const m = alerta.motivo.match(/"([^"]+)"/);
+  return m ? m[1] : "tema em alta";
+}
+
+/** Frentes de instabilidade — temas ranqueados por risco. */
+function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
+  if (!frentes.length) return null;
+  return (
+    <div className="rounded-2xl border border-line bg-bg-1 p-5">
+      <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">
+        Frentes de instabilidade
+      </div>
+      <div className="mt-3 space-y-1">
+        {frentes.map((f) => {
+          const corSeta =
+            f.tendencia === "subindo" ? "var(--risk-crit, #EF4444)"
+            : f.tendencia === "caindo" ? "var(--risk-low, #22C55E)"
+            : "var(--txt3)";
+          return (
+            <div key={f.tema} className="flex items-center justify-between py-1 text-sm">
+              <span className="flex items-center gap-2 text-txt-1">
+                <span>{ICONE_FRENTE[f.icone] ?? "☁️"}</span>
+                {f.tema}
+              </span>
+              <span className="tnum font-bold" style={{ color: corSeta }}>
+                {SETA_TEND[f.tendencia]} {Math.round(f.score)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function ClimaPage() {
   const [dias, setDias] = useState(1); // padrão 24h (era 7 dias)
   const { data, isLoading } = useQuery({
     queryKey: ["radar"],
     queryFn: fetchRadar,
+    staleTime: 5 * 60 * 1000,
+  });
+  // Boletim climático (camada SCCT). Independente do fetchRadar — não bloqueia o hero.
+  const { data: boletim } = useQuery({
+    queryKey: ["boletim"],
+    queryFn: fetchBoletim,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -139,6 +261,16 @@ export function ClimaPage() {
           </div>
         </div>
       </div>
+
+      {/* ── BOLETIM: alerta SCCT (só quando há crise) ── */}
+      {boletim?.alerta_ativo && (
+        <AlertaSCCT alerta={boletim.alerta_ativo} nivelCor={boletim.nivel_cor} />
+      )}
+
+      {/* ── BOLETIM: frentes de instabilidade ── */}
+      {boletim?.frentes && boletim.frentes.length > 0 && (
+        <FrentesInstabilidade frentes={boletim.frentes} />
+      )}
 
       {/* Volume coletado no período — DESTAQUE */}
       <div className="grid grid-cols-2 gap-4">

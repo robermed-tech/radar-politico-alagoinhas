@@ -408,7 +408,7 @@ export function ApprovalPage() {
               <AlertaCrise
                 tema={view.porTema[0].rotulo}
                 pNeg={view.porTema[0].pNeg}
-                posts={view.posts}
+                posts={view.porTema[0].posts}
                 iad={view.iad}
               />
             )}

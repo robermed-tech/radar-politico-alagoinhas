@@ -113,10 +113,10 @@ export function CommandCenter() {
       map[t].neg += (p.comentarios_pct_neg || 0) / 100;
       map[t].tot += 1;
     }
-    let best: { tema: string; pNeg: number } | null = null;
+    let best: { tema: string; pNeg: number; posts: number } | null = null;
     for (const [tema, v] of Object.entries(map)) {
       const pNeg = v.tot > 0 ? Math.round((v.neg / v.tot) * 100) : 0;
-      if (!best || pNeg > best.pNeg) best = { tema, pNeg };
+      if (!best || pNeg > best.pNeg) best = { tema, pNeg, posts: v.tot };
     }
     return best && best.pNeg >= 35 ? best : null;
   }, [view]);
@@ -231,7 +231,7 @@ export function CommandCenter() {
             <AlertaCrise
               tema={temaCrise.tema}
               pNeg={temaCrise.pNeg}
-              posts={ind.volumePosts}
+              posts={temaCrise.posts}
               iad={ind.iad}
             />
           )}

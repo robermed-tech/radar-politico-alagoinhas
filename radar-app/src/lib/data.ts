@@ -231,6 +231,57 @@ export async function fetchBriefing(): Promise<Briefing | null> {
   return rows[0] ?? null;
 }
 
+// Boletim Climático (boletim.py → tabela `boletins`, coluna jsonb `boletim`).
+// Tipos espelham exatamente a saída de gerar_boletim().
+export interface BoletimAlerta {
+  motivo: string;
+  url_post: string;
+  scct: {
+    cluster: string;
+    rotulo_cluster: string;
+    responsabilidade: number;
+    rotulo_responsabilidade: string;
+  };
+  recomendacao_irt: string;
+  por_que_funciona: string;
+  override_aplicado: boolean;
+}
+
+export interface BoletimFrente {
+  tema: string;
+  score: number;
+  tendencia: string;
+  icone: string;
+}
+
+export interface Boletim {
+  condicao: string;
+  nivel_cor: string | null;
+  elevado_por_post: boolean;
+  frase_resumo: string;
+  previsao_24h: string;
+  frase_previsao: string;
+  pressao: { valor: number; delta_24h: number; serie_7d: number[] };
+  termometro: Record<string, number>;
+  rajadas: Record<string, unknown>;
+  frentes: BoletimFrente[];
+  alerta_ativo: BoletimAlerta | null;
+}
+
+/** Último Boletim Climático (camada SCCT da página Clima). Null se indisponível. */
+export async function fetchBoletim(): Promise<Boletim | null> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  const q =
+    `${SUPABASE_URL}/rest/v1/boletins?tenant=eq.${TENANT}` +
+    `&select=boletim&order=dia.desc&limit=1`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return null;
+  const rows = (await res.json()) as { boletim: Boletim }[];
+  return rows[0]?.boletim ?? null;
+}
+
 export interface Influencer {
   handle: string;
   tipo: "perfil_monitorado" | "cidadao";
