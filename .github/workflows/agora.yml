@@ -44,7 +44,6 @@ jobs:
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           RADAR_TENANT:         alagoinhas
-          BRIEFING_MATINAL:     "true"
         run: python agora.py
 
       - name: Notifica falha no WhatsApp
