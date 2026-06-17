@@ -797,7 +797,9 @@ def gravar_no_sheets(planilha, posts_analisados, comentarios_por_post):
     except Exception:
         pass
 
-    novos_radar = 0
+    # Acumula as linhas novas e grava em UM único append_rows (1 chamada de API
+    # em vez de N) — evita o erro 429 (cota de escrita/min do Google Sheets).
+    linhas_radar = []
     for p in posts_analisados:
         if p["url"] in existentes:
             continue
@@ -824,9 +826,11 @@ def gravar_no_sheets(planilha, posts_analisados, comentarios_por_post):
             p.get("confianca", 0), p.get("abordagem_recomendada", ""),
             p.get("por_que_funciona", ""), p.get("motivo_alerta", ""),
         ]
-        aba_radar.append_row(linha, value_input_option="RAW")
+        linhas_radar.append(linha)
         existentes.add(p["url"])
-        novos_radar += 1
+    if linhas_radar:
+        aba_radar.append_rows(linhas_radar, value_input_option="RAW")
+    novos_radar = len(linhas_radar)
 
     log(f"  Radar: {novos_radar} posts novos gravados")
 
@@ -839,7 +843,7 @@ def gravar_no_sheets(planilha, posts_analisados, comentarios_por_post):
     except Exception:
         pass
 
-    novos_coments = 0
+    linhas_coments = []
     for post in posts_analisados:
         url = post["url"]
         comentarios = comentarios_por_post.get(url, [])
@@ -853,10 +857,12 @@ def gravar_no_sheets(planilha, posts_analisados, comentarios_por_post):
                 c.get("tipo", ""), c.get("texto", ""), c.get("curtidas", 0),
                 c.get("data", ""), agora,
             ]
-            aba_coments.append_row(linha_c, value_input_option="RAW")
+            linhas_coments.append(linha_c)
             if cid:
                 ids_existentes.add(cid)
-            novos_coments += 1
+    if linhas_coments:
+        aba_coments.append_rows(linhas_coments, value_input_option="RAW")
+    novos_coments = len(linhas_coments)
 
     log(f"  Comentarios: {novos_coments} novos gravados")
     return novos_radar, novos_coments
