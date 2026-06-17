@@ -1256,6 +1256,7 @@ Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
     }]
     n = _supabase_upsert("ai_briefings", row, "tenant,dia")
     log(f"  Briefing IA gravado: {n} (nivel {nivel}, {len(data.get('recomendacoes_comunicacao', []))} recomendacoes)")
+    return {"nivel": nivel, "risco": round(risco, 1), "iad": round(iad, 1), "ica": round(ica, 1), **data}
 
 
 # ==============================================================
@@ -2117,6 +2118,86 @@ _Mensagem automatica do AGORA_"""
 
 
 # ==============================================================
+# MODULO 6c - BRIEFING MATINAL (WhatsApp 05h BRT)
+# ==============================================================
+
+def enviar_briefing_matinal(posts_analisados, briefing_ia):
+    """Envia resumo executivo diario via WhatsApp (Evolution API).
+    Chamado automaticamente na execucao das 05h BRT (08h UTC).
+    """
+    if not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER:
+        log("  Briefing matinal: Evolution API nao configurada - pulando")
+        return
+    log("=== MODULO 6c - Briefing matinal WhatsApp ===")
+
+    iad   = calc_iad(posts_analisados)
+    ica   = calc_ica(posts_analisados)
+    risco, nivel = calc_risco(posts_analisados, iad, ica)
+    hoje = datetime.now().strftime("%d/%m/%Y")
+    hora = datetime.now().strftime("%H:%M")
+
+    emoji_nivel = {"baixo": "🟢", "moderado": "🟡", "alto": "🟠", "critico": "🔴"}.get(nivel, "⚪")
+
+    # Temas com maior risco (top 3)
+    temas = {}
+    for p in posts_analisados:
+        t = (p.get("tema") or "").strip()
+        if t:
+            temas[t] = max(temas.get(t, 0), int(p.get("score_risco", 0) or 0))
+    top_temas = sorted(temas.items(), key=lambda x: -x[1])[:3]
+
+    alertas = briefing_ia.get("alertas") or []
+    recs    = briefing_ia.get("recomendacoes_comunicacao") or briefing_ia.get("recomendacoes") or []
+
+    linhas = [
+        "☀️ *BRIEFING MATINAL — Radar Político*",
+        f"📅 {hoje} | {hora} BRT",
+        "",
+        "📊 *ÍNDICES*",
+        f"• Aprovação Digital (IAD): {iad:.0f}/100",
+        f"• Risco Político: {risco:.0f}/100 {emoji_nivel} {nivel.upper()}",
+        f"• Confiança da Amostra (ICA): {ica:.0f}/100",
+        "",
+        "🔍 *DIAGNÓSTICO*",
+        briefing_ia.get("diagnostico") or "Sem diagnóstico disponível.",
+    ]
+
+    if top_temas:
+        linhas += ["", "📌 *TEMAS CRÍTICOS*"]
+        for t, s in top_temas:
+            linhas.append(f"• {t.capitalize()} (risco {s}/100)")
+
+    if alertas:
+        linhas += ["", "⚠️ *ALERTAS*"]
+        for a in alertas[:3]:
+            linhas.append(f"• [{a.get('nivel','')}] {a.get('tema','')} — {a.get('janela','')}")
+
+    if recs:
+        linhas += ["", "💡 *RECOMENDAÇÕES*"]
+        for r in recs[:2]:
+            canal = r.get("canal", "")
+            msg_r = (r.get("mensagem") or "")[:130]
+            linhas.append(f"• {canal}: \"{msg_r}\"")
+
+    linhas += ["", "_Gerado automaticamente pelo AGORA_"]
+    mensagem = "\n".join(linhas)
+
+    try:
+        r = requests.post(
+            f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE','radar')}",
+            headers={"Content-Type": "application/json", "apikey": EVOLUTION_KEY},
+            json={"number": WHATSAPP_NUMBER, "text": mensagem},
+            timeout=15,
+        )
+        if r.status_code in (200, 201):
+            log("  Briefing matinal enviado via WhatsApp")
+        else:
+            log(f"  Briefing matinal: erro Evolution {r.status_code} — {r.text[:200]}")
+    except Exception as e:
+        log(f"  Briefing matinal: erro {e}")
+
+
+# ==============================================================
 # PIPELINE PRINCIPAL
 # ==============================================================
 
@@ -2269,7 +2350,11 @@ def main():
     gravar_no_supabase(posts_analisados, comentarios_por_post)  # dual-write -> dashboard
     gravar_daily_metrics(posts_analisados)                       # historico de indices (Fase 3)
     gravar_boletim_climatico(posts_analisados)                   # boletim climatico (Radar Comando)
-    gerar_briefing_estrategico(posts_analisados)                 # assistente IA (Fase 3d)
+    briefing_ia = gerar_briefing_estrategico(posts_analisados)   # assistente IA (Fase 3d)
+    # Briefing matinal: execucao das 05h BRT (08h UTC) ou forcar com BRIEFING_MATINAL=true
+    hora_utc = datetime.utcnow().hour
+    if briefing_ia and (hora_utc == 8 or os.environ.get("BRIEFING_MATINAL", "").lower() == "true"):
+        enviar_briefing_matinal(posts_analisados, briefing_ia)
     rodar_cacador_crises(posts_analisados, comentarios_por_post) # agente caçador de crises (Fase B)
     gravar_influencers(posts_analisados, comentarios_por_post)   # ranking de influenciadores
     gravar_narratives(posts_analisados, comentarios_por_post)    # narrativas (tema + sentimento)
