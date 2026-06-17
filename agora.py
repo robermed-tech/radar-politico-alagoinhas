@@ -39,8 +39,10 @@ SUPABASE_KEY     = os.environ.get("SUPABASE_SERVICE_KEY", "")
 TENANT           = os.environ.get("RADAR_TENANT", "alagoinhas")
 # Multi-agente: modelo do Caçador de Crises. Default = Haiku (garante funcionamento).
 # Para mais raciocínio, defina CRISIS_MODEL=claude-sonnet-... como secret/env.
-MODELO_ANALISTA  = "claude-haiku-4-5-20251001"
-CRISIS_MODEL     = os.environ.get("CRISIS_MODEL", MODELO_ANALISTA)
+MODELO_ANALISTA  = "claude-haiku-4-5-20251001"     # triagem rápida (todos os posts)
+MODELO_PROFUNDO  = os.environ.get("ANALISTA_PROFUNDO_MODEL", "claude-sonnet-4-6")  # análise completa (posts de risco)
+LIMIAR_TRIAGEM   = int(os.environ.get("LIMIAR_TRIAGEM", "45"))  # score_risco ≥ esse valor → análise profunda
+CRISIS_MODEL     = os.environ.get("CRISIS_MODEL", MODELO_PROFUNDO)  # Caçador de Crises usa Sonnet por padrão
 MAX_CRISES_RUN   = 3   # teto de chamadas do Caçador por execução (controle de custo)
 
 APIFY_BASE = "https://api.apify.com/v2"
@@ -450,6 +452,35 @@ def carregar_memoria(planilha):
 # MODULO 4 - ANALISE COM O AGORA (Claude)
 # ==============================================================
 
+PROMPT_TRIAGEM = ("Classificador rapido de risco politico. "
+                  "Retorne APENAS JSON valido, sem markdown, sem texto extra.")
+
+def triar_post_rapido(post, comentarios):
+    """Monta o prompt curto para a triagem Haiku (passo 1)."""
+    cidadaos = sorted(
+        [c for c in comentarios if c["tipo"] == "cidadao"],
+        key=lambda x: x["curtidas"], reverse=True
+    )[:10]
+    cat = (post.get("categoria") or "").lower()
+    lado = ("OPOSITOR" if cat == "oposicao"
+            else "ALIADO" if cat in ("prefeito", "prefeitura", "governo")
+            else "IMPRENSA")
+    coments_txt = "".join(
+        f'  {c["curtidas"]}❤ @{c["username"]}: "{c["texto"][:180]}"\n'
+        for c in cidadaos
+    ) or "  Nenhum comentario.\n"
+    return (
+        f'Perfil: @{post["autor"]} ({post["categoria"]}) [LADO: {lado}]\n'
+        f'Caption: {post["caption"][:200] or "(sem legenda)"}\n\n'
+        f'COMENTARIOS (top {len(cidadaos)} por curtidas — otica do prefeito Gustavo Carmo):\n'
+        f'{coments_txt}\n'
+        '{"score_risco":<0-100>,"urgencia":"<alta|media|baixa>",'
+        '"tema":"<saude|educacao|obras|seguranca|transporte|emprego|impostos|outros>",'
+        '"sentimento_comentarios":"<positivo|negativo|neutro|misto>",'
+        '"comentarios_pct_pos":<0-100>,"comentarios_pct_neg":<0-100>}'
+    )
+
+
 PROMPT_SISTEMA = """Voce e o AGORA, agente de inteligencia politica especializado em monitorar
 a imagem publica do prefeito Gustavo Carmo e da Prefeitura de Alagoinhas/BA.
 
@@ -594,101 +625,127 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
 }}""".replace("{{LEN}}", str(len(cidadaos_top)))
     return prompt
 
+_DEFAULTS_ANALISE = {
+    "score_imagem": 50, "score_risco": 0, "risco_crise": "baixo",
+    "sentimento_post": "neutro", "sentimento_comentarios": "neutro",
+    "comentarios_pct_pos": 0, "comentarios_pct_neg": 0,
+    "queixa_dominante": "", "elogio_dominante": "",
+    "comentarios_destaque": "", "comentarios_destaque_curtidas": 0, "comentarios_destaque_autor": "",
+    "resumo": "", "padrao_detectado": "Isolado", "tema": "", "atribuicao": "outros",
+    "tendencia": "estavel", "urgencia": "baixa", "sugestao_acao": "monitorar",
+    "janela_acao": "esta semana", "cluster_crise": "nenhum",
+    "responsabilidade_atribuida": 0, "confianca": 0,
+    "abordagem_recomendada": "", "por_que_funciona": "", "motivo_alerta": "",
+}
+
+def _parse_json_resposta(texto):
+    """Remove bloco markdown e faz parse do JSON."""
+    texto = texto.strip()
+    if texto.startswith("```"):
+        texto = texto.split("```")[1]
+        if texto.startswith("json"):
+            texto = texto[4:]
+    return json.loads(texto.strip())
+
 def analisar_com_agora(posts, comentarios_por_post, memoria):
-    log("=== MODULO 4 - Analisando com o AGORA ===")
+    log(f"=== MODULO 4 - Analisando com o AGORA (triagem 2 niveis | limiar={LIMIAR_TRIAGEM}) ===")
+    log(f"    Triagem: {MODELO_ANALISTA} | Profundo: {MODELO_PROFUNDO}")
     cliente = Anthropic(api_key=ANTHROPIC_KEY)
     resultado = []
+    n_profundo = n_rapido = 0
 
     for i, post in enumerate(posts, 1):
         url = post["url"]
         comentarios = comentarios_por_post.get(url, [])
         log(f"  [{i}/{len(posts)}] @{post['autor']} | {len(comentarios)} comentarios")
 
-        prompt = montar_prompt(post, comentarios, memoria)
-
+        # --- Passo 1: triagem rapida (Haiku) —-------------------------------
+        triagem = {}
         try:
-            resposta = cliente.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=1400,  # +400 p/ caber o array sentimentos_comentarios (até 20 itens)
-                system=PROMPT_SISTEMA,
-                messages=[{"role": "user", "content": prompt}]
+            rt = cliente.messages.create(
+                model=MODELO_ANALISTA,
+                max_tokens=180,
+                system=PROMPT_TRIAGEM,
+                messages=[{"role": "user", "content": triar_post_rapido(post, comentarios)}],
             )
-            texto = resposta.content[0].text.strip()
-
-            if texto.startswith("```"):
-                texto = texto.split("```")[1]
-                if texto.startswith("json"):
-                    texto = texto[4:]
-            texto = texto.strip()
-
-            analise = json.loads(texto)
-            post_enriquecido = {**post, **analise}
-            post_enriquecido["total_cidadaos"]  = len([c for c in comentarios if c["tipo"] == "cidadao"])
-            post_enriquecido["total_politicos"] = len([c for c in comentarios if c["tipo"] == "politico"])
-
-            # Camada SCCT: abordagem deterministica + pre-calcula motivo de alerta
-            _rec = recomendar_abordagem(analise.get("cluster_crise", "nenhum"))
-            post_enriquecido["abordagem_recomendada"] = _rec["abordagem"]
-            post_enriquecido["por_que_funciona"]      = _rec["por_que"]
-            _sc = int(analise.get("score_risco", 0) or 0)
-            if deve_disparar_alerta(_sc, post_enriquecido):
-                post_enriquecido["motivo_alerta"] = motivo_do_alerta(_sc, post_enriquecido)
-            else:
-                post_enriquecido["motivo_alerta"] = ""
-            resultado.append(post_enriquecido)
-
-            # Aplica sentimento individual em cada comentario cidadao (top 20 analisados).
-            # Os demais (>20 ou politicos) recebem o sentimento_comentarios geral como fallback.
-            cidadaos_lista = sorted(
-                [c for c in comentarios if c["tipo"] == "cidadao"],
-                key=lambda x: x["curtidas"], reverse=True
-            )
-            sentimentos = analise.get("sentimentos_comentarios", []) or []
-            fallback = analise.get("sentimento_comentarios", "neutro")
-            if fallback == "misto":
-                fallback = "neutro"
-            classificados = 0
-            for idx, c in enumerate(cidadaos_lista):
-                if idx < len(sentimentos) and sentimentos[idx] in ("positivo", "negativo", "neutro"):
-                    c["sentimento"] = sentimentos[idx]
-                    classificados += 1
-                else:
-                    c["sentimento"] = fallback
-            # Politicos herdam o sentimento geral (raramente sao monitorados)
-            for c in comentarios:
-                if c["tipo"] != "cidadao" and not c.get("sentimento"):
-                    c["sentimento"] = fallback
-
-            score_img = analise.get("score_imagem", 50)
-            score_risco = analise.get("score_risco", 0)
-            log(f"    Score imagem: {score_img} | Risco: {score_risco} | sent_geral={analise.get('sentimento_comentarios','')} | {classificados}/{len(cidadaos_lista)} coments classificados")
-
-        except json.JSONDecodeError as e:
-            log(f"    JSON invalido: {e}")
-            resultado.append({**post, "score_imagem": 50, "score_risco": 0,
-                              "risco_crise": "baixo", "tendencia": "estavel",
-                              "atribuicao": "outros", "resumo": "",
-                              "comentarios_pct_pos": 0, "comentarios_pct_neg": 0,
-                              "comentarios_destaque": "", "comentarios_destaque_curtidas": 0, "comentarios_destaque_autor": "",
-                              "urgencia": "baixa", "tema": "",
-                              "sentimento_post": "neutro", "sentimento_comentarios": "neutro",
-                              "cluster_crise": "nenhum", "responsabilidade_atribuida": 0, "confianca": 0,
-                              "abordagem_recomendada": "", "por_que_funciona": "", "motivo_alerta": ""})
+            triagem = _parse_json_resposta(rt.content[0].text)
         except Exception as e:
-            log(f"    Erro AGORA: {e}")
-            resultado.append({**post, "score_imagem": 50, "score_risco": 0,
-                              "risco_crise": "baixo", "tendencia": "estavel",
-                              "atribuicao": "outros", "resumo": "",
-                              "comentarios_pct_pos": 0, "comentarios_pct_neg": 0,
-                              "comentarios_destaque": "", "comentarios_destaque_curtidas": 0, "comentarios_destaque_autor": "",
-                              "urgencia": "baixa", "tema": "",
-                              "sentimento_post": "neutro", "sentimento_comentarios": "neutro",
-                              "cluster_crise": "nenhum", "responsabilidade_atribuida": 0, "confianca": 0,
-                              "abordagem_recomendada": "", "por_que_funciona": "", "motivo_alerta": ""})
+            log(f"    Triagem falhou ({e}) — defaults")
 
+        score_tri = int(triagem.get("score_risco", 0) or 0)
+        analise_profunda = score_tri >= LIMIAR_TRIAGEM or triagem.get("urgencia") == "alta"
+
+        # --- Passo 2: analise profunda (Sonnet) apenas se necessario --------
+        analise = {}
+        if analise_profunda:
+            n_profundo += 1
+            log(f"    → Sonnet (score_tri={score_tri}, urgencia={triagem.get('urgencia','')})")
+            try:
+                resp = cliente.messages.create(
+                    model=MODELO_PROFUNDO,
+                    max_tokens=1400,
+                    system=PROMPT_SISTEMA,
+                    messages=[{"role": "user", "content": montar_prompt(post, comentarios, memoria)}],
+                )
+                analise = _parse_json_resposta(resp.content[0].text)
+            except Exception as e:
+                log(f"    Sonnet falhou ({e}) — usando triagem")
+                analise = dict(triagem)
+        else:
+            n_rapido += 1
+            analise = dict(triagem)
+
+        # Garante todos os campos obrigatorios (triagem so retorna 6 campos)
+        for k, v in _DEFAULTS_ANALISE.items():
+            analise.setdefault(k, v)
+        # score_imagem e risco_crise derivados do score_tri quando nao vieram do Sonnet
+        if not analise_profunda:
+            analise["score_imagem"] = max(0, min(100, 100 - score_tri))
+            analise["risco_crise"]  = ("alto" if score_tri >= 70
+                                       else "medio" if score_tri >= 45 else "baixo")
+            analise["confianca"]    = 45  # triagem e menos precisa
+        analise.setdefault("score_risco", score_tri)
+
+        post_enriquecido = {**post, **analise}
+        post_enriquecido["total_cidadaos"]  = len([c for c in comentarios if c["tipo"] == "cidadao"])
+        post_enriquecido["total_politicos"] = len([c for c in comentarios if c["tipo"] == "politico"])
+
+        # Camada SCCT: abordagem deterministica
+        _rec = recomendar_abordagem(analise.get("cluster_crise", "nenhum"))
+        post_enriquecido["abordagem_recomendada"] = _rec["abordagem"]
+        post_enriquecido["por_que_funciona"]      = _rec["por_que"]
+        _sc = int(analise.get("score_risco", 0) or 0)
+        post_enriquecido["motivo_alerta"] = (
+            motivo_do_alerta(_sc, post_enriquecido) if deve_disparar_alerta(_sc, post_enriquecido) else ""
+        )
+        resultado.append(post_enriquecido)
+
+        # Sentimento individual dos comentarios
+        cidadaos_lista = sorted(
+            [c for c in comentarios if c["tipo"] == "cidadao"],
+            key=lambda x: x["curtidas"], reverse=True
+        )
+        sentimentos = analise.get("sentimentos_comentarios", []) or []
+        fallback = analise.get("sentimento_comentarios", "neutro")
+        if fallback == "misto":
+            fallback = "neutro"
+        classificados = 0
+        for idx, c in enumerate(cidadaos_lista):
+            if idx < len(sentimentos) and sentimentos[idx] in ("positivo", "negativo", "neutro"):
+                c["sentimento"] = sentimentos[idx]
+                classificados += 1
+            else:
+                c["sentimento"] = fallback
+        for c in comentarios:
+            if c["tipo"] != "cidadao" and not c.get("sentimento"):
+                c["sentimento"] = fallback
+
+        modo = "PROFUNDO" if analise_profunda else "rapido"
+        log(f"    img={analise.get('score_imagem',50)} risco={_sc} [{modo}] "
+            f"{classificados}/{len(cidadaos_lista)} coments classificados")
         time.sleep(1)
 
-    log(f"  {len(resultado)} posts analisados pelo AGORA")
+    log(f"  {len(resultado)} posts: {n_profundo} profundo (Sonnet), {n_rapido} rapido (Haiku)")
     return resultado
 
 # ==============================================================
@@ -1172,7 +1229,7 @@ Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
     try:
         cliente = Anthropic(api_key=ANTHROPIC_KEY)
         resp = cliente.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=MODELO_PROFUNDO,
             max_tokens=1500,
             system=PROMPT_BRIEFING,
             messages=[{"role": "user", "content": prompt}],
