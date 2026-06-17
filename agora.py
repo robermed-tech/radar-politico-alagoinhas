@@ -2196,8 +2196,14 @@ def main():
     comentarios_por_post = coletar_comentarios(posts)
     memoria = carregar_memoria(planilha)
     posts_analisados = analisar_com_agora(posts, comentarios_por_post, memoria)
-    novos_radar, novos_coments = gravar_no_sheets(planilha, posts_analisados, comentarios_por_post)
-    gravar_no_supabase(posts_analisados, comentarios_por_post)  # dual-write (opcional)
+    # Sheets é legado e tem cota de escrita/min (erro 429). NÃO pode derrubar o
+    # dual-write do Supabase, que é o que alimenta o dashboard (Radar Comando).
+    try:
+        novos_radar, novos_coments = gravar_no_sheets(planilha, posts_analisados, comentarios_por_post)
+    except Exception as e:
+        log(f"  Sheets FALHOU ({e}) — seguindo; o dashboard usa o Supabase")
+        novos_radar, novos_coments = 0, 0
+    gravar_no_supabase(posts_analisados, comentarios_por_post)  # dual-write -> dashboard
     gravar_daily_metrics(posts_analisados)                       # historico de indices (Fase 3)
     gravar_boletim_climatico(posts_analisados)                   # boletim climatico (Radar Comando)
     gerar_briefing_estrategico(posts_analisados)                 # assistente IA (Fase 3d)
@@ -2217,7 +2223,10 @@ def main():
     for p in posts_com_update:
         delta = p.get("total_coments", 0) - existentes_radar.get(p.get("url", ""), 0)
         enviar_update_coments(p, delta)
-    atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
+    try:
+        atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
+    except Exception as e:
+        log(f"  Briefing no Sheets falhou ({e}) — ignorado (nao afeta o dashboard)")
 
     fim = datetime.now()
     duracao = (fim - inicio).seconds
