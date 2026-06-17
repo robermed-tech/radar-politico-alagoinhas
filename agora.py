@@ -933,7 +933,7 @@ def _supabase_delete(tabela, filtro):
 def gravar_no_supabase(posts_analisados, comentarios_por_post):
     """Espelha os dados no Postgres do Supabase. Sheets continua como fonte da verdade."""
     if not SUPABASE_URL or not SUPABASE_KEY:
-        log("  Supabase nao configurado - dual-write ignorado")
+        log("  Supabase OFF (dual-write ignorado) — dashboard NAO sera atualizado")
         return
     log("=== MODULO 5c - Dual-write Supabase ===")
     agora = datetime.now().isoformat()
@@ -2162,6 +2162,15 @@ def main():
     log("+======================================================+")
     log(f"|  AGORA iniciando - {inicio.strftime('%d/%m/%Y %H:%M:%S')}              |")
     log("+======================================================+")
+
+    # Aviso crítico: sem Supabase, o dashboard (que lê o Postgres) NÃO atualiza.
+    # Foi exatamente essa a causa do dashboard "congelar" rodando localmente.
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log("  " + "!" * 54)
+        log("  ! ATENCAO: SUPABASE_URL/SUPABASE_SERVICE_KEY ausentes.")
+        log("  ! Os dados irao SOMENTE para o Google Sheets.")
+        log("  ! O dashboard (Radar Comando) NAO sera atualizado!")
+        log("  " + "!" * 54)
 
     log("  Conectando ao Google Sheets...")
     planilha = conectar_sheets()
