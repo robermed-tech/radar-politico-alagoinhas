@@ -85,32 +85,27 @@ def criar_cliente() -> "Client":
     if not INSTAGRAPI_DISPONIVEL:
         raise ImportError("instagrapi não instalado. Execute: pip install instagrapi")
 
-    # 1. Sessão via variável de ambiente (GitHub Actions) — sem proxy
+    # 1. Sessão via variável de ambiente (GitHub Actions) — sem proxy, sem verificação
     if IG_SESSION_JSON:
         try:
             cl = _novo_cliente(usar_proxy=False)
             settings = json.loads(IG_SESSION_JSON)
             cl.set_settings(settings)
-            cl.get_timeline_feed()
-            print("  ✓ Sessão restaurada via IG_SESSION_JSON")
+            print("  ✓ Sessão carregada via IG_SESSION_JSON")
             return cl
         except Exception as e:
             print(f"  ⚠ IG_SESSION_JSON inválido ({e}) — tentando arquivo...")
 
-    # 2. Sessão via arquivo local — sem proxy
+    # 2. Sessão via arquivo local — sem proxy, sem verificação
     session_path = Path(IG_SESSION_FILE)
     if session_path.exists():
         try:
             cl = _novo_cliente(usar_proxy=False)
             cl.load_settings(session_path)
-            cl.get_timeline_feed()
-            print(f"  ✓ Sessão restaurada de {IG_SESSION_FILE}")
+            print(f"  ✓ Sessão carregada de {IG_SESSION_FILE}")
             return cl
-        except LoginRequired:
-            print("  ⚠ Sessão expirada — fazendo novo login...")
-            session_path.unlink(missing_ok=True)
         except Exception as e:
-            print(f"  ⚠ Erro na sessão ({e}) — fazendo novo login...")
+            print(f"  ⚠ Erro ao carregar sessão ({e}) — fazendo novo login...")
             session_path.unlink(missing_ok=True)
 
     # 3. Login completo — com proxy
