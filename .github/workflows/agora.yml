@@ -33,7 +33,10 @@ jobs:
 
       - name: Executar ÁGORA
         env:
-          APIFY_API_TOKEN:   ${{ secrets.APIFY_API_TOKEN }}
+          APIFY_API_TOKEN:      ${{ secrets.APIFY_API_TOKEN }}
+          IG_USERNAME:          ${{ secrets.IG_USERNAME }}
+          IG_PASSWORD:          ${{ secrets.IG_PASSWORD }}
+          IG_PROXY:             ${{ secrets.IG_PROXY }}
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
           SPREADSHEET_ID:       ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_CREDENTIALS:   ${{ secrets.GOOGLE_SA_JSON }}

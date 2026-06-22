@@ -23,11 +23,17 @@ import gspread
 from google.oauth2.service_account import Credentials
 from boletim import gerar_boletim
 
+try:
+    import coletor_instagram as _ig
+    _INSTAGRAPI_OK = _ig.disponivel()
+except Exception:
+    _INSTAGRAPI_OK = False
+
 # ==============================================================
 # CONFIGURACAO
 # ==============================================================
 
-APIFY_TOKEN      = os.environ["APIFY_API_TOKEN"]
+APIFY_TOKEN      = os.environ.get("APIFY_API_TOKEN", "")
 ANTHROPIC_KEY    = os.environ["ANTHROPIC_API_KEY"]
 SPREADSHEET_ID   = os.environ["SPREADSHEET_ID"]
 EVOLUTION_URL    = os.environ.get("EVOLUTION_API_URL", "")
@@ -232,21 +238,70 @@ def apify_buscar_resultados(dataset_id, limit=500):
 # MODULO 1 - COLETA DE POSTS VIA APIFY
 # ==============================================================
 
+def _normalizar_posts(resultados_brutos):
+    """Normaliza posts brutos (Apify ou Instagrapi) para o formato interno."""
+    todos_posts = []
+    for p in resultados_brutos:
+        handle = extrair(p, "ownerUsername", "username", "owner", padrao="").lower()
+        if handle not in PERFIS:
+            continue
+
+        info      = PERFIS[handle]
+        categoria = info["categoria"]
+        filtro    = info["filtro"]
+
+        url = extrair(p, "url", "postUrl", "permalink", "webLink")
+        if not url:
+            shortcode = extrair(p, "shortCode", "shortcode", "code")
+            url = f"https://www.instagram.com/p/{shortcode}/" if shortcode else ""
+        if not url:
+            continue
+
+        caption   = extrair_caption(extrair(p, "caption", "text", "description"))
+        ts_raw    = extrair(p, "timestamp", "taken_at", "takenAt", "date")
+        data_post = timestamp_para_data(ts_raw)
+
+        if not dentro_do_periodo(data_post):
+            continue
+        if filtro != "governo" and not filtrar_relevante(caption, filtro):
+            continue
+
+        todos_posts.append({
+            "url":           url,
+            "autor":         handle,
+            "categoria":     categoria,
+            "data_post":     data_post,
+            "curtidas":      int(extrair(p, "likesCount", "likes", "like_count", padrao=0)),
+            "total_coments": int(extrair(p, "commentsCount", "comments", "comment_count", padrao=0)),
+            "caption":       caption[:500],
+            "shortcode":     extrair(p, "shortCode", "shortcode", "code", padrao=""),
+            "_media_pk":     p.get("_media_pk", ""),  # Instagrapi — usado na coleta de comentários
+        })
+    return todos_posts
+
+
 def coletar_posts():
     """
-    Coleta posts dos 14 perfis via Apify Instagram Post Scraper.
-    Envia todos os perfis de uma vez (mais eficiente).
+    Coleta posts dos perfis monitorados.
+    Tenta Instagrapi (gratuito) primeiro; cai no Apify se disponível.
     """
+    perfis = list(PERFIS.keys())
+
+    if _INSTAGRAPI_OK:
+        log("=== MODULO 1 - Coletando posts via Instagrapi ===")
+        brutos = _ig.coletar_posts(perfis, dias_atras=DIAS_RETROATIVOS)
+        log(f"  {len(brutos)} posts brutos retornados")
+        todos = _normalizar_posts(brutos)
+        log(f"  Total filtrado: {len(todos)} posts relevantes")
+        return todos
+
+    if not APIFY_TOKEN:
+        log("  ERRO: Instagrapi indisponível e APIFY_API_TOKEN não configurado")
+        return []
+
     log("=== MODULO 1 - Coletando posts via Apify ===")
-
-    # Monta URLs dos perfis
-    usernames = [f"https://www.instagram.com/{handle}/"
-                   for handle in PERFIS.keys()]
-
-    input_data = {
-        "username": usernames,
-        "resultsLimit": MAX_POSTS_POR_PERFIL,
-    }
+    usernames  = [f"https://www.instagram.com/{h}/" for h in perfis]
+    input_data = {"username": usernames, "resultsLimit": MAX_POSTS_POR_PERFIL}
 
     log(f"  Enviando {len(usernames)} perfis para o Apify...")
     run_id = apify_iniciar_run(ACTOR_POSTS, input_data)
@@ -258,98 +313,19 @@ def coletar_posts():
     if not dataset_id:
         return []
 
-    resultados_brutos = apify_buscar_resultados(dataset_id)
-    log(f"  {len(resultados_brutos)} posts brutos retornados")
-
-    # Normaliza e filtra os posts
-    todos_posts = []
-    for p in resultados_brutos:
-        # Extrai username do post
-        handle = extrair(p, "ownerUsername", "username", "owner", padrao="").lower()
-        if handle not in PERFIS:
-            continue
-
-        info = PERFIS[handle]
-        categoria = info["categoria"]
-        filtro    = info["filtro"]
-
-        # URL
-        url = extrair(p, "url", "postUrl", "permalink", "webLink")
-        if not url:
-            shortcode = extrair(p, "shortCode", "shortcode", "code")
-            url = f"https://www.instagram.com/p/{shortcode}/" if shortcode else ""
-        if not url:
-            continue
-
-        # Caption
-        caption = extrair_caption(extrair(p, "caption", "text", "description"))
-
-        # Data
-        ts_raw = extrair(p, "timestamp", "taken_at", "takenAt", "date")
-        data_post = timestamp_para_data(ts_raw)
-
-        # Filtro de periodo
-        if not dentro_do_periodo(data_post):
-            continue
-
-        # Filtro de relevancia (oposicao/imprensa precisam mencionar prefeito)
-        if filtro != "governo" and not filtrar_relevante(caption, filtro):
-            continue
-
-        post = {
-            "url":            url,
-            "autor":          handle,
-            "categoria":      categoria,
-            "data_post":      data_post,
-            "curtidas":       int(extrair(p, "likesCount", "likes", "like_count", padrao=0)),
-            "total_coments":  int(extrair(p, "commentsCount", "comments", "comment_count", padrao=0)),
-            "caption":        caption[:500],
-            "shortcode":      extrair(p, "shortCode", "shortcode", "code", padrao=""),
-        }
-        todos_posts.append(post)
-
-    log(f"  Total filtrado: {len(todos_posts)} posts relevantes")
-    return todos_posts
+    brutos = apify_buscar_resultados(dataset_id)
+    log(f"  {len(brutos)} posts brutos retornados")
+    todos = _normalizar_posts(brutos)
+    log(f"  Total filtrado: {len(todos)} posts relevantes")
+    return todos
 
 # ==============================================================
 # MODULO 2 - COLETA DE COMENTARIOS VIA APIFY
 # ==============================================================
 
-def coletar_comentarios(posts):
-    """
-    Coleta comentarios de todos os posts via Apify Instagram Comment Scraper.
-    Envia todas as URLs de uma vez (batch eficiente).
-    """
-    log("=== MODULO 2 - Coletando comentarios via Apify ===")
+def _normalizar_comentarios(resultados_brutos, posts, posts_com_coments):
+    """Normaliza comentários brutos (Apify ou Instagrapi) para o formato interno."""
     handles_monitorados = set(PERFIS.keys())
-
-    # Filtra posts que tem comentarios
-    posts_com_coments = [p for p in posts if p["total_coments"] > 0]
-    if not posts_com_coments:
-        log("  Nenhum post com comentarios para coletar")
-        return {p["url"]: [] for p in posts}
-
-    urls_posts = [p["url"] for p in posts_com_coments]
-    log(f"  Enviando {len(urls_posts)} posts para coleta de comentarios...")
-
-    input_data = {
-        "directUrls": urls_posts,
-        "resultsLimit": MAX_COMENTARIOS_POR_POST,
-    }
-
-    run_id = apify_iniciar_run(ACTOR_COMMENTS, input_data)
-    if not run_id:
-        log("  Falha ao iniciar coleta de comentarios")
-        return {p["url"]: [] for p in posts}
-
-    dataset_id = apify_aguardar_run(run_id, timeout=300)
-    if not dataset_id:
-        return {p["url"]: [] for p in posts}
-
-    resultados_brutos = apify_buscar_resultados(dataset_id, limit=2000)
-    log(f"  {len(resultados_brutos)} comentarios brutos retornados")
-
-    # Agrupa comentarios por post URL
     resultado = {p["url"]: [] for p in posts}
 
     for c in resultados_brutos:
@@ -358,25 +334,21 @@ def coletar_comentarios(posts):
 
         texto = extrair(c, "text", "comment", "content", padrao="").strip()
         if len(texto.split()) < 3:
-            continue  # filtra bots/emojis
+            continue
 
-        # Identifica o post de origem
         post_url = extrair(c, "postUrl", "inputUrl", "url", padrao="")
 
-        # Se nao encontrou por campo direto, tenta pelo shortcode
         if post_url not in resultado:
             for url_key in resultado:
                 if any(sc in url_key for sc in [extrair(c, "shortCode", "postShortCode", padrao="XXX")]):
                     post_url = url_key
                     break
 
-        if post_url not in resultado:
-            # Associa ao primeiro post disponivel se nao conseguir mapear
-            if posts_com_coments:
-                post_url = posts_com_coments[0]["url"]
+        if post_url not in resultado and posts_com_coments:
+            post_url = posts_com_coments[0]["url"]
 
         username = extrair(c, "ownerUsername", "username", "author", padrao="")
-        tipo = "politico" if username.lower() in handles_monitorados else "cidadao"
+        tipo     = "politico" if username.lower() in handles_monitorados else "cidadao"
 
         comentario = {
             "id":       str(extrair(c, "id", "pk", padrao="")),
@@ -390,10 +362,52 @@ def coletar_comentarios(posts):
         if post_url in resultado:
             resultado[post_url].append(comentario)
 
-    # Log resumo
+    return resultado
+
+
+def coletar_comentarios(posts):
+    """
+    Coleta comentários dos posts monitorados.
+    Tenta Instagrapi (gratuito) primeiro; cai no Apify se disponível.
+    """
+    posts_com_coments = [p for p in posts if p["total_coments"] > 0]
+    if not posts_com_coments:
+        log("  Nenhum post com comentários para coletar")
+        return {p["url"]: [] for p in posts}
+
+    if _INSTAGRAPI_OK:
+        log("=== MODULO 2 - Coletando comentários via Instagrapi ===")
+        # Passa os posts com _media_pk para o coletor
+        brutos = _ig.coletar_comentarios(posts_com_coments)
+        log(f"  {len(brutos)} comentários brutos retornados")
+        resultado = _normalizar_comentarios(brutos, posts, posts_com_coments)
+        total_c = sum(len(v) for v in resultado.values())
+        log(f"  {total_c} comentários processados de {sum(1 for v in resultado.values() if v)} posts")
+        return resultado
+
+    if not APIFY_TOKEN:
+        log("  ERRO: Instagrapi indisponível e APIFY_API_TOKEN não configurado")
+        return {p["url"]: [] for p in posts}
+
+    log("=== MODULO 2 - Coletando comentários via Apify ===")
+    urls_posts = [p["url"] for p in posts_com_coments]
+    log(f"  Enviando {len(urls_posts)} posts para coleta de comentários...")
+
+    input_data = {"directUrls": urls_posts, "resultsLimit": MAX_COMENTARIOS_POR_POST}
+    run_id = apify_iniciar_run(ACTOR_COMMENTS, input_data)
+    if not run_id:
+        log("  Falha ao iniciar coleta de comentários")
+        return {p["url"]: [] for p in posts}
+
+    dataset_id = apify_aguardar_run(run_id, timeout=300)
+    if not dataset_id:
+        return {p["url"]: [] for p in posts}
+
+    brutos = apify_buscar_resultados(dataset_id, limit=2000)
+    log(f"  {len(brutos)} comentários brutos retornados")
+    resultado = _normalizar_comentarios(brutos, posts, posts_com_coments)
     total_c = sum(len(v) for v in resultado.values())
-    posts_com = sum(1 for v in resultado.values() if v)
-    log(f"  {total_c} comentarios processados de {posts_com} posts")
+    log(f"  {total_c} comentários processados de {sum(1 for v in resultado.values() if v)} posts")
     return resultado
 
 # ==============================================================
