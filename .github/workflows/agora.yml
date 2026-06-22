@@ -38,6 +38,8 @@ jobs:
           IG_PASSWORD:          ${{ secrets.IG_PASSWORD }}
           IG_PROXY:             ${{ secrets.IG_PROXY }}
           IG_SESSION_JSON:      ${{ secrets.IG_SESSION_JSON }}
+          HTTPS_PROXY:          ${{ secrets.IG_PROXY }}
+          HTTP_PROXY:           ${{ secrets.IG_PROXY }}
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
           SPREADSHEET_ID:       ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_CREDENTIALS:   ${{ secrets.GOOGLE_SA_JSON }}
