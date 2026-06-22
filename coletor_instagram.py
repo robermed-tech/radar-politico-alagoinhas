@@ -47,7 +47,8 @@ except ImportError:
 IG_USERNAME     = os.environ.get("IG_USERNAME", "")
 IG_PASSWORD     = os.environ.get("IG_PASSWORD", "")
 IG_SESSION_FILE = os.environ.get("IG_SESSION_FILE", "ig_session.json")
-IG_PROXY        = os.environ.get("IG_PROXY", "")   # ex: http://user:pass@proxy.webshare.io:80
+IG_PROXY        = os.environ.get("IG_PROXY", "")
+IG_SESSION_JSON = os.environ.get("IG_SESSION_JSON", "")  # sessão serializada (GitHub Actions)
 
 POSTS_POR_PERFIL   = 20    # máximo de posts por perfil
 COMENTARIOS_POR_POST = 200 # máximo de comentários por post
@@ -58,47 +59,68 @@ SLEEP_ENTRE_POSTS  = (0.5, 1.5)   # segundos entre coletas de comentário
 
 # ── Login e sessão ─────────────────────────────────────────────────────────────
 
+def _configurar_proxy(cl: "Client") -> None:
+    """Configura proxy se disponível; ignora silenciosamente se falhar."""
+    if not IG_PROXY:
+        return
+    try:
+        cl.set_proxy(IG_PROXY)
+        print(f"  ✓ Proxy: {IG_PROXY.split('@')[-1]}")
+    except Exception as e:
+        print(f"  ⚠ Proxy ignorado ({e}) — usando IP direto")
+
+
 def criar_cliente() -> "Client":
     """
     Cria e autentica o cliente Instagrapi.
-    Reutiliza sessão salva quando disponível para evitar login frequente.
+
+    Ordem de preferência:
+    1. IG_SESSION_JSON (env var — GitHub Actions)
+    2. ig_session.json (arquivo local)
+    3. Login completo com usuário/senha
     """
     if not INSTAGRAPI_DISPONIVEL:
-        raise ImportError(
-            "instagrapi não instalado. Execute: pip install instagrapi"
-        )
-    if not IG_USERNAME or not IG_PASSWORD:
-        raise EnvironmentError(
-            "IG_USERNAME e IG_PASSWORD devem estar definidos no .env"
-        )
+        raise ImportError("instagrapi não instalado. Execute: pip install instagrapi")
 
     cl = Client()
-    cl.delay_range = [1, 3]  # delay automático entre requests (anti-ban)
+    cl.delay_range = [1, 3]
+    _configurar_proxy(cl)
 
-    # Configura proxy Webshare se disponível
-    if IG_PROXY:
-        cl.set_proxy(IG_PROXY)
-        print(f"  ✓ Proxy configurado: {IG_PROXY.split('@')[-1]}")  # esconde user:pass no log
-    else:
-        print("  ⚠ Sem proxy — usando IP direto (maior risco de bloqueio)")
+    # 1. Sessão via variável de ambiente (GitHub Actions)
+    if IG_SESSION_JSON:
+        try:
+            settings = json.loads(IG_SESSION_JSON)
+            cl.set_settings(settings)
+            cl.get_timeline_feed()
+            print(f"  ✓ Sessão restaurada via IG_SESSION_JSON")
+            return cl
+        except Exception as e:
+            print(f"  ⚠ IG_SESSION_JSON inválido ({e}) — tentando arquivo...")
 
+    # 2. Sessão via arquivo local
     session_path = Path(IG_SESSION_FILE)
-
-    # Tenta carregar sessão existente
     if session_path.exists():
         try:
             cl.load_settings(session_path)
-            cl.login(IG_USERNAME, IG_PASSWORD)
-            print(f"  ✓ Sessão Instagram restaurada ({IG_USERNAME})")
+            cl.get_timeline_feed()
+            print(f"  ✓ Sessão restaurada de {IG_SESSION_FILE}")
             return cl
-        except (LoginRequired, Exception):
+        except LoginRequired:
             print("  ⚠ Sessão expirada — fazendo novo login...")
-            session_path.unlink(missing_ok=True)  # remove sessão inválida
+            session_path.unlink(missing_ok=True)
+        except Exception as e:
+            print(f"  ⚠ Erro na sessão ({e}) — fazendo novo login...")
+            session_path.unlink(missing_ok=True)
+            cl = Client()
+            cl.delay_range = [1, 3]
+            _configurar_proxy(cl)
 
-    # Login completo
+    # 3. Login completo
+    if not IG_USERNAME or not IG_PASSWORD:
+        raise EnvironmentError("IG_USERNAME e IG_PASSWORD devem estar definidos")
     cl.login(IG_USERNAME, IG_PASSWORD)
     cl.dump_settings(session_path)
-    print(f"  ✓ Login Instagram realizado e sessão salva ({IG_USERNAME})")
+    print(f"  ✓ Login realizado e sessão salva ({IG_USERNAME})")
     return cl
 
 
