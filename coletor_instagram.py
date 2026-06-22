@@ -59,12 +59,17 @@ SLEEP_ENTRE_POSTS  = (0.5, 1.5)   # segundos entre coletas de comentário
 
 # ── Login e sessão ─────────────────────────────────────────────────────────────
 
+_NO_PROXY = bool(os.environ.get("GITHUB_ACTIONS"))  # proxy não funciona no Actions
+
+
 def _novo_cliente(usar_proxy: bool = True) -> "Client":
     cl = Client()
     cl.delay_range = [1, 3]
-    if usar_proxy and IG_PROXY:
+    if usar_proxy and IG_PROXY and not _NO_PROXY:
         cl.set_proxy(IG_PROXY)
         print(f"  ✓ Proxy: {IG_PROXY.split('@')[-1]}")
+    elif _NO_PROXY:
+        print("  ℹ GitHub Actions — proxy desativado")
     return cl
 
 
