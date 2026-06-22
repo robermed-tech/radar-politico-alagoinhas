@@ -59,15 +59,13 @@ SLEEP_ENTRE_POSTS  = (0.5, 1.5)   # segundos entre coletas de comentário
 
 # ── Login e sessão ─────────────────────────────────────────────────────────────
 
-def _configurar_proxy(cl: "Client") -> None:
-    """Configura proxy se disponível; ignora silenciosamente se falhar."""
-    if not IG_PROXY:
-        return
-    try:
+def _novo_cliente(usar_proxy: bool = True) -> "Client":
+    cl = Client()
+    cl.delay_range = [1, 3]
+    if usar_proxy and IG_PROXY:
         cl.set_proxy(IG_PROXY)
         print(f"  ✓ Proxy: {IG_PROXY.split('@')[-1]}")
-    except Exception as e:
-        print(f"  ⚠ Proxy ignorado ({e}) — usando IP direto")
+    return cl
 
 
 def criar_cliente() -> "Client":
@@ -75,32 +73,30 @@ def criar_cliente() -> "Client":
     Cria e autentica o cliente Instagrapi.
 
     Ordem de preferência:
-    1. IG_SESSION_JSON (env var — GitHub Actions)
-    2. ig_session.json (arquivo local)
-    3. Login completo com usuário/senha
+    1. IG_SESSION_JSON (env var — GitHub Actions, sem proxy)
+    2. ig_session.json (arquivo local, sem proxy)
+    3. Login completo com usuário/senha (com proxy)
     """
     if not INSTAGRAPI_DISPONIVEL:
         raise ImportError("instagrapi não instalado. Execute: pip install instagrapi")
 
-    cl = Client()
-    cl.delay_range = [1, 3]
-    _configurar_proxy(cl)
-
-    # 1. Sessão via variável de ambiente (GitHub Actions)
+    # 1. Sessão via variável de ambiente (GitHub Actions) — sem proxy
     if IG_SESSION_JSON:
         try:
+            cl = _novo_cliente(usar_proxy=False)
             settings = json.loads(IG_SESSION_JSON)
             cl.set_settings(settings)
             cl.get_timeline_feed()
-            print(f"  ✓ Sessão restaurada via IG_SESSION_JSON")
+            print("  ✓ Sessão restaurada via IG_SESSION_JSON")
             return cl
         except Exception as e:
             print(f"  ⚠ IG_SESSION_JSON inválido ({e}) — tentando arquivo...")
 
-    # 2. Sessão via arquivo local
+    # 2. Sessão via arquivo local — sem proxy
     session_path = Path(IG_SESSION_FILE)
     if session_path.exists():
         try:
+            cl = _novo_cliente(usar_proxy=False)
             cl.load_settings(session_path)
             cl.get_timeline_feed()
             print(f"  ✓ Sessão restaurada de {IG_SESSION_FILE}")
@@ -111,13 +107,11 @@ def criar_cliente() -> "Client":
         except Exception as e:
             print(f"  ⚠ Erro na sessão ({e}) — fazendo novo login...")
             session_path.unlink(missing_ok=True)
-            cl = Client()
-            cl.delay_range = [1, 3]
-            _configurar_proxy(cl)
 
-    # 3. Login completo
+    # 3. Login completo — com proxy
     if not IG_USERNAME or not IG_PASSWORD:
         raise EnvironmentError("IG_USERNAME e IG_PASSWORD devem estar definidos")
+    cl = _novo_cliente(usar_proxy=True)
     cl.login(IG_USERNAME, IG_PASSWORD)
     cl.dump_settings(session_path)
     print(f"  ✓ Login realizado e sessão salva ({IG_USERNAME})")
