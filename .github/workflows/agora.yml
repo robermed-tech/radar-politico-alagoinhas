@@ -38,6 +38,7 @@ jobs:
           IG_SESSION_JSON:      ${{ secrets.IG_SESSION_JSON }}
           HTTPS_PROXY:          ${{ secrets.IG_PROXY }}
           HTTP_PROXY:           ${{ secrets.IG_PROXY }}
+          NO_PROXY:             googleapis.com,accounts.google.com,anthropic.com,supabase.co,supabase.io,apify.com
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
           SPREADSHEET_ID:       ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_CREDENTIALS:   ${{ secrets.GOOGLE_SA_JSON }}
