@@ -244,6 +244,46 @@ def apify_buscar_resultados(dataset_id, limit=500):
         return []
     return r.json()
 
+def verificar_creditos_apify():
+    """Verifica uso de créditos Apify e dispara alerta WhatsApp se > 80% consumido."""
+    if not APIFY_TOKEN:
+        return
+    try:
+        r = requests.get(
+            f"{APIFY_BASE}/users/me",
+            params={"token": APIFY_TOKEN},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            log(f"  Apify credits: HTTP {r.status_code} — ignorando")
+            return
+        data = r.json().get("data", {})
+        uso = data.get("monthlyUsage", {}).get("totalUsd", 0) or 0
+        teto = (data.get("plan", {}).get("maxMonthlyUsageUsd") or
+                data.get("plan", {}).get("monthlyUsageCycleCap") or 0)
+        if not teto:
+            log(f"  Apify credits: uso ${uso:.2f} (teto não identificado no plano)")
+            return
+        pct = (uso / teto) * 100
+        log(f"  Apify credits: ${uso:.2f} / ${teto:.2f} ({pct:.0f}%)")
+        if pct >= 80 and EVOLUTION_URL and EVOLUTION_KEY and WHATSAPP_NUMBER:
+            restante = teto - uso
+            msg = (
+                f"⚠️ *RADAR — Créditos Apify em {pct:.0f}%*\n"
+                f"Consumido: ${uso:.2f} de ${teto:.2f}\n"
+                f"Restante: ${restante:.2f}\n"
+                f"Acesse apify.com/billing para recarregar antes que a coleta pare."
+            )
+            requests.post(
+                f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE','radar')}",
+                headers={"Content-Type": "application/json", "apikey": EVOLUTION_KEY},
+                json={"number": WHATSAPP_NUMBER, "text": msg},
+                timeout=15,
+            )
+            log(f"  Alerta de créditos enviado via WhatsApp")
+    except Exception as e:
+        log(f"  Apify credits: erro ao verificar ({e})")
+
 # ==============================================================
 # MODULO 1 - COLETA DE POSTS VIA APIFY
 # ==============================================================
@@ -2391,6 +2431,7 @@ def main():
         novos_radar, novos_coments = 0, 0
     # Cada etapa secundaria roda isolada (_safe): se uma falhar, as demais e os
     # ALERTAS (saida mais critica, por ultimo) continuam.
+    _safe("creditos_apify", verificar_creditos_apify)                               # alerta quando creditos > 80%
     _safe("supabase", gravar_no_supabase, posts_analisados, comentarios_por_post)  # dual-write -> dashboard
     _safe("daily_metrics", gravar_daily_metrics, posts_analisados)                 # historico de indices (Fase 3)
     _safe("boletim_climatico", gravar_boletim_climatico, posts_analisados)         # boletim climatico (Radar Comando)

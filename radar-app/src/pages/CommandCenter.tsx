@@ -16,7 +16,7 @@ import { AlertaCrise } from "@/components/AlertaCrise";
 import { AvisoAmostra } from "@/components/AvisoAmostra";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk, glassBar } from "@/lib/chartTheme";
+import { chartInk, glassArea, glowLine } from "@/lib/chartTheme";
 
 const PERIODOS = [
   { dias: 1, label: "24h" },
@@ -24,7 +24,6 @@ const PERIODOS = [
   { dias: 30, label: "30 dias" },
 ];
 
-/** Série diária de % negativo, p/ velocidade e timeline. */
 function serieDiaria(posts: Post[]) {
   const byDay: Record<string, { pos: number; neg: number; neu: number; tot: number }> = {};
   for (const p of posts) {
@@ -78,11 +77,51 @@ function ConfigUrl({ onSaved }: { onSaved: () => void }) {
   );
 }
 
+function calcTemasRisco(posts: Post[]) {
+  const map: Record<string, { neg: number; tot: number }> = {};
+  for (const p of posts) {
+    const t = p.tema;
+    if (!t || t === "—") continue;
+    map[t] ??= { neg: 0, tot: 0 };
+    map[t].tot++;
+    if (p.sentimento_post === "negativo") map[t].neg++;
+  }
+  return Object.entries(map)
+    .map(([tema, v]) => ({ tema, pNeg: v.tot > 0 ? Math.round((v.neg / v.tot) * 100) : 0 }))
+    .filter((t) => t.pNeg >= 20)
+    .sort((a, b) => b.pNeg - a.pNeg)
+    .slice(0, 5);
+}
+
+function TemasRisco({ temas }: { temas: { tema: string; pNeg: number }[] }) {
+  if (temas.length === 0)
+    return <p className="text-sm text-txt-3">Nenhum tema em alerta.</p>;
+  return (
+    <div className="space-y-2">
+      {temas.map((t) => {
+        const cor = t.pNeg >= 50 ? "#EF4444" : t.pNeg >= 35 ? "#F97316" : "#EAB308";
+        const label = t.pNeg >= 50 ? "CRÍTICO" : t.pNeg >= 35 ? "ALTO" : "ATENÇÃO";
+        return (
+          <div key={t.tema} className="flex items-center justify-between gap-2">
+            <span className="truncate text-sm font-semibold text-txt-1">{t.tema}</span>
+            <span
+              className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+              style={{ background: `${cor}22`, color: cor }}
+            >
+              {label}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function CommandCenter() {
   const [dias, setDias] = useState(7);
   const qc = useQueryClient();
   const ink = chartInk(useThemeStore((s) => s.theme));
-  // Lê do Postgres (Supabase) com fallback p/ Sheets — não depende mais de URL fixa.
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["radar"],
     queryFn: fetchRadar,
@@ -91,7 +130,6 @@ export function CommandCenter() {
     retry: false,
   });
 
-  // useMemo SEMPRE chamado (antes de qualquer return) — regras de hooks
   const view = useMemo(() => {
     if (!data) return null;
     const posts = filtrarPorPeriodo(data.data, dias);
@@ -100,10 +138,20 @@ export function CommandCenter() {
     const neg3d = serie.at(-4)?.pctNeg ?? negHoje;
     const negVelocity = negHoje - neg3d;
     const ind = calcIndices(posts, negVelocity);
-    return { posts, serie, ind, negVelocity };
+
+    // Contagem absoluta de comentários por sentimento (prova do IAD)
+    const totalPosComents = Math.round(
+      posts.reduce((s, p) => s + ((p.comentarios_pct_pos || 0) / 100) * (p.comentarios_total || 0), 0)
+    );
+    const totalNegComents = Math.round(
+      posts.reduce((s, p) => s + ((p.comentarios_pct_neg || 0) / 100) * (p.comentarios_total || 0), 0)
+    );
+
+    const temasRisco = calcTemasRisco(posts);
+
+    return { posts, serie, ind, negVelocity, totalPosComents, totalNegComents, temasRisco };
   }, [data, dias]);
 
-  /** Tema com maior negatividade no período — para o botão de alerta */
   const temaCrise = useMemo(() => {
     if (!view || view.posts.length === 0) return null;
     const map: Record<string, { neg: number; tot: number }> = {};
@@ -122,18 +170,14 @@ export function CommandCenter() {
     return best && best.pNeg >= 35 ? best : null;
   }, [view]);
 
-  // ConfigUrl só aparece se NÃO houver fonte alguma (nem Postgres nem Sheets)
   if ((error as Error | undefined)?.message === "NO_URL")
     return <ConfigUrl onSaved={() => qc.invalidateQueries({ queryKey: ["radar"] })} />;
   if (isLoading)
     return <div className="p-8 text-txt-2">Carregando inteligência…</div>;
   if (error)
-    return (
-      <div className="p-8 text-risk-crit">{(error as Error).message}</div>
-    );
+    return <div className="p-8 text-risk-crit">{(error as Error).message}</div>;
   if (!view) return null;
 
-  // Período sem dados — evita mostrar "Severíssimo 0%" enganoso
   if (view.posts.length === 0)
     return (
       <div className="space-y-4 p-5">
@@ -142,7 +186,7 @@ export function CommandCenter() {
           <div className="text-lg font-bold text-txt-1">📭 Sem posts no período</div>
           <p className="mx-auto mt-2 max-w-md text-sm text-txt-2">
             Nenhuma publicação foi coletada {dias === 1 ? "nas últimas 24h" : `nos últimos ${dias} dias`}.
-            Tente ampliar o período ou aguarde a próxima coleta do AGORA (4x/dia).
+            Tente ampliar o período ou aguarde a próxima coleta do AGORA (3x/dia).
           </p>
           <div className="mt-4 flex justify-center gap-1 rounded-lg border border-line bg-bg-2 p-1" style={{ width: "fit-content", margin: "16px auto 0" }}>
             {PERIODOS.map((p) => (
@@ -164,9 +208,7 @@ export function CommandCenter() {
   const { ind, serie } = view;
   const nivelColor = NIVEL_COLOR[ind.nivel];
 
-  // Barra divergente de sentimento: positivos sobem (verde), negativos descem
-  // (vermelho), a partir do zero — net sentiment. Muito mais legível que a
-  // empilhada, onde só o segmento de baixo partia do zero.
+  // Evolução do sentimento — 3 linhas: positivo, negativo, neutro
   const timelineOption = {
     grid: { left: 36, right: 12, top: 24, bottom: 28 },
     tooltip: {
@@ -174,10 +216,9 @@ export function CommandCenter() {
       backgroundColor: ink.tooltipBg,
       borderColor: ink.tooltipBorder,
       textStyle: { color: ink.tooltipText },
-      valueFormatter: (v: number) => `${Math.abs(Number(v))}`,
     },
     legend: {
-      data: ["Positivos", "Negativos"],
+      data: ["Positivos", "Negativos", "Neutros"],
       textStyle: { color: ink.axis },
       top: 0,
       right: 0,
@@ -191,11 +232,37 @@ export function CommandCenter() {
     yAxis: {
       type: "value",
       splitLine: { lineStyle: { color: ink.grid } },
-      axisLabel: { color: ink.axis, formatter: (v: number) => `${Math.abs(v)}` },
+      axisLabel: { color: ink.axis },
     },
     series: [
-      { name: "Positivos", type: "bar", stack: "s", data: serie.map((s) => s.pos), itemStyle: glassBar("#16A34A") },
-      { name: "Negativos", type: "bar", stack: "s", data: serie.map((s) => -s.neg), itemStyle: glassBar("#DC2626", { radius: [2, 2, 6, 6] }) },
+      {
+        name: "Positivos",
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 5,
+        data: serie.map((s) => s.pos),
+        lineStyle: glowLine("#16A34A"),
+        areaStyle: glassArea("#16A34A"),
+      },
+      {
+        name: "Negativos",
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 5,
+        data: serie.map((s) => s.neg),
+        lineStyle: glowLine("#DC2626"),
+        areaStyle: glassArea("#DC2626"),
+      },
+      {
+        name: "Neutros",
+        type: "line",
+        smooth: true,
+        symbol: "none",
+        data: serie.map((s) => s.neu),
+        lineStyle: { color: "#9FB0CC", width: 1.5, type: "dashed" as const },
+      },
     ],
   };
 
@@ -227,7 +294,6 @@ export function CommandCenter() {
             <span className="h-2 w-2 rounded-full" style={{ background: nivelColor }} />
             Crise: {NIVEL_LABEL[ind.nivel]}
           </div>
-          {/* Botão de alerta aparece quando crise é alta e há tema identificado */}
           {(ind.nivel === "alto" || ind.nivel === "critico") && temaCrise && (
             <AlertaCrise
               tema={temaCrise.tema}
@@ -252,41 +318,52 @@ export function CommandCenter() {
         </div>
       </div>
 
-      {/* Aviso de amostra fraca — antes de mostrar índices que podem enganar */}
       <AvisoAmostra ica={ind.ica} posts={ind.volumePosts} />
 
-      {/* Gauges + KPIs */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* IAD com prova + Temas em Alerta + Posts */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        {/* Gauge IAD com contagem absoluta */}
         <div className="rounded-xl border border-line bg-bg-1 p-2">
           <Gauge
             value={ind.iad}
             label="Aprovação Digital"
             color={ind.iad >= 60 ? "#22C55E" : ind.iad >= 40 ? "#EAB308" : "#EF4444"}
           />
+          <div className="mt-1 text-center text-[10px] leading-snug text-txt-3">
+            <span style={{ color: "#22C55E" }}>{fmtInt(view.totalPosComents)} pos</span>
+            {" · "}
+            <span style={{ color: "#EF4444" }}>{fmtInt(view.totalNegComents)} neg</span>
+            <br />
+            de {fmtInt(ind.volumeComents)} coment.
+          </div>
         </div>
-        <div className="rounded-xl border border-line bg-bg-1 p-2">
-          <Gauge value={ind.risco} label="Risco Político" color={nivelColor} />
+
+        {/* Temas em Alerta — substitui "Risco Político 29%" */}
+        <div className="rounded-xl border border-line bg-bg-1 p-4">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-txt-3">
+            Temas em Atenção
+          </div>
+          <TemasRisco temas={view.temasRisco} />
         </div>
-        <KpiStat
-          label="Confiança da Amostra"
-          value={`${ind.ica}`}
-          sub={ind.ica < 40 ? "⚠ amostra insuficiente" : "amostra confiável"}
-        />
-        <KpiStat
-          label="Posts no período"
-          value={fmtInt(ind.volumePosts)}
-          sub={`${fmtInt(ind.volumeComents)} comentários`}
-        />
+
+        {/* Posts e comentários */}
+        <div className="col-span-2 lg:col-span-1">
+          <KpiStat
+            label="Posts no período"
+            value={fmtInt(ind.volumePosts)}
+            sub={`${fmtInt(ind.volumeComents)} comentários`}
+          />
+        </div>
       </div>
 
-      {/* Distribuição */}
+      {/* Distribuição de sentimento dos posts */}
       <div className="grid grid-cols-3 gap-4">
-        <KpiStat label="Positivo" value={`${ind.pctPos}%`} sub="dos posts" />
-        <KpiStat label="Negativo" value={`${ind.pctNeg}%`} sub="dos posts" invertDelta />
-        <KpiStat label="Neutro" value={`${ind.pctNeu}%`} sub="dos posts" />
+        <KpiStat label="Positivo" value={`${ind.pctPos}%`} sub="posts com sent. positivo" />
+        <KpiStat label="Negativo" value={`${ind.pctNeg}%`} sub="posts com sent. negativo" invertDelta />
+        <KpiStat label="Neutro" value={`${ind.pctNeu}%`} sub="posts com sent. neutro" />
       </div>
 
-      {/* Timeline */}
+      {/* Evolução do sentimento */}
       <div className="rounded-xl border border-line bg-bg-1 p-4">
         <div className="mb-1 text-sm font-bold">Evolução do sentimento</div>
         <ReactECharts option={timelineOption} style={{ height: 280 }} notMerge />
