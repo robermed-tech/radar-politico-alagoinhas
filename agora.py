@@ -111,6 +111,16 @@ def log(msg):
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] {msg}")
 
+def _safe(nome, fn, *args, **kwargs):
+    """Executa uma etapa secundaria isolando falhas: loga e segue. Garante que
+    o pipeline (em especial os alertas, que rodam por ultimo) nao seja derrubado
+    por uma unica etapa que estoure (Supabase fora, erro de schema, etc.)."""
+    try:
+        return fn(*args, **kwargs)
+    except Exception as e:
+        log(f"  [etapa '{nome}' FALHOU] {e} — seguindo")
+        return None
+
 def timestamp_para_data(ts):
     try:
         if isinstance(ts, (int, float)):
@@ -2361,18 +2371,21 @@ def main():
     except Exception as e:
         log(f"  Sheets FALHOU ({e}) — seguindo; o dashboard usa o Supabase")
         novos_radar, novos_coments = 0, 0
-    gravar_no_supabase(posts_analisados, comentarios_por_post)  # dual-write -> dashboard
-    gravar_daily_metrics(posts_analisados)                       # historico de indices (Fase 3)
-    gravar_boletim_climatico(posts_analisados)                   # boletim climatico (Radar Comando)
-    briefing_ia = gerar_briefing_estrategico(posts_analisados)   # assistente IA (Fase 3d)
-    # Briefing matinal: execucao das 05h BRT (08h UTC) ou forcar com BRIEFING_MATINAL=true
+    # Cada etapa secundaria roda isolada (_safe): se uma falhar, as demais e os
+    # ALERTAS (saida mais critica, por ultimo) continuam.
+    _safe("supabase", gravar_no_supabase, posts_analisados, comentarios_por_post)  # dual-write -> dashboard
+    _safe("daily_metrics", gravar_daily_metrics, posts_analisados)                 # historico de indices (Fase 3)
+    _safe("boletim_climatico", gravar_boletim_climatico, posts_analisados)         # boletim climatico (Radar Comando)
+    briefing_ia = _safe("briefing_estrategico", gerar_briefing_estrategico, posts_analisados)  # assistente IA (Fase 3d)
+    # Briefing matinal: run das 05h BRT (08h UTC) — aceita 8 ou 9 UTC p/ tolerar
+    # atraso do cron do GitHub Actions. Forcar com BRIEFING_MATINAL=true.
     hora_utc = datetime.utcnow().hour
-    if briefing_ia and (hora_utc == 8 or os.environ.get("BRIEFING_MATINAL", "").lower() == "true"):
-        enviar_briefing_matinal(posts_analisados, briefing_ia)
-    rodar_cacador_crises(posts_analisados, comentarios_por_post) # agente caçador de crises (Fase B)
-    gravar_influencers(posts_analisados, comentarios_por_post)   # ranking de influenciadores
-    gravar_narratives(posts_analisados, comentarios_por_post)    # narrativas (tema + sentimento)
-    gravar_daily_themes(posts_analisados)                        # tendencias por tema (Fase 3e)
+    if briefing_ia and (hora_utc in (8, 9) or os.environ.get("BRIEFING_MATINAL", "").lower() == "true"):
+        _safe("briefing_matinal", enviar_briefing_matinal, posts_analisados, briefing_ia)
+    _safe("cacador_crises", rodar_cacador_crises, posts_analisados, comentarios_por_post)  # agente caçador de crises (Fase B)
+    _safe("influencers", gravar_influencers, posts_analisados, comentarios_por_post)       # ranking de influenciadores
+    _safe("narratives", gravar_narratives, posts_analisados, comentarios_por_post)         # narrativas (tema + sentimento)
+    _safe("daily_themes", gravar_daily_themes, posts_analisados)                           # tendencias por tema (Fase 3e)
     # Apenas posts NOVOS recebem alerta; posts existentes com muitos novos comentarios recebem update
     posts_novos = [p for p in posts_analisados if p.get("url") not in existentes_radar]
     posts_com_update = [

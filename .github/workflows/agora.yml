@@ -2,15 +2,13 @@ name: ÁGORA — Radar Político Alagoinhas
 
 on:
   schedule:
-    # Roda 4x/dia (BRT = UTC-3)
-    # 05:00 BRT = 08:00 UTC
-    # 11:00 BRT = 14:00 UTC
-    # 17:00 BRT = 20:00 UTC
-    # 22:00 BRT = 01:00 UTC
-    - cron: '0 8 * * *'
-    - cron: '0 14 * * *'
-    - cron: '0 20 * * *'
-    - cron: '0 1 * * *'
+    # Roda 3x/dia (BRT = UTC-3)
+    # 08:00 BRT = 11:00 UTC
+    # 14:00 BRT = 17:00 UTC
+    # 19:00 BRT = 22:00 UTC
+    - cron: '0 11 * * *'
+    - cron: '0 17 * * *'
+    - cron: '0 22 * * *'
   workflow_dispatch:  # Permite executar manualmente
 
 jobs:
