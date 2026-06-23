@@ -10,7 +10,6 @@ import {
   type Post,
 } from "@/lib/data";
 import { calcIndices, NIVEL_COLOR, NIVEL_LABEL } from "@/lib/indices";
-import { Gauge } from "@/components/Gauge";
 import { KpiStat } from "@/components/KpiStat";
 import { AlertaCrise } from "@/components/AlertaCrise";
 import { AvisoAmostra } from "@/components/AvisoAmostra";
@@ -95,18 +94,22 @@ function calcTemasRisco(posts: Post[]) {
 
 function TemasRisco({ temas }: { temas: { tema: string; pNeg: number }[] }) {
   if (temas.length === 0)
-    return <p className="text-sm text-txt-3">Nenhum tema em alerta.</p>;
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-txt-3 text-center">Nenhum tema em alerta.</p>
+      </div>
+    );
   return (
-    <div className="space-y-2">
+    <div className="flex flex-1 flex-col items-center justify-center gap-4">
       {temas.map((t) => {
         const cor = t.pNeg >= 50 ? "#EF4444" : t.pNeg >= 35 ? "#F97316" : "#EAB308";
         const label = t.pNeg >= 50 ? "CRÍTICO" : t.pNeg >= 35 ? "ALTO" : "ATENÇÃO";
         return (
-          <div key={t.tema} className="flex items-center justify-between gap-2">
-            <span className="truncate text-sm font-semibold text-txt-1">{t.tema}</span>
+          <div key={t.tema} className="flex flex-col items-center gap-1.5 text-center">
+            <span className="text-3xl font-extrabold capitalize text-txt-1">{t.tema}</span>
             <span
-              className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
-              style={{ background: `${cor}22`, color: cor }}
+              className="rounded px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest"
+              style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}44` }}
             >
               {label}
             </span>
@@ -322,14 +325,18 @@ export function CommandCenter() {
 
       {/* IAD com prova + Temas em Alerta + Posts */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-        {/* Gauge IAD com contagem absoluta */}
-        <div className="rounded-xl border border-line bg-bg-1 p-2">
-          <Gauge
-            value={ind.iad}
-            label="Aprovação Digital"
-            color={ind.iad >= 60 ? "#22C55E" : ind.iad >= 40 ? "#EAB308" : "#EF4444"}
-          />
-          <div className="mt-1 text-center text-[10px] leading-snug text-txt-3">
+        {/* IAD sem gauge — número grande + contagem absoluta */}
+        <div className="flex flex-col items-center justify-center rounded-xl border border-line bg-bg-1 p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">
+            Aprovação Digital
+          </div>
+          <div
+            className="mt-1 text-6xl font-extrabold leading-none"
+            style={{ color: ind.iad >= 60 ? "#22C55E" : ind.iad >= 40 ? "#EAB308" : "#EF4444" }}
+          >
+            {ind.iad}%
+          </div>
+          <div className="mt-3 text-center text-[10px] leading-snug text-txt-3">
             <span style={{ color: "#22C55E" }}>{fmtInt(view.totalPosComents)} pos</span>
             {" · "}
             <span style={{ color: "#EF4444" }}>{fmtInt(view.totalNegComents)} neg</span>
@@ -338,9 +345,9 @@ export function CommandCenter() {
           </div>
         </div>
 
-        {/* Temas em Alerta — substitui "Risco Político 29%" */}
-        <div className="rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-txt-3">
+        {/* Temas em Atenção — texto grande centralizado */}
+        <div className="flex min-h-[160px] flex-col rounded-xl border border-line bg-bg-1 p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">
             Temas em Atenção
           </div>
           <TemasRisco temas={view.temasRisco} />
