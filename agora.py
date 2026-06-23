@@ -293,42 +293,49 @@ def _normalizar_posts(resultados_brutos):
 def coletar_posts():
     """
     Coleta posts dos perfis monitorados.
-    Tenta Instagrapi (gratuito) primeiro; cai no Apify se disponível.
+    Roda Instagrapi E Apify em sequência e faz merge por URL — nenhuma fonte
+    única interrompe o fluxo.
     """
     perfis = list(PERFIS.keys())
+    urls_vistos: set = set()
+    todos: list = []
 
+    # ── Instagrapi ──────────────────────────────────────────────
     if _INSTAGRAPI_OK:
-        log("=== MODULO 1 - Coletando posts via Instagrapi ===")
-        brutos = _ig.coletar_posts(perfis, dias_atras=DIAS_RETROATIVOS)
-        log(f"  {len(brutos)} posts brutos retornados")
-        if brutos:
-            todos = _normalizar_posts(brutos)
-            log(f"  Total filtrado: {len(todos)} posts relevantes")
-            return todos
-        log("  Instagrapi retornou 0 posts (429/bloqueio) — tentando Apify...")
+        log("=== MODULO 1a - Coletando posts via Instagrapi ===")
+        try:
+            brutos_ig = _ig.coletar_posts(perfis, dias_atras=DIAS_RETROATIVOS)
+            log(f"  {len(brutos_ig)} posts brutos (Instagrapi)")
+            for p in _normalizar_posts(brutos_ig):
+                if p["url"] not in urls_vistos:
+                    todos.append(p)
+                    urls_vistos.add(p["url"])
+        except Exception as e:
+            log(f"  Instagrapi falhou: {e}")
 
-    if not APIFY_TOKEN:
-        log("  ERRO: Instagrapi indisponível e APIFY_API_TOKEN não configurado")
-        return []
+    # ── Apify ────────────────────────────────────────────────────
+    if APIFY_TOKEN:
+        log("=== MODULO 1b - Coletando posts via Apify ===")
+        try:
+            usernames  = [f"https://www.instagram.com/{h}/" for h in perfis]
+            input_data = {"username": usernames, "resultsLimit": MAX_POSTS_POR_PERFIL}
+            run_id = apify_iniciar_run(ACTOR_POSTS, input_data)
+            if run_id:
+                dataset_id = apify_aguardar_run(run_id, timeout=300)
+                if dataset_id:
+                    brutos_ap = apify_buscar_resultados(dataset_id)
+                    log(f"  {len(brutos_ap)} posts brutos (Apify)")
+                    novos = 0
+                    for p in _normalizar_posts(brutos_ap):
+                        if p["url"] not in urls_vistos:
+                            todos.append(p)
+                            urls_vistos.add(p["url"])
+                            novos += 1
+                    log(f"  {novos} posts novos adicionados pelo Apify")
+        except Exception as e:
+            log(f"  Apify falhou: {e}")
 
-    log("=== MODULO 1 - Coletando posts via Apify ===")
-    usernames  = [f"https://www.instagram.com/{h}/" for h in perfis]
-    input_data = {"username": usernames, "resultsLimit": MAX_POSTS_POR_PERFIL}
-
-    log(f"  Enviando {len(usernames)} perfis para o Apify...")
-    run_id = apify_iniciar_run(ACTOR_POSTS, input_data)
-    if not run_id:
-        log("  Falha ao iniciar coleta de posts")
-        return []
-
-    dataset_id = apify_aguardar_run(run_id, timeout=300)
-    if not dataset_id:
-        return []
-
-    brutos = apify_buscar_resultados(dataset_id)
-    log(f"  {len(brutos)} posts brutos retornados")
-    todos = _normalizar_posts(brutos)
-    log(f"  Total filtrado: {len(todos)} posts relevantes")
+    log(f"  Total combinado: {len(todos)} posts relevantes")
     return todos
 
 # ==============================================================
@@ -380,45 +387,53 @@ def _normalizar_comentarios(resultados_brutos, posts, posts_com_coments):
 def coletar_comentarios(posts):
     """
     Coleta comentários dos posts monitorados.
-    Tenta Instagrapi (gratuito) primeiro; cai no Apify se disponível.
+    Roda Instagrapi E Apify e faz merge por id de comentário — nenhuma fonte
+    única interrompe o fluxo.
     """
     posts_com_coments = [p for p in posts if p["total_coments"] > 0]
     if not posts_com_coments:
         log("  Nenhum post com comentários para coletar")
         return {p["url"]: [] for p in posts}
 
+    resultado: dict = {p["url"]: [] for p in posts}
+    ids_vistos: set = set()
+
+    def _merge(brutos_novos):
+        parcial = _normalizar_comentarios(brutos_novos, posts, posts_com_coments)
+        for url, coments in parcial.items():
+            for c in coments:
+                if c["id"] not in ids_vistos:
+                    resultado[url].append(c)
+                    ids_vistos.add(c["id"])
+
+    # ── Instagrapi ──────────────────────────────────────────────
     if _INSTAGRAPI_OK:
-        log("=== MODULO 2 - Coletando comentários via Instagrapi ===")
-        brutos = _ig.coletar_comentarios(posts_com_coments)
-        log(f"  {len(brutos)} comentários brutos retornados")
-        if brutos:
-            resultado = _normalizar_comentarios(brutos, posts, posts_com_coments)
-            total_c = sum(len(v) for v in resultado.values())
-            log(f"  {total_c} comentários processados de {sum(1 for v in resultado.values() if v)} posts")
-            return resultado
-        log("  Instagrapi retornou 0 comentários (429/bloqueio) — tentando Apify...")
+        log("=== MODULO 2a - Coletando comentários via Instagrapi ===")
+        try:
+            brutos_ig = _ig.coletar_comentarios(posts_com_coments)
+            log(f"  {len(brutos_ig)} comentários brutos (Instagrapi)")
+            _merge(brutos_ig)
+        except Exception as e:
+            log(f"  Instagrapi falhou: {e}")
 
-    if not APIFY_TOKEN:
-        log("  ERRO: Instagrapi indisponível e APIFY_API_TOKEN não configurado")
-        return {p["url"]: [] for p in posts}
+    # ── Apify ────────────────────────────────────────────────────
+    if APIFY_TOKEN:
+        log("=== MODULO 2b - Coletando comentários via Apify ===")
+        try:
+            urls_posts = [p["url"] for p in posts_com_coments]
+            input_data = {"directUrls": urls_posts, "resultsLimit": MAX_COMENTARIOS_POR_POST}
+            run_id = apify_iniciar_run(ACTOR_COMMENTS, input_data)
+            if run_id:
+                dataset_id = apify_aguardar_run(run_id, timeout=300)
+                if dataset_id:
+                    brutos_ap = apify_buscar_resultados(dataset_id, limit=2000)
+                    log(f"  {len(brutos_ap)} comentários brutos (Apify)")
+                    antes = len(ids_vistos)
+                    _merge(brutos_ap)
+                    log(f"  {len(ids_vistos) - antes} comentários novos adicionados pelo Apify")
+        except Exception as e:
+            log(f"  Apify falhou: {e}")
 
-    log("=== MODULO 2 - Coletando comentários via Apify ===")
-    urls_posts = [p["url"] for p in posts_com_coments]
-    log(f"  Enviando {len(urls_posts)} posts para coleta de comentários...")
-
-    input_data = {"directUrls": urls_posts, "resultsLimit": MAX_COMENTARIOS_POR_POST}
-    run_id = apify_iniciar_run(ACTOR_COMMENTS, input_data)
-    if not run_id:
-        log("  Falha ao iniciar coleta de comentários")
-        return {p["url"]: [] for p in posts}
-
-    dataset_id = apify_aguardar_run(run_id, timeout=300)
-    if not dataset_id:
-        return {p["url"]: [] for p in posts}
-
-    brutos = apify_buscar_resultados(dataset_id, limit=2000)
-    log(f"  {len(brutos)} comentários brutos retornados")
-    resultado = _normalizar_comentarios(brutos, posts, posts_com_coments)
     total_c = sum(len(v) for v in resultado.values())
     log(f"  {total_c} comentários processados de {sum(1 for v in resultado.values() if v)} posts")
     return resultado

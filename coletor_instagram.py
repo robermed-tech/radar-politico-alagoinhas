@@ -59,7 +59,9 @@ SLEEP_ENTRE_POSTS  = (0.5, 1.5)   # segundos entre coletas de comentário
 
 # ── Login e sessão ─────────────────────────────────────────────────────────────
 
-_NO_PROXY = bool(os.environ.get("GITHUB_ACTIONS"))  # proxy não funciona no Actions
+# Desativa proxy no Actions APENAS se IG_PROXY não estiver configurado.
+# O problema anterior (407) era do HTTPS_PROXY global no workflow, não do proxy do Instagrapi.
+_NO_PROXY = bool(os.environ.get("GITHUB_ACTIONS")) and not IG_PROXY
 
 
 def _novo_cliente(usar_proxy: bool = True) -> "Client":
@@ -69,7 +71,7 @@ def _novo_cliente(usar_proxy: bool = True) -> "Client":
         cl.set_proxy(IG_PROXY)
         print(f"  ✓ Proxy: {IG_PROXY.split('@')[-1]}")
     elif _NO_PROXY:
-        print("  ℹ GitHub Actions — proxy desativado")
+        print("  ℹ GitHub Actions sem proxy configurado")
     return cl
 
 
