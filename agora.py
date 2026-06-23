@@ -301,9 +301,11 @@ def coletar_posts():
         log("=== MODULO 1 - Coletando posts via Instagrapi ===")
         brutos = _ig.coletar_posts(perfis, dias_atras=DIAS_RETROATIVOS)
         log(f"  {len(brutos)} posts brutos retornados")
-        todos = _normalizar_posts(brutos)
-        log(f"  Total filtrado: {len(todos)} posts relevantes")
-        return todos
+        if brutos:
+            todos = _normalizar_posts(brutos)
+            log(f"  Total filtrado: {len(todos)} posts relevantes")
+            return todos
+        log("  Instagrapi retornou 0 posts (429/bloqueio) — tentando Apify...")
 
     if not APIFY_TOKEN:
         log("  ERRO: Instagrapi indisponível e APIFY_API_TOKEN não configurado")
@@ -387,13 +389,14 @@ def coletar_comentarios(posts):
 
     if _INSTAGRAPI_OK:
         log("=== MODULO 2 - Coletando comentários via Instagrapi ===")
-        # Passa os posts com _media_pk para o coletor
         brutos = _ig.coletar_comentarios(posts_com_coments)
         log(f"  {len(brutos)} comentários brutos retornados")
-        resultado = _normalizar_comentarios(brutos, posts, posts_com_coments)
-        total_c = sum(len(v) for v in resultado.values())
-        log(f"  {total_c} comentários processados de {sum(1 for v in resultado.values() if v)} posts")
-        return resultado
+        if brutos:
+            resultado = _normalizar_comentarios(brutos, posts, posts_com_coments)
+            total_c = sum(len(v) for v in resultado.values())
+            log(f"  {total_c} comentários processados de {sum(1 for v in resultado.values() if v)} posts")
+            return resultado
+        log("  Instagrapi retornou 0 comentários (429/bloqueio) — tentando Apify...")
 
     if not APIFY_TOKEN:
         log("  ERRO: Instagrapi indisponível e APIFY_API_TOKEN não configurado")
