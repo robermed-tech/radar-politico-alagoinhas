@@ -39,6 +39,10 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: radar-app
+        env:
+          VITE_SUPABASE_URL: https://wtlhqyqxhuchzloodoyx.supabase.co
+          VITE_SUPABASE_KEY: sb_publishable_80AckjG9pwL3DB0_uTPCjg_IS2VxOAo
+          VITE_TENANT: alagoinhas
 
       - uses: actions/configure-pages@v5
 
