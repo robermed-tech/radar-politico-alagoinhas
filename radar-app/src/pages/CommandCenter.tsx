@@ -281,6 +281,23 @@ export function CommandCenter() {
 
   return (
     <div className="space-y-4 p-5">
+      {/* Cabeçalho só visível na impressão */}
+      <div className="print-only print-header">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-xl font-extrabold">Radar Político — Centro de Comando</div>
+            <div className="text-sm text-txt-2">Alagoinhas/BA</div>
+          </div>
+          <div className="text-right text-sm text-txt-3">
+            <div>Período: {dias === 1 ? "últimas 24h" : `últimos ${dias} dias`}</div>
+            <div>{new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</div>
+          </div>
+        </div>
+        <div className="mt-2 text-[10px] text-txt-3">
+          Gerado pelo Radar Político · Não substitui pesquisa eleitoral
+        </div>
+      </div>
+
       {/* Faixa de status */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -288,7 +305,7 @@ export function CommandCenter() {
           <p className="text-sm text-txt-2">
             Alagoinhas/BA · inteligência política
             <span
-              className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+              className="print-hide ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
               style={{
                 background: data?.source === "supabase" ? "#14532d" : "#1A2233",
                 color: data?.source === "supabase" ? "#22C55E" : "#9FB0CC",
@@ -299,7 +316,7 @@ export function CommandCenter() {
             </span>
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="print-hide flex flex-wrap items-center gap-3">
           <div
             className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-bold"
             style={{ borderColor: nivelColor, color: nivelColor }}
@@ -315,6 +332,13 @@ export function CommandCenter() {
               iad={ind.iad}
             />
           )}
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 rounded-lg border border-line bg-bg-1 px-3 py-1.5 text-sm font-semibold text-txt-2 transition hover:bg-bg-2 hover:text-txt-1"
+            title="Exportar como PDF"
+          >
+            ⬇ Exportar
+          </button>
           <div className="flex rounded-lg border border-line bg-bg-1 p-1">
             {PERIODOS.map((p) => (
               <button
@@ -392,7 +416,7 @@ export function CommandCenter() {
       </div>
 
       {/* Evolução do sentimento */}
-      <div className="rounded-xl border border-line bg-bg-1 p-4">
+      <div className="print-hide rounded-xl border border-line bg-bg-1 p-4">
         <div className="mb-1 text-sm font-bold">Evolução do sentimento</div>
         <ReactECharts option={timelineOption} style={{ height: 280 }} notMerge />
       </div>

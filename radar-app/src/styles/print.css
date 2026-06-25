@@ -1,0 +1,85 @@
+@media print {
+  /* Força suporte a cores */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Oculta elementos de navegação e UI */
+  aside,
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Mostra elementos só de impressão */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Fundo branco, texto escuro */
+  :root,
+  .theme-dark,
+  .theme-light {
+    --g1: rgba(255, 255, 255, 0.95) !important;
+    --g2: rgba(255, 255, 255, 0.9) !important;
+    --g3: rgba(0, 0, 0, 0.05) !important;
+    --line: rgba(0, 0, 0, 0.15) !important;
+    --txt1: #111827 !important;
+    --txt2: #374151 !important;
+    --txt3: #6b7280 !important;
+    --wx-bg: white !important;
+  }
+
+  html,
+  body,
+  #root {
+    background: white !important;
+    color: #111827 !important;
+    height: auto !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  /* Layout para impressão */
+  .flex.h-full {
+    display: block !important;
+  }
+
+  main {
+    overflow: visible !important;
+  }
+
+  /* Cards com borda visível no papel */
+  .rounded-xl,
+  .rounded-2xl {
+    border: 1px solid #e5e7eb !important;
+    background: #f9fafb !important;
+    break-inside: avoid;
+  }
+
+  /* Remove sombras */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Cabeçalho de impressão */
+  .print-header {
+    display: block !important;
+    border-bottom: 2px solid #111827;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+
+  @page {
+    size: A4;
+    margin: 1.8cm 2cm;
+  }
+}
+
+/* Oculto por padrão — visível só na impressão */
+.print-only {
+  display: none;
+}

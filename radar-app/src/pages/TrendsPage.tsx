@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
-import { fetchDailyThemes, type DailyTheme } from "@/lib/data";
+import { fetchDailyThemes, fetchRadar, type DailyTheme, type Post } from "@/lib/data";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
@@ -45,6 +45,103 @@ interface TemaStats {
   ultimo: number;
 }
 
+const STOPWORDS = new Set([
+  "de","a","o","que","e","do","da","em","um","para","com","uma","os","no","se","na","por","mais",
+  "as","dos","como","mas","ao","ele","das","à","seu","sua","ou","quando","muito","nos","já","eu",
+  "também","só","pelo","pela","até","isso","ela","entre","depois","sem","mesmo","aos","ter","seus",
+  "quem","nas","me","esse","eles","estão","você","tinha","foram","essa","num","nem","suas","meu",
+  "às","minha","têm","numa","pelos","elas","havia","seja","qual","será","nós","tenho","lhe","deles",
+  "essas","esses","pelas","este","fosse","dele","tu","te","vocês","vos","lhes","meus","minhas","teu",
+  "tua","teus","tuas","nosso","nossa","nossos","nossas","dela","delas","esta","estes","estas","aquele",
+  "aquela","aqueles","aquelas","isto","aquilo","estou","está","estamos","estavam","estarão","estaria",
+  "foi","ser","tem","são","sendo","tudo","todo","todos","toda","todas","outro","outra","outros","outras",
+  "quer","vai","vão","pode","podem","fazer","feito","ainda","então","agora","aqui","ali","lá","aqui",
+  "bem","há","aí","nada","faz","diz","pois","pra","porque","sobre","apenas","sim","não","né","tá",
+]);
+
+function extrairKeywords(posts: Post[]): { palavra: string; count: number; cor: string }[] {
+  const freq: Record<string, { pos: number; neg: number; tot: number }> = {};
+  for (const p of posts) {
+    const texto = [p.resumo, p.queixa_dominante, p.elogio_dominante, p.tema]
+      .filter(Boolean).join(" ");
+    const sent = p.sentimento_post === "positivo" ? "pos" : p.sentimento_post === "negativo" ? "neg" : null;
+    for (const raw of texto.split(/[\s,;:.!?()"'«»\-–—\/]+/)) {
+      const w = raw.toLowerCase().replace(/[^a-záàâãéêíóôõúüçñ]/g, "");
+      if (w.length < 4 || STOPWORDS.has(w) || /^\d+$/.test(w)) continue;
+      freq[w] ??= { pos: 0, neg: 0, tot: 0 };
+      freq[w].tot++;
+      if (sent === "pos") freq[w].pos++;
+      if (sent === "neg") freq[w].neg++;
+    }
+  }
+  const entries = Object.entries(freq)
+    .filter(([, v]) => v.tot >= 2)
+    .sort((a, b) => b[1].tot - a[1].tot)
+    .slice(0, 50);
+  return entries.map(([palavra, v]) => {
+    let cor = "#9FB0CC";
+    if (v.pos > v.neg * 1.5) cor = "#22C55E";
+    else if (v.neg > v.pos * 1.5) cor = "#EF4444";
+    return { palavra, count: v.tot, cor };
+  });
+}
+
+function KeywordCloud({ posts }: { posts: Post[] }) {
+  const kws = useMemo(() => extrairKeywords(posts), [posts]);
+  if (kws.length === 0) return null;
+  const max = kws[0].count;
+  const min = kws.at(-1)?.count ?? 1;
+  const escala = (c: number) => {
+    const t = max === min ? 0.5 : (c - min) / (max - min);
+    return 0.75 + t * 1.5; // rem: 0.75 → 2.25
+  };
+  const top5neg = [...kws].filter(k => k.cor === "#EF4444").slice(0, 5);
+  const top5pos = [...kws].filter(k => k.cor === "#22C55E").slice(0, 5);
+  return (
+    <div className="rounded-xl border border-line bg-bg-1 p-4">
+      <div className="mb-3 text-sm font-bold">Palavras mais frequentes</div>
+      <div className="flex flex-wrap gap-2 leading-relaxed">
+        {kws.map(({ palavra, count, cor }) => (
+          <span
+            key={palavra}
+            title={`${count} ocorrência${count > 1 ? "s" : ""}`}
+            className="cursor-default transition-opacity hover:opacity-80"
+            style={{ fontSize: `${escala(count)}rem`, color: cor, fontWeight: count >= max * 0.6 ? 700 : 500 }}
+          >
+            {palavra}
+          </span>
+        ))}
+      </div>
+      {(top5neg.length > 0 || top5pos.length > 0) && (
+        <div className="mt-4 grid grid-cols-2 gap-4 border-t border-line pt-3">
+          <div>
+            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-risk-crit">
+              Negativos
+            </div>
+            {top5neg.map(k => (
+              <div key={k.palavra} className="flex justify-between text-xs py-0.5">
+                <span className="text-txt-1 capitalize">{k.palavra}</span>
+                <span className="tabular-nums text-txt-3">{k.count}×</span>
+              </div>
+            ))}
+          </div>
+          <div>
+            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-risk-low">
+              Positivos
+            </div>
+            {top5pos.map(k => (
+              <div key={k.palavra} className="flex justify-between text-xs py-0.5">
+                <span className="text-txt-1 capitalize">{k.palavra}</span>
+                <span className="tabular-nums text-txt-3">{k.count}×</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TrendsPage() {
   const [metrica, setMetrica] = useState<Metrica>("volume");
   const [janela, setJanela] = useState(14); // dias
@@ -55,6 +152,12 @@ export function TrendsPage() {
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });
+  const { data: radarData } = useQuery({
+    queryKey: ["radar"],
+    queryFn: fetchRadar,
+    staleTime: 5 * 60 * 1000,
+  });
+  const posts = radarData?.data ?? [];
 
   const view = useMemo(() => {
     const linhas = data ?? [];
@@ -268,6 +371,9 @@ export function TrendsPage() {
           notMerge
         />
       </div>
+
+      {/* Nuvem de keywords */}
+      {posts.length > 0 && <KeywordCloud posts={posts} />}
 
       {/* Tabela completa */}
       <div className="rounded-xl border border-line bg-bg-1 p-4">

@@ -1472,6 +1472,94 @@ def rodar_cacador_crises(posts_analisados, comentarios_por_post):
 
 
 # ==============================================================
+# MODULO 7B - ALERTAS POR LIMIAR
+# ==============================================================
+
+def verificar_alertas(posts_analisados):
+    """Lê config de alertas do Supabase (ou usa defaults de env) e dispara WhatsApp."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+    if not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER:
+        return
+
+    # Calcula índices do ciclo atual
+    iad = calc_iad(posts_analisados)
+    total = len(posts_analisados)
+    if total == 0:
+        return
+    neg_pct = round(sum(1 for p in posts_analisados if _sent(p) == "negativo") / total * 100)
+
+    # Lê config do dashboard (tabela alerta_config) — fallback para env vars
+    limiar_iad   = int(os.environ.get("ALERTA_IAD_LIMIAR",   40))
+    limiar_neg   = int(os.environ.get("ALERTA_NEG_LIMIAR",   60))
+    limiar_tema  = int(os.environ.get("ALERTA_TEMA_LIMIAR",  50))
+
+    cfg = _supabase_get("alerta_config", f"tenant_id=eq.{TENANT}&select=tipo,limiar,ativo")
+    for row in cfg:
+        tipo   = row.get("tipo", "")
+        limiar = int(row.get("limiar") or 0)
+        ativo  = bool(row.get("ativo", True))
+        if not ativo:
+            continue
+        if tipo == "iad":     limiar_iad  = limiar
+        if tipo == "neg_pct": limiar_neg  = limiar
+        if tipo == "tema":    limiar_tema = limiar
+
+    alertas = []
+
+    if iad < limiar_iad:
+        alertas.append(f"⚠ IAD em {iad}% — abaixo do limiar de {limiar_iad}%. Monitoramento recomendado.")
+
+    if neg_pct > limiar_neg:
+        alertas.append(f"🔴 {neg_pct}% dos posts são negativos — acima do limiar de {limiar_neg}%.")
+
+    # Tema com maior negatividade
+    tema_map = {}
+    for p in posts_analisados:
+        t = p.get("tema", "") or ""
+        if not t or t == "—": continue
+        tema_map.setdefault(t, {"neg": 0, "tot": 0})
+        tema_map[t]["tot"] += 1
+        if _sent(p) == "negativo": tema_map[t]["neg"] += 1
+    for tema, v in tema_map.items():
+        if v["tot"] < 3: continue
+        pneg = round(v["neg"] / v["tot"] * 100)
+        if pneg >= limiar_tema:
+            alertas.append(f"⚡ Tema '{tema}' com {pneg}% negativo — acima do limiar de {limiar_tema}%.")
+            break
+
+    if not alertas:
+        return
+
+    log(f"=== ALERTAS: {len(alertas)} disparo(s) ===")
+    data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
+    mensagem  = f"*🚨 Radar Político — Alerta Automático ({data_hoje})*\n\n"
+    mensagem += "\n".join(alertas)
+    mensagem += f"\n\n_Alagoinhas/BA · IAD atual: {iad}%_"
+
+    try:
+        resp = requests.post(
+            f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE', '')}",
+            headers={"Content-Type": "application/json", "apikey": EVOLUTION_KEY},
+            json={"number": WHATSAPP_NUMBER, "text": mensagem},
+            timeout=15,
+        )
+        if resp.status_code < 300:
+            log(f"  Alerta WhatsApp enviado: {len(alertas)} gatilho(s)")
+            # Registra no histórico
+            for msg in alertas:
+                _supabase_upsert("alerta_historico", [{
+                    "tenant_id": TENANT, "tipo": "auto", "valor": iad,
+                    "mensagem": msg, "canal": "whatsapp",
+                    "criado_em": datetime.now().isoformat(),
+                }], "id")
+        else:
+            log(f"  Alerta WhatsApp: erro {resp.status_code}")
+    except Exception as e:
+        log(f"  Alerta WhatsApp: falha ({e})")
+
+
+# ==============================================================
 # MODULO 8 - INFLUENCIADORES (ranking)
 # ==============================================================
 
@@ -2450,6 +2538,7 @@ def main():
     _safe("influencers", gravar_influencers, posts_analisados, comentarios_por_post)       # ranking de influenciadores
     _safe("narratives", gravar_narratives, posts_analisados, comentarios_por_post)         # narrativas (tema + sentimento)
     _safe("daily_themes", gravar_daily_themes, posts_analisados)                           # tendencias por tema (Fase 3e)
+    _safe("alertas_limiar", verificar_alertas, posts_analisados)                           # alertas por limiar (Sprint 2)
     # Apenas posts NOVOS recebem alerta; posts existentes com muitos novos comentarios recebem update
     posts_novos = [p for p in posts_analisados if p.get("url") not in existentes_radar]
     posts_com_update = [

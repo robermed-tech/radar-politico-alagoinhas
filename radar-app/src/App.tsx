@@ -12,6 +12,7 @@ const TrendsPage = lazy(() => import("@/pages/TrendsPage").then((m) => ({ defaul
 const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
 const GlossaryPage = lazy(() => import("@/pages/GlossaryPage").then((m) => ({ default: m.GlossaryPage })));
 const FeedPage = lazy(() => import("@/pages/FeedPage").then((m) => ({ default: m.FeedPage })));
+const SettingsPage = lazy(() => import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
 import { calcIAD } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
@@ -27,7 +28,8 @@ type Page =
   | "narratives"
   | "trends"
   | "approval"
-  | "glossary";
+  | "glossary"
+  | "settings";
 
 const NAV: { id: Page | string; label: string; icon: string; active: boolean }[] = [
   { id: "clima", label: "Clima Político", icon: "☀", active: true },
@@ -40,6 +42,7 @@ const NAV: { id: Page | string; label: string; icon: string; active: boolean }[]
   { id: "influencers", label: "Influenciadores", icon: "✷", active: true },
   { id: "narratives", label: "Narrativas", icon: "❋", active: true },
   { id: "glossary", label: "Glossário", icon: "❔", active: true },
+  { id: "settings", label: "Alertas", icon: "🔔", active: true },
 ];
 
 /** Iluminação azul no item ativo do menu (referência de design fornecida). */
@@ -212,6 +215,7 @@ export default function App() {
             {page === "influencers" && <InfluencersPage />}
             {page === "narratives" && <NarrativesPage />}
             {page === "glossary" && <GlossaryPage />}
+            {page === "settings" && <SettingsPage />}
           </Suspense>
         </main>
       </div>
