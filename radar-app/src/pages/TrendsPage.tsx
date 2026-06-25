@@ -6,13 +6,12 @@ import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
 
-type Metrica = "volume" | "pct_neg" | "pct_pos" | "score_risco";
+type Metrica = "volume" | "pct_neg" | "pct_pos";
 
 const METRICAS: { id: Metrica; label: string; campo: keyof DailyTheme; cor: string }[] = [
-  { id: "volume",      label: "Volume (posts)",  campo: "volume_posts", cor: "#3B82F6" },
-  { id: "pct_neg",     label: "% Negativo",      campo: "pct_neg",      cor: "#EF4444" },
-  { id: "pct_pos",     label: "% Positivo",      campo: "pct_pos",      cor: "#22C55E" },
-  { id: "score_risco", label: "Risco médio",     campo: "score_risco",  cor: "#F97316" },
+  { id: "volume",  label: "Volume (posts)", campo: "volume_posts", cor: "#3B82F6" },
+  { id: "pct_neg", label: "% Negativo",    campo: "pct_neg",      cor: "#EF4444" },
+  { id: "pct_pos", label: "% Positivo",    campo: "pct_pos",      cor: "#22C55E" },
 ];
 
 /** Regressão linear simples — retorna slope (taxa de variação por dia). */

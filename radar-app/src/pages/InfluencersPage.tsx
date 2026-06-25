@@ -16,10 +16,10 @@ const ALIN_COR: Record<string, string> = {
 };
 
 const CLASSE_LABEL: Record<string, string> = {
-  macro: "Macro",
-  micro: "Micro",
-  nano: "Nano",
-  formador: "Formador",
+  macro: "Grande alcance",
+  micro: "Influenciador segmentado",
+  nano: "Cidadão com rede",
+  formador: "Formador de opinião",
 };
 
 function Bar({ value, max, color }: { value: number; max: number; color: string }) {

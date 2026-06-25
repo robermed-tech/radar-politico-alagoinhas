@@ -221,7 +221,7 @@ export function CommandCenter() {
       textStyle: { color: ink.tooltipText },
     },
     legend: {
-      data: ["Positivos", "Negativos", "Neutros"],
+      data: ["Positivos", "Negativos"],
       textStyle: { color: ink.axis },
       top: 0,
       right: 0,
@@ -257,14 +257,6 @@ export function CommandCenter() {
         data: serie.map((s) => s.neg),
         lineStyle: glowLine("#DC2626"),
         areaStyle: glassArea("#DC2626"),
-      },
-      {
-        name: "Neutros",
-        type: "line",
-        smooth: true,
-        symbol: "none",
-        data: serie.map((s) => s.neu),
-        lineStyle: { color: COLOR_SENTIMENT.neu, width: 1.5, type: "dashed" as const },
       },
     ],
   };
@@ -364,10 +356,9 @@ export function CommandCenter() {
       </div>
 
       {/* Distribuição de sentimento dos posts */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <KpiStat label="Positivo" value={`${ind.pctPos}%`} sub="posts com sent. positivo" />
         <KpiStat label="Negativo" value={`${ind.pctNeg}%`} sub="posts com sent. negativo" invertDelta />
-        <KpiStat label="Neutro" value={`${ind.pctNeu}%`} sub="posts com sent. neutro" />
       </div>
 
       {/* Evolução do sentimento */}

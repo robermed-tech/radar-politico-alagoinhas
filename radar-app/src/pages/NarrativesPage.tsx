@@ -116,7 +116,7 @@ function Card({ n, maxAmp }: { n: Narrative; maxAmp: number }) {
                 }}
                 title={(n.coordenacao_sinais ?? []).join(" · ")}
               >
-                ⚠ Coordenação {Math.round(n.coordenacao_score!)}
+                {(n.coordenacao_score ?? 0) >= 50 ? "⚠ Campanha detectada" : "⚠ Possível coordenação"}
               </span>
             )}
           </div>
