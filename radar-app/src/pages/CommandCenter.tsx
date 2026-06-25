@@ -15,7 +15,7 @@ import { AlertaCrise } from "@/components/AlertaCrise";
 import { AvisoAmostra } from "@/components/AvisoAmostra";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk, glassArea, glowLine } from "@/lib/chartTheme";
+import { chartInk, glassArea, glowLine, colorByIAD, COLOR_SENTIMENT } from "@/lib/chartTheme";
 
 const PERIODOS = [
   { dias: 1, label: "24h" },
@@ -264,7 +264,7 @@ export function CommandCenter() {
         smooth: true,
         symbol: "none",
         data: serie.map((s) => s.neu),
-        lineStyle: { color: "#9FB0CC", width: 1.5, type: "dashed" as const },
+        lineStyle: { color: COLOR_SENTIMENT.neu, width: 1.5, type: "dashed" as const },
       },
     ],
   };
@@ -332,14 +332,14 @@ export function CommandCenter() {
           </div>
           <div
             className="mt-1 text-6xl font-extrabold leading-none"
-            style={{ color: ind.iad >= 60 ? "#22C55E" : ind.iad >= 40 ? "#EAB308" : "#EF4444" }}
+            style={{ color: colorByIAD(ind.iad) }}
           >
             {ind.iad}%
           </div>
           <div className="mt-3 text-center text-[10px] leading-snug text-txt-3">
-            <span style={{ color: "#22C55E" }}>{fmtInt(view.totalPosComents)} pos</span>
+            <span style={{ color: COLOR_SENTIMENT.pos }}>{fmtInt(view.totalPosComents)} pos</span>
             {" · "}
-            <span style={{ color: "#EF4444" }}>{fmtInt(view.totalNegComents)} neg</span>
+            <span style={{ color: COLOR_SENTIMENT.neg }}>{fmtInt(view.totalNegComents)} neg</span>
             <br />
             de {fmtInt(ind.volumeComents)} coment.
           </div>

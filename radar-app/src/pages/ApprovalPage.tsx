@@ -10,13 +10,12 @@ import {
   type Comment,
 } from "@/lib/data";
 import { calcIAD, calcICA } from "@/lib/indices";
-import { Gauge } from "@/components/Gauge";
 import { KpiStat } from "@/components/KpiStat";
 import { AlertaCrise } from "@/components/AlertaCrise";
 import { AvisoAmostra } from "@/components/AvisoAmostra";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk, glassArea, glowLine, glassGradient, withAlpha } from "@/lib/chartTheme";
+import { chartInk, glassArea, glowLine, glassGradient, withAlpha, colorByIAD, COLOR_SENTIMENT } from "@/lib/chartTheme";
 
 interface AprovBucket {
   rotulo: string;
@@ -298,9 +297,14 @@ export function ApprovalPage() {
   if (view.vazio)
     return (
       <div className="p-5">
-        <h1 className="text-2xl font-extrabold">Aprovação</h1>
-        <div className="mt-4 rounded-xl border border-line bg-bg-1 p-6 text-txt-2">
-          Sem dados no período. Rode o AGORA para popular o Postgres.
+        <h1 className="text-2xl font-extrabold">Aprovação Digital</h1>
+        <div className="mt-4 rounded-xl border border-line bg-bg-1 p-6">
+          <div className="font-bold text-txt-1">📭 Sem dados no período</div>
+          <div className="mt-2 space-y-1 text-sm text-txt-2">
+            <div>• Fonte atual: <span className="font-semibold">{radar?.source === "supabase" ? "Supabase (Postgres)" : "Google Sheets"}</span></div>
+            <div>• Próximas coletas: AGORA roda às <span className="font-semibold">08h, 14h e 19h BRT</span></div>
+            <div>• Tente ampliar o período (24h → 7d → 30d) no seletor acima</div>
+          </div>
         </div>
       </div>
     );
@@ -341,13 +345,13 @@ export function ApprovalPage() {
 
       {/* Header com índice + KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {/* Gauge IAD — cor semafórica: verde ≥60, amarelo 40-59, vermelho <40 */}
-        <div className="rounded-xl border border-line bg-bg-1 p-2">
-          <Gauge
-            value={view.iad}
-            label="IAD (Aprovação)"
-            color={view.iad >= 60 ? "#22C55E" : view.iad >= 40 ? "#EAB308" : "#EF4444"}
-          />
+        {/* IAD — número grande sem gauge */}
+        <div className="flex flex-col items-center justify-center rounded-xl border border-line bg-bg-1 p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">Aprovação Digital</div>
+          <div className="mt-1 text-6xl font-extrabold leading-none" style={{ color: colorByIAD(view.iad) }}>
+            {view.iad}%
+          </div>
+          <div className="mt-1 text-[10px] text-txt-3">IAD</div>
         </div>
         <KpiStat
           label="Confiança"
@@ -363,7 +367,7 @@ export function ApprovalPage() {
           <div className="mt-1 flex items-center justify-between gap-1">
             {/* Aprova — número grande verde */}
             <div className="flex flex-col items-center">
-              <span className="tnum text-3xl font-extrabold leading-none" style={{ color: "#22C55E" }}>
+              <span className="tnum text-3xl font-extrabold leading-none" style={{ color: COLOR_SENTIMENT.pos }}>
                 {view.pctPos}%
               </span>
               <span className="mt-0.5 text-[10px] font-semibold text-txt-3">Aprova</span>
@@ -392,7 +396,7 @@ export function ApprovalPage() {
             />
             {/* Reprova — número grande vermelho */}
             <div className="flex flex-col items-center">
-              <span className="tnum text-3xl font-extrabold leading-none" style={{ color: "#EF4444" }}>
+              <span className="tnum text-3xl font-extrabold leading-none" style={{ color: COLOR_SENTIMENT.neg }}>
                 {view.pctNeg}%
               </span>
               <span className="mt-0.5 text-[10px] font-semibold text-txt-3">Reprova</span>

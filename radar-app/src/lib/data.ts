@@ -13,7 +13,6 @@ export interface Post {
   categoria: string;
   curtidas: number;
   comentarios_total: number;
-  comentarios_count?: number;
   total_cidadaos: number;
   total_politicos: number;
   sentimento_post: string;
@@ -76,8 +75,7 @@ function normalizePost(r: Record<string, unknown>): Post {
     autor: String(r.autor ?? ""),
     categoria: String(r.categoria ?? ""),
     curtidas: num(r.curtidas),
-    comentarios_total: num(r.comentarios_total),
-    comentarios_count: num(r.comentarios_count ?? r.comentarios_total),
+    comentarios_total: num(r.comentarios_total ?? r.comentarios_count),
     total_cidadaos: num(r.total_cidadaos),
     total_politicos: num(r.total_politicos),
     sentimento_post: String(r.sentimento_post ?? "").toLowerCase(),

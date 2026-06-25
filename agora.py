@@ -1087,6 +1087,11 @@ def gravar_no_supabase(posts_analisados, comentarios_por_post):
     for p in posts_analisados:
         if not p.get("url"):
             continue
+        _ppos = float(p.get("comentarios_pct_pos", 0) or 0)
+        _pneg = float(p.get("comentarios_pct_neg", 0) or 0)
+        if _ppos + _pneg > 100:
+            _tot = _ppos + _pneg
+            _ppos, _pneg = _ppos / _tot * 100, _pneg / _tot * 100
         posts_rows.append({
             "url": p.get("url"), "tenant": TENANT,
             "data_post": p.get("data_post", ""), "autor": p.get("autor", ""),
@@ -1097,8 +1102,8 @@ def gravar_no_supabase(posts_analisados, comentarios_por_post):
             "total_politicos": int(p.get("total_politicos", 0) or 0),
             "sentimento_post": p.get("sentimento_post", ""),
             "sentimento_comentarios": p.get("sentimento_comentarios", ""),
-            "comentarios_pct_pos": float(p.get("comentarios_pct_pos", 0) or 0),
-            "comentarios_pct_neg": float(p.get("comentarios_pct_neg", 0) or 0),
+            "comentarios_pct_pos": _ppos,
+            "comentarios_pct_neg": _pneg,
             "score_imagem": int(p.get("score_imagem", 50) or 50),
             "score_risco": int(p.get("score_risco", 0) or 0),
             "risco_crise": p.get("risco_crise", "baixo"),

@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Restaura rota após redirect do 404.html (GitHub Pages SPA)
+      (function(){var p=window.location.search.match(/[?&]p=([^&]*)/);if(p){var q=window.location.search.match(/[?&]q=([^&]*)/);window.history.replaceState(null,null,window.location.pathname.split('/').slice(0,2).join('/')+'/'+p[1].replace(/~and~/g,'&')+(q?'?'+q[1].replace(/~and~/g,'&'):'')+window.location.hash);}})();
+    </script>
     <title>Radar Político — Centro de Comando</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

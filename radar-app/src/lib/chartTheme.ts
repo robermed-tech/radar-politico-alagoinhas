@@ -91,3 +91,20 @@ export function glassArea(color: string) {
 export function glowLine(color: string, width = 3) {
   return { width, color, shadowBlur: 10, shadowColor: withAlpha(color, 0.5) };
 }
+
+/** Tokens semânticos de sentimento — fonte única de verdade. */
+export const COLOR_SENTIMENT = {
+  pos:      "#22C55E",
+  neg:      "#EF4444",
+  neu:      "#9FB0CC",
+  atenção:  "#EAB308",
+  alto:     "#F97316",
+  critico:  "#EF4444",
+} as const;
+
+/** Cor semafórica do IAD (verde/amarelo/vermelho). */
+export function colorByIAD(iad: number): string {
+  if (iad >= 60) return COLOR_SENTIMENT.pos;
+  if (iad >= 40) return COLOR_SENTIMENT.atenção;
+  return COLOR_SENTIMENT.neg;
+}

@@ -32,7 +32,7 @@ export function calcIAD(posts: Post[]): number {
   let sNeg = 0;
   let sNeu = 0;
   for (const p of posts) {
-    const n = p.comentarios_total || p.comentarios_count || 0;
+    const n = p.comentarios_total || 0;
     const peso = 1 + Math.log10(1 + n);
     const pPos = (p.comentarios_pct_pos || 0) / 100;
     const pNeg = (p.comentarios_pct_neg || 0) / 100;
