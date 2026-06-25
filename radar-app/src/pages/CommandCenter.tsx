@@ -334,7 +334,7 @@ export function CommandCenter() {
       <AvisoAmostra ica={ind.ica} posts={ind.volumePosts} />
 
       {/* IAD com prova + Temas em Alerta + Posts */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* IAD sem gauge — número grande + contagem absoluta */}
         <div className="flex flex-col items-center justify-center rounded-xl border border-line bg-bg-1 p-4">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">
