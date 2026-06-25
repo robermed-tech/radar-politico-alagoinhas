@@ -11,6 +11,7 @@ const NarrativesPage = lazy(() => import("@/pages/NarrativesPage").then((m) => (
 const TrendsPage = lazy(() => import("@/pages/TrendsPage").then((m) => ({ default: m.TrendsPage })));
 const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
 const GlossaryPage = lazy(() => import("@/pages/GlossaryPage").then((m) => ({ default: m.GlossaryPage })));
+const FeedPage = lazy(() => import("@/pages/FeedPage").then((m) => ({ default: m.FeedPage })));
 import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
 import { calcIAD } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
@@ -19,6 +20,7 @@ import { useThemeStore } from "@/stores/theme";
 type Page =
   | "clima"
   | "command"
+  | "feed"
   | "crisis"
   | "assistant"
   | "influencers"
@@ -30,6 +32,7 @@ type Page =
 const NAV: { id: Page | string; label: string; icon: string; active: boolean }[] = [
   { id: "clima", label: "Clima Político", icon: "☀", active: true },
   { id: "command", label: "Comando", icon: "◉", active: true },
+  { id: "feed", label: "Feed", icon: "📋", active: true },
   { id: "crisis", label: "Crises", icon: "✦", active: true },
   { id: "assistant", label: "Assistente IA", icon: "✧", active: true },
   { id: "approval", label: "Aprovação", icon: "▲", active: true },
@@ -201,6 +204,7 @@ export default function App() {
           <Suspense fallback={<div className="p-8 text-txt-2">Carregando…</div>}>
             {page === "clima" && <ClimaPage />}
             {page === "command" && <CommandCenter />}
+            {page === "feed" && <FeedPage />}
             {page === "crisis" && <CrisisCenter />}
             {page === "assistant" && <AssistantPage />}
             {page === "approval" && <ApprovalPage />}
