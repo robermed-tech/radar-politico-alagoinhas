@@ -426,3 +426,25 @@ export function filtrarPorPeriodo(posts: Post[], dias: number): Post[] {
     return d ? d >= cutoff : true;
   });
 }
+
+/** Retorna o período atual e o período anterior de mesmo comprimento, para calcular deltas. */
+export function filtrarDoisPeriodos(
+  posts: Post[],
+  dias: number
+): { atual: Post[]; anterior: Post[] } {
+  const cutoffAtual = new Date();
+  cutoffAtual.setDate(cutoffAtual.getDate() - dias);
+  cutoffAtual.setHours(0, 0, 0, 0);
+  const cutoffAnterior = new Date(cutoffAtual);
+  cutoffAnterior.setDate(cutoffAnterior.getDate() - dias);
+  return {
+    atual: posts.filter((p) => {
+      const d = parseData(p.data_post);
+      return d ? d >= cutoffAtual : false;
+    }),
+    anterior: posts.filter((p) => {
+      const d = parseData(p.data_post);
+      return d ? d >= cutoffAnterior && d < cutoffAtual : false;
+    }),
+  };
+}

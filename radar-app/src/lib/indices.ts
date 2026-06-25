@@ -140,6 +140,20 @@ export function calcIndices(posts: Post[], negVelocity = 0): Indices {
   };
 }
 
+export interface Delta {
+  iad: number;
+  pctPos: number;
+  pctNeg: number;
+}
+
+export function calcDelta(atual: Indices, anterior: Indices): Delta {
+  return {
+    iad: atual.iad - anterior.iad,
+    pctPos: atual.pctPos - anterior.pctPos,
+    pctNeg: atual.pctNeg - anterior.pctNeg,
+  };
+}
+
 export const NIVEL_LABEL: Record<NivelCrise, string> = {
   baixo: "Baixo",
   moderado: "Moderado",

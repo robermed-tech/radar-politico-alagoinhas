@@ -3,13 +3,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import {
   fetchRadar,
-  filtrarPorPeriodo,
+  filtrarDoisPeriodos,
   parseData,
   getScriptUrl,
   setScriptUrl,
   type Post,
 } from "@/lib/data";
-import { calcIndices, NIVEL_COLOR, NIVEL_LABEL } from "@/lib/indices";
+import { calcIndices, calcDelta, type Delta, NIVEL_COLOR, NIVEL_LABEL } from "@/lib/indices";
 import { KpiStat } from "@/components/KpiStat";
 import { AlertaCrise } from "@/components/AlertaCrise";
 import { AvisoAmostra } from "@/components/AvisoAmostra";
@@ -120,6 +120,22 @@ function TemasRisco({ temas }: { temas: { tema: string; pNeg: number }[] }) {
   );
 }
 
+function toDeltaProp(v: number): { v: number; dir: "up" | "down" | "flat" } {
+  return { v: Math.abs(v), dir: v > 0 ? "up" : v < 0 ? "down" : "flat" };
+}
+
+function DeltaLine({ value, invert = false }: { value: number; invert?: boolean }) {
+  if (value === 0) return <span className="mt-1 text-[10px] text-txt-3">= igual ao período ant.</span>;
+  const isGood = invert ? value < 0 : value > 0;
+  const color = isGood ? "#22c55e" : "#ef4444";
+  const sign = value > 0 ? "+" : "";
+  return (
+    <span className="mt-1 text-[10px] font-semibold" style={{ color }}>
+      {value > 0 ? "↑" : "↓"} {sign}{value} pp vs período ant.
+    </span>
+  );
+}
+
 export function CommandCenter() {
   const [dias, setDias] = useState(7);
   const qc = useQueryClient();
@@ -135,12 +151,14 @@ export function CommandCenter() {
 
   const view = useMemo(() => {
     if (!data) return null;
-    const posts = filtrarPorPeriodo(data.data, dias);
+    const { atual: posts, anterior: postsAnt } = filtrarDoisPeriodos(data.data, dias);
     const serie = serieDiaria(posts);
     const negHoje = serie.at(-1)?.pctNeg ?? 0;
     const neg3d = serie.at(-4)?.pctNeg ?? negHoje;
     const negVelocity = negHoje - neg3d;
     const ind = calcIndices(posts, negVelocity);
+    const indAnt = calcIndices(postsAnt);
+    const delta: Delta | null = postsAnt.length > 0 ? calcDelta(ind, indAnt) : null;
 
     // Contagem absoluta de comentários por sentimento (prova do IAD)
     const totalPosComents = Math.round(
@@ -152,7 +170,7 @@ export function CommandCenter() {
 
     const temasRisco = calcTemasRisco(posts);
 
-    return { posts, serie, ind, negVelocity, totalPosComents, totalNegComents, temasRisco };
+    return { posts, serie, ind, negVelocity, delta, totalPosComents, totalNegComents, temasRisco };
   }, [data, dias]);
 
   const temaCrise = useMemo(() => {
@@ -208,7 +226,7 @@ export function CommandCenter() {
       </div>
     );
 
-  const { ind, serie } = view;
+  const { ind, serie, delta } = view;
   const nivelColor = NIVEL_COLOR[ind.nivel];
 
   // Evolução do sentimento — 3 linhas: positivo, negativo, neutro
@@ -328,7 +346,8 @@ export function CommandCenter() {
           >
             {ind.iad}%
           </div>
-          <div className="mt-3 text-center text-[10px] leading-snug text-txt-3">
+          {delta !== null && <DeltaLine value={delta.iad} />}
+          <div className="mt-2 text-center text-[10px] leading-snug text-txt-3">
             <span style={{ color: COLOR_SENTIMENT.pos }}>{fmtInt(view.totalPosComents)} pos</span>
             {" · "}
             <span style={{ color: COLOR_SENTIMENT.neg }}>{fmtInt(view.totalNegComents)} neg</span>
@@ -357,8 +376,19 @@ export function CommandCenter() {
 
       {/* Distribuição de sentimento dos posts */}
       <div className="grid grid-cols-2 gap-4">
-        <KpiStat label="Positivo" value={`${ind.pctPos}%`} sub="posts com sent. positivo" />
-        <KpiStat label="Negativo" value={`${ind.pctNeg}%`} sub="posts com sent. negativo" invertDelta />
+        <KpiStat
+          label="Positivo"
+          value={`${ind.pctPos}%`}
+          sub="posts com sent. positivo"
+          delta={delta ? toDeltaProp(delta.pctPos) : undefined}
+        />
+        <KpiStat
+          label="Negativo"
+          value={`${ind.pctNeg}%`}
+          sub="posts com sent. negativo"
+          delta={delta ? toDeltaProp(delta.pctNeg) : undefined}
+          invertDelta
+        />
       </div>
 
       {/* Evolução do sentimento */}
