@@ -17,6 +17,8 @@ import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
 import { calcIAD } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
 import { useThemeStore } from "@/stores/theme";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { signOut, supabase } from "@/lib/auth";
 
 type Page =
   | "clima"
@@ -81,11 +83,22 @@ function RefreshIcon({ spinning }: { spinning?: boolean }) {
 
 export default function App() {
   const [page, setPage] = useState<Page>("clima");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
   const qc = useQueryClient();
   const fetching = useIsFetching() > 0;
   const atualizar = () => qc.invalidateQueries();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUserEmail(data.session?.user?.email ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+      setUserEmail(s?.user?.email ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Aplica tema no <html> + persiste
   useEffect(() => {
@@ -176,8 +189,20 @@ export default function App() {
         <div className="mt-auto space-y-2 pt-3">
           <RefreshButton />
           <ThemeToggle />
+          {userEmail && (
+            <button
+              onClick={() => signOut()}
+              className="glass-btn flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-txt-2 hover:text-txt-1"
+              title="Sair da conta"
+            >
+              <span className="text-xs">⎋</span> Sair
+            </button>
+          )}
           <div className="px-2 text-[10px] text-txt-3">
-            {wx.icon} {wx.label} · {fetching ? "atualizando…" : horaAtualizado ? `atualizado ${horaAtualizado}` : "Postgres"}
+            {userEmail
+              ? `👤 ${userEmail.split("@")[0]}`
+              : `${wx.icon} ${wx.label}`}{" "}
+            · {fetching ? "atualizando…" : horaAtualizado ? `atualizado ${horaAtualizado}` : "Postgres"}
           </div>
         </div>
       </aside>
@@ -204,19 +229,21 @@ export default function App() {
           <ThemeToggle compact />
         </div>
         <main className="flex-1 overflow-y-auto">
-          <Suspense fallback={<div className="p-8 text-txt-2">Carregando…</div>}>
-            {page === "clima" && <ClimaPage />}
-            {page === "command" && <CommandCenter />}
-            {page === "feed" && <FeedPage />}
-            {page === "crisis" && <CrisisCenter />}
-            {page === "assistant" && <AssistantPage />}
-            {page === "approval" && <ApprovalPage />}
-            {page === "trends" && <TrendsPage />}
-            {page === "influencers" && <InfluencersPage />}
-            {page === "narratives" && <NarrativesPage />}
-            {page === "glossary" && <GlossaryPage />}
-            {page === "settings" && <SettingsPage />}
-          </Suspense>
+          <ProtectedRoute>
+            <Suspense fallback={<div className="p-8 text-txt-2">Carregando…</div>}>
+              {page === "clima" && <ClimaPage />}
+              {page === "command" && <CommandCenter />}
+              {page === "feed" && <FeedPage />}
+              {page === "crisis" && <CrisisCenter />}
+              {page === "assistant" && <AssistantPage />}
+              {page === "approval" && <ApprovalPage />}
+              {page === "trends" && <TrendsPage />}
+              {page === "influencers" && <InfluencersPage />}
+              {page === "narratives" && <NarrativesPage />}
+              {page === "glossary" && <GlossaryPage />}
+              {page === "settings" && <SettingsPage />}
+            </Suspense>
+          </ProtectedRoute>
         </main>
       </div>
     </div>

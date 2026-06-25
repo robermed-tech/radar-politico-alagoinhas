@@ -2568,5 +2568,47 @@ def main():
     log(f"|  Duracao:            {duracao}s                           |")
     log("+======================================================+")
 
+def main_multi_tenant():
+    """Itera por todos os tenants ativos no Supabase.
+    Fallback: modo single-tenant legado se a tabela 'tenants' não existir."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        main()
+        return
+
+    tenants_ativos = _supabase_get(
+        "tenants", "ativo=eq.true&select=tenant_id,municipio,estado,perfis_json"
+    )
+
+    if not tenants_ativos:
+        log("  Tabela 'tenants' vazia ou ausente — modo single-tenant.")
+        main()
+        return
+
+    log("+======================================================+")
+    log(f"|  AGORA Multi-Tenant: {len(tenants_ativos)} tenant(s) ativo(s)       |")
+    log("+======================================================+")
+
+    global TENANT, PERFIS
+    for t in tenants_ativos:
+        tid = t.get("tenant_id", TENANT)
+        municipio = t.get("municipio", tid)
+        perfis_json = t.get("perfis_json")
+
+        TENANT = tid
+        if isinstance(perfis_json, dict) and perfis_json:
+            PERFIS.clear()
+            PERFIS.update(perfis_json)
+
+        log(f"\n=== TENANT: {tid} ({municipio} / {t.get('estado', '')}) ===")
+        try:
+            main()
+        except Exception as e:
+            log(f"  ERRO no tenant {tid}: {e}")
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    if "--multi-tenant" in sys.argv:
+        main_multi_tenant()
+    else:
+        main()
