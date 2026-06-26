@@ -122,6 +122,25 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── ANIMAÇÃO DE ENTRADA: reveals escalonados (stagger) ── */
+@keyframes reveal-up {
+  from { opacity: 0; transform: translate3d(0, 18px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.reveal {
+  opacity: 0;
+  animation: reveal-up 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: opacity, transform;
+}
+.reveal-1 { animation-delay: 0.04s; }
+.reveal-2 { animation-delay: 0.12s; }
+.reveal-3 { animation-delay: 0.20s; }
+.reveal-4 { animation-delay: 0.28s; }
+.reveal-5 { animation-delay: 0.36s; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; animation: none; }
+}
+
 /* ── Animação de chuva no hero do Clima ── */
 .rain-layer {
   position: absolute;

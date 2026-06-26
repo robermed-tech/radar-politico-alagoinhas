@@ -42,7 +42,7 @@ export function LoginPage() {
         <div className="pointer-events-none absolute -left-6 bottom-10 h-48 w-48 rounded-full" style={{ background: "rgba(255,255,255,0.12)" }} />
         <div className="pointer-events-none absolute right-16 top-16 h-28 w-28 rounded-full" style={{ background: "rgba(190,219,29,0.25)" }} />
 
-        <div className="relative z-10 flex h-full flex-col p-8 text-white">
+        <div className="reveal reveal-1 relative z-10 flex h-full flex-col p-8 text-white">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/20 text-xl font-bold backdrop-blur">
               ◉
@@ -94,7 +94,7 @@ export function LoginPage() {
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-line bg-bg-1 p-8">
+          <div className="reveal reveal-2 rounded-[28px] border border-line bg-bg-1 p-8">
             {sent ? (
               <div className="text-center">
                 <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full text-3xl" style={{ background: "rgba(249,115,22,0.12)" }}>

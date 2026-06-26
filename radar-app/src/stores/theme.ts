@@ -9,7 +9,7 @@ interface ThemeState {
 }
 
 const inicial: Theme =
-  (typeof localStorage !== "undefined" && (localStorage.getItem("radar_theme") as Theme)) || "dark";
+  (typeof localStorage !== "undefined" && (localStorage.getItem("radar_theme") as Theme)) || "light";
 
 export const useThemeStore = create<ThemeState>((set) => ({
   theme: inicial,

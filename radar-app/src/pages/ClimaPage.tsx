@@ -222,7 +222,7 @@ export function ClimaPage() {
   return (
     <div className="space-y-4 p-5">
       {/* Cabeçalho */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="reveal reveal-1 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-[28px] font-extrabold leading-tight tracking-tight">Clima Político</h1>
           <p className="text-sm text-txt-2">Alagoinhas/BA · termômetro visual da opinião</p>
@@ -246,7 +246,7 @@ export function ClimaPage() {
       <div className="grid gap-4 lg:grid-cols-5">
         {/* HERO — principal box com a foto do clima */}
         <div
-          className="relative overflow-hidden rounded-[28px] p-7 lg:col-span-3"
+          className="reveal reveal-2 relative overflow-hidden rounded-[28px] p-7 lg:col-span-3"
           style={{ background: heroBg, minHeight: 320 }}
         >
           {(wx.cls === "rain" || wx.cls === "storm" || wx.cls === "severe") && (
@@ -312,9 +312,9 @@ export function ClimaPage() {
           </div>
         </div>
 
-        {/* CARD AZUL — engajamento (estilo "Hydration") */}
+        {/* CARD LARANJA — engajamento (estilo "Hydration") */}
         <div
-          className="relative overflow-hidden rounded-[28px] p-7 lg:col-span-2"
+          className="reveal reveal-3 relative overflow-hidden rounded-[28px] p-7 lg:col-span-2"
           style={{
             background: "linear-gradient(150deg, #FB923C 0%, #EA580C 100%)",
             minHeight: 320,
@@ -366,7 +366,7 @@ export function ClimaPage() {
       )}
 
       {/* ── LINHA DE 3 CARDS (estilo referência: Sleep / Calories / Weight) ── */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="reveal reveal-4 grid gap-4 md:grid-cols-3">
         {/* Card 1 — O que a população diz agora */}
         <div className="rounded-[28px] border border-line bg-bg-1 p-6">
           <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">
