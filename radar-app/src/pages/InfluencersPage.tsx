@@ -244,7 +244,7 @@ export function InfluencersPage() {
             onClick={() => setFiltro(p.id)}
             className={`rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
               filtro === p.id
-                ? "border-brand bg-brand text-[#0B1220]"
+                ? "border-brand bg-brand text-white"
                 : "border-line bg-bg-1 text-txt-2 hover:text-txt-1"
             }`}
           >

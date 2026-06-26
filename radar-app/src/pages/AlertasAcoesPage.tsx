@@ -15,16 +15,6 @@ const IMPACTO_COR: Record<string, string> = {
   baixo: "#5F6E8C",
 };
 
-const CANAL_ICON: Record<string, string> = {
-  instagram: "📸",
-  whatsapp: "💬",
-  "nota oficial": "📄",
-  assessoria: "🗣",
-  youtube: "🎥",
-  facebook: "👥",
-  tv: "📺",
-  radio: "📻",
-};
 
 function Tag({ children, color }: { children: ReactNode; color: string }) {
   return (
@@ -79,31 +69,6 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
                 <span className="font-bold text-orange-400">O que disparou: </span>
                 {p.pavio}
               </p>
-
-              {p.plano_contencao?.length > 0 && (
-                <div className="mt-3">
-                  <div className="mb-1 text-xs font-bold uppercase tracking-wide text-txt-3">
-                    O que fazer
-                  </div>
-                  <ol className="space-y-1.5">
-                    {p.plano_contencao.map((passo, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-txt-1">
-                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold" style={{ background: `${cor}22`, color: cor }}>
-                          {i + 1}
-                        </span>
-                        <span>{passo}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
-              {p.risco_se_ignorar && (
-                <div className="mt-3 rounded border border-risk-crit/20 bg-risk-crit/5 px-3 py-2 text-xs text-txt-2">
-                  <span className="font-bold text-risk-crit">Se não agir: </span>
-                  {p.risco_se_ignorar}
-                </div>
-              )}
 
               {p.post_url && (
                 <a href={p.post_url} target="_blank" rel="noopener noreferrer"
@@ -223,60 +188,28 @@ export function AlertasAcoesPage() {
             </div>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Oportunidades */}
-            {(b!.oportunidades ?? []).length > 0 && (
-              <div className="rounded-xl border border-line bg-bg-1 p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-bold text-risk-low">
-                  <span>▲</span> Oportunidades para aproveitar
-                </div>
-                <div className="space-y-3">
-                  {b!.oportunidades!.map((o, i) => (
-                    <div key={i} className="rounded-lg border border-line bg-bg-2 p-3">
-                      <div className="font-semibold text-txt-1">{o.titulo}</div>
-                      <div className="mt-1 text-sm text-txt-2">{o.acao}</div>
-                      {o.impacto && (
-                        <div className="mt-2">
-                          <Tag color={IMPACTO_COR[o.impacto] ?? "#5F6E8C"}>
-                            impacto {o.impacto}
-                          </Tag>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+          {(b!.oportunidades ?? []).length > 0 && (
+            <div className="rounded-xl border border-line bg-bg-1 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-bold text-risk-low">
+                <span>▲</span> Oportunidades para aproveitar
               </div>
-            )}
-
-            {/* Recomendações de comunicação */}
-            {(b!.recomendacoes ?? []).length > 0 && (
-              <div className="rounded-xl border border-line bg-bg-1 p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-bold text-brand">
-                  <span>✦</span> O que comunicar hoje
-                </div>
-                <div className="space-y-3">
-                  {b!.recomendacoes!.map((r, i) => {
-                    const canalIcon = CANAL_ICON[r.canal?.toLowerCase() ?? ""] ?? "📢";
-                    return (
-                      <div key={i} className="rounded-lg border border-line bg-bg-2 p-3">
-                        <div className="flex items-center gap-2">
-                          <span>{canalIcon}</span>
-                          <span className="text-xs font-bold uppercase text-txt-3">{r.canal}</span>
-                          {r.timing && (
-                            <span className="ml-auto text-xs text-txt-3">{r.timing}</span>
-                          )}
-                        </div>
-                        <p className="mt-1.5 text-sm text-txt-1">{r.mensagem}</p>
-                        {r.tom && (
-                          <p className="mt-1 text-xs italic text-txt-3">Tom: {r.tom}</p>
-                        )}
+              <div className="space-y-3">
+                {b!.oportunidades!.map((o, i) => (
+                  <div key={i} className="rounded-lg border border-line bg-bg-2 p-3">
+                    <div className="font-semibold text-txt-1">{o.titulo}</div>
+                    <div className="mt-1 text-sm text-txt-2">{o.acao}</div>
+                    {o.impacto && (
+                      <div className="mt-2">
+                        <Tag color={IMPACTO_COR[o.impacto] ?? "#5F6E8C"}>
+                          impacto {o.impacto}
+                        </Tag>
                       </div>
-                    );
-                  })}
-                </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="text-xs text-txt-3">
             Gerado automaticamente a partir dos dados do dia ·{" "}
