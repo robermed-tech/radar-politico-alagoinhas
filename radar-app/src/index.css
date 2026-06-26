@@ -58,7 +58,17 @@ body {
   background: var(--wx-bg);
   background-attachment: fixed;
   transition: background 1.2s ease;
+  font-weight: 300; /* light por padrão */
 }
+
+/* ── DIRETRIZ TIPOGRÁFICA: apenas thin/regular (sem bold/extra-bold) ──
+   Override global: rebaixa todas as utilidades de peso do Tailwind.
+   Hierarquia passa a vir de TAMANHO + COR, não de peso. */
+.font-medium,
+.font-semibold,
+.font-bold { font-weight: 400 !important; }   /* ênfase = regular */
+.font-extrabold,
+.font-black { font-weight: 300 !important; }   /* títulos/números grandes = light */
 
 /* ── UX GLOBAL: cursor + focus visível (acessibilidade) ── */
 button:not(:disabled),
@@ -70,7 +80,7 @@ button:disabled {
   cursor: not-allowed;
 }
 :focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #f97316;
   outline-offset: 2px;
   border-radius: 6px;
 }

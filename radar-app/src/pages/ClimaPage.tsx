@@ -276,7 +276,7 @@ export function ClimaPage() {
               </div>
               <div>
                 <div className="flex items-end gap-1">
-                  <span className="tnum text-[84px] font-extrabold leading-[0.85] tracking-tight" style={{ color: txt1 }}>
+                  <span className="tnum text-[84px] leading-[0.85] tracking-tight" style={{ color: txt1, fontWeight: 200 }}>
                     {view.iad}
                   </span>
                   <span className="mb-3 text-2xl font-bold" style={{ color: txt2 }}>%</span>
@@ -316,9 +316,9 @@ export function ClimaPage() {
         <div
           className="relative overflow-hidden rounded-[28px] p-7 lg:col-span-2"
           style={{
-            background: "linear-gradient(150deg, #5FB8E6 0%, #3E9FD6 100%)",
+            background: "linear-gradient(150deg, #FB923C 0%, #EA580C 100%)",
             minHeight: 320,
-            boxShadow: "0 18px 40px -14px rgba(62,159,214,0.55)",
+            boxShadow: "0 18px 40px -14px rgba(234,88,12,0.5)",
           }}
         >
           {/* bolha decorativa */}
@@ -343,7 +343,7 @@ export function ClimaPage() {
 
             <div className="mt-auto pt-6">
               <div className="flex items-end gap-1">
-                <span className="tnum text-[68px] font-extrabold leading-[0.85] tracking-tight text-white">
+                <span className="tnum text-[68px] leading-[0.85] tracking-tight text-white" style={{ fontWeight: 200 }}>
                   {fmtInt(view.comentarios)}
                 </span>
               </div>

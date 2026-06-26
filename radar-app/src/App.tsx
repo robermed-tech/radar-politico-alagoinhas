@@ -50,10 +50,10 @@ const NAV_ADVANCED: NavItem[] = [
   { id: "trends",     label: "Tendências (gráficos)", icon: "∿" },
 ];
 
-/** Iluminação azul no item ativo do menu (referência de design fornecida). */
+/** Iluminação laranja no item ativo do menu. */
 const NAV_GLOW = {
-  background: "linear-gradient(135deg, rgba(59,130,246,0.28), rgba(59,130,246,0.07))",
-  boxShadow: "0 0 18px rgba(59,130,246,0.5), inset 0 0 0 1px rgba(59,130,246,0.55)",
+  background: "linear-gradient(135deg, rgba(249,115,22,0.28), rgba(249,115,22,0.07))",
+  boxShadow: "0 0 18px rgba(249,115,22,0.5), inset 0 0 0 1px rgba(249,115,22,0.55)",
 } as const;
 
 function SunIcon() {
@@ -157,7 +157,7 @@ export default function App() {
         <div className="mb-6 flex items-center gap-2 px-2">
           <span
             className="grid h-8 w-8 place-items-center rounded-lg font-bold text-white shadow-md"
-            style={{ background: wx.accent }}
+            style={{ background: "#F97316" }}
           >
             ◉
           </span>
@@ -178,7 +178,7 @@ export default function App() {
                 }`}
                 style={isCurrent ? NAV_GLOW : undefined}
               >
-                <span className="w-4 text-center" style={{ color: isCurrent ? "#93C5FD" : "var(--txt2)" }}>
+                <span className="w-4 text-center" style={{ color: isCurrent ? "#FDBA74" : "var(--txt2)" }}>
                   {n.icon}
                 </span>
                 {n.label}
@@ -208,7 +208,7 @@ export default function App() {
                 }`}
                 style={isCurrent ? NAV_GLOW : undefined}
               >
-                <span className="w-4 text-center" style={{ color: isCurrent ? "#93C5FD" : "var(--txt3)" }}>
+                <span className="w-4 text-center" style={{ color: isCurrent ? "#FDBA74" : "var(--txt3)" }}>
                   {n.icon}
                 </span>
                 {n.label}

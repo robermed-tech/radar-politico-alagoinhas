@@ -34,8 +34,8 @@ export function LoginPage() {
         <div
           className="absolute inset-4 rounded-[32px]"
           style={{
-            background: `linear-gradient(150deg, rgba(95,184,230,0.92) 0%, rgba(62,159,214,0.95) 100%), url("/sky/sunny.webp") center/cover no-repeat`,
-            boxShadow: "0 30px 70px -24px rgba(62,159,214,0.6)",
+            background: `linear-gradient(150deg, rgba(251,146,60,0.92) 0%, rgba(234,88,12,0.95) 100%), url("/sky/sunny.webp") center/cover no-repeat`,
+            boxShadow: "0 30px 70px -24px rgba(234,88,12,0.55)",
           }}
         />
         {/* bolhas decorativas */}
@@ -84,7 +84,7 @@ export function LoginPage() {
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <span
               className="grid h-10 w-10 place-items-center rounded-2xl text-xl font-bold text-white"
-              style={{ background: "linear-gradient(150deg, #5FB8E6, #3E9FD6)" }}
+              style={{ background: "linear-gradient(150deg, #FB923C, #EA580C)" }}
             >
               ◉
             </span>
@@ -97,7 +97,7 @@ export function LoginPage() {
           <div className="rounded-[28px] border border-line bg-bg-1 p-8">
             {sent ? (
               <div className="text-center">
-                <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full text-3xl" style={{ background: "rgba(95,184,230,0.15)" }}>
+                <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full text-3xl" style={{ background: "rgba(249,115,22,0.12)" }}>
                   📧
                 </div>
                 <div className="text-lg font-extrabold text-txt-1">Link enviado!</div>

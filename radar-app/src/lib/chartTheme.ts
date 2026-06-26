@@ -16,16 +16,18 @@ export function chartInk(theme: Theme) {
   };
 }
 
-/** Paleta de séries — saturada o suficiente p/ ler em ambos os temas. */
+/** Paleta de séries — espectro completo, harmônico, liderando pelo laranja.
+ *  Hues distribuídos no círculo cromático com saturação/luminância parelhas
+ *  para destacar cada série sem poluir visualmente. */
 export const SERIES_PALETTE = [
-  "#2563EB", // azul
-  "#16A34A", // verde
-  "#D97706", // âmbar
-  "#DC2626", // vermelho
-  "#7C3AED", // violeta (acessível)
-  "#0891B2", // ciano
-  "#DB2777", // rosa
-  "#65A30D", // lima
+  "#F97316", // laranja (marca)
+  "#FBBF24", // âmbar / amarelo
+  "#84CC16", // lima-verde
+  "#10B981", // esmeralda
+  "#06B6D4", // ciano
+  "#6366F1", // índigo
+  "#A855F7", // violeta
+  "#EC4899", // rosa
 ];
 
 /** Cor da linha ICA (violeta acessível por tema). */
