@@ -19,9 +19,12 @@ export default {
         accent: "#A855F7",
         risk: { low: "#22C55E", mod: "#EAB308", high: "#F97316", crit: "#EF4444" },
         sent: { pos: "#22C55E", neu: "#64748B", neg: "#EF4444" },
+        // Acentos do estilo "clean health-tech" (referência de design)
+        lime: { DEFAULT: "#BEDB1D", ink: "#1A2400" },
+        skycard: { DEFAULT: "#5FB8E6", deep: "#3E9FD6" },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Plus Jakarta Sans", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
     },
