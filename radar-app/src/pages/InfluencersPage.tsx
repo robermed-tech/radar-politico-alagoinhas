@@ -206,24 +206,24 @@ export function InfluencersPage() {
           <div className="text-xs font-semibold uppercase tracking-wide text-risk-low">
             Aliados
           </div>
-          <div className="tnum mt-1 text-2xl font-extrabold text-risk-low">{aliados}</div>
-          <div className="text-[11px] text-txt-3">perfis favoráveis</div>
+          <div className="tnum mt-1 text-[40px] font-extrabold leading-none text-risk-low">{aliados}</div>
+          <div className="text-xs text-txt-3">perfis favoráveis</div>
         </div>
         <div className="rounded-xl border border-line bg-bg-1 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#EAB308" }}>
             Neutros
           </div>
-          <div className="tnum mt-1 text-2xl font-extrabold" style={{ color: "#EAB308" }}>
+          <div className="tnum mt-1 text-[40px] font-extrabold leading-none" style={{ color: "#EAB308" }}>
             {neutros}
           </div>
-          <div className="text-[11px] text-txt-3">imprensa/equilibrados</div>
+          <div className="text-xs text-txt-3">imprensa/equilibrados</div>
         </div>
         <div className="rounded-xl border border-line bg-bg-1 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-wide text-risk-crit">
             Opositores
           </div>
-          <div className="tnum mt-1 text-2xl font-extrabold text-risk-crit">{opositores}</div>
-          <div className="text-[11px] text-txt-3">perfis críticos</div>
+          <div className="tnum mt-1 text-[40px] font-extrabold leading-none text-risk-crit">{opositores}</div>
+          <div className="text-xs text-txt-3">perfis críticos</div>
         </div>
       </div>
 
@@ -231,12 +231,12 @@ export function InfluencersPage() {
       <div className="flex gap-2">
         {(
           [
-            { id: "todos", label: `Todos (${lista.length})` },
             {
               id: "perfil_monitorado",
               label: `Perfis (${lista.filter((i) => i.tipo === "perfil_monitorado").length})`,
             },
             { id: "cidadao", label: `Cidadãos (${lista.filter((i) => i.tipo === "cidadao").length})` },
+            { id: "todos", label: `Todos (${lista.length})` },
           ] as { id: Filtro; label: string }[]
         ).map((p) => (
           <button
@@ -244,7 +244,7 @@ export function InfluencersPage() {
             onClick={() => setFiltro(p.id)}
             className={`rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
               filtro === p.id
-                ? "border-brand bg-brand text-white"
+                ? "border-brand bg-brand text-[#0B1220]"
                 : "border-line bg-bg-1 text-txt-2 hover:text-txt-1"
             }`}
           >

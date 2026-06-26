@@ -68,7 +68,7 @@ body {
 .font-semibold,
 .font-bold { font-weight: 400 !important; }   /* ênfase = regular */
 .font-extrabold,
-.font-black { font-weight: 300 !important; }   /* títulos/números grandes = light */
+.font-black { font-weight: 600 !important; }   /* títulos = semi-bold */
 
 /* ── UX GLOBAL: cursor + focus visível (acessibilidade) ── */
 button:not(:disabled),

@@ -50,10 +50,10 @@ const NAV_ADVANCED: NavItem[] = [
   { id: "trends",     label: "Tendências (gráficos)", icon: "∿" },
 ];
 
-/** Iluminação laranja no item ativo do menu. */
+/** Botão ativo do menu: laranja sólido com sombra. */
 const NAV_GLOW = {
-  background: "linear-gradient(135deg, rgba(249,115,22,0.28), rgba(249,115,22,0.07))",
-  boxShadow: "0 0 18px rgba(249,115,22,0.5), inset 0 0 0 1px rgba(249,115,22,0.55)",
+  background: "#F97316",
+  boxShadow: "0 4px 14px -4px rgba(249,115,22,0.55)",
 } as const;
 
 function SunIcon() {
@@ -173,12 +173,12 @@ export default function App() {
                 onClick={() => setPage(n.id)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-base font-semibold transition-all duration-200 ${
                   isCurrent
-                    ? "text-white"
+                    ? "text-[#0B1220]"
                     : "bg-bg-2 text-txt-2 shadow-sm hover:bg-bg-3 hover:text-txt-1 hover:shadow-md"
                 }`}
                 style={isCurrent ? NAV_GLOW : undefined}
               >
-                <span className="w-4 text-center" style={{ color: isCurrent ? "#FDBA74" : "var(--txt2)" }}>
+                <span className="w-4 text-center" style={{ color: isCurrent ? "#0B1220" : "var(--txt2)" }}>
                   {n.icon}
                 </span>
                 {n.label}
