@@ -58,6 +58,11 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
           return (
             <div key={p.post_url} className="rounded-lg border border-line bg-bg-2 p-4">
               <div className="flex flex-wrap items-center gap-2">
+                {p.tema && (
+                  <span className="rounded bg-bg-3 px-2 py-0.5 text-xs font-semibold capitalize text-txt-1">
+                    {p.tema}
+                  </span>
+                )}
                 <Tag color={cor}>{NIVEL_LABEL[(p.nivel as NivelCrise) ?? "alto"] ?? p.nivel}</Tag>
                 <span className="rounded bg-bg-3 px-2 py-0.5 text-xs font-semibold text-txt-2">
                   ⏱ {janelaLabel}

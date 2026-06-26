@@ -169,6 +169,7 @@ export interface CrisisPlan {
   autor: string;
   e_crise_real: boolean;
   nivel: string;
+  tema?: string;
   pavio: string;
   velocidade: string;
   janela_resposta: string;
