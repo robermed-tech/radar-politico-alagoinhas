@@ -51,7 +51,7 @@ function AlertaSCCT({ alerta, nivelCor }: { alerta: BoletimAlerta; nivelCor: str
           className="rounded-md px-2.5 py-1 text-xs font-bold"
           style={{ background: `${cor}22`, color: cor }}
         >
-          {scct.rotulo_cluster} · resp. {scct.responsabilidade}/100 ({scct.rotulo_responsabilidade})
+          {scct.rotulo_cluster} · {scct.rotulo_responsabilidade}
         </span>
       </div>
 
@@ -257,7 +257,7 @@ export function ClimaPage() {
             {wx.sub}
           </div>
           <div className="mt-1 text-sm" style={{ color: txt2 }}>
-            Índice de Aprovação Digital · {view.posts} posts no período
+            Aprovação popular nos comentários · {view.posts} publicações analisadas
           </div>
         </div>
       </div>
@@ -275,14 +275,14 @@ export function ClimaPage() {
       {/* Volume coletado no período — DESTAQUE */}
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-2xl border border-line bg-bg-1 p-5 text-center">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">Posts analisados</div>
+          <div className="text-xs font-bold uppercase tracking-[0.15em] text-txt-3">Publicações analisadas</div>
           <div className="tnum mt-1 text-5xl font-extrabold text-txt-1" style={{ textShadow: "0 2px 16px rgba(0,0,0,0.25)" }}>
             {fmtInt(view.posts)}
           </div>
           <div className="mt-1 text-xs text-txt-2">publicações no período</div>
         </div>
         <div className="rounded-2xl border border-line bg-bg-1 p-5 text-center">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">Comentários da população</div>
+          <div className="text-xs font-bold uppercase tracking-[0.15em] text-txt-3">Vozes ouvidas</div>
           <div className="tnum mt-1 text-5xl font-extrabold" style={{ color: wx.accent, textShadow: "0 2px 16px rgba(0,0,0,0.25)" }}>
             {fmtInt(view.comentarios)}
           </div>
@@ -294,7 +294,7 @@ export function ClimaPage() {
       <div
         className="rounded-2xl border border-line bg-bg-1 p-6"
       >
-        <div className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: wx.accent }}>
+        <div className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: wx.accent }}>
           O que a população diz agora
         </div>
         <div className="mt-2 text-lg font-bold text-txt-1">
@@ -306,28 +306,28 @@ export function ClimaPage() {
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-line bg-bg-1 px-4 py-3 text-center">
           <div className="tnum text-2xl font-extrabold text-risk-low">{view.pctPos}%</div>
-          <div className="text-xs text-txt-3">Favorável (sol)</div>
+          <div className="text-xs text-txt-3">Favorável ao prefeito</div>
         </div>
         <div className="rounded-xl border border-line bg-bg-1 px-4 py-3 text-center">
           <div className="tnum text-2xl font-extrabold" style={{ color: "#64748B" }}>{view.pctNeu}%</div>
-          <div className="text-xs text-txt-3">Neutro (nuvens)</div>
+          <div className="text-xs text-txt-3">Sem posição clara</div>
         </div>
         <div className="rounded-xl border border-line bg-bg-1 px-4 py-3 text-center">
           <div className="tnum text-2xl font-extrabold text-risk-crit">{view.pctNeg}%</div>
-          <div className="text-xs text-txt-3">Desfavorável (chuva)</div>
+          <div className="text-xs text-txt-3">Crítico / contrário</div>
         </div>
       </div>
 
       {/* Legenda da escala de clima */}
       <div className="rounded-xl border border-line bg-bg-1 p-4">
-        <div className="mb-2 text-sm font-bold">Escala do Clima Político</div>
-        <div className="grid grid-cols-2 gap-2 text-[12px] text-txt-2 sm:grid-cols-3">
-          <div>☀️ <b>Céu Aberto</b> · 75-100</div>
-          <div>⛅ <b>Parc. Nublado</b> · 60-74</div>
-          <div>☁️ <b>Nublado</b> · 45-59</div>
-          <div>🌧️ <b>Chuva</b> · 30-44</div>
-          <div>⛈️ <b>Tempestade</b> · 15-29</div>
-          <div>🌑 <b>Severíssimo</b> · 0-14</div>
+        <div className="mb-2 text-sm font-bold">Como ler o termômetro</div>
+        <div className="grid grid-cols-2 gap-2 text-xs text-txt-2 sm:grid-cols-3">
+          <div>☀️ <b>Ótimo</b> · 75 a 100%</div>
+          <div>⛅ <b>Bom</b> · 60 a 74%</div>
+          <div>☁️ <b>Regular</b> · 45 a 59%</div>
+          <div>🌧️ <b>Atenção</b> · 30 a 44%</div>
+          <div>⛈️ <b>Crise</b> · 15 a 29%</div>
+          <div>🌑 <b>Crítico</b> · 0 a 14%</div>
         </div>
       </div>
     </div>

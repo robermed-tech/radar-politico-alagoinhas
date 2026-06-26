@@ -1,18 +1,17 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useQuery, useQueryClient, useIsFetching } from "@tanstack/react-query";
 import { ClimaPage } from "@/pages/ClimaPage"; // landing eager (sem ECharts)
-// Demais páginas em lazy — cada uma vira um chunk separado (ECharts só carrega
-// quando a página que usa gráficos é aberta).
+// Demais páginas em lazy — cada uma vira um chunk separado.
+const AlertasAcoesPage = lazy(() => import("@/pages/AlertasAcoesPage").then((m) => ({ default: m.AlertasAcoesPage })));
+const TemasPage = lazy(() => import("@/pages/TemasPage").then((m) => ({ default: m.TemasPage })));
+const FeedPage = lazy(() => import("@/pages/FeedPage").then((m) => ({ default: m.FeedPage })));
+const SettingsPage = lazy(() => import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+// Seção avançada — analistas
 const CommandCenter = lazy(() => import("@/pages/CommandCenter").then((m) => ({ default: m.CommandCenter })));
-const CrisisCenter = lazy(() => import("@/pages/CrisisCenter").then((m) => ({ default: m.CrisisCenter })));
-const AssistantPage = lazy(() => import("@/pages/AssistantPage").then((m) => ({ default: m.AssistantPage })));
+const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
 const InfluencersPage = lazy(() => import("@/pages/InfluencersPage").then((m) => ({ default: m.InfluencersPage })));
 const NarrativesPage = lazy(() => import("@/pages/NarrativesPage").then((m) => ({ default: m.NarrativesPage })));
 const TrendsPage = lazy(() => import("@/pages/TrendsPage").then((m) => ({ default: m.TrendsPage })));
-const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
-const GlossaryPage = lazy(() => import("@/pages/GlossaryPage").then((m) => ({ default: m.GlossaryPage })));
-const FeedPage = lazy(() => import("@/pages/FeedPage").then((m) => ({ default: m.FeedPage })));
-const SettingsPage = lazy(() => import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
 import { calcIAD } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
@@ -22,29 +21,33 @@ import { signOut, supabase } from "@/lib/auth";
 
 type Page =
   | "clima"
-  | "command"
+  | "actions"
   | "feed"
-  | "crisis"
-  | "assistant"
+  | "topics"
+  | "settings"
+  // avançado
+  | "command"
+  | "approval"
   | "influencers"
   | "narratives"
-  | "trends"
-  | "approval"
-  | "glossary"
-  | "settings";
+  | "trends";
 
-const NAV: { id: Page | string; label: string; icon: string; active: boolean }[] = [
-  { id: "clima", label: "Clima Político", icon: "☀", active: true },
-  { id: "command", label: "Comando", icon: "◉", active: true },
-  { id: "feed", label: "Feed", icon: "📋", active: true },
-  { id: "crisis", label: "Crises", icon: "✦", active: true },
-  { id: "assistant", label: "Assistente IA", icon: "✧", active: true },
-  { id: "approval", label: "Aprovação", icon: "▲", active: true },
-  { id: "trends", label: "Tendências", icon: "∿", active: true },
-  { id: "influencers", label: "Influenciadores", icon: "✷", active: true },
-  { id: "narratives", label: "Narrativas", icon: "❋", active: true },
-  { id: "glossary", label: "Glossário", icon: "❔", active: true },
-  { id: "settings", label: "Alertas", icon: "🔔", active: true },
+interface NavItem { id: Page; label: string; icon: string }
+
+const NAV_MAIN: NavItem[] = [
+  { id: "clima",   label: "Clima Político",   icon: "☀" },
+  { id: "actions", label: "Alertas & Ações",  icon: "🔔" },
+  { id: "feed",    label: "O que o povo diz", icon: "💬" },
+  { id: "topics",  label: "Temas em Alta",    icon: "📊" },
+  { id: "settings",label: "Configuração",     icon: "⚙" },
+];
+
+const NAV_ADVANCED: NavItem[] = [
+  { id: "command",    label: "Centro de Comando",   icon: "◉" },
+  { id: "approval",   label: "Aprovação Detalhada", icon: "▲" },
+  { id: "influencers",label: "Influenciadores",     icon: "✷" },
+  { id: "narratives", label: "Narrativas",           icon: "❋" },
+  { id: "trends",     label: "Tendências (gráficos)", icon: "∿" },
 ];
 
 /** Iluminação azul no item ativo do menu (referência de design fornecida). */
@@ -83,6 +86,7 @@ function RefreshIcon({ spinning }: { spinning?: boolean }) {
 
 export default function App() {
   const [page, setPage] = useState<Page>("clima");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
@@ -158,27 +162,52 @@ export default function App() {
           </span>
           <span className="font-extrabold tracking-tight">Radar Político</span>
         </div>
+
         <nav className="flex flex-col gap-1.5">
-          {NAV.map((n) => {
-            const isCurrent = n.active && n.id === page;
+          {NAV_MAIN.map((n) => {
+            const isCurrent = n.id === page;
             return (
               <button
                 key={n.id}
-                disabled={!n.active}
-                onClick={() => n.active && setPage(n.id as Page)}
+                onClick={() => setPage(n.id)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-all duration-200 ${
                   isCurrent
                     ? "text-white"
-                    : n.active
-                      ? "bg-bg-2 text-txt-2 shadow-sm hover:bg-bg-3 hover:text-txt-1 hover:shadow-md"
-                      : "text-txt-3 disabled:cursor-not-allowed disabled:opacity-50"
+                    : "bg-bg-2 text-txt-2 shadow-sm hover:bg-bg-3 hover:text-txt-1 hover:shadow-md"
                 }`}
                 style={isCurrent ? NAV_GLOW : undefined}
               >
-                <span
-                  className="w-4 text-center"
-                  style={{ color: isCurrent ? "#93C5FD" : "var(--txt2)" }}
-                >
+                <span className="w-4 text-center" style={{ color: isCurrent ? "#93C5FD" : "var(--txt2)" }}>
+                  {n.icon}
+                </span>
+                {n.label}
+              </button>
+            );
+          })}
+
+          {/* Seção avançada colapsável */}
+          <button
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className="mt-1 flex items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs font-semibold text-txt-3 hover:text-txt-2 transition-colors"
+          >
+            <span className="transition-transform" style={{ display: "inline-block", transform: advancedOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
+            Análise Avançada
+          </button>
+
+          {advancedOpen && NAV_ADVANCED.map((n) => {
+            const isCurrent = n.id === page;
+            return (
+              <button
+                key={n.id}
+                onClick={() => setPage(n.id)}
+                className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-left text-xs font-semibold transition-all duration-200 ${
+                  isCurrent
+                    ? "text-white"
+                    : "text-txt-3 hover:bg-bg-2 hover:text-txt-2"
+                }`}
+                style={isCurrent ? NAV_GLOW : undefined}
+              >
+                <span className="w-4 text-center" style={{ color: isCurrent ? "#93C5FD" : "var(--txt3)" }}>
                   {n.icon}
                 </span>
                 {n.label}
@@ -212,10 +241,10 @@ export default function App() {
         {/* Nav mobile (topo) */}
         <div className="flex items-center gap-1 border-b border-line bg-bg-1 p-2 md:hidden">
           <div className="flex flex-1 gap-1 overflow-x-auto">
-            {NAV.filter((n) => n.active).map((n) => (
+            {[...NAV_MAIN, ...NAV_ADVANCED].map((n) => (
               <button
                 key={n.id}
-                onClick={() => setPage(n.id as Page)}
+                onClick={() => setPage(n.id)}
                 className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all duration-200 ${
                   n.id === page ? "text-white" : "text-txt-2"
                 }`}
@@ -231,17 +260,17 @@ export default function App() {
         <main className="flex-1 overflow-y-auto">
           <ProtectedRoute>
             <Suspense fallback={<div className="p-8 text-txt-2">Carregando…</div>}>
-              {page === "clima" && <ClimaPage />}
-              {page === "command" && <CommandCenter />}
-              {page === "feed" && <FeedPage />}
-              {page === "crisis" && <CrisisCenter />}
-              {page === "assistant" && <AssistantPage />}
-              {page === "approval" && <ApprovalPage />}
-              {page === "trends" && <TrendsPage />}
-              {page === "influencers" && <InfluencersPage />}
-              {page === "narratives" && <NarrativesPage />}
-              {page === "glossary" && <GlossaryPage />}
+              {page === "clima"    && <ClimaPage />}
+              {page === "actions"  && <AlertasAcoesPage />}
+              {page === "feed"     && <FeedPage />}
+              {page === "topics"   && <TemasPage />}
               {page === "settings" && <SettingsPage />}
+              {/* Avançado */}
+              {page === "command"     && <CommandCenter />}
+              {page === "approval"    && <ApprovalPage />}
+              {page === "influencers" && <InfluencersPage />}
+              {page === "narratives"  && <NarrativesPage />}
+              {page === "trends"      && <TrendsPage />}
             </Suspense>
           </ProtectedRoute>
         </main>
