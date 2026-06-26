@@ -66,7 +66,7 @@ function AlertaSCCT({ alerta, nivelCor }: { alerta: BoletimAlerta; nivelCor: str
       <p className="mt-2 text-sm leading-relaxed text-txt-2">{alerta.motivo}</p>
 
       <div className="mt-4 border-t border-line pt-4">
-        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">
+        <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
           Recomendação
         </div>
         <p className="mt-1 text-sm font-medium leading-relaxed text-txt-1">
@@ -116,7 +116,7 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
   if (!frentes.length) return null;
   return (
     <div className="rounded-[28px] border border-line bg-bg-1 p-6">
-      <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">
+      <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
         Frentes de instabilidade
       </div>
       <div className="mt-3 space-y-1">
@@ -282,8 +282,8 @@ export function ClimaPage() {
       {/* Cabeçalho */}
       <div className="reveal reveal-1 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[28px] font-extrabold leading-tight tracking-tight">Clima Político</h1>
-          <p className="text-sm text-txt-2">Alagoinhas/BA · termômetro visual da opinião</p>
+          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Clima Político</h1>
+          <p className="text-base text-txt-2">Alagoinhas/BA · termômetro visual da opinião</p>
         </div>
         <div className="flex rounded-full p-1 glass-btn">
           {PERIODOS.map((p) => (
@@ -324,7 +324,7 @@ export function ClimaPage() {
           )}
 
           <div className="relative z-10 flex h-full flex-col">
-            <div className="text-[11px] font-bold uppercase tracking-[0.22em]" style={{ color: txt2 }}>
+            <div className="text-[12px] font-bold uppercase tracking-[0.22em]" style={{ color: txt2 }}>
               Como está o clima político
             </div>
 
@@ -348,20 +348,20 @@ export function ClimaPage() {
               </div>
             </div>
 
-            <div className="mt-5 max-w-xl text-base font-semibold leading-snug" style={{ color: txt1 }}>
+            <div className="mt-5 max-w-xl text-lg font-semibold leading-snug" style={{ color: txt1 }}>
               {wx.sub}
             </div>
 
             {/* chips de fonte — estilo "members" da referência */}
             <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
               <span
-                className="rounded-full px-3 py-1.5 text-xs font-bold"
+                className="rounded-full px-3 py-1.5 text-sm font-bold"
                 style={{ background: "rgba(255,255,255,0.16)", color: "#FFFFFF", backdropFilter: "blur(6px)" }}
               >
                 📊 {fmtInt(view.posts)} publicações analisadas
               </span>
               <span
-                className="rounded-full px-3 py-1.5 text-xs font-bold"
+                className="rounded-full px-3 py-1.5 text-sm font-bold"
                 style={{ background: "rgba(255,255,255,0.16)", color: "#FFFFFF", backdropFilter: "blur(6px)" }}
               >
                 💬 {fmtInt(view.comentarios)} vozes ouvidas
@@ -385,10 +385,10 @@ export function ClimaPage() {
             style={{ background: "rgba(255,255,255,0.12)" }}
           />
           <div className="relative z-10 flex h-full flex-col">
-            <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/80">
+            <div className="text-[12px] font-bold uppercase tracking-[0.22em] text-white/80">
               Engajamento no período
             </div>
-            <p className="mt-2 max-w-[22ch] text-sm font-medium leading-snug text-white/90">
+            <p className="mt-2 max-w-[22ch] text-base font-medium leading-snug text-white/90">
               Quanto mais vozes ouvidas, mais confiável é a leitura do clima.
             </p>
 
@@ -405,7 +405,7 @@ export function ClimaPage() {
                   {fmtInt(view.comentarios)}
                 </span>
               </div>
-              <div className="mt-1 text-sm font-semibold text-white/85">
+              <div className="mt-1 text-base font-semibold text-white/85">
                 vozes ouvidas · {fmtInt(view.posts)} publicações
               </div>
             </div>
@@ -427,7 +427,7 @@ export function ClimaPage() {
       <div className="reveal reveal-4 grid gap-4 md:grid-cols-3">
         {/* Card 1 — O que a população diz agora */}
         <div className="rounded-[28px] border border-line bg-bg-1 p-6">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">
+          <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
             O que a população diz agora
           </div>
           {view.temaTop && (
@@ -446,7 +446,7 @@ export function ClimaPage() {
         {/* Card 2 — Distribuição (estilo "Calories" com barras) */}
         <div className="rounded-[28px] border border-line bg-bg-1 p-6">
           <div className="flex items-center justify-between">
-            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">
+            <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
               Distribuição
             </div>
             <span className="tnum text-sm font-bold text-txt-2">{view.iad}% aprovação</span>
@@ -474,7 +474,7 @@ export function ClimaPage() {
 
         {/* Card 3 — Tendência do IAD (sparkline 30 dias) */}
         <div className="rounded-[28px] border border-line bg-bg-1 p-6">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">
+          <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
             Tendência 30 dias
           </div>
           <div className="mt-3">

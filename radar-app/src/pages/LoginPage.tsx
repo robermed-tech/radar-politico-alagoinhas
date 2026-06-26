@@ -48,16 +48,16 @@ export function LoginPage() {
               ◉
             </span>
             <div>
-              <div className="text-lg font-extrabold tracking-tight">Radar Político</div>
-              <div className="text-xs text-white/80">Inteligência municipal</div>
+              <div className="text-xl font-extrabold tracking-tight">Radar Político</div>
+              <div className="text-sm text-white/80">Inteligência municipal</div>
             </div>
           </div>
 
           <div className="mt-auto">
-            <h1 className="max-w-md text-[40px] font-extrabold leading-[1.05] tracking-tight">
+            <h1 className="max-w-md text-[52px] font-extrabold leading-[1.05] tracking-tight">
               A opinião da cidade, em tempo real.
             </h1>
-            <p className="mt-4 max-w-sm text-base font-medium text-white/85">
+            <p className="mt-4 max-w-sm text-lg font-medium text-white/85">
               Acompanhe o clima político, antecipe crises e saiba o que a população
               comenta — tudo num só painel.
             </p>
@@ -67,8 +67,8 @@ export function LoginPage() {
                 <div key={f.titulo} className="flex items-center gap-3 rounded-2xl bg-white/12 px-4 py-3 backdrop-blur">
                   <span className="text-xl">{f.icon}</span>
                   <div>
-                    <div className="text-sm font-bold leading-tight">{f.titulo}</div>
-                    <div className="text-xs text-white/80">{f.desc}</div>
+                    <div className="text-base font-bold leading-tight">{f.titulo}</div>
+                    <div className="text-sm text-white/80">{f.desc}</div>
                   </div>
                 </div>
               ))}
@@ -114,14 +114,14 @@ export function LoginPage() {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <h2 className="text-[26px] font-extrabold leading-tight tracking-tight">Entrar</h2>
-                  <p className="mt-1.5 text-sm text-txt-2">
+                  <h2 className="text-[30px] font-extrabold leading-tight tracking-tight">Entrar</h2>
+                  <p className="mt-1.5 text-base text-txt-2">
                     Informe seu email institucional para receber o link de acesso.
                   </p>
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-txt-3">
+                  <label className="mb-1.5 block text-sm font-bold uppercase tracking-wide text-txt-3">
                     Email
                   </label>
                   <input
@@ -131,7 +131,7 @@ export function LoginPage() {
                     placeholder="secretario@prefeitura.ba.gov.br"
                     required
                     autoFocus
-                    className="w-full rounded-2xl border border-line bg-bg-2 px-4 py-3 text-sm outline-none transition focus:border-skycard"
+                    className="w-full rounded-2xl border border-line bg-bg-2 px-4 py-3 text-base outline-none transition focus:border-skycard"
                   />
                 </div>
 
@@ -147,7 +147,7 @@ export function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading || !email.trim()}
-                  className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-base font-bold text-white transition hover:opacity-90 disabled:opacity-50"
                   style={{ background: "#0B1220" }}
                 >
                   {loading ? "Enviando…" : "Receber link de acesso"}

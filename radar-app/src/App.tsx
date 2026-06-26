@@ -171,7 +171,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => setPage(n.id)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-all duration-200 ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-base font-semibold transition-all duration-200 ${
                   isCurrent
                     ? "text-white"
                     : "bg-bg-2 text-txt-2 shadow-sm hover:bg-bg-3 hover:text-txt-1 hover:shadow-md"
@@ -189,7 +189,7 @@ export default function App() {
           {/* Seção avançada colapsável */}
           <button
             onClick={() => setAdvancedOpen((v) => !v)}
-            className="mt-1 flex items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs font-semibold text-txt-3 hover:text-txt-2 transition-colors"
+            className="mt-1 flex items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-semibold text-txt-3 hover:text-txt-2 transition-colors"
           >
             <span className="transition-transform" style={{ display: "inline-block", transform: advancedOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
             Análise Avançada
@@ -201,7 +201,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => setPage(n.id)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-left text-xs font-semibold transition-all duration-200 ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-left text-sm font-semibold transition-all duration-200 ${
                   isCurrent
                     ? "text-white"
                     : "text-txt-3 hover:bg-bg-2 hover:text-txt-2"
@@ -228,7 +228,7 @@ export default function App() {
               <span className="text-xs">⎋</span> Sair
             </button>
           )}
-          <div className="px-2 text-[10px] text-txt-3">
+          <div className="px-2 text-xs text-txt-3">
             {userEmail
               ? `👤 ${userEmail.split("@")[0]}`
               : `${wx.icon} ${wx.label}`}{" "}
