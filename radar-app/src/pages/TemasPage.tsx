@@ -184,7 +184,7 @@ function AlertaSecretarioBox({ t }: { t: TemaResumido }) {
 
   return (
     <div
-      className="rounded-xl border p-5"
+      className="flex flex-1 flex-col rounded-xl border p-5"
       style={{ borderColor: "rgba(249,115,22,0.35)", background: "rgba(249,115,22,0.04)" }}
     >
       {/* Cabeçalho */}
@@ -562,54 +562,62 @@ export function TemasPage() {
         </div>
       </div>
 
-      {/* Subindo / Caindo */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-crit">
-            ▲ Subindo ({subindo.length})
+      {/* Subindo + Caindo (esquerda) | AlertaSecretarioBox (direita) */}
+      <div className="grid items-stretch gap-3 sm:grid-cols-2">
+        {/* Coluna esquerda: Subindo + Caindo empilhados */}
+        <div className="flex flex-col gap-3">
+          <div className="rounded-xl border border-line bg-bg-1 p-4">
+            <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-crit">
+              ▲ Subindo ({subindo.length})
+            </div>
+            <div className="space-y-1.5">
+              {subindo.slice(0, 5).map((s) => {
+                const isOut = outrosTemasSet.has(s.tema);
+                return (
+                  <div key={s.tema} className="flex items-center justify-between text-sm">
+                    <span className="text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
+                      {s.tema}
+                    </span>
+                    <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#EF4444" }}>
+                      +{s.s.toFixed(1)}/dia
+                    </span>
+                  </div>
+                );
+              })}
+              {subindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em alta.</div>}
+            </div>
           </div>
-          <div className="space-y-1.5">
-            {subindo.slice(0, 5).map((s) => {
-              const isOut = outrosTemasSet.has(s.tema);
-              return (
-                <div key={s.tema} className="flex items-center justify-between text-sm">
-                  <span className="text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
-                    {s.tema}
-                  </span>
-                  <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#EF4444" }}>
-                    +{s.s.toFixed(1)}/dia
-                  </span>
-                </div>
-              );
-            })}
-            {subindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em alta.</div>}
-          </div>
-        </div>
-        <div className="rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-low">
-            ▼ Caindo ({caindo.length})
-          </div>
-          <div className="space-y-1.5">
-            {caindo.slice(0, 5).map((s) => {
-              const isOut = outrosTemasSet.has(s.tema);
-              return (
-                <div key={s.tema} className="flex items-center justify-between text-sm">
-                  <span className="text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
-                    {s.tema}
-                  </span>
-                  <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#22C55E" }}>
-                    {s.s.toFixed(1)}/dia
-                  </span>
-                </div>
-              );
-            })}
-            {caindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em queda.</div>}
-          </div>
-        </div>
-      </div>
 
-      {/* Box de alerta para a secretaria mais crítica */}
-      {alertaTema && <AlertaSecretarioBox t={alertaTema} />}
+          <div className="rounded-xl border border-line bg-bg-1 p-4">
+            <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-low">
+              ▼ Caindo ({caindo.length})
+            </div>
+            <div className="space-y-1.5">
+              {caindo.slice(0, 5).map((s) => {
+                const isOut = outrosTemasSet.has(s.tema);
+                return (
+                  <div key={s.tema} className="flex items-center justify-between text-sm">
+                    <span className="text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
+                      {s.tema}
+                    </span>
+                    <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#22C55E" }}>
+                      {s.s.toFixed(1)}/dia
+                    </span>
+                  </div>
+                );
+              })}
+              {caindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em queda.</div>}
+            </div>
+          </div>
+        </div>
+
+        {/* Coluna direita: Acionar Secretaria ocupa toda a altura */}
+        {alertaTema && (
+          <div className="flex flex-col">
+            <AlertaSecretarioBox t={alertaTema} />
+          </div>
+        )}
+      </div>
 
       {/* Gráfico de variação divergente */}
       <div className="rounded-xl border border-line bg-bg-1 p-4">
