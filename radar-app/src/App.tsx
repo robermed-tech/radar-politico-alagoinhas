@@ -38,7 +38,7 @@ const NAV_MAIN: NavItem[] = [
   { id: "clima",   label: "Clima Político",   icon: "☀" },
   { id: "actions", label: "Alertas & Ações",  icon: "🔔" },
   { id: "feed",    label: "O que o povo diz", icon: "💬" },
-  { id: "topics",  label: "Temas em Alta",    icon: "📊" },
+  { id: "topics",  label: "Tendências",         icon: "📊" },
   { id: "settings",label: "Configuração",     icon: "⚙" },
 ];
 
