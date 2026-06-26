@@ -11,7 +11,6 @@ const CommandCenter = lazy(() => import("@/pages/CommandCenter").then((m) => ({ 
 const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
 const InfluencersPage = lazy(() => import("@/pages/InfluencersPage").then((m) => ({ default: m.InfluencersPage })));
 const NarrativesPage = lazy(() => import("@/pages/NarrativesPage").then((m) => ({ default: m.NarrativesPage })));
-const TrendsPage = lazy(() => import("@/pages/TrendsPage").then((m) => ({ default: m.TrendsPage })));
 import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
 import { calcIAD } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
@@ -29,8 +28,7 @@ type Page =
   | "command"
   | "approval"
   | "influencers"
-  | "narratives"
-  | "trends";
+  | "narratives";
 
 interface NavItem { id: Page; label: string; icon: string }
 
@@ -47,7 +45,6 @@ const NAV_ADVANCED: NavItem[] = [
   { id: "approval",   label: "Aprovação Detalhada", icon: "▲" },
   { id: "influencers",label: "Influenciadores",     icon: "✷" },
   { id: "narratives", label: "Narrativas",           icon: "❋" },
-  { id: "trends",     label: "Tendências (gráficos)", icon: "∿" },
 ];
 
 /** Botão ativo do menu: laranja sólido com sombra. */
@@ -270,7 +267,6 @@ export default function App() {
             {page === "approval"    && <ApprovalPage />}
             {page === "influencers" && <InfluencersPage />}
             {page === "narratives"  && <NarrativesPage />}
-            {page === "trends"      && <TrendsPage />}
           </Suspense>
         </main>
       </div>

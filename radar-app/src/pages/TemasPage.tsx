@@ -277,7 +277,10 @@ function AlertaSecretarioBox({ t }: { t: TemaResumido }) {
 }
 
 // ── Nuvem de keywords ────────────────────────────────────────────────────────
+// Palavras sem valor de orientação para a gestão: conectivos, nomes próprios
+// comuns ao contexto político local, e meta-palavras da própria plataforma.
 const STOPWORDS = new Set([
+  // Conectivos / artigos / preposições / pronomes
   "de","a","o","que","e","do","da","em","um","para","com","uma","os","no","se","na","por","mais",
   "as","dos","como","mas","ao","ele","das","à","seu","sua","ou","quando","muito","nos","já","eu",
   "também","só","pelo","pela","até","isso","ela","entre","depois","sem","mesmo","aos","ter","seus",
@@ -289,6 +292,29 @@ const STOPWORDS = new Set([
   "foi","ser","tem","são","sendo","tudo","todo","todos","toda","todas","outro","outra","outros","outras",
   "quer","vai","vão","pode","podem","fazer","feito","ainda","então","agora","aqui","ali","lá",
   "bem","há","aí","nada","faz","diz","pois","pra","porque","sobre","apenas","sim","não","né","tá",
+  "cada","essa","esse","isso","aqui","eles","elas","mais","muito","menos","mesmo","tanto","tanta",
+  "esse","essa","esses","essas","qual","quais","cujo","cuja","cujos","cujas","onde","quando","como",
+  // Meta-palavras da plataforma (não são temas de gestão)
+  "post","posts","comentario","comentarios","comentários","narrativa","narrativas","resumo",
+  "engajamento","alcance","imagem","opositor","opositores","opositora","cidadao","cidadaos",
+  "cidadão","cidadãos","perfil","perfis","publicacao","publicacoes","publicação","publicações",
+  "analise","análise","radar","politico","político","monitoramento","sentimento","sentimentos",
+  // Nomes próprios frequentes no contexto local (não orientam ação da gestão)
+  "gustavo","carmo","almeida","jaldice","luciano","nunes","joao","joão","andrelino","jose","josé",
+  "nunes","eliene","fabricio","fabrício","israel","isaias","isaque","marcos","pedro","paulo","maria",
+  "silva","santos","lima","costa","souza","oliveira","ferreira","pereira","ribeiro","rocha",
+  // Adjetivos e substantivos genéricos sem ação de gestão
+  "municipal","municipais","pública","público","publico","publica","social","sociais","nacional",
+  "local","regional","geral","gerais","cidades","cidade","estado","federal","governo","governos",
+  "dias","horas","anos","meses","semana","semanas","hoje","ontem","amanha","amanhã","tempo","vez",
+  "vezes","parte","partes","caso","casos","tipo","tipos","forma","formas","modo","modos","area","área",
+  "evento","eventos","acao","ações","acao","noticia","noticias","notícia","notícias","critica","crítica",
+  "positivo","negativo","positivos","negativos","neutro","neutros","critico","crítico","grave",
+  "contra","favor","junto","ainda","antes","depois","sempre","nunca","jamais","talvez",
+  "enquanto","durante","mediante","conforme","segundo","terceiro","quarto","quinto",
+  "comunicacao","comunicação","programa","programas","iniciativa","iniciativas","projeto","projetos",
+  "crise","crises","problema","problemas","solucao","solução","soluções","questao","questão",
+  "prefeito","prefeitura","secretaria","secretario","secretário","vereador","vereadores",
 ]);
 
 function extrairKeywords(posts: Post[]): { palavra: string; count: number; cor: string }[] {
@@ -298,7 +324,7 @@ function extrairKeywords(posts: Post[]): { palavra: string; count: number; cor: 
     const sent = p.sentimento_post === "positivo" ? "pos" : p.sentimento_post === "negativo" ? "neg" : null;
     for (const raw of texto.split(/[\s,;:.!?()"'«»\-–—\/]+/)) {
       const w = raw.toLowerCase().replace(/[^a-záàâãéêíóôõúüçñ]/g, "");
-      if (w.length < 4 || STOPWORDS.has(w) || /^\d+$/.test(w)) continue;
+      if (w.length < 5 || STOPWORDS.has(w) || /^\d+$/.test(w)) continue;
       freq[w] ??= { pos: 0, neg: 0, tot: 0 };
       freq[w].tot++;
       if (sent === "pos") freq[w].pos++;
@@ -306,9 +332,9 @@ function extrairKeywords(posts: Post[]): { palavra: string; count: number; cor: 
     }
   }
   return Object.entries(freq)
-    .filter(([, v]) => v.tot >= 2)
+    .filter(([, v]) => v.tot >= 4)
     .sort((a, b) => b[1].tot - a[1].tot)
-    .slice(0, 50)
+    .slice(0, 30)
     .map(([palavra, v]) => {
       let cor = "#9FB0CC";
       if (v.pos > v.neg * 1.5) cor = "#22C55E";
