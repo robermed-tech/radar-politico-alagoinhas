@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchDailyThemes, fetchNarratives, type DailyTheme, type Narrative } from "@/lib/data";
 
@@ -125,6 +125,158 @@ function BarraSentimento({ pctPos, pctNeg }: { pctPos: number; pctNeg: number })
   );
 }
 
+const SECRETARIA_NOME: Record<string, string> = {
+  saude: "Sec. de Saúde",
+  educacao: "Sec. de Educação",
+  obras: "Sec. de Obras e Infraestrutura",
+  seguranca: "Sec. de Segurança Pública",
+  transporte: "Sec. de Transportes",
+  emprego: "Sec. de Desenvolvimento Econômico",
+  impostos: "Sec. de Fazenda",
+  outros: "Secretaria responsável",
+};
+
+function gerarTextoAlerta(t: TemaResumido): string {
+  const tema = toLabel(t.tema);
+  const sec = SECRETARIA_NOME[t.tema] ?? "Secretaria responsável";
+  const tend = t.direcao === "subindo" ? "em crescimento" : t.direcao === "caindo" ? "diminuindo" : "estável";
+  const linhas = [
+    `Prezado(a) ${sec},`,
+    ``,
+    `O Radar Político identificou que o tema "${tema}" está em situação CRÍTICA e ${tend} nas redes sociais de Alagoinhas.`,
+    ``,
+    `📊 Situação atual:`,
+    `• ${t.pctNeg}% dos comentários são negativos`,
+    `• ${t.pctPos}% são favoráveis`,
+    `• ${t.volume} publicações analisadas`,
+  ];
+  if (t.narrativa?.queixa_top) {
+    linhas.push(``, `💬 Principal reclamação da população:`, `"${t.narrativa.queixa_top}"`);
+  }
+  linhas.push(``, `Solicitamos avaliação e providências urgentes.`, ``, `Atenciosamente,`, `Gabinete do Prefeito · Radar Político`);
+  return linhas.join("\n");
+}
+
+function AlertaSecretarioBox({ t }: { t: TemaResumido }) {
+  const [canal, setCanal] = useState<"whatsapp" | "email">("whatsapp");
+  const [contato, setContato] = useState("");
+  const [mensagem, setMensagem] = useState(() => gerarTextoAlerta(t));
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const tema = toLabel(t.tema);
+  const assunto = `⚠ Radar Político — ${tema} em situação crítica`;
+
+  function flash(msg: string) {
+    setFeedback(msg);
+    setTimeout(() => setFeedback(null), 2500);
+  }
+
+  function enviar() {
+    if (!contato.trim()) { flash("Preencha o contato"); return; }
+    if (canal === "email") {
+      window.open(`mailto:${contato.trim()}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(mensagem)}`);
+    } else {
+      const num = contato.replace(/\D/g, "");
+      window.open(`https://wa.me/${num.startsWith("55") ? num : "55" + num}?text=${encodeURIComponent(mensagem)}`, "_blank");
+    }
+    flash("✓ Abrindo…");
+  }
+
+  function copiar() {
+    navigator.clipboard.writeText(mensagem).then(() => flash("✓ Copiado!"));
+  }
+
+  return (
+    <div
+      className="flex flex-col gap-3 rounded-xl border p-5"
+      style={{ borderColor: "rgba(249,115,22,0.35)", background: "rgba(249,115,22,0.04)" }}
+    >
+      {/* Cabeçalho */}
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-extrabold text-txt-1">📣 Acionar Secretaria</div>
+          <div className="text-xs text-txt-3">{SECRETARIA_NOME[t.tema] ?? "Secretaria responsável"}</div>
+        </div>
+        {/* Toggle canal */}
+        <div className="flex gap-0.5 rounded-lg border border-line bg-bg-2 p-0.5">
+          {(["whatsapp", "email"] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCanal(c)}
+              className={`rounded px-2.5 py-1 text-xs font-semibold transition-all ${
+                canal === c ? "bg-brand text-white" : "text-txt-3 hover:text-txt-1"
+              }`}
+            >
+              {c === "whatsapp" ? "WhatsApp" : "E-mail"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Contato */}
+      <div>
+        <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-txt-3">
+          {canal === "email" ? "E-mail do(a) secretário(a)" : "WhatsApp com DDD"}
+        </label>
+        <input
+          type={canal === "email" ? "email" : "tel"}
+          value={contato}
+          onChange={(e) => setContato(e.target.value)}
+          placeholder={canal === "email" ? "secretario@prefeitura.ba.gov.br" : "75 9 9999-0000"}
+          className="w-full rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none transition focus:border-brand"
+        />
+      </div>
+
+      {/* Mensagem */}
+      <div className="flex flex-1 flex-col">
+        <div className="mb-1 flex items-center justify-between">
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-txt-3">Mensagem</label>
+          <button
+            onClick={() => setMensagem(gerarTextoAlerta(t))}
+            className="text-[10px] font-semibold text-brand hover:underline"
+          >
+            ↺ Regenerar
+          </button>
+        </div>
+        <textarea
+          value={mensagem}
+          onChange={(e) => setMensagem(e.target.value)}
+          rows={9}
+          className="w-full flex-1 resize-none rounded-lg border border-line bg-bg-2 px-3 py-2 text-xs leading-relaxed text-txt-1 outline-none transition focus:border-brand"
+          style={{ fontFamily: "JetBrains Mono, monospace" }}
+        />
+      </div>
+
+      {/* Ações */}
+      <div className="flex gap-2">
+        <button
+          onClick={enviar}
+          disabled={!contato.trim()}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-40"
+          style={{ background: canal === "whatsapp" ? "#22C55E" : "#F97316" }}
+        >
+          {feedback?.startsWith("✓ Abrindo")
+            ? "✓ Abrindo…"
+            : canal === "whatsapp"
+            ? "💬 Enviar WhatsApp"
+            : "📧 Enviar E-mail"}
+        </button>
+        <button
+          onClick={copiar}
+          title="Copiar texto"
+          className="rounded-lg border border-line bg-bg-2 px-3 py-2.5 text-sm transition hover:bg-bg-3"
+        >
+          {feedback === "✓ Copiado!" ? "✓" : "📋"}
+        </button>
+      </div>
+
+      {feedback && !feedback.startsWith("✓") && (
+        <p className="text-xs text-risk-crit">{feedback}</p>
+      )}
+    </div>
+  );
+}
+
 function TemaCard({ t }: { t: TemaResumido }) {
   const emoji = TEMA_EMOJI[t.tema] ?? "📌";
   const dirCor = DIR_COR[t.direcao];
@@ -246,7 +398,10 @@ export function TemasPage() {
             <h2 className="text-sm font-extrabold text-txt-1">Crescendo agora</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {emAlta.map((t) => <TemaCard key={t.tema} t={t} />)}
+            {/* Primeiro tema crítico + caixa de alerta no slot vazio */}
+            <TemaCard t={emAlta[0]} />
+            <AlertaSecretarioBox t={emAlta[0]} />
+            {emAlta.slice(1).map((t) => <TemaCard key={t.tema} t={t} />)}
           </div>
         </section>
       )}
@@ -258,7 +413,10 @@ export function TemasPage() {
             <h2 className="text-sm font-extrabold text-txt-1">Demais temas</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {demais.map((t) => <TemaCard key={t.tema} t={t} />)}
+            {/* Se não há emAlta, mostra a caixa de alerta ao lado do tema mais crítico */}
+            <TemaCard t={demais[0]} />
+            {emAlta.length === 0 && <AlertaSecretarioBox t={demais[0]} />}
+            {demais.slice(emAlta.length === 0 ? 1 : 0).map((t) => <TemaCard key={t.tema} t={t} />)}
           </div>
         </section>
       )}
