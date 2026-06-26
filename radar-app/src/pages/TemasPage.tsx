@@ -44,7 +44,8 @@ function direcaoSlope(serie: number[]): "subindo" | "estavel" | "caindo" {
 }
 
 const DIR_ICON: Record<string, string> = { subindo: "▲", estavel: "─", caindo: "▼" };
-const DIR_COR: Record<string, string>  = { subindo: "#22C55E", estavel: "#9FB0CC", caindo: "#EF4444" };
+// Vermelho = subindo (piora), Verde = caindo (melhora) — perspectiva da gestão
+const DIR_COR: Record<string, string>  = { subindo: "#EF4444", estavel: "#9FB0CC", caindo: "#22C55E" };
 const COR_OUTROS = "#94A3B8";
 
 // ── Interfaces ───────────────────────────────────────────────────────────────
@@ -475,7 +476,8 @@ export function TemasPage() {
     .slice(0, 12)
     .sort((a, b) => a.s - b.s);
 
-  const corSlope = (s: number) => (s > 0.1 ? "#22C55E" : s < -0.1 ? "#EF4444" : "#9FB0CC");
+  // Vermelho = subindo (mais negativo/volume = alarme), Verde = caindo (melhora)
+  const corSlope = (s: number) => (s > 0.1 ? "#EF4444" : s < -0.1 ? "#22C55E" : "#9FB0CC");
 
   const option = {
     grid: { left: 120, right: 48, top: 10, bottom: 28 },
@@ -563,7 +565,7 @@ export function TemasPage() {
       {/* Subindo / Caindo */}
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-low">
+          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-crit">
             ▲ Subindo ({subindo.length})
           </div>
           <div className="space-y-1.5">
@@ -574,7 +576,7 @@ export function TemasPage() {
                   <span className="text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
                     {s.tema}
                   </span>
-                  <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#22C55E" }}>
+                  <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#EF4444" }}>
                     +{s.s.toFixed(1)}/dia
                   </span>
                 </div>
@@ -584,7 +586,7 @@ export function TemasPage() {
           </div>
         </div>
         <div className="rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-crit">
+          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-low">
             ▼ Caindo ({caindo.length})
           </div>
           <div className="space-y-1.5">
@@ -595,7 +597,7 @@ export function TemasPage() {
                   <span className="text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
                     {s.tema}
                   </span>
-                  <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#EF4444" }}>
+                  <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#22C55E" }}>
                     {s.s.toFixed(1)}/dia
                   </span>
                 </div>
@@ -616,7 +618,7 @@ export function TemasPage() {
             {metr.label} · variação por tema (janela {janela}d)
           </div>
           <div className="text-[10px] text-txt-3">
-            verde = subindo · vermelho = caindo · cinza = estável
+            vermelho = subindo · verde = caindo · cinza = estável
           </div>
         </div>
         <ReactECharts
