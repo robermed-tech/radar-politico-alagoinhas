@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadar, fetchBoletim, filtrarPorPeriodo, type Post, type Boletim, type BoletimAlerta } from "@/lib/data";
+import { fetchRadar, fetchBoletim, filtrarPorPeriodo, parseData, type Post, type Boletim, type BoletimAlerta } from "@/lib/data";
 import { calcIAD, distribuicao } from "@/lib/indices";
 import { getWeather, getDestaque } from "@/lib/weather";
 import { fmtInt } from "@/lib/format";
@@ -142,6 +142,62 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
   );
 }
 
+/** Agrega posts por dia e retorna IAD diário (últimos 30 dias). */
+function buildSparkline(posts: Post[]): { dia: string; iad: number }[] {
+  const byDay: Record<string, Post[]> = {};
+  for (const p of posts) {
+    const d = parseData(p.data_post);
+    if (!d) continue;
+    const key = d.toISOString().slice(0, 10);
+    (byDay[key] ??= []).push(p);
+  }
+  return Object.entries(byDay)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([dia, ps]) => ({ dia, iad: Math.round(calcIAD(ps)) }));
+}
+
+/** Sparkline SVG do IAD nos últimos 30 dias. */
+function SparklineIAD({ pontos }: { pontos: { dia: string; iad: number }[] }) {
+  if (pontos.length < 2) return <div className="text-xs text-txt-3">Dados insuficientes para tendência.</div>;
+  const W = 240, H = 52, PAD = 4;
+  const vals = pontos.map((p) => p.iad);
+  const lo = Math.max(0, Math.min(...vals) - 8);
+  const hi = Math.min(100, Math.max(...vals) + 8);
+  const rng = hi - lo || 1;
+  const xp = (i: number) => PAD + (i / (pontos.length - 1)) * (W - PAD * 2);
+  const yp = (v: number) => PAD + (1 - (v - lo) / rng) * (H - PAD * 2);
+  const pts = pontos.map((p, i) => ({ x: xp(i), y: yp(p.iad) }));
+  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const area = `${line} L${pts[pts.length - 1].x},${H} L${pts[0].x},${H} Z`;
+  const last = pontos[pontos.length - 1];
+  const ref = pontos.length >= 7 ? pontos[pontos.length - 7].iad : pontos[0].iad;
+  const delta = last.iad - ref;
+  const arrow = delta > 2 ? "↑" : delta < -2 ? "↓" : "→";
+  const arrowColor = delta > 2 ? "#22C55E" : delta < -2 ? "#EF4444" : "#64748B";
+  return (
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between">
+        <span className="tnum text-3xl font-extrabold text-txt-1">{last.iad}%</span>
+        <span className="text-sm font-bold" style={{ color: arrowColor }}>
+          {arrow} {Math.abs(delta)}pt vs 7d
+        </span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ overflow: "visible" }}>
+        <defs>
+          <linearGradient id="iad-spk-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#F97316" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#F97316" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill="url(#iad-spk-grad)" />
+        <path d={line} fill="none" stroke="#F97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="4" fill="#F97316" />
+      </svg>
+      <div className="text-[10px] text-txt-3">{pontos.length} dias com dados · últimos 30 dias</div>
+    </div>
+  );
+}
+
 /** Visualização de barras verticais (estilo "Calories" da referência).
  *  Cada barra é colorida pelo segmento de sentimento em que cai. */
 function BarrasDistribuicao({ pctPos, pctNeu }: { pctPos: number; pctNeu: number }) {
@@ -189,6 +245,7 @@ export function ClimaPage() {
     const dist = distribuicao(posts);
     const wx = getWeather(iad);
     const totalComents = posts.reduce((s, p) => s + (p.comentarios_total || 0), 0);
+    const sparkline = buildSparkline(filtrarPorPeriodo(data.data, 30));
     return {
       vazio: false as const,
       iad, ...dist,
@@ -197,6 +254,7 @@ export function ClimaPage() {
       temaTop: temaDominante(posts),
       posts: posts.length,
       comentarios: totalComents,
+      sparkline,
     };
   }, [data, dias]);
 
@@ -414,18 +472,13 @@ export function ClimaPage() {
           </div>
         </div>
 
-        {/* Card 3 — Como ler o termômetro */}
+        {/* Card 3 — Tendência do IAD (sparkline 30 dias) */}
         <div className="rounded-[28px] border border-line bg-bg-1 p-6">
           <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-txt-3">
-            Como ler o termômetro
+            Tendência 30 dias
           </div>
-          <div className="mt-3 space-y-2 text-sm text-txt-2">
-            <div className="flex items-center justify-between"><span>☀️ <b className="text-txt-1">Ótimo</b></span><span className="tnum text-txt-3">75–100%</span></div>
-            <div className="flex items-center justify-between"><span>⛅ <b className="text-txt-1">Bom</b></span><span className="tnum text-txt-3">60–74%</span></div>
-            <div className="flex items-center justify-between"><span>☁️ <b className="text-txt-1">Regular</b></span><span className="tnum text-txt-3">45–59%</span></div>
-            <div className="flex items-center justify-between"><span>🌧️ <b className="text-txt-1">Atenção</b></span><span className="tnum text-txt-3">30–44%</span></div>
-            <div className="flex items-center justify-between"><span>⛈️ <b className="text-txt-1">Crise</b></span><span className="tnum text-txt-3">15–29%</span></div>
-            <div className="flex items-center justify-between"><span>🌑 <b className="text-txt-1">Crítico</b></span><span className="tnum text-txt-3">0–14%</span></div>
+          <div className="mt-3">
+            <SparklineIAD pontos={view.sparkline} />
           </div>
         </div>
       </div>

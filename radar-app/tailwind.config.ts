@@ -17,7 +17,7 @@ export default {
         txt: { 1: "var(--txt1)", 2: "var(--txt2)", 3: "var(--txt3)" },
         brand: { DEFAULT: "#F97316", 2: "#FB923C" },
         accent: "#A855F7",
-        risk: { low: "#22C55E", mod: "#EAB308", high: "#F97316", crit: "#EF4444" },
+        risk: { low: "#22C55E", mod: "#EAB308", high: "#EF8C00", crit: "#EF4444" },
         sent: { pos: "#22C55E", neu: "#64748B", neg: "#EF4444" },
         // Acentos do estilo "clean" (referência) — agora em laranja
         lime: { DEFAULT: "#BEDB1D", ink: "#1A2400" },

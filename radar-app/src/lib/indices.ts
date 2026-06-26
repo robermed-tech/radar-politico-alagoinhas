@@ -164,6 +164,6 @@ export const NIVEL_LABEL: Record<NivelCrise, string> = {
 export const NIVEL_COLOR: Record<NivelCrise, string> = {
   baixo: "#22C55E",
   moderado: "#EAB308",
-  alto: "#F97316",
+  alto: "#EF8C00",
   critico: "#EF4444",
 };
