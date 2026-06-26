@@ -148,6 +148,7 @@ export default function App() {
   );
 
   return (
+    <ProtectedRoute>
     <div className="flex h-full">
       <aside
         className="hidden w-56 shrink-0 flex-col border-r border-line bg-bg-1 p-3 md:flex"
@@ -258,23 +259,22 @@ export default function App() {
           <ThemeToggle compact />
         </div>
         <main className="flex-1 overflow-y-auto">
-          <ProtectedRoute>
-            <Suspense fallback={<div className="p-8 text-txt-2">Carregando…</div>}>
-              {page === "clima"    && <ClimaPage />}
-              {page === "actions"  && <AlertasAcoesPage />}
-              {page === "feed"     && <FeedPage />}
-              {page === "topics"   && <TemasPage />}
-              {page === "settings" && <SettingsPage />}
-              {/* Avançado */}
-              {page === "command"     && <CommandCenter />}
-              {page === "approval"    && <ApprovalPage />}
-              {page === "influencers" && <InfluencersPage />}
-              {page === "narratives"  && <NarrativesPage />}
-              {page === "trends"      && <TrendsPage />}
-            </Suspense>
-          </ProtectedRoute>
+          <Suspense fallback={<div className="p-8 text-txt-2">Carregando…</div>}>
+            {page === "clima"    && <ClimaPage />}
+            {page === "actions"  && <AlertasAcoesPage />}
+            {page === "feed"     && <FeedPage />}
+            {page === "topics"   && <TemasPage />}
+            {page === "settings" && <SettingsPage />}
+            {/* Avançado */}
+            {page === "command"     && <CommandCenter />}
+            {page === "approval"    && <ApprovalPage />}
+            {page === "influencers" && <InfluencersPage />}
+            {page === "narratives"  && <NarrativesPage />}
+            {page === "trends"      && <TrendsPage />}
+          </Suspense>
         </main>
       </div>
     </div>
+    </ProtectedRoute>
   );
 }
