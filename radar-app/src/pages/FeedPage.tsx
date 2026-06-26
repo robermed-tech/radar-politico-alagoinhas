@@ -1,15 +1,28 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadar, parseData, type Post } from "@/lib/data";
+import { fetchRadar, parseData, filtrarPorPeriodo, type Post } from "@/lib/data";
 import { PostChips } from "@/components/PostChips";
 
 type Filtro = "todos" | "negativos" | "positivos" | "urgentes";
+type Periodo = 1 | 7 | 30;
 
 const FILTRO_LABELS: Record<Filtro, string> = {
   todos: "Todos",
   negativos: "Críticos",
   positivos: "Favoráveis",
   urgentes: "Urgentes",
+};
+
+const PERIODOS: { dias: Periodo; label: string }[] = [
+  { dias: 1, label: "24h" },
+  { dias: 7, label: "7 dias" },
+  { dias: 30, label: "30 dias" },
+];
+
+const SENT_BORDER: Record<string, string> = {
+  positivo: "#22C55E",
+  negativo: "#EF4444",
+  neutro: "#64748B",
 };
 
 function avatarEmoji(categoria: string): string {
@@ -35,8 +48,12 @@ function tempoRelativo(dataStr: string): string {
 
 function PostCard({ p }: { p: Post }) {
   const resumo = p.resumo || p.queixa_dominante || p.elogio_dominante || "";
+  const borderColor = SENT_BORDER[p.sentimento_post ?? ""] ?? "#64748B";
   return (
-    <div className="rounded-xl border border-line bg-bg-1 p-4">
+    <div
+      className="rounded-xl border border-line bg-bg-1 p-4 transition-shadow hover:shadow-lg"
+      style={{ borderLeftColor: borderColor, borderLeftWidth: 3 }}
+    >
       <div className="mb-2 flex items-center gap-2">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bg-2 text-base">
           {avatarEmoji(p.categoria)}
@@ -73,6 +90,7 @@ function PostCard({ p }: { p: Post }) {
 
 export function FeedPage() {
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  const [periodo, setPeriodo] = useState<Periodo>(7);
 
   const { data, isLoading } = useQuery({
     queryKey: ["radar"],
@@ -82,7 +100,8 @@ export function FeedPage() {
   });
 
   const posts = useMemo<Post[]>(() => {
-    const all = [...(data?.data ?? [])].sort((a, b) => {
+    const periodPosts = filtrarPorPeriodo(data?.data ?? [], periodo);
+    const all = [...periodPosts].sort((a, b) => {
       const da = parseData(a.data_post)?.getTime() ?? 0;
       const db = parseData(b.data_post)?.getTime() ?? 0;
       return db - da;
@@ -94,29 +113,48 @@ export function FeedPage() {
       return all.filter((p) => urg.has(p.urgencia?.toLowerCase() ?? ""));
     }
     return all;
-  }, [data, filtro]);
+  }, [data, filtro, periodo]);
 
   if (isLoading) return <div className="p-8 text-txt-2">Carregando feed…</div>;
+
+  const periodoLabel = periodo === 1 ? "24 horas" : `${periodo} dias`;
 
   return (
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold">O que o povo diz</h1>
-          <p className="text-sm text-txt-2">{posts.length} publicação{posts.length !== 1 ? "ões" : ""} coletada{posts.length !== 1 ? "s" : ""}</p>
+          <p className="text-sm text-txt-2">
+            {posts.length} publicação{posts.length !== 1 ? "ões" : ""} · últimas {periodoLabel}
+          </p>
         </div>
-        <div className="flex rounded-lg border border-line bg-bg-1 p-1">
-          {(Object.keys(FILTRO_LABELS) as Filtro[]).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFiltro(f)}
-              className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
-                filtro === f ? "bg-brand text-white" : "text-txt-2 hover:text-txt-1"
-              }`}
-            >
-              {FILTRO_LABELS[f]}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-lg p-1 glass-btn">
+            {PERIODOS.map((p) => (
+              <button
+                key={p.dias}
+                onClick={() => setPeriodo(p.dias)}
+                className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
+                  periodo === p.dias ? "bg-white/20 text-txt-1" : "text-txt-2 hover:text-txt-1"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex rounded-lg border border-line bg-bg-1 p-1">
+            {(Object.keys(FILTRO_LABELS) as Filtro[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFiltro(f)}
+                className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
+                  filtro === f ? "bg-brand text-white" : "text-txt-2 hover:text-txt-1"
+                }`}
+              >
+                {FILTRO_LABELS[f]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
