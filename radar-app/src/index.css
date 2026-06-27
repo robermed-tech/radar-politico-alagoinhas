@@ -59,6 +59,7 @@ body {
   background-attachment: fixed;
   transition: background 1.2s ease;
   font-weight: 300; /* light por padrão */
+  letter-spacing: 0.02em;
 }
 
 /* ── DIRETRIZ TIPOGRÁFICA: apenas thin/regular (sem bold/extra-bold) ──

@@ -153,8 +153,7 @@ function AlertaSCCT({ alerta, nivelCor }: { alerta: BoletimAlerta; nivelCor: str
 
       {/* Tema em alta — destaque principal */}
       <div className="mt-4">
-        <div className="text-[11px] font-bold text-txt-3">Tema em alta</div>
-        <div className="mt-1 text-xl font-extrabold capitalize text-txt-1">{tema}</div>
+        <div className="mt-1 text-xl font-extrabold text-txt-1">{tema}</div>
       </div>
 
       {/* Por que está em alta */}
@@ -204,7 +203,7 @@ function AlertaSCCT({ alerta, nivelCor }: { alerta: BoletimAlerta; nivelCor: str
 
 function temaDoMotivo(alerta: BoletimAlerta): string {
   const m = alerta.motivo.match(/"([^"]+)"/);
-  return m ? m[1] : "tema em alta";
+  return m ? m[1] : alerta.scct.rotulo_cluster;
 }
 
 function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
@@ -251,7 +250,7 @@ function buildSparkline(posts: Post[]): { dia: string; iad: number }[] {
     .map(([dia, ps]) => ({ dia, iad: Math.round(calcIAD(ps)) }));
 }
 
-function SparklineIAD({ pontos }: { pontos: { dia: string; iad: number }[] }) {
+function SparklineIAD({ pontos, media }: { pontos: { dia: string; iad: number }[]; media?: number }) {
   if (pontos.length < 2) return <div className="text-xs text-txt-3">Dados insuficientes para tendência.</div>;
   const W = 240, H = 52, PAD = 4;
   const vals = pontos.map((p) => p.iad);
@@ -268,10 +267,11 @@ function SparklineIAD({ pontos }: { pontos: { dia: string; iad: number }[] }) {
   const delta = last.iad - ref;
   const arrow = delta > 2 ? "↑" : delta < -2 ? "↓" : "→";
   const arrowColor = delta > 2 ? "#22C55E" : delta < -2 ? "#EF4444" : "#64748B";
+  const headline = media ?? last.iad;
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between">
-        <span className="tnum text-3xl font-extrabold text-txt-1">{last.iad}%</span>
+        <span className="tnum text-3xl font-extrabold text-txt-1">{headline}%</span>
         <span className="text-sm font-bold" style={{ color: arrowColor }}>
           {arrow} {Math.abs(delta)}pt vs 7d
         </span>
@@ -346,10 +346,12 @@ export function ClimaPage() {
     const dist = distribuicao(posts);
     const wx = getWeather(iad);
     const totalComents = posts.reduce((s, p) => s + (p.comentarios_total || 0), 0);
-    const sparkline = buildSparkline(filtrarPorPeriodo(data.data, 30));
+    const posts30 = filtrarPorPeriodo(data.data, 30);
+    const sparkline = buildSparkline(posts30);
+    const iad30 = Math.round(calcIAD(posts30));
     return {
       vazio: false as const,
-      iad, ...dist,
+      iad, iad30, ...dist,
       wx,
       posts: posts.length,
       comentarios: totalComents,
@@ -550,7 +552,7 @@ export function ClimaPage() {
             Aprovação digital — últimos 30 dias
           </div>
           <div className="mt-3">
-            <SparklineIAD pontos={view.sparkline} />
+            <SparklineIAD pontos={view.sparkline} media={view.iad30} />
           </div>
         </div>
       </div>
