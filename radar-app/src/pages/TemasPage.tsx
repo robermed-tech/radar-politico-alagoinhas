@@ -490,7 +490,8 @@ export function TemasPage() {
       formatter: (ps: { name: string; value: number }[]) => {
         const v = Number(ps[0].value);
         const dir = v > 0.1 ? "subindo" : v < -0.1 ? "caindo" : "estável";
-        return `<b>${ps[0].name}</b><br/>${dir}: ${v > 0 ? "+" : ""}${v.toFixed(1)}/dia`;
+        const unidade = metrica === "volume" ? "posts/dia" : "pt/dia";
+        return `<b>${ps[0].name}</b><br/>${dir}: ${v > 0 ? "+" : ""}${v.toFixed(1)} ${unidade}`;
       },
     },
     xAxis: {
@@ -579,7 +580,7 @@ export function TemasPage() {
                       {s.tema}
                     </span>
                     <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#EF4444" }}>
-                      +{s.s.toFixed(1)}/dia
+                      +{s.s.toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
                     </span>
                   </div>
                 );
@@ -601,7 +602,7 @@ export function TemasPage() {
                       {s.tema}
                     </span>
                     <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#22C55E" }}>
-                      {s.s.toFixed(1)}/dia
+                      {s.s.toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
                     </span>
                   </div>
                 );
@@ -674,7 +675,7 @@ export function TemasPage() {
                       className="tnum py-2 text-right font-bold"
                       style={{ color: DIR_COR[dir] }}
                     >
-                      {DIR_ICON[dir]} {Math.abs(s.s).toFixed(1)}/dia
+                      {DIR_ICON[dir]} {Math.abs(s.s).toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
                     </td>
                   </tr>
                 );
