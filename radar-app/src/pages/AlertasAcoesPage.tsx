@@ -54,19 +54,15 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
       <div className="mt-3 space-y-3">
         {reais.map((p) => {
           const cor = NIVEL_COLOR[(p.nivel as NivelCrise) ?? "alto"] ?? "#F97316";
-          const janelaLabel = JANELA_LABEL[p.janela_resposta] ?? p.janela_resposta;
           return (
             <div key={p.post_url} className="rounded-lg border border-line bg-bg-2 p-4">
               <div className="flex flex-wrap items-center gap-2">
                 {p.tema && (
-                  <span className="rounded bg-bg-3 px-2 py-0.5 text-xs font-semibold capitalize text-txt-1">
+                  <span className="text-sm font-extrabold capitalize text-txt-1">
                     {p.tema}
                   </span>
                 )}
                 <Tag color={cor}>{NIVEL_LABEL[(p.nivel as NivelCrise) ?? "alto"] ?? p.nivel}</Tag>
-                <span className="rounded bg-bg-3 px-2 py-0.5 text-xs font-semibold text-txt-2">
-                  ⏱ {janelaLabel}
-                </span>
                 <span className="ml-auto text-xs text-txt-3">@{p.autor}</span>
               </div>
 
@@ -158,7 +154,7 @@ export function AlertasAcoesPage() {
               </span>
               <span className="text-xs text-txt-3">situação geral · {b!.dia}</span>
             </div>
-            <p className="mt-2 text-[15px] leading-relaxed text-txt-1">{b!.diagnostico}</p>
+            <p className="mt-2 text-[15px] font-semibold leading-relaxed text-txt-1">{b!.diagnostico}</p>
           </div>
 
           {/* Planos do Caçador de Crises */}

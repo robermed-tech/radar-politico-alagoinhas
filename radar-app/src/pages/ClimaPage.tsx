@@ -13,7 +13,7 @@ const PERIODOS = [
 
 function temaDominante(posts: Post[]): string {
   const c: Record<string, number> = {};
-  posts.forEach((p) => { if (p.tema) c[p.tema] = (c[p.tema] || 0) + 1; });
+  posts.forEach((p) => { if (p.tema && p.tema !== "outros") c[p.tema] = (c[p.tema] || 0) + 1; });
   const top = Object.entries(c).sort((a, b) => b[1] - a[1])[0];
   return top ? top[0] : "";
 }
@@ -120,7 +120,7 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
         Frentes de instabilidade
       </div>
       <div className="mt-3 space-y-1">
-        {frentes.map((f) => {
+        {frentes.filter((f) => f.tema !== "outros").map((f) => {
           const corSeta =
             f.tendencia === "subindo" ? "var(--risk-crit, #EF4444)"
             : f.tendencia === "caindo" ? "var(--risk-low, #22C55E)"
@@ -447,9 +447,8 @@ export function ClimaPage() {
         <div className="rounded-[28px] border border-line bg-bg-1 p-6">
           <div className="flex items-center justify-between">
             <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
-              Distribuição
+              Distribuição de sentimento
             </div>
-            <span className="tnum text-sm font-bold text-txt-2">{view.iad}% aprovação</span>
           </div>
 
           <div className="mt-4">
@@ -473,9 +472,12 @@ export function ClimaPage() {
         </div>
 
         {/* Card 3 — Tendência do IAD (sparkline 30 dias) */}
-        <div className="rounded-[28px] border border-line bg-bg-1 p-6">
-          <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
-            Tendência 30 dias
+        <div
+          className="rounded-[28px] border p-6"
+          style={{ borderColor: "rgba(249,115,22,0.35)", background: "rgba(249,115,22,0.05)" }}
+        >
+          <div className="text-[12px] font-bold uppercase tracking-[0.18em]" style={{ color: "#F97316" }}>
+            Aprovação digital — últimos 30 dias
           </div>
           <div className="mt-3">
             <SparklineIAD pontos={view.sparkline} />
