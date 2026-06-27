@@ -86,10 +86,10 @@ const INDICES: Indice[] = [
     escala: "0 (amostra fraca) a 100 (amostra robusta). Abaixo de 40 = 'amostra insuficiente'.",
   },
   {
-    sigla: "Risco",
-    nome: "Risco Político",
-    oque: "Combina baixa aprovação, posts de alto risco, velocidade de crescimento das críticas e confiança da amostra em um único número de alerta.",
-    escala: "Baixo (0-39) · Moderado (40-59) · Alto (60-79) · Crítico (80-100)",
+    sigla: "Nível",
+    nome: "Nível de Alerta",
+    oque: "Classificação qualitativa do momento político: Baixo, Moderado, Alto ou Crítico. Derivada do IAD, da presença de posts de alto risco e da velocidade de crescimento das críticas.",
+    escala: "Baixo · Moderado · Alto · Crítico — leia sempre junto com o IAD para decidir a urgência da resposta.",
   },
   {
     sigla: "Coord.",

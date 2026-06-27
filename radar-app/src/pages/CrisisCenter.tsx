@@ -119,7 +119,6 @@ export function CrisisCenter() {
   const serie = data ?? [];
   const atual = serie.at(-1);
   const nivelAtual = (atual?.nivel_crise as NivelCrise) || "baixo";
-  const corAtual = NIVEL_COLOR[nivelAtual];
 
   if (serie.length === 0)
     return (
@@ -139,52 +138,6 @@ export function CrisisCenter() {
     borderColor: ink.tooltipBorder,
     textStyle: { color: ink.tooltipText },
   };
-  const riscoOption = {
-    grid: { left: 36, right: 16, top: 16, bottom: 28 },
-    tooltip: tip,
-    xAxis: {
-      type: "category",
-      data: serie.map((s) => s.dia.slice(5)),
-      axisLine: { lineStyle: { color: ink.axisLine } },
-      axisLabel: { color: ink.axis },
-    },
-    yAxis: {
-      type: "value",
-      min: 0,
-      max: 100,
-      splitLine: { lineStyle: { color: ink.grid } },
-      axisLabel: { color: ink.axis },
-    },
-    visualMap: {
-      show: false,
-      dimension: 1,
-      pieces: [
-        { lte: 40, color: "#16A34A" },
-        { gt: 40, lte: 60, color: "#D97706" },
-        { gt: 60, lte: 80, color: "#EA580C" },
-        { gt: 80, color: "#DC2626" },
-      ],
-    },
-    series: [
-      {
-        name: "Risco",
-        type: "line",
-        smooth: true,
-        symbol: "circle",
-        symbolSize: 6,
-        lineStyle: { width: 3, shadowBlur: 8, shadowColor: "rgba(0,0,0,0.25)" },
-        areaStyle: { opacity: 0.18 },
-        data: serie.map((s) => s.risco),
-        markLine: {
-          silent: true,
-          symbol: "none",
-          lineStyle: { color: ink.axisLine, type: "dashed" },
-          data: [{ yAxis: 60 }, { yAxis: 80 }],
-        },
-      },
-    ],
-  };
-
   const iadOption = {
     grid: { left: 36, right: 16, top: 24, bottom: 28 },
     tooltip: tip,
@@ -230,11 +183,6 @@ export function CrisisCenter() {
               >
                 {NIVEL_LABEL[n]}
               </div>
-              {ativo && (
-                <div className="tnum mt-1 text-2xl font-extrabold" style={{ color: corAtual }}>
-                  {Math.round(atual?.risco ?? 0)}
-                </div>
-              )}
             </div>
           );
         })}
@@ -242,15 +190,6 @@ export function CrisisCenter() {
 
       {/* Planos de contenção do Agente Caçador de Crises */}
       <PlanosContencao planos={planos} />
-
-      {/* Histórico de risco */}
-      <div className="rounded-xl border border-line bg-bg-1 p-4">
-        <div className="mb-1 text-sm font-bold">Histórico de Risco Político (0–100)</div>
-        <div className="mb-2 text-xs text-txt-3">
-          Linhas tracejadas: limiares Alto (60) e Crítico (80)
-        </div>
-        <ReactECharts option={riscoOption} style={{ height: 300 }} notMerge />
-      </div>
 
       {/* IAD x ICA */}
       <div className="rounded-xl border border-line bg-bg-1 p-4">
