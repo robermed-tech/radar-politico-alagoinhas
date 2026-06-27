@@ -6,13 +6,13 @@
 :root,
 .theme-dark {
   color-scheme: dark;
-  /* Degradê azul-escuro → preto (intensidade suave) */
-  --wx-bg: linear-gradient(160deg, #0C1E38 0%, #0A1526 40%, #060D1A 72%, #03060C 100%);
-  --g1: rgba(255, 255, 255, 0.07);
-  --g2: rgba(255, 255, 255, 0.05);
-  --g3: rgba(255, 255, 255, 0.10);
-  --line: rgba(255, 255, 255, 0.14);
-  --line-strong: rgba(255, 255, 255, 0.24);
+  /* Degradê preto dominante → cinza escuro */
+  --wx-bg: linear-gradient(160deg, #000000 0%, #000000 42%, #0e0e0e 62%, #181818 80%, #222222 100%);
+  --g1: rgba(255, 255, 255, 0.09);
+  --g2: rgba(255, 255, 255, 0.06);
+  --g3: rgba(255, 255, 255, 0.12);
+  --line: rgba(255, 255, 255, 0.16);
+  --line-strong: rgba(255, 255, 255, 0.26);
   --txt1: #f1f5fb;
   --txt2: #b4c2da;
   --txt3: #8693ad;
