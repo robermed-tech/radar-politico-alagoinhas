@@ -607,6 +607,34 @@ EXEMPLOS para nao errar:
   "Que horas abre o posto de saude?"                    -> NEUTRO
 ═══════════════════════════════════════════════════════════════════════
 
+═══════════════════════════════════════════════════════════════════════
+REGRA CRITICA: COMO CLASSIFICAR "sentimento_post"
+═══════════════════════════════════════════════════════════════════════
+"sentimento_post" NAO e o tom da legenda (caption) do post.
+E o IMPACTO LIQUIDO na imagem do prefeito, medido pela reacao do povo.
+O post e apenas o gatilho — o que importa e O QUE O POVO RESPONDEU.
+
+REGRA:
+  Se cidadaos criticaram, ironizaram, reclamaram ou apoiaram opositores
+  nos comentarios -> sentimento_post = "negativo"
+  Se cidadaos elogiaram, defenderam ou apoiaram a gestao -> "positivo"
+  Reacao mista sem clara maioria -> "neutro"
+
+REFERENCIA QUANTITATIVA (guia, nao regra absoluta):
+  comentarios_pct_neg > 50% -> sentimento_post = "negativo"
+  comentarios_pct_pos > 60% -> sentimento_post = "positivo"
+  caso contrario            -> "neutro"
+
+ARMADILHA — NAO COMETA ESTE ERRO:
+  Prefeito posta sobre evento (caption positiva, promocional) mas os
+  comentarios criticam taxas, abandono, contrato suspeito, gestao ruim.
+  CORRETO: sentimento_post = "negativo" (a reacao define, nao a caption).
+
+  Portal de noticias publica nota factual mas os comentarios atacam a
+  gestao ou acusam o portal de ser patrocinado pela prefeitura.
+  CORRETO: sentimento_post = "negativo".
+═══════════════════════════════════════════════════════════════════════
+
 Regras de analise:
 1. Priorize comentarios de cidadaos comuns (tipo=cidadao) sobre perfis politicos
 2. Identifique a queixa ou elogio mais frequente, nao apenas o sentimento medio
@@ -664,8 +692,8 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
   "score_imagem": <0-100, saude da imagem do prefeito>,
   "score_risco": <0-100, risco de crise de imagem>,
   "risco_crise": "<alto|medio|baixo>",
-  "sentimento_post": "<positivo|negativo|neutro>",
-  "sentimento_comentarios": "<positivo|negativo|neutro|misto>",
+  "sentimento_post": "<positivo|negativo|neutro — IMPACTO na imagem do prefeito pela reacao dos comentarios, NAO o tom da caption>",
+  "sentimento_comentarios": "<positivo|negativo|neutro|misto — sentimento medio dos comentarios dos cidadaos>",
   "comentarios_pct_pos": <0-100, percentual de comentarios positivos>,
   "comentarios_pct_neg": <0-100, percentual de comentarios negativos>,
   "queixa_dominante": "<queixa mais frequente nos comentarios ou vazio>",
@@ -787,6 +815,18 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
                                        else "medio" if score_tri >= 45 else "baixo")
             analise["confianca"]    = 45  # triagem e menos precisa
         analise.setdefault("score_risco", score_tri)
+
+        # Safety net: corrige sentimento_post com base nos percentuais calculados.
+        # Garante que o campo reflita a reacao do publico, nao o tom da caption,
+        # mesmo que o modelo ignore a regra no prompt.
+        pct_neg = float(analise.get("comentarios_pct_neg", 0) or 0)
+        pct_pos = float(analise.get("comentarios_pct_pos", 0) or 0)
+        if pct_neg > 50:
+            analise["sentimento_post"] = "negativo"
+        elif pct_pos > 60:
+            analise["sentimento_post"] = "positivo"
+        elif analise.get("sentimento_post") not in ("positivo", "negativo", "neutro"):
+            analise["sentimento_post"] = "neutro"
 
         post_enriquecido = {**post, **analise}
         post_enriquecido["total_cidadaos"]  = len([c for c in comentarios if c["tipo"] == "cidadao"])
