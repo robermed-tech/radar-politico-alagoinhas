@@ -33,18 +33,18 @@ type Page =
 interface NavItem { id: Page; label: string; icon: string }
 
 const NAV_MAIN: NavItem[] = [
-  { id: "clima",   label: "Clima Político",   icon: "☀" },
-  { id: "actions", label: "Alertas & Ações",  icon: "🔔" },
-  { id: "feed",    label: "O que o povo diz", icon: "💬" },
-  { id: "topics",  label: "Tendências",         icon: "📊" },
-  { id: "settings",label: "Configuração",     icon: "⚙" },
+  { id: "clima",    label: "Visão da Gestão",    icon: "☀" },
+  { id: "actions",  label: "Alertas & Ações",    icon: "🔔" },
+  { id: "approval", label: "Aprovação Detalhada", icon: "▲" },
+  { id: "feed",     label: "O que o povo diz",   icon: "💬" },
+  { id: "topics",   label: "Tendências",          icon: "📊" },
+  { id: "settings", label: "Configuração",        icon: "⚙" },
 ];
 
 const NAV_ADVANCED: NavItem[] = [
-  { id: "command",    label: "Centro de Comando",   icon: "◉" },
-  { id: "approval",   label: "Aprovação Detalhada", icon: "▲" },
-  { id: "influencers",label: "Influenciadores",     icon: "✷" },
-  { id: "narratives", label: "Narrativas",           icon: "❋" },
+  { id: "command",    label: "Centro de Comando", icon: "◉" },
+  { id: "influencers",label: "Influenciadores",   icon: "✷" },
+  { id: "narratives", label: "Narrativas",         icon: "❋" },
 ];
 
 /** Botão ativo do menu: laranja sólido com sombra. */

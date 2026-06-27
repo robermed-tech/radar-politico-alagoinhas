@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadar, fetchBoletim, filtrarPorPeriodo, parseData, type Post, type Boletim, type BoletimAlerta } from "@/lib/data";
-import { calcIAD, distribuicao } from "@/lib/indices";
-import { getWeather, getDestaque } from "@/lib/weather";
+import { fetchRadar, fetchBoletim, fetchBriefing, fetchCrisisPlans, filtrarPorPeriodo, parseData, type Post, type Boletim, type BoletimAlerta, type Briefing, type CrisisPlan } from "@/lib/data";
+import { calcIAD, distribuicao, NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
+import { getWeather } from "@/lib/weather";
 import { fmtInt } from "@/lib/format";
 
 const PERIODOS = [
@@ -11,14 +11,6 @@ const PERIODOS = [
   { dias: 30, label: "30 dias" },
 ];
 
-function temaDominante(posts: Post[]): string {
-  const c: Record<string, number> = {};
-  posts.forEach((p) => { if (p.tema && p.tema !== "outros") c[p.tema] = (c[p.tema] || 0) + 1; });
-  const top = Object.entries(c).sort((a, b) => b[1] - a[1])[0];
-  return top ? top[0] : "";
-}
-
-/** Rótulo qualitativo da amostra — linguagem para não-especialistas. */
 function forcaAmostra(comentarios: number): { label: string; emoji: string } {
   if (comentarios >= 300) return { label: "Amostra forte", emoji: "👍" };
   if (comentarios >= 100) return { label: "Boa amostra", emoji: "🙂" };
@@ -26,7 +18,13 @@ function forcaAmostra(comentarios: number): { label: string; emoji: string } {
   return { label: "Amostra pequena", emoji: "🔎" };
 }
 
-// ── Boletim: cores por nível e ícones de frente (mesma metáfora do Clima) ──
+function scoreParaNivel(score: number): NivelCrise {
+  if (score >= 75) return "critico";
+  if (score >= 55) return "alto";
+  if (score >= 35) return "moderado";
+  return "baixo";
+}
+
 const COR_NIVEL: Record<string, string> = {
   amarelo: "#EAB308",
   laranja: "#EA580C",
@@ -38,9 +36,97 @@ const ICONE_FRENTE: Record<string, string> = {
   chuva: "🌧️",
   tempestade: "⛈️",
 };
-const SETA_TEND: Record<string, string> = { subindo: "▲", estavel: "▬", caindo: "▼" };
 
-/** Faixa de alerta SCCT — só aparece quando há crise no boletim. */
+function DiagnosticoCard({ briefing }: { briefing: Briefing }) {
+  const nivel = (briefing.nivel_crise as NivelCrise) ?? "baixo";
+  const cor = NIVEL_COLOR[nivel];
+  return (
+    <div
+      className="rounded-[28px] border bg-bg-1 p-6"
+      style={{ borderColor: `${cor}44` }}
+    >
+      <div className="mb-2 flex items-center gap-2">
+        <span
+          className="rounded-full px-3 py-0.5 text-xs font-bold uppercase"
+          style={{ background: `${cor}22`, color: cor }}
+        >
+          {NIVEL_LABEL[nivel]}
+        </span>
+        <span className="text-xs text-txt-3">diagnóstico do dia · {briefing.dia}</span>
+      </div>
+      <p className="text-[15px] font-semibold leading-relaxed text-txt-1">{briefing.diagnostico}</p>
+    </div>
+  );
+}
+
+function TemasEmCrise({ alertas }: { alertas: Briefing["alertas"] }) {
+  if (!alertas?.length) return null;
+  return (
+    <div className="rounded-[28px] border border-line bg-bg-1 p-6">
+      <div className="mb-3 text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
+        Temas que merecem atenção
+      </div>
+      <div className="space-y-2">
+        {alertas.slice(0, 5).map((a, i) => {
+          const cor = NIVEL_COLOR[(a.nivel as NivelCrise) ?? "baixo"];
+          return (
+            <div
+              key={i}
+              className="flex items-center justify-between rounded-lg border bg-bg-2 px-4 py-2.5"
+              style={{ borderColor: `${cor}33` }}
+            >
+              <span className="font-extrabold capitalize text-txt-1">{a.tema}</span>
+              <span
+                className="rounded px-2.5 py-0.5 text-xs font-bold uppercase"
+                style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}44` }}
+              >
+                {NIVEL_LABEL[(a.nivel as NivelCrise) ?? "baixo"]}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AcoesImediatas({ planos }: { planos: CrisisPlan[] }) {
+  const reais = planos.filter((p) => p.e_crise_real).slice(0, 2);
+  if (reais.length === 0) return null;
+  return (
+    <div
+      className="rounded-[28px] border p-6"
+      style={{ borderColor: "rgba(249,115,22,0.4)", background: "rgba(249,115,22,0.04)" }}
+    >
+      <div
+        className="mb-3 text-[12px] font-bold uppercase tracking-[0.18em]"
+        style={{ color: "#F97316" }}
+      >
+        O que fazer agora
+      </div>
+      <div className="space-y-3">
+        {reais.map((p) => (
+          <div key={p.post_url} className="rounded-lg border border-line bg-bg-1 p-4">
+            {p.tema && (
+              <div className="mb-1 text-sm font-extrabold capitalize text-txt-1">{p.tema}</div>
+            )}
+            <p className="text-sm text-txt-2">
+              <span className="font-semibold text-orange-400">O que disparou: </span>
+              {p.pavio}
+            </p>
+            {p.plano_contencao?.[0] && (
+              <p className="mt-1.5 text-sm text-txt-1">
+                <span className="font-semibold" style={{ color: "#22C55E" }}>→ </span>
+                {p.plano_contencao[0]}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AlertaSCCT({ alerta, nivelCor }: { alerta: BoletimAlerta; nivelCor: string | null }) {
   const [aberto, setAberto] = useState(false);
   const cor = COR_NIVEL[nivelCor ?? "laranja"] ?? COR_NIVEL.laranja;
@@ -105,13 +191,11 @@ function AlertaSCCT({ alerta, nivelCor }: { alerta: BoletimAlerta; nivelCor: str
   );
 }
 
-/** Extrai o tema citado na frase do boletim (entre aspas), com fallback. */
 function temaDoMotivo(alerta: BoletimAlerta): string {
   const m = alerta.motivo.match(/"([^"]+)"/);
   return m ? m[1] : "tema em alta";
 }
 
-/** Frentes de instabilidade — temas ranqueados por risco. */
 function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
   if (!frentes.length) return null;
   return (
@@ -121,18 +205,19 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
       </div>
       <div className="mt-3 space-y-1">
         {frentes.filter((f) => f.tema !== "outros").map((f) => {
-          const corSeta =
-            f.tendencia === "subindo" ? "var(--risk-crit, #EF4444)"
-            : f.tendencia === "caindo" ? "var(--risk-low, #22C55E)"
-            : "var(--txt3)";
+          const nivel = scoreParaNivel(f.score);
+          const cor = NIVEL_COLOR[nivel];
           return (
             <div key={f.tema} className="flex items-center justify-between py-1 text-sm">
               <span className="flex items-center gap-2 text-txt-1">
                 <span>{ICONE_FRENTE[f.icone] ?? "☁️"}</span>
                 {f.tema}
               </span>
-              <span className="tnum font-bold" style={{ color: corSeta }}>
-                {SETA_TEND[f.tendencia]} {Math.round(f.score)}
+              <span
+                className="rounded px-2.5 py-0.5 text-xs font-bold uppercase"
+                style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}44` }}
+              >
+                {NIVEL_LABEL[nivel]}
               </span>
             </div>
           );
@@ -142,7 +227,6 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
   );
 }
 
-/** Agrega posts por dia e retorna IAD diário (últimos 30 dias). */
 function buildSparkline(posts: Post[]): { dia: string; iad: number }[] {
   const byDay: Record<string, Post[]> = {};
   for (const p of posts) {
@@ -156,7 +240,6 @@ function buildSparkline(posts: Post[]): { dia: string; iad: number }[] {
     .map(([dia, ps]) => ({ dia, iad: Math.round(calcIAD(ps)) }));
 }
 
-/** Sparkline SVG do IAD nos últimos 30 dias. */
 function SparklineIAD({ pontos }: { pontos: { dia: string; iad: number }[] }) {
   if (pontos.length < 2) return <div className="text-xs text-txt-3">Dados insuficientes para tendência.</div>;
   const W = 240, H = 52, PAD = 4;
@@ -198,8 +281,6 @@ function SparklineIAD({ pontos }: { pontos: { dia: string; iad: number }[] }) {
   );
 }
 
-/** Visualização de barras verticais (estilo "Calories" da referência).
- *  Cada barra é colorida pelo segmento de sentimento em que cai. */
 function BarrasDistribuicao({ pctPos, pctNeu }: { pctPos: number; pctNeu: number }) {
   const N = 34;
   const limPos = pctPos / 100;
@@ -209,7 +290,6 @@ function BarrasDistribuicao({ pctPos, pctNeu }: { pctPos: number; pctNeu: number
       {Array.from({ length: N }).map((_, i) => {
         const frac = i / N;
         const cor = frac < limPos ? "#BEDB1D" : frac < limNeu ? "#64748B" : "#EF4444";
-        // altura levemente orgânica para dar vida ao gráfico
         const h = 45 + Math.round(40 * Math.abs(Math.sin(i * 0.9)));
         return (
           <span
@@ -224,18 +304,28 @@ function BarrasDistribuicao({ pctPos, pctNeu }: { pctPos: number; pctNeu: number
 }
 
 export function ClimaPage() {
-  const [dias, setDias] = useState(1); // padrão 24h (era 7 dias)
+  const [dias, setDias] = useState(1);
   const { data, isLoading } = useQuery({
     queryKey: ["radar"],
     queryFn: fetchRadar,
     staleTime: 5 * 60 * 1000,
   });
-  // Boletim climático (camada SCCT). Independente do fetchRadar — não bloqueia o hero.
   const { data: boletim } = useQuery({
     queryKey: ["boletim"],
     queryFn: fetchBoletim,
     staleTime: 5 * 60 * 1000,
   });
+  const { data: briefing } = useQuery({
+    queryKey: ["briefing"],
+    queryFn: fetchBriefing,
+    staleTime: 5 * 60 * 1000,
+  });
+  const { data: planosData } = useQuery({
+    queryKey: ["crisis-plans"],
+    queryFn: fetchCrisisPlans,
+    staleTime: 5 * 60 * 1000,
+  });
+  const planos = planosData ?? [];
 
   const view = useMemo(() => {
     if (!data) return null;
@@ -250,8 +340,6 @@ export function ClimaPage() {
       vazio: false as const,
       iad, ...dist,
       wx,
-      destaque: getDestaque(iad, temaDominante(posts)),
-      temaTop: temaDominante(posts),
       posts: posts.length,
       comentarios: totalComents,
       sparkline,
@@ -264,7 +352,7 @@ export function ClimaPage() {
   if (view.vazio)
     return (
       <div className="p-5">
-        <h1 className="text-2xl font-extrabold">Clima Político</h1>
+        <h1 className="text-2xl font-extrabold">Visão da Gestão</h1>
         <div className="mt-4 rounded-[28px] border border-line bg-bg-1 p-6 text-txt-2">
           Sem dados no período. Rode o AGORA para popular.
         </div>
@@ -279,11 +367,10 @@ export function ClimaPage() {
 
   return (
     <div className="space-y-4 p-5">
-      {/* Cabeçalho */}
       <div className="reveal reveal-1 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Clima Político</h1>
-          <p className="text-base text-txt-2">Alagoinhas/BA · termômetro visual da opinião</p>
+          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Visão da Gestão</h1>
+          <p className="text-base text-txt-2">Alagoinhas/BA · imagem do prefeito e da prefeitura</p>
         </div>
         <div className="flex rounded-full p-1 glass-btn">
           {PERIODOS.map((p) => (
@@ -300,9 +387,7 @@ export function ClimaPage() {
         </div>
       </div>
 
-      {/* ── LINHA HERO: foto do clima (3) + card de engajamento azul (2) ── */}
       <div className="grid gap-4 lg:grid-cols-5">
-        {/* HERO — principal box com a foto do clima */}
         <div
           className="reveal reveal-2 relative overflow-hidden rounded-[28px] p-7 lg:col-span-3"
           style={{ background: heroBg, minHeight: 320 }}
@@ -325,7 +410,7 @@ export function ClimaPage() {
 
           <div className="relative z-10 flex h-full flex-col">
             <div className="text-[12px] font-bold uppercase tracking-[0.22em]" style={{ color: txt2 }}>
-              Como está o clima político
+              Como a população vê a gestão
             </div>
 
             <div className="mt-5 flex items-center gap-6">
@@ -352,7 +437,6 @@ export function ClimaPage() {
               {wx.sub}
             </div>
 
-            {/* chips de fonte — estilo "members" da referência */}
             <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
               <span
                 className="rounded-full px-3 py-1.5 text-sm font-bold"
@@ -370,7 +454,6 @@ export function ClimaPage() {
           </div>
         </div>
 
-        {/* CARD LARANJA — engajamento (estilo "Hydration") */}
         <div
           className="reveal reveal-3 relative overflow-hidden rounded-[28px] p-7 lg:col-span-2"
           style={{
@@ -379,7 +462,6 @@ export function ClimaPage() {
             boxShadow: "0 18px 40px -14px rgba(234,88,12,0.5)",
           }}
         >
-          {/* bolha decorativa */}
           <div
             className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full"
             style={{ background: "rgba(255,255,255,0.12)" }}
@@ -413,42 +495,26 @@ export function ClimaPage() {
         </div>
       </div>
 
-      {/* ── BOLETIM: alerta SCCT (só quando há crise) ── */}
+      {briefing && <DiagnosticoCard briefing={briefing} />}
+
       {boletim?.alerta_ativo && (
         <AlertaSCCT alerta={boletim.alerta_ativo} nivelCor={boletim.nivel_cor} />
       )}
 
-      {/* ── BOLETIM: frentes de instabilidade ── */}
-      {boletim?.frentes && boletim.frentes.length > 0 && (
-        <FrentesInstabilidade frentes={boletim.frentes} />
+      {briefing?.alertas?.length ? (
+        <TemasEmCrise alertas={briefing.alertas} />
+      ) : (
+        boletim?.frentes && boletim.frentes.length > 0 && (
+          <FrentesInstabilidade frentes={boletim.frentes} />
+        )
       )}
 
-      {/* ── LINHA DE 3 CARDS (estilo referência: Sleep / Calories / Weight) ── */}
-      <div className="reveal reveal-4 grid gap-4 md:grid-cols-3">
-        {/* Card 1 — O que a população diz agora */}
+      <AcoesImediatas planos={planos} />
+
+      <div className="reveal reveal-4 grid gap-4 md:grid-cols-2">
         <div className="rounded-[28px] border border-line bg-bg-1 p-6">
           <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
-            O que a população diz agora
-          </div>
-          {view.temaTop && (
-            <div
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-white"
-              style={{ background: "#0B1220" }}
-            >
-              🏷 {view.temaTop}
-            </div>
-          )}
-          <p className="mt-3 text-[15px] font-semibold leading-snug text-txt-1">
-            {view.destaque}
-          </p>
-        </div>
-
-        {/* Card 2 — Distribuição (estilo "Calories" com barras) */}
-        <div className="rounded-[28px] border border-line bg-bg-1 p-6">
-          <div className="flex items-center justify-between">
-            <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
-              Distribuição de sentimento
-            </div>
+            Distribuição de sentimento
           </div>
 
           <div className="mt-4">
@@ -471,7 +537,6 @@ export function ClimaPage() {
           </div>
         </div>
 
-        {/* Card 3 — Tendência do IAD (sparkline 30 dias) */}
         <div
           className="rounded-[28px] border p-6"
           style={{ borderColor: "rgba(249,115,22,0.35)", background: "rgba(249,115,22,0.05)" }}
