@@ -63,7 +63,7 @@ function TemasEmCrise({ alertas }: { alertas: Briefing["alertas"] }) {
   if (!alertas?.length) return null;
   return (
     <div className="rounded-[28px] border border-line bg-bg-1 p-6">
-      <div className="mb-3 text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
+      <div className="mb-3 text-[12px] font-bold tracking-[0.04em] text-txt-3">
         Temas que merecem atenção
       </div>
       <div className="space-y-2">
@@ -99,7 +99,7 @@ function AcoesImediatas({ planos }: { planos: CrisisPlan[] }) {
       style={{ borderColor: "rgba(249,115,22,0.4)", background: "rgba(249,115,22,0.04)" }}
     >
       <div
-        className="mb-3 text-[12px] font-bold uppercase tracking-[0.18em]"
+        className="mb-3 text-[12px] font-bold tracking-[0.04em]"
         style={{ color: "#F97316" }}
       >
         O que fazer agora
@@ -131,15 +131,17 @@ function AlertaSCCT({ alerta, nivelCor }: { alerta: BoletimAlerta; nivelCor: str
   const [aberto, setAberto] = useState(false);
   const cor = COR_NIVEL[nivelCor ?? "laranja"] ?? COR_NIVEL.laranja;
   const { scct } = alerta;
+  const tema = temaDoMotivo(alerta);
   return (
     <div
       className="rounded-[28px] border bg-bg-1 p-6"
       style={{ borderColor: cor, borderWidth: 1.5 }}
     >
+      {/* Linha de topo: ícone de alerta + badges de classificação */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-base font-extrabold text-txt-1">
-          <span style={{ color: cor }}>⚠</span>
-          Alerta localizado: "{temaDoMotivo(alerta)}"
+        <div className="flex items-center gap-2">
+          <span className="text-lg" style={{ color: cor }}>⚠</span>
+          <span className="text-xs font-bold text-txt-3">Atenção</span>
         </div>
         <span
           className="rounded-full px-3 py-1 text-xs font-bold"
@@ -149,12 +151,21 @@ function AlertaSCCT({ alerta, nivelCor }: { alerta: BoletimAlerta; nivelCor: str
         </span>
       </div>
 
-      <p className="mt-2 text-sm leading-relaxed text-txt-2">{alerta.motivo}</p>
+      {/* Tema em alta — destaque principal */}
+      <div className="mt-4">
+        <div className="text-[11px] font-bold text-txt-3">Tema em alta</div>
+        <div className="mt-1 text-xl font-extrabold capitalize text-txt-1">{tema}</div>
+      </div>
 
+      {/* Por que está em alta */}
+      <div className="mt-4">
+        <div className="text-[11px] font-bold text-txt-3">Por que preocupa</div>
+        <p className="mt-1 text-sm leading-relaxed text-txt-2">{alerta.motivo}</p>
+      </div>
+
+      {/* Recomendação */}
       <div className="mt-4 border-t border-line pt-4">
-        <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
-          Recomendação
-        </div>
+        <div className="text-[11px] font-bold text-txt-3">Recomendação</div>
         <p className="mt-1 text-sm font-medium leading-relaxed text-txt-1">
           {alerta.recomendacao_irt}
         </p>
@@ -182,7 +193,7 @@ function AlertaSCCT({ alerta, nivelCor }: { alerta: BoletimAlerta; nivelCor: str
               onClick={() => setAberto((v) => !v)}
               className="glass-btn rounded-full px-4 py-1.5 text-sm font-semibold text-txt-1"
             >
-              {aberto ? "Ocultar detalhe" : "Detalhar classificação"}
+              {aberto ? "Ocultar detalhe" : "Por que funciona"}
             </button>
           )}
         </div>
@@ -200,7 +211,7 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
   if (!frentes.length) return null;
   return (
     <div className="rounded-[28px] border border-line bg-bg-1 p-6">
-      <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
+      <div className="text-[12px] font-bold tracking-[0.04em] text-txt-3">
         Frentes de instabilidade
       </div>
       <div className="mt-3 space-y-1">
@@ -409,7 +420,7 @@ export function ClimaPage() {
           )}
 
           <div className="relative z-10 flex h-full flex-col">
-            <div className="text-[12px] font-bold uppercase tracking-[0.22em]" style={{ color: txt2 }}>
+            <div className="text-[13px] font-bold tracking-[0.08em]" style={{ color: txt2 }}>
               Como a população vê a gestão
             </div>
 
@@ -423,12 +434,6 @@ export function ClimaPage() {
                     {view.iad}
                   </span>
                   <span className="mb-3 text-2xl font-bold" style={{ color: txt2 }}>%</span>
-                </div>
-                <div
-                  className="mt-1 inline-flex rounded-full px-3 py-1 text-sm font-extrabold"
-                  style={{ background: "rgba(255,255,255,0.16)", color: "#FFFFFF", backdropFilter: "blur(6px)" }}
-                >
-                  {wx.label}
                 </div>
               </div>
             </div>
@@ -467,7 +472,7 @@ export function ClimaPage() {
             style={{ background: "rgba(255,255,255,0.12)" }}
           />
           <div className="relative z-10 flex h-full flex-col">
-            <div className="text-[12px] font-bold uppercase tracking-[0.22em] text-white/80">
+            <div className="text-[13px] font-bold tracking-[0.08em] text-white/80">
               Engajamento no período
             </div>
             <p className="mt-2 max-w-[22ch] text-base font-medium leading-snug text-white/90">
@@ -513,7 +518,7 @@ export function ClimaPage() {
 
       <div className="reveal reveal-4 grid gap-4 md:grid-cols-2">
         <div className="rounded-[28px] border border-line bg-bg-1 p-6">
-          <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-txt-3">
+          <div className="text-[12px] font-bold tracking-[0.04em] text-txt-3">
             Distribuição de sentimento
           </div>
 
@@ -541,7 +546,7 @@ export function ClimaPage() {
           className="rounded-[28px] border p-6"
           style={{ borderColor: "rgba(249,115,22,0.35)", background: "rgba(249,115,22,0.05)" }}
         >
-          <div className="text-[12px] font-bold uppercase tracking-[0.18em]" style={{ color: "#F97316" }}>
+          <div className="text-[12px] font-bold tracking-[0.04em]" style={{ color: "#F97316" }}>
             Aprovação digital — últimos 30 dias
           </div>
           <div className="mt-3">

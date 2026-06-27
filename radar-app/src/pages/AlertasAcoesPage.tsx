@@ -30,7 +30,6 @@ function Tag({ children, color }: { children: ReactNode; color: string }) {
 /** Planos de ação do Caçador de Crises — apenas crises reais */
 function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
   const reais = planos.filter((p) => p.e_crise_real);
-  const descartados = planos.filter((p) => !p.e_crise_real);
 
   if (planos.length === 0) return null;
 
@@ -82,20 +81,6 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
         })}
       </div>
 
-      {descartados.length > 0 && (
-        <div className="mt-3 border-t border-line/40 pt-3">
-          <div className="mb-1.5 text-xs font-bold uppercase tracking-wide text-txt-3">
-            ✅ {descartados.length} post(s) de alto risco analisados — avaliados como monitoramento
-          </div>
-          <div className="space-y-1">
-            {descartados.map((p) => (
-              <div key={p.post_url} className="text-xs text-txt-3">
-                @{p.autor} → {p.pavio}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -120,9 +105,6 @@ export function AlertasAcoesPage() {
   if (loadBriefing) return <div className="p-8 text-txt-2">Carregando recomendações…</div>;
 
   const semBriefing = !b;
-  const nivel = (b?.nivel_crise as NivelCrise) || "baixo";
-  const cor = NIVEL_COLOR[nivel];
-  const nivelLabel = NIVEL_LABEL[nivel];
 
   return (
     <div className="space-y-4 p-5">
@@ -140,23 +122,6 @@ export function AlertasAcoesPage() {
         </div>
       ) : (
         <>
-          {/* Diagnóstico do dia */}
-          <div
-            className="rounded-xl border bg-bg-1 p-5"
-            style={{ borderColor: `${cor}55` }}
-          >
-            <div className="mb-1 flex items-center gap-2">
-              <span
-                className="rounded-full px-3 py-0.5 text-xs font-bold uppercase"
-                style={{ background: `${cor}22`, color: cor }}
-              >
-                {nivelLabel}
-              </span>
-              <span className="text-xs text-txt-3">situação geral · {b!.dia}</span>
-            </div>
-            <p className="mt-2 text-[15px] font-semibold leading-relaxed text-txt-1">{b!.diagnostico}</p>
-          </div>
-
           {/* Planos do Caçador de Crises */}
           <PlanosAcao planos={planos} />
 
