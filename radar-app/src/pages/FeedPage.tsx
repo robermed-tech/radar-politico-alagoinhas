@@ -101,7 +101,10 @@ export function FeedPage() {
 
   const posts = useMemo<Post[]>(() => {
     const periodPosts = filtrarPorPeriodo(data?.data ?? [], periodo);
-    const all = [...periodPosts].sort((a, b) => {
+    const comConteudo = periodPosts.filter(
+      (p) => p.resumo || p.queixa_dominante || p.elogio_dominante || p.comentarios_destaque
+    );
+    const all = [...comConteudo].sort((a, b) => {
       const da = parseData(a.data_post)?.getTime() ?? 0;
       const db = parseData(b.data_post)?.getTime() ?? 0;
       return db - da;
