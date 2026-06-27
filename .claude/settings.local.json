@@ -37,7 +37,28 @@
       "mcp__Claude_in_Chrome__tabs_context_mcp",
       "mcp__Claude_in_Chrome__navigate",
       "mcp__Claude_in_Chrome__computer",
-      "mcp__Claude_in_Chrome__javascript_tool"
+      "mcp__Claude_in_Chrome__javascript_tool",
+      "Bash(npm run *)",
+      "Bash(timeout 15 npx next dev)",
+      "Bash(npx next *)",
+      "Bash(mkdir -p \"C:/Users/rober/Desktop/TRABALHOS ROBERIO/VIVENDAS SANTO ANTONIO/Vigilis/docs/superpowers/specs\")",
+      "Bash(npx prisma *)",
+      "PowerShell(cd \"C:\\\\Users\\\\rober\\\\Desktop\\\\TRABALHOS ROBERIO\\\\VIVENDAS SANTO ANTONIO\\\\Vigilis\"; git add src/app/\\(dashboard\\)/configuracoes/ src/app/\\(dashboard\\)/notificacoes/page.tsx src/app/api/configuracoes/ src/app/api/notificacoes/route.ts src/app/api/notificacoes/whatsapp/ src/components/layout/BottomNav.tsx src/components/layout/Sidebar.tsx src/components/notificacoes/NotificacoesActions.tsx src/components/notificacoes/NovaNotificacaoModal.tsx src/components/notificacoes/ReenviarWhatsAppPopover.tsx src/lib/whatsapp.ts prisma/schema.prisma)",
+      "Bash(cat prisma/seed.ts)",
+      "Bash(cat prisma/seed.js)",
+      "Bash(python3 .claude/skills/ui-ux-pro-max/scripts/search.py \"poster logo branding visibility contrast\" --domain ux -n 8)",
+      "Bash(taskkill /F /PID 36088)",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(\"Process killed or not running\")",
+      "Read(//tmp/**)",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "mcp__Claude_in_Chrome__browser_batch",
+      "mcp__Claude_in_Chrome__tabs_create_mcp",
+      "Bash(curl -s \"http://localhost:3000/notificacoes\")",
+      "Bash(netstat -ano)",
+      "Bash(magick --version)",
+      "Bash(convert --version)"
     ]
   }
 }

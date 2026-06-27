@@ -30,6 +30,12 @@ FAIXAS_CONDICAO = [
 # Delta diário de risco (0–100) para a previsão virar agravamento/melhora.
 LIMIAR_PREVISAO = 8.0
 
+# Risco diário mínimo para um alerta de post elevar a condição até "tempestade".
+# Abaixo disso, post grave em dia calmo = "tempo fechando" (alerta pontual).
+# Calibrado em 11/06/2026: post de impostos (score 75, resp 92) em dia de
+# risco 38 foi julgado exagerado como tempestade.
+LIMIAR_TEMPESTADE_COM_ALERTA = 60.0
+
 TEMPLATES_FRASE = {
     "ceu_limpo":       "Céu limpo sobre Alagoinhas — situação estável",
     "nuvens_isoladas": 'Nuvens isoladas: "{tema}" merece acompanhamento',
@@ -123,13 +129,27 @@ def gerar_boletim(
     """
     condicao, nivel_cor = _classificar(risco)
 
+    # Flag de auditoria: o critério de override SCCT (intencional + resp alta)
+    # se verificou neste alerta? (registrado mesmo quando não muda a condição)
     override = False
     if alerta_post:
         cluster = str(alerta_post.get("cluster_crise", "")).lower()
         resp = int(alerta_post.get("responsabilidade_atribuida", 0) or 0)
         override = (cluster == "intencional" and resp >= override_resp_min)
-    if override:
-        condicao, nivel_cor = "tempestade", "vermelho"
+
+    # Elevação por alerta de post (qualquer post que passou no
+    # deve_disparar_alerta do agora.py — por score ou por override SCCT):
+    #   - dia também tenso (risco >= LIMIAR_TEMPESTADE_COM_ALERTA) => tempestade
+    #   - dia calmo => no mínimo "tempo fechando" (alerta PONTUAL, não sistêmico)
+    elevado_por_post = False
+    if alerta_post:
+        if _clamp(risco) >= LIMIAR_TEMPESTADE_COM_ALERTA:
+            if condicao != "tempestade":
+                elevado_por_post = True
+            condicao, nivel_cor = "tempestade", "vermelho"
+        elif condicao in ("ceu_limpo", "nuvens_isoladas"):
+            condicao, nivel_cor = "tempo_fechando", "laranja"
+            elevado_por_post = True
 
     frentes_ord = sorted(frentes, key=lambda f: f.get("score", 0), reverse=True)
     tema_dominante = (
@@ -161,6 +181,7 @@ def gerar_boletim(
     return {
         "condicao": condicao,
         "nivel_cor": nivel_cor,
+        "elevado_por_post": elevado_por_post,
         "frase_resumo": TEMPLATES_FRASE[condicao].format(tema=tema_dominante),
         "previsao_24h": previsao,
         "frase_previsao": TEMPLATES_PREVISAO[previsao],
@@ -213,9 +234,37 @@ if __name__ == "__main__":
     assert _classificar(100)[0] == "tempestade"
     assert icone_frente(62) == "chuva" and icone_frente(85) == "tempestade"
 
-    # Override: risco baixo mas crise intencional resp>=70 => tempestade
+    # CALIBRACAO 11/06/2026: post grave (score 62 do exemplo) em dia de risco 62
+    # => risco >= 60, alerta presente => tempestade sistemica
     assert exemplo["condicao"] == "tempestade" and exemplo["nivel_cor"] == "vermelho"
     assert exemplo["alerta_ativo"]["override_aplicado"] is True
+
+    # Caso real de 11/06: post grave (resp 92) em dia CALMO (risco 38)
+    # => tempo fechando (laranja), NAO tempestade
+    caso_real = gerar_boletim(
+        38.0, [30.0, 38.0], {}, {},
+        [{"tema": "impostos", "score": 75.0, "tendencia": "subindo"}],
+        alerta_post={"tema": "impostos", "cluster_crise": "intencional",
+                     "responsabilidade_atribuida": 92,
+                     "motivo_alerta": "Score risco 75 >= 70"},
+    )
+    assert caso_real["condicao"] == "tempo_fechando"
+    assert caso_real["nivel_cor"] == "laranja"
+    assert caso_real["elevado_por_post"] is True
+    assert caso_real["frase_resumo"] == 'Tempo fechando: "impostos" em escalada'
+
+    # Dia tenso (risco 65) + post grave => tempestade
+    caso_sistemico = gerar_boletim(
+        65.0, [60.0, 65.0], {}, {},
+        [{"tema": "impostos", "score": 75.0, "tendencia": "subindo"}],
+        alerta_post={"tema": "impostos", "cluster_crise": "intencional",
+                     "responsabilidade_atribuida": 92},
+    )
+    assert caso_sistemico["condicao"] == "tempestade"
+
+    # Sem alerta, dia calmo => ceu limpo intocado
+    calmo = gerar_boletim(20.0, [22.0, 20.0], {}, {}, [])
+    assert calmo["condicao"] == "ceu_limpo" and calmo["elevado_por_post"] is False
 
     # Sem alerta, risco 62 => tempo_fechando
     b2 = gerar_boletim(62.0, [55.0, 62.0], {}, {}, [{"tema": "x", "score": 62, "tendencia": "subindo"}])

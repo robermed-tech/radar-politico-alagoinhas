@@ -4,9 +4,15 @@
     {
       "name": "radar-app",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "cwd": "radar-app",
-      "port": 5173
+      "runtimeArgs": ["--prefix", "radar-app", "run", "dev"],
+      "port": 5180
+    },
+    {
+      "name": "vigilis-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:\\Users\\rober\\Desktop\\TRABALHOS ROBERIO\\VIVENDAS SANTO ANTONIO\\Vigilis", "run", "dev"],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }
