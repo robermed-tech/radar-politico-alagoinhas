@@ -339,7 +339,9 @@ export function TemasPage() {
 
   const { stats, outrosTemasSet, metr } = view;
 
+  // Exclui "outros" do gráfico e das listas — categoria residual da IA
   const movers = [...stats]
+    .filter((s) => s.tema !== "outros")
     .sort((a, b) => Math.abs(b.s) - Math.abs(a.s))
     .slice(0, 12)
     .sort((a, b) => a.s - b.s);
@@ -347,8 +349,14 @@ export function TemasPage() {
   // Vermelho = subindo (mais negativo/volume = alarme), Verde = caindo (melhora)
   const corSlope = (s: number) => (s > 0.1 ? "#EF4444" : s < -0.1 ? "#22C55E" : "#9FB0CC");
 
+  // Os slopes são em unidades/dia → multiplicar ×7 para exibir por semana (mais legível)
+  const fmtSlope = (s: number) => {
+    const v = s * 7;
+    return (v >= 0 ? "+" : "") + v.toFixed(1);
+  };
+
   const option = {
-    grid: { left: 120, right: 48, top: 10, bottom: 28 },
+    grid: { left: 36, right: 20, top: 16, bottom: 72 },
     tooltip: {
       trigger: "axis",
       axisPointer: { type: "shadow" },
@@ -358,38 +366,43 @@ export function TemasPage() {
       formatter: (ps: { name: string; value: number }[]) => {
         const v = Number(ps[0].value);
         const dir = v > 0.1 ? "subindo" : v < -0.1 ? "caindo" : "estável";
-        const unidade = metrica === "volume" ? "posts/dia" : "pt/dia";
-        return `<b>${ps[0].name}</b><br/>${dir}: ${v > 0 ? "+" : ""}${v.toFixed(1)} ${unidade}`;
+        const unidade = metrica === "volume" ? "posts/sem" : "pt/sem";
+        const semanal = (v * 7).toFixed(1);
+        return `<b>${ps[0].name}</b><br/>${dir}: ${Number(semanal) > 0 ? "+" : ""}${semanal} ${unidade}`;
       },
     },
     xAxis: {
-      type: "value",
-      splitLine: { lineStyle: { color: ink.grid } },
-      axisLabel: { color: ink.axis, fontSize: 10 },
+      type: "category",
+      data: movers.map((s) => toLabel(s.tema)),
+      axisLine: { lineStyle: { color: ink.axisLine } },
+      axisLabel: { color: ink.axis, fontSize: 11, rotate: 30, interval: 0 },
     },
     yAxis: {
-      type: "category",
-      data: movers.map((s) => s.tema),
-      axisLine: { lineStyle: { color: ink.axisLine } },
-      axisLabel: { color: ink.axis, fontSize: 11 },
+      type: "value",
+      splitLine: { lineStyle: { color: ink.grid } },
+      axisLabel: {
+        color: ink.axis,
+        fontSize: 10,
+        formatter: (v: number) => fmtSlope(v),
+      },
     },
     series: [
       {
         type: "bar",
-        barMaxWidth: 16,
+        barMaxWidth: 42,
         data: movers.map((s) => ({
-          value: Number(s.s.toFixed(2)),
+          value: Number(s.s.toFixed(3)),
           itemStyle: glassBar(corSlope(s.s), {
-            horizontal: true,
-            radius: s.s < 0 ? [6, 0, 0, 6] : [0, 6, 6, 0],
+            horizontal: false,
+            radius: s.s >= 0 ? [6, 6, 0, 0] : [0, 0, 6, 6],
           }),
         })),
       },
     ],
   };
 
-  const subindo = stats.filter((s) => direcao(s.s) === "subindo");
-  const caindo  = stats.filter((s) => direcao(s.s) === "caindo");
+  const subindo = stats.filter((s) => direcao(s.s) === "subindo" && s.tema !== "outros");
+  const caindo  = stats.filter((s) => direcao(s.s) === "caindo"  && s.tema !== "outros");
 
   return (
     <div className="space-y-4 p-5">
@@ -491,16 +504,21 @@ export function TemasPage() {
       {/* Gráfico de variação divergente */}
       <div className="rounded-xl border border-line bg-bg-1 p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="text-sm font-bold">
-            {metr.label} · variação por tema (janela {janela}d)
+          <div>
+            <div className="text-sm font-bold">
+              {metr.label} · variação por tema (janela {janela}d)
+            </div>
+            <div className="text-[10px] text-txt-3">
+              Barras mostram variação semanal — passa o mouse para ver o valor exato
+            </div>
           </div>
           <div className="text-[10px] text-txt-3">
-            vermelho = subindo · verde = caindo · cinza = estável
+            🔴 subindo · 🟢 caindo · ⚪ estável
           </div>
         </div>
         <ReactECharts
           option={option}
-          style={{ height: Math.max(220, movers.length * 30 + 60) }}
+          style={{ height: 260 }}
           notMerge
         />
       </div>
