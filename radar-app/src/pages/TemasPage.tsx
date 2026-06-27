@@ -10,12 +10,10 @@ import {
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
 
-// ── Métricas do gráfico ──────────────────────────────────────────────────────
-type Metrica = "volume" | "pct_neg" | "pct_pos";
+// ── Métricas do gráfico — apenas Volume ──────────────────────────────────────
+type Metrica = "volume";
 const METRICAS: { id: Metrica; label: string; campo: keyof DailyTheme; cor: string }[] = [
-  { id: "volume",  label: "Volume (posts)", campo: "volume_posts", cor: "#3B82F6" },
-  { id: "pct_neg", label: "% Negativo",    campo: "pct_neg",      cor: "#EF4444" },
-  { id: "pct_pos", label: "% Positivo",    campo: "pct_pos",      cor: "#22C55E" },
+  { id: "volume", label: "Volume (posts)", campo: "volume_posts", cor: "#3B82F6" },
 ];
 
 // ── Regressão linear (unificada) ─────────────────────────────────────────────
@@ -273,8 +271,8 @@ function AlertaSecretarioBox({ t }: { t: TemaResumido }) {
 
 // ── Página ───────────────────────────────────────────────────────────────────
 export function TemasPage() {
-  const [metrica, setMetrica] = useState<Metrica>("volume");
-  const [janela, setJanela]   = useState(14);
+  const metrica: Metrica = "volume";
+  const [janela, setJanela] = useState(14);
   const ink = chartInk(useThemeStore((s) => s.theme));
 
   const { data: themes = [], isLoading } = useQuery({
@@ -425,19 +423,6 @@ export function TemasPage() {
                 }`}
               >
                 {d}d
-              </button>
-            ))}
-          </div>
-          <div className="flex rounded-lg border border-line bg-bg-1 p-1">
-            {METRICAS.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => setMetrica(m.id)}
-                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-                  metrica === m.id ? "bg-bg-3 text-txt-1" : "text-txt-2 hover:text-txt-1"
-                }`}
-              >
-                {m.label}
               </button>
             ))}
           </div>
