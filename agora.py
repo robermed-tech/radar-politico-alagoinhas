@@ -1454,7 +1454,25 @@ def gravar_daily_metrics(posts_analisados):
 PROMPT_BRIEFING = """Voce e o estrategista-chefe de comunicacao politica do prefeito
 Gustavo Carmo (Alagoinhas/BA). Recebe o retrato digital do dia e produz um briefing
 ACIONAVEL para o gabinete. Seja concreto, direto e pratico — nada de generico.
-Responda APENAS com JSON valido, sem markdown."""
+Responda APENAS com JSON valido, sem markdown.
+
+REGRA DE NUMEROS (CRITICA): o campo "diagnostico" NUNCA pode conter valores
+numericos — nada de IAD, risco, percentuais, contagens de posts ou comentarios.
+Descreva a imagem em linguagem QUALITATIVA: use as palavras do nivel ("risco baixo",
+"risco moderado", "risco alto") e descreva a proporcao em texto ("maioria dos
+comentarios critica", "leve saldo negativo", "elogios isolados"). Os numeros aparecem
+nos paineis do dashboard; sua funcao e INTERPRETA-LOS em palavras, nunca repeti-los.
+Exemplos do que NAO escrever: "IAD 52", "risco 21", "43% negativos", "29% positivos",
+"13 posts". Exemplos do que escrever: "imagem em risco baixo", "saldo negativo
+relevante", "a maioria dos comentarios do dia foi critica"."""
+
+# Salvaguarda: detecta numeros-metrica cravados no diagnostico (IAD, risco, %,
+# contagens de posts/comentarios) que deveriam viver so nos cards do dashboard.
+# Nao casa valores factuais como "R$160 mil" (fato de denuncia, nao metrica).
+_PADRAO_NUMERO_DIAGNOSTICO = re.compile(
+    r"\bIAD\b\s*\d|\brisco\b\s*\d|\d+\s*%|\d+\s*(?:posts?|coment)",
+    re.IGNORECASE,
+)
 
 def gerar_briefing_estrategico(posts_analisados):
     """Gera o briefing diario com Claude e grava em ai_briefings."""
@@ -1501,7 +1519,7 @@ def gerar_briefing_estrategico(posts_analisados):
     prompt = ctx + """
 Retorne APENAS este JSON:
 {
-  "diagnostico": "<2-3 frases: como esta a imagem hoje e por que>",
+  "diagnostico": "<2-3 frases QUALITATIVAS: como esta a imagem hoje e por que. PROIBIDO citar numeros (IAD, risco, %, contagens) — descreva tudo em palavras. Ex: 'A imagem esta em risco baixo, mas com saldo negativo relevante: a maioria dos comentarios do dia critica o Sao Joao — banda atrasada, contrato sob suspeita e infraestrutura precaria. Um perfil fiscal critico ja anunciou cobertura adversaria continua.'>",
   "oportunidades": [{"titulo":"...","acao":"...","impacto":"alto|medio|baixo","esforco":"alto|medio|baixo"}],
   "alertas": [{"nivel":"baixo|moderado|alto|critico","tema":"...","janela":"imediato|24h|esta semana"}],
   "recomendacoes_comunicacao": [{"canal":"...","mensagem":"...","tom":"...","timing":"..."}]
@@ -1525,6 +1543,14 @@ Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
     except Exception as e:
         log(f"  Briefing IA: erro {e}")
         return
+
+    # Salvaguarda: o diagnostico deve ser qualitativo. Se a IA cravou um numero-metrica
+    # (IAD, risco, %, contagem), loga para monitoramento — texto e mantido para nao
+    # mutilar a frase; o sinal serve para revisar/reforcar o prompt.
+    _leak = _PADRAO_NUMERO_DIAGNOSTICO.search(data.get("diagnostico", "") or "")
+    if _leak:
+        log(f"  ⚠ Briefing: diagnostico contem numero cravado ('{_leak.group(0).strip()}') "
+            f"— deveria ser qualitativo. Texto mantido; revisar PROMPT_BRIEFING.")
 
     hoje = datetime.now().strftime("%Y-%m-%d")
     row = [{
