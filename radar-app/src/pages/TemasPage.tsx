@@ -57,6 +57,10 @@ interface TemaStats {
   ultimo: number;
 }
 
+function toLabel(tema: string): string {
+  return tema.charAt(0).toUpperCase() + tema.slice(1);
+}
+
 // ── buildTemas: agrega daily_themes por tema para alertaTema ─────────────────
 function buildTemas(themes: DailyTheme[]): TemaResumido[] {
   const byTema: Record<string, number[]>    = {};
