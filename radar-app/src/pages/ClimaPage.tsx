@@ -69,19 +69,20 @@ function TemasEmCrise({ alertas }: { alertas: Briefing["alertas"] }) {
       <div className="space-y-2">
         {alertas.slice(0, 5).map((a, i) => {
           const cor = NIVEL_COLOR[(a.nivel as NivelCrise) ?? "baixo"];
+          const tema = a.tema ? a.tema.charAt(0).toUpperCase() + a.tema.slice(1).toLowerCase() : "";
           return (
             <div
               key={i}
-              className="flex items-center justify-between rounded-lg border bg-bg-2 px-4 py-2.5"
+              className="flex items-center gap-3 rounded-lg border bg-bg-2 px-4 py-2.5"
               style={{ borderColor: `${cor}33` }}
             >
-              <span className="font-extrabold capitalize text-txt-1">{a.tema}</span>
               <span
-                className="rounded px-2.5 py-0.5 text-xs font-bold uppercase"
+                className="shrink-0 rounded px-2.5 py-0.5 text-xs font-bold uppercase"
                 style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}44` }}
               >
                 {NIVEL_LABEL[(a.nivel as NivelCrise) ?? "baixo"]}
               </span>
+              <span className="font-semibold text-txt-1">{tema}</span>
             </div>
           );
         })}
