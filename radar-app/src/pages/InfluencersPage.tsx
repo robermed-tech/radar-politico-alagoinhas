@@ -22,19 +22,7 @@ const CLASSE_LABEL: Record<string, string> = {
   formador: "Formador de opinião",
 };
 
-function Bar({ value, max, color }: { value: number; max: number; color: string }) {
-  const pct = max > 0 ? (value / max) * 100 : 0;
-  return (
-    <div className="h-1.5 w-full rounded-full bg-bg-3">
-      <div
-        className="h-full rounded-full transition-all"
-        style={{ width: `${pct}%`, background: color }}
-      />
-    </div>
-  );
-}
-
-function Row({ inf, maxScore }: { inf: Influencer; maxScore: number }) {
+function Row({ inf }: { inf: Influencer }) {
   const cor = ALIN_COR[inf.alinhamento] || "#9FB0CC";
   return (
     <div className="rounded-lg border border-line bg-bg-2 p-3 transition hover:border-line-strong">
@@ -60,9 +48,6 @@ function Row({ inf, maxScore }: { inf: Influencer; maxScore: number }) {
           <div className="text-[10px] uppercase tracking-wide text-txt-3">score</div>
         </div>
       </div>
-      <div className="mt-2">
-        <Bar value={inf.influencia_score} max={maxScore} color={cor} />
-      </div>
       <div className="mt-2 grid grid-cols-3 gap-2 text-[11px]">
         <div>
           <div className="text-txt-3">Alcance</div>
@@ -77,20 +62,6 @@ function Row({ inf, maxScore }: { inf: Influencer; maxScore: number }) {
           <div className="tnum font-semibold text-txt-1">{inf.frequencia}</div>
         </div>
       </div>
-      {inf.tipo === "perfil_monitorado" && (inf.pct_positivo > 0 || inf.pct_negativo > 0) && (
-        <div className="mt-2 flex h-1 overflow-hidden rounded-full bg-bg-3">
-          <div
-            className="h-full bg-risk-low"
-            style={{ width: `${inf.pct_positivo}%` }}
-            title={`${inf.pct_positivo}% positivo`}
-          />
-          <div
-            className="h-full bg-risk-crit"
-            style={{ width: `${inf.pct_negativo}%` }}
-            title={`${inf.pct_negativo}% negativo`}
-          />
-        </div>
-      )}
       <div className="mt-2 flex items-center gap-2">
         <span
           className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
@@ -116,7 +87,6 @@ export function InfluencersPage() {
   // Todos os hooks ANTES de qualquer return condicional (Rules of Hooks)
   const lista = data ?? [];
   const filtrada = filtro === "todos" ? lista : lista.filter((i) => i.tipo === filtro);
-  const maxScore = Math.max(...filtrada.map((i) => i.influencia_score), 1);
 
   // Gráfico horizontal de ranking — top 10 por score, colorido por alinhamento
   const rankingOption = useMemo(() => {
@@ -271,7 +241,7 @@ export function InfluencersPage() {
       {/* Lista detalhada */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filtrada.map((inf, i) => (
-          <Row key={`${inf.tipo}-${inf.handle}-${i}`} inf={inf} maxScore={maxScore} />
+          <Row key={`${inf.tipo}-${inf.handle}-${i}`} inf={inf} />
         ))}
       </div>
     </div>
