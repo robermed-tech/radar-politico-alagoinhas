@@ -534,8 +534,20 @@ def carregar_memoria(planilha):
 # MODULO 4 - ANALISE COM O AGORA (Claude)
 # ==============================================================
 
-PROMPT_TRIAGEM = ("Classificador rapido de risco politico. "
-                  "Retorne APENAS JSON valido, sem markdown, sem texto extra.")
+PROMPT_TRIAGEM = (
+    "Classificador rapido de risco politico. "
+    "REGRA CRITICA DE OTICA: todo sentimento e medido pelo impacto na imagem do "
+    "prefeito Gustavo Carmo de Alagoinhas/BA — NAO pelo tom do comentario isolado. "
+    "POSITIVO = comentario favorece o prefeito Gustavo (elogio a gestao, defesa do prefeito, "
+    "critica a opositores). "
+    "NEGATIVO = comentario prejudica o prefeito Gustavo (critica a gestao, apoio a opositor, "
+    "queixa sobre servico publico, sarcasmo/ironia sobre a prefeitura). "
+    "REGRA PARA PERFIL OPOSITOR: comentarios apoiando/elogiando o opositor = NEGATIVO. "
+    "Comentarios concordando com criticas ao prefeito = NEGATIVO. "
+    "Apenas comentarios DEFENDENDO o prefeito ou ATACANDO o opositor = POSITIVO. "
+    "REGRA PARA PERFIL ALIADO/GOVERNO: comentarios elogiando a gestao = POSITIVO. "
+    "Retorne APENAS JSON valido, sem markdown, sem texto extra."
+)
 
 def triar_post_rapido(post, comentarios):
     """Monta o prompt curto para a triagem Haiku (passo 1)."""
@@ -551,11 +563,23 @@ def triar_post_rapido(post, comentarios):
         f'  {c["curtidas"]}❤ @{c["username"]}: "{c["texto"][:180]}"\n'
         for c in cidadaos
     ) or "  Nenhum comentario.\n"
+    nota_lado = (
+        "ATENCAO: este e um perfil OPOSITOR. Comentarios apoiando/elogiando este perfil "
+        "= NEGATIVO para o prefeito. So e POSITIVO se o comentario defende Gustavo ou "
+        "ataca o opositor diretamente."
+        if lado == "OPOSITOR" else
+        "ATENCAO: este e um perfil ALIADO/GOVERNO. Comentarios elogiando a gestao = "
+        "POSITIVO. Criticas = NEGATIVO."
+        if lado == "ALIADO" else
+        "Analise o conteudo do comentario para determinar o impacto na imagem do prefeito."
+    )
     return (
         f'Perfil: @{post["autor"]} ({post["categoria"]}) [LADO: {lado}]\n'
+        f'{nota_lado}\n'
         f'Caption: {post["caption"][:200] or "(sem legenda)"}\n\n'
         f'COMENTARIOS (top {len(cidadaos)} por curtidas — otica do prefeito Gustavo Carmo):\n'
         f'{coments_txt}\n'
+        'Retorne JSON (pct_pos e pct_neg = % dos comentarios acima FAVORAVEIS / CONTRARIOS ao prefeito Gustavo):\n'
         '{"score_risco":<0-100>,"urgencia":"<alta|media|baixa>",'
         '"tema":"<saude|educacao|obras|seguranca|transporte|emprego|impostos|outros>",'
         '"sentimento_comentarios":"<positivo|negativo|neutro|misto>",'

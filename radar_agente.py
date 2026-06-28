@@ -838,6 +838,11 @@ INSTRUÇÕES DE ANÁLISE
 4. A sugestao_acao deve ser específica e executável nas próximas horas
 5. Se for da oposição, identifique se é movimento isolado ou campanha organizada
 6. SEMPRE verifique ironia/sarcasmo antes de classificar como positivo: comentários com 😂/🤣 + elogios, aspas em palavras positivas, "passa pano", "mentira cabeluda" ou acusações ao portal = sentimento_post "Negativo"
+7. REGRA CRÍTICA DE ÓTICA — NÃO IGNORE: Todo sentimento é classificado sob a ótica do prefeito Gustavo Carmo.
+   - Perfil OPOSIÇÃO (categoria = Oposicao): comentários APOIANDO ou ELOGIANDO o opositor = "Negativo" para o prefeito.
+     Concordar com críticas ao prefeito = "Negativo". Só é "Positivo" se o comentário defender Gustavo ou atacar o opositor.
+   - Perfil GOVERNO/PREFEITO (categoria = Prefeito ou Prefeitura): comentários elogiando a gestão = "Positivo".
+   - Jamais classifique apoio popular a um opositor como "Positivo" — isso prejudica diretamente a imagem do prefeito.
 
 Retorne SOMENTE um JSON válido, sem texto extra, sem markdown:
 
