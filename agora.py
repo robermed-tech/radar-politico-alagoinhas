@@ -546,6 +546,11 @@ PROMPT_TRIAGEM = (
     "Comentarios concordando com criticas ao prefeito = NEGATIVO. "
     "Apenas comentarios DEFENDENDO o prefeito ou ATACANDO o opositor = POSITIVO. "
     "REGRA PARA PERFIL ALIADO/GOVERNO: comentarios elogiando a gestao = POSITIVO. "
+    "REGRA DO NEUTRO: comentario que nao menciona nem implica julgamento sobre a gestao = NEUTRO. "
+    "Animacao com artista/banda em evento ('Vamos!', 'Que show!'), reacao emocional pura, "
+    "comentario religioso/cultural sem conexao com atos da gestao = NEUTRO, nunca POSITIVO. "
+    "Para ser POSITIVO precisa mencionar: prefeito, prefeitura, gestao, secretaria, obra ou "
+    "servico publico. "
     "Retorne APENAS JSON valido, sem markdown, sem texto extra."
 )
 
@@ -619,17 +624,52 @@ de em qual perfil o comentario foi feito.
     - Sarcasmo, ironia ou descrenca sobre promessas (ver secao IRONIA abaixo)
     - Acusacao de que o perfil/portal e "pago", "patrocinado" ou "passa pano" pela gestao
 
-  NEUTRO = nao tem polaridade clara sobre o prefeito
+  NEUTRO = nao avalia a gestao municipal — NAO contribui para pct_pos nem pct_neg
     - Pergunta sobre horario, endereco, informacao pratica
     - Comentario off-topic (sem relacao com gestao)
     - Mencao factual sem juizo de valor
+    - Animacao com artista, banda ou atracao em evento ("Vamos q vamos!", "A banda X ta incrivel!")
+      sem mencionar ou avaliar a organizacao/gestao
+    - Comentario sobre tema religioso, cultural, esportivo ou pessoal sem conexao
+      explicita com atos ou omissoes da gestao municipal
+    - Reacao emocional pura (emojis, exclamacoes, agradecimento ao artista)
+      que nao menciona prefeito, prefeitura, secretaria ou qualidade dos servicos
 
-EXEMPLOS para nao errar:
-  "Acompanho voce Luciano, vai ser nosso prefeito"      -> NEGATIVO
-  "Luciano e incompetente, prefiro Gustavo"             -> POSITIVO
-  "SUS de Alagoinhas da certo, parabens equipe!"        -> POSITIVO
-  "Prefeitura abandonou minha rua, ha 2 meses sem luz"  -> NEGATIVO
-  "Que horas abre o posto de saude?"                    -> NEUTRO
+  REGRA DECISIVA PARA NEUTRO:
+    Faca esta pergunta antes de classificar como positivo:
+    "O cidadao esta aprovando a GESTAO MUNICIPAL ou apenas reagindo ao conteudo
+    do post (evento, noticia, artista)?"
+    Se a resposta for "reagindo ao conteudo" e nao houver mencao explicita
+    a acao ou qualidade da gestao -> NEUTRO, NAO POSITIVO.
+
+EXEMPLOS — OBRIGATORIO ACERTAR:
+  "Acompanho voce Luciano, vai ser nosso prefeito"          -> NEGATIVO
+  "Luciano e incompetente, prefiro Gustavo"                 -> POSITIVO
+  "SUS de Alagoinhas da certo, parabens equipe!"            -> POSITIVO
+  "Prefeitura abandonou minha rua, ha 2 meses sem luz"      -> NEGATIVO
+  "Que horas abre o posto de saude?"                        -> NEUTRO
+  "Vamos q vamos 🔥👋" (em post de evento)                 -> NEUTRO (animacao com evento, nao avalia gestao)
+  "Banda Xotemania no 'muito mais'! 🔥🔥" (em evento)      -> NEUTRO (elogio ao artista, nao a gestao)
+  "Parabens pela organizacao da festa, prefeito!"           -> POSITIVO (elogio explicito a gestao)
+  "O engraçado e que ninguem reclama do barulho dos
+   paredoes mas quando e a igreja incomoda" (comparacao
+   social sem juizo sobre a gestao)                         -> NEUTRO
+  "Mas vamos retomar o titulo de terra da laranja e
+   plantar nas pracas" (sugestao cultural sem critica
+   direta ou elogio a gestao)                               -> NEUTRO
+
+ARMADILHA CRITICA — NAO COMETA ESTE ERRO:
+  Cidadao escreve "Vamos q vamos! 🔥" em post de evento da prefeitura.
+  ERRADO: sentimento = positivo (entusiasmo nao e aprovacao da gestao)
+  CORRETO: sentimento = neutro
+
+  Cidadao menciona artista/banda em post promovido pela prefeitura.
+  ERRADO: sentimento = positivo (o elogio e ao artista, nao ao prefeito)
+  CORRETO: sentimento = neutro
+
+  Para um comentario ser POSITIVO, precisa mencionar ou implicar diretamente:
+  o prefeito, a prefeitura, a gestao, uma secretaria, uma obra, um programa
+  municipal ou a qualidade dos servicos publicos.
 ═══════════════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════════════
