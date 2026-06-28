@@ -843,12 +843,18 @@ INSTRUÇÕES DE ANÁLISE
      Concordar com críticas ao prefeito = "Negativo". Só é "Positivo" se o comentário defender Gustavo ou atacar o opositor.
    - Perfil GOVERNO/PREFEITO (categoria = Prefeito ou Prefeitura): comentários elogiando a gestão = "Positivo".
    - Jamais classifique apoio popular a um opositor como "Positivo" — isso prejudica diretamente a imagem do prefeito.
-8. REGRA DO NEUTRO — COMENTÁRIOS SEM RELAÇÃO COM A GESTÃO:
-   Comentário que não menciona nem implica julgamento sobre a gestão = "Neutro", NUNCA "Positivo".
+8. REGRA DO NEUTRO — SIMÉTRICA PARA POSITIVO E NEGATIVO:
+   Comentário que não menciona nem implica julgamento sobre a gestão = "Neutro".
    São neutros obrigatoriamente: animação com artista/banda em evento ("Vamos que vamos! 🔥", "Que show!"),
    reação emocional pura a entretenimento, comentário religioso, cultural ou pessoal sem conexão com atos
-   da gestão municipal. Para ser "Positivo", o comentário PRECISA mencionar: prefeito, prefeitura, gestão,
-   secretaria, obra ou qualidade de serviço público — explícita ou muito claramente implícita.
+   da gestão municipal — NUNCA "Positivo".
+   Também são neutros: reclamação sobre terceiros, comércio, outros cidadãos ou tema geral que NÃO
+   responsabiliza a gestão ("comércio aberto no feriado, um desrespeito", "envia pra CDL", sarcasmo vago
+   sem alvo na gestão) — NUNCA "Negativo".
+   Para ser "Positivo" OU "Negativo", o comentário PRECISA mencionar ou implicar claramente: prefeito,
+   prefeitura, gestão, secretaria, obra ou qualidade de serviço público (ou apoiar/atacar um opositor).
+   ATENÇÃO: se cita @gustavoascarmo, @prefeituraalagoinhas, "prefeitura" ou "prefeito" com tom de
+   crítica/cobrança, é "Negativo" — a menção explícita tira do neutro.
 
 Retorne SOMENTE um JSON válido, sem texto extra, sem markdown:
 

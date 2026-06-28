@@ -546,11 +546,14 @@ PROMPT_TRIAGEM = (
     "Comentarios concordando com criticas ao prefeito = NEGATIVO. "
     "Apenas comentarios DEFENDENDO o prefeito ou ATACANDO o opositor = POSITIVO. "
     "REGRA PARA PERFIL ALIADO/GOVERNO: comentarios elogiando a gestao = POSITIVO. "
-    "REGRA DO NEUTRO: comentario que nao menciona nem implica julgamento sobre a gestao = NEUTRO. "
+    "REGRA DO NEUTRO (simetrica para POSITIVO e NEGATIVO): comentario que nao menciona "
+    "nem implica julgamento sobre a gestao = NEUTRO. "
     "Animacao com artista/banda em evento ('Vamos!', 'Que show!'), reacao emocional pura, "
     "comentario religioso/cultural sem conexao com atos da gestao = NEUTRO, nunca POSITIVO. "
-    "Para ser POSITIVO precisa mencionar: prefeito, prefeitura, gestao, secretaria, obra ou "
-    "servico publico. "
+    "Reclamacao sobre terceiros, comercio, outros cidadaos ou tema geral que NAO "
+    "responsabiliza a gestao = NEUTRO, nunca NEGATIVO. "
+    "Para ser POSITIVO ou NEGATIVO precisa mencionar ou implicar diretamente: prefeito, "
+    "prefeitura, gestao, secretaria, obra ou servico publico (ou apoiar/atacar opositor). "
     "Retorne APENAS JSON valido, sem markdown, sem texto extra."
 )
 
@@ -670,6 +673,30 @@ ARMADILHA CRITICA — NAO COMETA ESTE ERRO:
   Para um comentario ser POSITIVO, precisa mencionar ou implicar diretamente:
   o prefeito, a prefeitura, a gestao, uma secretaria, uma obra, um programa
   municipal ou a qualidade dos servicos publicos.
+
+REGRA SIMETRICA PARA NEGATIVO — APLIQUE COM O MESMO RIGOR:
+  O criterio do NEGATIVO e identico ao do POSITIVO, so que com sinal trocado.
+  Para um comentario ser NEGATIVO, precisa criticar, cobrar ou implicar falha
+  diretamente em: o prefeito, a prefeitura, a gestao, uma secretaria, uma obra,
+  um programa municipal, a qualidade dos servicos publicos OU apoiar um opositor.
+  Reclamacao, sarcasmo ou desabafo que NAO se dirige a gestao = NEUTRO.
+
+  Faca esta pergunta antes de classificar como negativo:
+  "Esta critica e dirigida a GESTAO MUNICIPAL (prefeito/prefeitura/servico) ou
+  e sobre terceiros, comercio, outros cidadaos ou um tema geral?"
+  Se for sobre terceiros e nao houver responsabilizacao da gestao -> NEUTRO.
+
+EXEMPLOS DE NEGATIVO vs NEUTRO (cobranca x desabafo generico):
+  "Cade a programacao de Sao Joao? Vai postar dia 20?"      -> NEGATIVO (cobranca a prefeitura)
+  "A festa da prefeitura ta fraca, @gustavoascarmo"         -> NEGATIVO (critica + cita o prefeito)
+  "E o comercio aberto em pleno feriado, um desrespeito"    -> NEUTRO (critica ao comercio, nao a gestao)
+  "Envia esse video pra CDL"                                -> NEUTRO (direcionado a CDL, sem juizo sobre a gestao)
+  "Oq nao vai colocar o pe la 🤣🤣"                         -> NEUTRO (sarcasmo vago sem alvo na gestao)
+  "Quem ta reclamando das bandas fica em casa"              -> NEUTRO (briga entre cidadaos, nao avalia a gestao)
+
+  ATENCAO: se o comentario cita @gustavoascarmo, @prefeituraalagoinhas,
+  "prefeitura", "prefeito" ou um servico publico com tom de critica/cobranca,
+  ENTAO e NEGATIVO — a mencao explicita tira do neutro.
 ═══════════════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════════════
