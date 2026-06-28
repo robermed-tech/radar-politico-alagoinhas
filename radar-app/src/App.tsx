@@ -179,9 +179,9 @@ export default function App() {
         className="hidden w-56 shrink-0 flex-col border-r border-line bg-bg-1 p-3 md:flex"
         style={{ boxShadow: "6px 0 28px -10px rgba(0,0,0,0.30)" }}
       >
-        <div className="mb-6 flex items-center gap-2 px-2">
+        <div className="mb-6 flex items-center gap-2.5 px-2">
           <span
-            className="grid h-8 w-8 place-items-center rounded-lg shadow-md"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg shadow-md"
             style={{ background: "#F97316" }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
@@ -189,7 +189,10 @@ export default function App() {
               <circle cx="12" cy="12" r="7"/>
             </svg>
           </span>
-          <span className="font-extrabold tracking-tight">Radar Político</span>
+          <div className="leading-tight">
+            <div className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-txt-1">Radar</div>
+            <div className="text-[10px] font-medium tracking-widest text-txt-3">Político</div>
+          </div>
         </div>
 
         <nav className="flex flex-col gap-1.5">
@@ -199,7 +202,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => setPage(n.id)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-base font-semibold transition-all duration-200 ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold tracking-wide transition-all duration-200 ${
                   isCurrent
                     ? "text-white"
                     : "bg-bg-2 text-txt-2 shadow-sm hover:bg-bg-3 hover:text-txt-1 hover:shadow-md"
@@ -217,10 +220,15 @@ export default function App() {
           {/* Seção avançada colapsável */}
           <button
             onClick={() => setAdvancedOpen((v) => !v)}
-            className="mt-1 flex items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-semibold text-txt-3 hover:text-txt-2 transition-colors"
+            className="mt-3 flex w-full items-center gap-2 px-3 py-1 text-left transition-colors hover:text-txt-2"
           >
-            <span className="transition-transform" style={{ display: "inline-block", transform: advancedOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
-            Análise Avançada
+            <span className="flex-1 text-[10px] font-bold uppercase tracking-[0.14em] text-txt-3">
+              Análise Avançada
+            </span>
+            <span
+              className="text-[10px] text-txt-3 transition-transform duration-200"
+              style={{ display: "inline-block", transform: advancedOpen ? "rotate(90deg)" : "rotate(0deg)" }}
+            >›</span>
           </button>
 
           {advancedOpen && NAV_ADVANCED.map((n) => {
@@ -256,11 +264,13 @@ export default function App() {
               <span className="text-xs">⎋</span> Sair
             </button>
           )}
-          <div className="px-2 text-xs text-txt-3">
-            {userEmail
-              ? `👤 ${userEmail.split("@")[0]}`
-              : `${wx.icon} ${wx.label}`}{" "}
-            · {fetching ? "atualizando…" : horaAtualizado ? `atualizado ${horaAtualizado}` : "Postgres"}
+          <div className="px-2">
+            <div className="text-[11px] font-semibold text-txt-2">
+              {userEmail ? `👤 ${userEmail.split("@")[0]}` : `${wx.icon} ${wx.label}`}
+            </div>
+            <div className="mt-0.5 text-[10px] tracking-wide text-txt-3">
+              {fetching ? "atualizando…" : horaAtualizado ? `Atualizado às ${horaAtualizado}` : "Conectado ao Postgres"}
+            </div>
           </div>
         </div>
       </aside>

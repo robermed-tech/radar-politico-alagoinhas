@@ -3,12 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import {
   fetchDailyThemes,
-  fetchNarratives,
   type DailyTheme,
-  type Narrative,
 } from "@/lib/data";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
+import { AlertaCrise } from "@/components/AlertaCrise";
 
 // ── Métricas do gráfico — apenas Volume ──────────────────────────────────────
 type Metrica = "volume";
@@ -47,7 +46,6 @@ interface TemaResumido {
   pctPos: number;
   volume: number;
   direcao: "subindo" | "estavel" | "caindo";
-  narrativa?: Narrative;
 }
 
 interface TemaStats {
@@ -59,29 +57,8 @@ interface TemaStats {
   ultimo: number;
 }
 
-// ── Constantes de tema ───────────────────────────────────────────────────────
-const TEMA_EMOJI: Record<string, string> = {
-  saude: "🏥", educacao: "📚", obras: "🏗", seguranca: "🛡",
-  transporte: "🚌", emprego: "💼", impostos: "💰", outros: "📌",
-};
-
-const SECRETARIA_NOME: Record<string, string> = {
-  saude: "Sec. de Saúde",
-  educacao: "Sec. de Educação",
-  obras: "Sec. de Obras e Infraestrutura",
-  seguranca: "Sec. de Segurança Pública",
-  transporte: "Sec. de Transportes",
-  emprego: "Sec. de Desenvolvimento Econômico",
-  impostos: "Sec. de Fazenda",
-  outros: "Secretaria responsável",
-};
-
-function toLabel(tema: string): string {
-  return tema.charAt(0).toUpperCase() + tema.slice(1);
-}
-
-// ── buildTemas: agrega daily_themes + narrativas para AlertaSecretarioBox ────
-function buildTemas(themes: DailyTheme[], narratives: Narrative[]): TemaResumido[] {
+// ── buildTemas: agrega daily_themes por tema para alertaTema ─────────────────
+function buildTemas(themes: DailyTheme[]): TemaResumido[] {
   const byTema: Record<string, number[]>    = {};
   const byTemaVol: Record<string, number>   = {};
   const byTemaPos: Record<string, number[]> = {};
@@ -98,14 +75,6 @@ function buildTemas(themes: DailyTheme[], narratives: Narrative[]): TemaResumido
     byTemaNeg[k].push(t.pct_neg);
   }
 
-  const narrMap: Record<string, Narrative> = {};
-  for (const n of narratives) {
-    const k = n.tema?.toLowerCase() || "";
-    if (!narrMap[k] || (n.status === "ativa" && narrMap[k].status !== "ativa")) {
-      narrMap[k] = n;
-    }
-  }
-
   return Object.entries(byTema)
     .map(([tema, serie]) => {
       const ultPos = byTemaPos[tema] ?? [];
@@ -116,157 +85,10 @@ function buildTemas(themes: DailyTheme[], narratives: Narrative[]): TemaResumido
         pctPos: Math.round(ultPos.slice(-3).reduce((a, b) => a + b, 0) / Math.max(1, Math.min(3, ultPos.length))),
         volume: byTemaVol[tema] ?? 0,
         direcao: direcaoSlope(serie),
-        narrativa: narrMap[tema],
       };
     })
     .filter((t) => t.volume > 0)
     .sort((a, b) => b.pctNeg - a.pctNeg || b.volume - a.volume);
-}
-
-// ── Gerar texto de alerta ────────────────────────────────────────────────────
-function gerarTextoAlerta(t: TemaResumido): string {
-  const tema = toLabel(t.tema);
-  const sec  = SECRETARIA_NOME[t.tema] ?? "Secretaria responsável";
-  const tend = t.direcao === "subindo" ? "em crescimento" : t.direcao === "caindo" ? "diminuindo" : "estável";
-  const linhas = [
-    `Prezado(a) ${sec},`,
-    ``,
-    `O Radar Político identificou que o tema "${tema}" está em situação CRÍTICA e ${tend} nas redes sociais de Alagoinhas.`,
-    ``,
-    `📊 Situação atual:`,
-    `• ${t.pctNeg}% dos comentários são negativos`,
-    `• ${t.pctPos}% são favoráveis`,
-    `• ${t.volume} publicações analisadas`,
-  ];
-  if (t.narrativa?.queixa_top) {
-    linhas.push(``, `💬 Principal reclamação da população:`, `"${t.narrativa.queixa_top}"`);
-  }
-  linhas.push(``, `Solicitamos avaliação e providências urgentes.`, ``, `Atenciosamente,`, `Gabinete do Prefeito · Radar Político`);
-  return linhas.join("\n");
-}
-
-// ── AlertaSecretarioBox ──────────────────────────────────────────────────────
-function AlertaSecretarioBox({ t }: { t: TemaResumido }) {
-  const [canal, setCanal]       = useState<"whatsapp" | "email">("whatsapp");
-  const [contato, setContato]   = useState("");
-  const [mensagem, setMensagem] = useState(() => gerarTextoAlerta(t));
-  const [feedback, setFeedback] = useState<string | null>(null);
-
-  const assunto = `⚠ Radar Político — ${toLabel(t.tema)} em situação crítica`;
-
-  function flash(msg: string) {
-    setFeedback(msg);
-    setTimeout(() => setFeedback(null), 2500);
-  }
-
-  function enviar() {
-    if (!contato.trim()) { flash("Preencha o contato"); return; }
-    if (canal === "email") {
-      window.open(`mailto:${contato.trim()}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(mensagem)}`);
-    } else {
-      const num = contato.replace(/\D/g, "");
-      window.open(`https://wa.me/${num.startsWith("55") ? num : "55" + num}?text=${encodeURIComponent(mensagem)}`, "_blank");
-    }
-    flash("✓ Abrindo…");
-  }
-
-  function copiar() {
-    navigator.clipboard.writeText(mensagem).then(() => flash("✓ Copiado!"));
-  }
-
-  return (
-    <div
-      className="flex flex-1 flex-col rounded-xl border p-5"
-      style={{ borderColor: "rgba(249,115,22,0.35)", background: "rgba(249,115,22,0.04)" }}
-    >
-      {/* Cabeçalho */}
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">{TEMA_EMOJI[t.tema] ?? "📌"}</span>
-          <div>
-            <div className="text-sm font-extrabold text-txt-1">📣 Acionar Secretaria</div>
-            <div className="text-xs text-txt-3">
-              {SECRETARIA_NOME[t.tema] ?? "Secretaria responsável"} · tema mais crítico
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-0.5 rounded-lg border border-line bg-bg-2 p-0.5">
-          {(["whatsapp", "email"] as const).map((c) => (
-            <button
-              key={c}
-              onClick={() => setCanal(c)}
-              className={`rounded px-2.5 py-1 text-xs font-semibold transition-all ${
-                canal === c ? "bg-brand text-white" : "text-txt-3 hover:text-txt-1"
-              }`}
-            >
-              {c === "whatsapp" ? "WhatsApp" : "E-mail"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Contato + textarea em grid */}
-      <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
-        <div className="flex flex-col gap-3">
-          <div>
-            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-txt-3">
-              {canal === "email" ? "E-mail do(a) secretário(a)" : "WhatsApp com DDD"}
-            </label>
-            <input
-              type={canal === "email" ? "email" : "tel"}
-              value={contato}
-              onChange={(e) => setContato(e.target.value)}
-              placeholder={canal === "email" ? "secretario@prefeitura.ba.gov.br" : "75 9 9999-0000"}
-              className="w-full rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none transition focus:border-brand"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={enviar}
-              disabled={!contato.trim()}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-40"
-              style={{ background: canal === "whatsapp" ? "#22C55E" : "#F97316" }}
-            >
-              {feedback?.startsWith("✓ Abrindo")
-                ? "✓ Abrindo…"
-                : canal === "whatsapp"
-                ? "💬 Enviar"
-                : "📧 Enviar"}
-            </button>
-            <button
-              onClick={copiar}
-              title="Copiar texto"
-              className="rounded-lg border border-line bg-bg-2 px-3 py-2.5 text-sm transition hover:bg-bg-3"
-            >
-              {feedback === "✓ Copiado!" ? "✓" : "📋"}
-            </button>
-          </div>
-          {feedback && !feedback.startsWith("✓") && (
-            <p className="text-xs text-risk-crit">{feedback}</p>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between">
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-txt-3">Mensagem</label>
-            <button
-              onClick={() => setMensagem(gerarTextoAlerta(t))}
-              className="text-[10px] font-semibold text-brand hover:underline"
-            >
-              ↺ Regenerar
-            </button>
-          </div>
-          <textarea
-            value={mensagem}
-            onChange={(e) => setMensagem(e.target.value)}
-            rows={7}
-            className="w-full resize-none rounded-lg border border-line bg-bg-2 px-3 py-2 text-xs leading-relaxed text-txt-1 outline-none transition focus:border-brand"
-            style={{ fontFamily: "JetBrains Mono, monospace" }}
-          />
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ── Página ───────────────────────────────────────────────────────────────────
@@ -281,13 +103,8 @@ export function TemasPage() {
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });
-  const { data: narratives = [] } = useQuery({
-    queryKey: ["narratives"],
-    queryFn: fetchNarratives,
-    staleTime: 5 * 60 * 1000,
-  });
-  // Tema mais crítico (para AlertaSecretarioBox)
-  const temas = useMemo(() => buildTemas(themes, narratives), [themes, narratives]);
+  // Tema mais crítico (para AlertaCrise)
+  const temas = useMemo(() => buildTemas(themes), [themes]);
   const alertaTema = temas[0];
 
   // Dados de tendência para os gráficos
@@ -429,61 +246,61 @@ export function TemasPage() {
         </div>
       </div>
 
-      {/* Subindo + Caindo (esquerda) | AlertaSecretarioBox (direita) */}
-      <div className="grid items-stretch gap-3 sm:grid-cols-2">
-        {/* Coluna esquerda: Subindo + Caindo empilhados */}
-        <div className="flex flex-col gap-3">
-          <div className="rounded-xl border border-line bg-bg-1 p-4">
-            <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-crit">
+      {/* Subindo + Caindo lado a lado */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-line bg-bg-1 p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="text-xs font-bold uppercase tracking-wide text-risk-crit">
               ▲ Subindo ({subindo.length})
             </div>
-            <div className="space-y-1.5">
-              {subindo.slice(0, 5).map((s) => {
-                const isOut = outrosTemasSet.has(s.tema);
-                return (
-                  <div key={s.tema} className="flex items-center justify-between text-sm">
-                    <span className="text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
-                      {s.tema}
-                    </span>
-                    <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#EF4444" }}>
-                      +{s.s.toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
-                    </span>
-                  </div>
-                );
-              })}
-              {subindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em alta.</div>}
-            </div>
+            {alertaTema && alertaTema.pctNeg >= 35 && (
+              <AlertaCrise
+                tema={alertaTema.tema}
+                pNeg={alertaTema.pctNeg}
+                posts={alertaTema.volume}
+                iad={alertaTema.pctPos}
+              />
+            )}
           </div>
-
-          <div className="rounded-xl border border-line bg-bg-1 p-4">
-            <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-low">
-              ▼ Caindo ({caindo.length})
-            </div>
-            <div className="space-y-1.5">
-              {caindo.slice(0, 5).map((s) => {
-                const isOut = outrosTemasSet.has(s.tema);
-                return (
-                  <div key={s.tema} className="flex items-center justify-between text-sm">
-                    <span className="text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
-                      {s.tema}
-                    </span>
-                    <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#22C55E" }}>
-                      {s.s.toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
-                    </span>
-                  </div>
-                );
-              })}
-              {caindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em queda.</div>}
-            </div>
+          <div className="space-y-1.5">
+            {subindo.slice(0, 5).map((s) => {
+              const isOut = outrosTemasSet.has(s.tema);
+              return (
+                <div key={s.tema} className="flex items-center justify-between text-sm">
+                  <span className="text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
+                    {s.tema}
+                  </span>
+                  <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#EF4444" }}>
+                    +{s.s.toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
+                  </span>
+                </div>
+              );
+            })}
+            {subindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em alta.</div>}
           </div>
         </div>
 
-        {/* Coluna direita: Acionar Secretaria ocupa toda a altura */}
-        {alertaTema && (
-          <div className="flex flex-col">
-            <AlertaSecretarioBox t={alertaTema} />
+        <div className="rounded-xl border border-line bg-bg-1 p-4">
+          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-low">
+            ▼ Caindo ({caindo.length})
           </div>
-        )}
+          <div className="space-y-1.5">
+            {caindo.slice(0, 5).map((s) => {
+              const isOut = outrosTemasSet.has(s.tema);
+              return (
+                <div key={s.tema} className="flex items-center justify-between text-sm">
+                  <span className="text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
+                    {s.tema}
+                  </span>
+                  <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#22C55E" }}>
+                    {s.s.toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
+                  </span>
+                </div>
+              );
+            })}
+            {caindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em queda.</div>}
+          </div>
+        </div>
       </div>
 
       {/* Gráfico de variação divergente */}
