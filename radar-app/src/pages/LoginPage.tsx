@@ -1,10 +1,38 @@
 import { useState } from "react";
 import { sendMagicLink } from "@/lib/auth";
 
+const svgProps = {
+  width: 22, height: 22, viewBox: "0 0 24 24", fill: "none",
+  stroke: "currentColor", strokeWidth: 1.6,
+  strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
+};
+
 const FEATURES = [
-  { icon: "☀️", titulo: "Clima Político", desc: "Termômetro visual da opinião pública" },
-  { icon: "🔔", titulo: "Alertas & Ações", desc: "O que precisa de atenção hoje" },
-  { icon: "💬", titulo: "O que o povo diz", desc: "Vozes ouvidas nas redes, em tempo real" },
+  {
+    icon: (
+      <svg {...svgProps}>
+        <circle cx="12" cy="12" r="4.2" />
+        <path d="M12 2v2.2M12 19.8V22M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2 12h2.2M19.8 12H22M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" />
+      </svg>
+    ),
+    titulo: "Clima Político", desc: "Termômetro visual da opinião pública",
+  },
+  {
+    icon: (
+      <svg {...svgProps}>
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </svg>
+    ),
+    titulo: "Alertas & Ações", desc: "O que precisa de atenção hoje",
+  },
+  {
+    icon: (
+      <svg {...svgProps}>
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+    titulo: "O que o povo diz", desc: "Vozes ouvidas nas redes, em tempo real",
+  },
 ];
 
 export function LoginPage() {
@@ -65,7 +93,7 @@ export function LoginPage() {
             <div className="mt-8 space-y-3">
               {FEATURES.map((f) => (
                 <div key={f.titulo} className="flex items-center gap-3 rounded-2xl bg-white/12 px-4 py-3 backdrop-blur">
-                  <span className="text-xl">{f.icon}</span>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15">{f.icon}</span>
                   <div>
                     <div className="text-base font-bold leading-tight">{f.titulo}</div>
                     <div className="text-sm text-white/80">{f.desc}</div>
@@ -97,8 +125,10 @@ export function LoginPage() {
           <div className="reveal reveal-2 rounded-[28px] border border-line bg-bg-1 p-8">
             {sent ? (
               <div className="text-center">
-                <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full text-3xl" style={{ background: "rgba(249,115,22,0.12)" }}>
-                  📧
+                <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full" style={{ background: "rgba(249,115,22,0.12)" }}>
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3.5 7l8.5 6 8.5-6" />
+                  </svg>
                 </div>
                 <div className="text-lg font-extrabold text-txt-1">Link enviado!</div>
                 <p className="mt-1.5 text-sm text-txt-2">
