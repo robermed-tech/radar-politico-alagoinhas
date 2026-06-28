@@ -776,6 +776,44 @@ Se o post representar risco à gestão, classifique o TIPO de crise (cluster), q
 • "nenhum": sem crise (conteúdo neutro, positivo ou irrelevante).
 Informe também responsabilidade_atribuida (0-100, quanto o público culpa a gestão) e sua confianca (0-100) nesta leitura — baixe a confiança se o texto for ambíguo, irônico ou faltar contexto.
 
+═══════════════════════════════════════════════
+DETECÇÃO OBRIGATÓRIA DE IRONIA E SARCASMO
+═══════════════════════════════════════════════
+No contexto político brasileiro, ironia e sarcasmo são quase sempre
+NEGATIVOS. Classifique sentimento_post = "Negativo" quando identificar:
+
+MARCADORES DE IRONIA/SARCASMO EM PORTUGUÊS:
+• 😂 🤣 😆 combinados com "elogio" ou referência a "conquista" da gestão
+  = o cidadão está RINDO DA gestão, não aplaudindo. Emojis de risada em
+  comentários políticos = crítica, não alegria.
+• Aspas em palavras positivas: "obra", "conquista", "melhoria",
+  "transparência" = o cidadão NÃO acredita no que a gestão divulga.
+• "passa pano" ou "passando pano" = defensor incondicional da gestão
+  (acusação negativa para a imagem do prefeito).
+• "mentira cabeluda", "fake", "invenção", "história" = descrença no
+  portal ou na informação divulgada pela gestão.
+• "Dos mesmos criadores de..." = ironia sobre histórico de desinformação.
+• "Se houvesse um prêmio para X, [gestão/portal] ganharia" = crítica
+  disfarçada de hipotético.
+• Comentários que acusam o perfil/portal de ser "pago", "comprado" ou
+  "vendido" para a prefeitura = NEGATIVO para a imagem da gestão.
+
+EXEMPLOS — DEVEM SER CLASSIFICADOS COMO NEGATIVO:
+  "Dos mesmos criadores de '20 mil pessoas no São João'. 😂😂😂
+   Se houvesse um troféu 'passa pano' essa página venceria!"
+  → sentimento_post = "Negativo"
+
+  "Que 'conquista'! 😂😂 Há 3 anos prometendo e nada feito!"
+  → sentimento_post = "Negativo"
+
+  "Parabéns pela 'transparência'! 😆 Ninguém sabe como gastaram o dinheiro."
+  → sentimento_post = "Negativo"
+
+REGRA DE OURO: Se o resumo ou os comentários descrevem crítica, acusação
+ou descrença, mas a superfície do texto usa palavras positivas com 😂 ou
+aspas, classifique como "Negativo" — não como "Positivo".
+═══════════════════════════════════════════════
+
 {contexto_historico}
 {aprendizado}
 
@@ -799,6 +837,7 @@ INSTRUÇÕES DE ANÁLISE
 3. Considere o APRENDIZADO DO ASSESSOR para calibrar sugestões de ação
 4. A sugestao_acao deve ser específica e executável nas próximas horas
 5. Se for da oposição, identifique se é movimento isolado ou campanha organizada
+6. SEMPRE verifique ironia/sarcasmo antes de classificar como positivo: comentários com 😂/🤣 + elogios, aspas em palavras positivas, "passa pano", "mentira cabeluda" ou acusações ao portal = sentimento_post "Negativo"
 
 Retorne SOMENTE um JSON válido, sem texto extra, sem markdown:
 

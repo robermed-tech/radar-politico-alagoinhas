@@ -592,7 +592,8 @@ de em qual perfil o comentario foi feito.
     - Queixas concretas sobre servicos municipais (saude, educacao,
       obras, limpeza, IPTU, transporte)
     - Comparacoes desfavoraveis com outras gestoes/cidades
-    - Sarcasmo, ironia ou descrenca sobre promessas
+    - Sarcasmo, ironia ou descrenca sobre promessas (ver secao IRONIA abaixo)
+    - Acusacao de que o perfil/portal e "pago", "patrocinado" ou "passa pano" pela gestao
 
   NEUTRO = nao tem polaridade clara sobre o prefeito
     - Pergunta sobre horario, endereco, informacao pratica
@@ -605,6 +606,56 @@ EXEMPLOS para nao errar:
   "SUS de Alagoinhas da certo, parabens equipe!"        -> POSITIVO
   "Prefeitura abandonou minha rua, ha 2 meses sem luz"  -> NEGATIVO
   "Que horas abre o posto de saude?"                    -> NEUTRO
+═══════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════
+DETECCAO OBRIGATORIA DE IRONIA E SARCASMO:
+═══════════════════════════════════════════════════════════════════════
+No contexto politico brasileiro, ironia e sarcasmo sao quase sempre
+NEGATIVOS. O cidadao ironiza para criticar sem parecer agressivo.
+CLASSIFIQUE COMO NEGATIVO quando identificar qualquer um destes
+marcadores no texto do comentario:
+
+SINAIS DE IRONIA/SARCASMO EM PORTUGUES:
+  1. Emojis de risada (😂 🤣 😆 😅) combinados com "elogio" ou referencia
+     a uma "conquista" da gestao = o cidadao esta RINDO DA gestao, nao
+     aplaudindo. Emojis de risada em comentarios politicos = critica.
+  2. Aspas em palavras positivas: "obra", "conquista", "melhoria",
+     "transparencia" = o cidadao NAO acredita naquilo que cita.
+  3. "passa pano" ou "passa panismo" = acusacao de defender a gestao
+     sem critica; SEMPRE negativo para a imagem da prefeitura.
+  4. "mentira cabeluda", "fake", "invencao", "historia" (no sentido de
+     invencao) = descrenca na informacao divulgada pela gestao/portal.
+  5. "Dos mesmos criadores de..." = ironia comparativa, critica ao historico.
+  6. "Se tivesse um premio para X, [gestao/portal] ganharia" = critica
+     disfarçada de hipotetico.
+  7. Elogio improvavel e exagerado sem contexto positivo real = sarcasmo.
+     Ex: "Que maravilha! Perfeito! 😂" num post sobre problema nao resolvido.
+  8. Critica ao portal/veiculo de comunicacao de ser "patrocinado" ou
+     "vendido" para a prefeitura = NEGATIVO para a gestao.
+
+EXEMPLOS CONCRETOS DE IRONIA -> NEGATIVO:
+  "Dos mesmos criadores de '20 mil pessoas no Sao Joao'. 😂😂😂
+   Se tivesse um trofeu 'passa pano' essa pagina ganharia!"
+  -> NEGATIVO (ironia + "passa pano" + 😂 como critica)
+
+  "Que 'conquista'! 😂😂 Ha 3 anos prometendo e nada feito!"
+  -> NEGATIVO (aspas em conquista + 😂 + historico de promessas)
+
+  "Perfeito! Tudo funcionando. 😂😂 Vai la no bairro X e ve como ta."
+  -> NEGATIVO (elogio sarcastico + convite ao contraste)
+
+  "Parabens pela 'transparencia'! 😆 Ninguem sabe como gastaram o dinheiro."
+  -> NEGATIVO (aspas + 😆 + critica financeira)
+
+  "Essa pagina deveria ganhar um Oscar! 😂 Invencao atras de invencao."
+  -> NEGATIVO (ironia comparativa + "invencao")
+
+REGRA DE OURO PARA IRONIA:
+  Se o comentario usa 😂/🤣 + palavras aparentemente positivas + critica
+  implicita (no mesmo comentario ou num contexto de escandalo/promessa
+  nao cumprida), classifique como NEGATIVO, nunca como positivo.
+  O emoji 😂 em contexto politico e QUASE SEMPRE sarcasmo, nao alegria.
 ═══════════════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════════════
@@ -633,6 +684,19 @@ ARMADILHA — NAO COMETA ESTE ERRO:
   Portal de noticias publica nota factual mas os comentarios atacam a
   gestao ou acusam o portal de ser patrocinado pela prefeitura.
   CORRETO: sentimento_post = "negativo".
+
+  Portal posta noticia positiva sobre a gestao mas os comentarios sao
+  ironicos (emojis 😂, "passa pano", aspas em palavras positivas,
+  referencias a "mentiras" anteriores do mesmo portal).
+  CORRETO: sentimento_post = "negativo" — a ironia e uma critica, nao
+  um elogio.
+
+  Post recebe comentario que PARECE elogio mas usa 😂 ou aspas: nao
+  é positivo, e sarcasmo. Reclassifique como negativo.
+
+  O TEXTO DO RESUMO DIZ "comentarios unanimemente negativos" ou
+  "acusam de fake" ou "critica ao portal" mas voce classificou
+  sentimento_post = "positivo"? Isso e um ERRO. Corrija para negativo.
 ═══════════════════════════════════════════════════════════════════════
 
 Regras de analise:
