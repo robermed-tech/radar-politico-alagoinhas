@@ -69,87 +69,117 @@ function classificaLado(cat: string): { label: string; cor: string } | null {
   return null;
 }
 
-/**
- * Barra divergente: críticas crescem para a ESQUERDA (vermelho), elogios para a
- * DIREITA (verde), a partir de um eixo central. Leitura instantânea de quem é
- * net-positivo (barra puxa p/ direita) vs net-negativo (puxa p/ esquerda).
- */
-function BarraDivergente({ pPos, pNeg }: { pPos: number; pNeg: number }) {
+/** Gráfico de barras verticais agrupadas — críticas (vermelho) vs elogios (verde). */
+function ChartVertical({
+  buckets,
+  ink,
+  selRotulo,
+  onSelect,
+  height = 220,
+}: {
+  buckets: AprovBucket[];
+  ink: ReturnType<typeof chartInk>;
+  selRotulo?: string;
+  onSelect?: (rotulo: string) => void;
+  height?: number;
+}) {
+  const option = useMemo(() => ({
+    grid: { top: 10, right: 6, bottom: buckets.length > 4 ? 68 : 48, left: 30 },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: ink.tooltipBg,
+      borderColor: ink.tooltipBorder,
+      borderWidth: 1,
+      textStyle: { color: ink.tooltipText, fontSize: 12 },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      formatter: (params: any[]) => {
+        const idx = params[0]?.dataIndex ?? 0;
+        const b = buckets[idx];
+        if (!b) return "";
+        const lado = classificaLado(b.cat || b.rotulo);
+        const ladoTag = lado ? ` <span style="color:${lado.cor};font-weight:700">[${lado.label}]</span>` : "";
+        return `<b>${b.rotulo}</b>${ladoTag}<br/>🔴 Críticas: <b>${b.pNeg}%</b><br/>🟢 Elogios: <b>${b.pPos}%</b><br/><span style="opacity:.6">${b.posts} post${b.posts !== 1 ? "s" : ""} · ${fmtInt(b.coments)} coment.</span>`;
+      },
+    },
+    xAxis: {
+      type: "category",
+      data: buckets.map((b) => {
+        const s = b.rotulo.replace(/^@/, "");
+        return s.length > 12 ? s.slice(0, 11) + "…" : s;
+      }),
+      axisLabel: {
+        color: ink.axis,
+        fontSize: 10,
+        interval: 0,
+        rotate: buckets.length > 4 ? -38 : 0,
+      },
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: ink.axisLine } },
+    },
+    yAxis: {
+      type: "value",
+      min: 0,
+      max: 100,
+      interval: 25,
+      axisLabel: { color: ink.axis, fontSize: 9, formatter: "{value}" },
+      splitLine: { lineStyle: { color: ink.grid } },
+    },
+    series: [
+      {
+        name: "Críticas",
+        type: "bar",
+        barMaxWidth: 20,
+        barGap: "8%",
+        data: buckets.map((b) => ({
+          value: b.pNeg,
+          itemStyle: {
+            color: withAlpha("#EF4444", selRotulo === b.rotulo ? 1 : 0.72),
+            borderRadius: [4, 4, 0, 0],
+            shadowBlur: selRotulo === b.rotulo ? 10 : 0,
+            shadowColor: withAlpha("#EF4444", 0.5),
+          },
+        })),
+      },
+      {
+        name: "Elogios",
+        type: "bar",
+        barMaxWidth: 20,
+        barGap: "8%",
+        data: buckets.map((b) => ({
+          value: b.pPos,
+          itemStyle: {
+            color: withAlpha("#22C55E", selRotulo === b.rotulo ? 1 : 0.72),
+            borderRadius: [4, 4, 0, 0],
+            shadowBlur: selRotulo === b.rotulo ? 10 : 0,
+            shadowColor: withAlpha("#22C55E", 0.5),
+          },
+        })),
+      },
+    ],
+  }), [buckets, selRotulo, ink]);
+
   return (
-    <div className="relative flex h-3 overflow-hidden rounded-full bg-bg-3">
-      {/* metade esquerda — críticas (alinhadas à direita, crescem p/ esquerda) */}
-      <div className="flex w-1/2 items-center justify-end">
-        <div
-          className="h-3 rounded-l-full bg-risk-crit"
-          style={{ width: `${pNeg}%` }}
-          title={`${pNeg}% críticas`}
-        />
-      </div>
-      {/* metade direita — elogios (alinhados à esquerda, crescem p/ direita) */}
-      <div className="flex w-1/2 items-center justify-start">
-        <div
-          className="h-3 rounded-r-full bg-risk-low"
-          style={{ width: `${pPos}%` }}
-          title={`${pPos}% elogios`}
-        />
-      </div>
-      {/* marcador do eixo central */}
-      <div
-        className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2"
-        style={{ background: "rgba(159,176,204,0.45)" }}
-      />
-    </div>
+    <ReactECharts
+      option={option}
+      style={{ height, cursor: onSelect ? "pointer" : "default" }}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onEvents={onSelect ? { click: (p: any) => { const b = buckets[p.dataIndex]; if (b) onSelect(b.rotulo); } } : undefined}
+      notMerge
+    />
   );
 }
 
-function Bucket({
-  b,
-  mostrarLado,
-  onClick,
-  selecionado,
-}: {
-  b: AprovBucket;
-  mostrarLado?: boolean;
-  onClick?: () => void;
-  selecionado?: boolean;
-}) {
-  const lado = mostrarLado ? classificaLado(b.cat || b.rotulo) : null;
+function ChartLegend() {
   return (
-    <div
-      onClick={onClick}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? (e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onClick()) : undefined}
-      className={`rounded-lg border bg-bg-2 p-3 transition ${
-        onClick ? "cursor-pointer hover:border-line-strong" : ""
-      } ${selecionado ? "ring-2 ring-brand" : "border-line"}`}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate font-semibold text-txt-1" title={b.rotulo}>
-            {b.rotulo}
-          </span>
-          {lado && (
-            <span
-              className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-              style={{ background: `${lado.cor}1A`, color: lado.cor }}
-            >
-              {lado.label}
-            </span>
-          )}
-        </div>
-        <div className="tnum shrink-0 text-right">
-          <span className="text-sm font-bold text-risk-low">{b.pPos}%</span>
-          <span className="ml-2 text-xs text-risk-crit">{b.pNeg}%</span>
-        </div>
-      </div>
-      <div className="mt-2">
-        <BarraDivergente pPos={b.pPos} pNeg={b.pNeg} />
-      </div>
-      <div className="mt-1 flex items-center justify-between text-[10px] text-txt-3">
-        <span>◀ críticas · elogios ▶</span>
-        <span>{b.posts} posts · {fmtInt(b.coments)} coment.</span>
-      </div>
+    <div className="mt-2 flex items-center justify-center gap-5 text-[10px] text-txt-3">
+      <span className="flex items-center gap-1.5">
+        <span className="inline-block h-2 w-4 rounded-sm bg-risk-crit" />
+        Críticas
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="inline-block h-2 w-4 rounded-sm bg-risk-low" />
+        Elogios
+      </span>
     </div>
   );
 }
@@ -419,53 +449,41 @@ export function ApprovalPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-1 text-sm font-bold">Por categoria</div>
-          <p className="mb-3 text-[10px] text-txt-3">Clique para ver os comentários ↓</p>
-          <div className="space-y-2">
-            {view.porCategoria.map((b) => (
-              <Bucket
-                key={b.rotulo}
-                b={b}
-                mostrarLado
-                selecionado={filtroVoz?.tipo === "categoria" && filtroVoz.valor === b.rotulo}
-                onClick={() =>
-                  setFiltroVoz((cur) =>
-                    cur?.tipo === "categoria" && cur.valor === b.rotulo
-                      ? null
-                      : { tipo: "categoria", valor: b.rotulo }
-                  )
-                }
-              />
-            ))}
-          </div>
+          <p className="mb-1 text-[10px] text-txt-3">Clique na barra para filtrar comentários ↓</p>
+          <ChartVertical
+            buckets={view.porCategoria}
+            ink={ink}
+            selRotulo={filtroVoz?.tipo === "categoria" ? filtroVoz.valor : undefined}
+            onSelect={(rotulo) =>
+              setFiltroVoz((cur) =>
+                cur?.tipo === "categoria" && cur.valor === rotulo
+                  ? null
+                  : { tipo: "categoria", valor: rotulo }
+              )
+            }
+          />
+          <ChartLegend />
         </div>
         <div className="rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-1 text-sm font-bold">Por perfil</div>
-          <p className="mb-3 text-[10px] leading-snug text-txt-3">
-            A barra mostra o <b>sentimento dos comentários</b> no perfil — não o lado
-            político. Verde = elogios, vermelho = críticas. Clique para ver os comentários ↓
-          </p>
-          <div className="space-y-2">
-            {view.porPerfil.map((b) => (
-              <Bucket
-                key={b.rotulo}
-                b={b}
-                mostrarLado
-                selecionado={filtroVoz?.tipo === "perfil" && filtroVoz.valor === b.rotulo}
-                onClick={() =>
-                  setFiltroVoz((cur) =>
-                    cur?.tipo === "perfil" && cur.valor === b.rotulo
-                      ? null
-                      : { tipo: "perfil", valor: b.rotulo }
-                  )
-                }
-              />
-            ))}
-          </div>
+          <p className="mb-1 text-[10px] text-txt-3">Sentimento dos comentários por conta. Clique para filtrar ↓</p>
+          <ChartVertical
+            buckets={view.porPerfil}
+            ink={ink}
+            selRotulo={filtroVoz?.tipo === "perfil" ? filtroVoz.valor : undefined}
+            onSelect={(rotulo) =>
+              setFiltroVoz((cur) =>
+                cur?.tipo === "perfil" && cur.valor === rotulo
+                  ? null
+                  : { tipo: "perfil", valor: rotulo }
+              )
+            }
+          />
+          <ChartLegend />
         </div>
         <div className="rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="mb-2 flex items-center justify-between gap-2">
             <div className="text-sm font-bold">Por tema <span className="text-[10px] font-normal text-txt-3">(+ crítico no topo)</span></div>
-            {/* Botão de alerta: aparece quando o tema mais crítico tem ≥ 35% negatividade */}
             {view.porTema[0] && view.porTema[0].pNeg >= 35 && (
               <AlertaCrise
                 tema={view.porTema[0].rotulo}
@@ -475,11 +493,8 @@ export function ApprovalPage() {
               />
             )}
           </div>
-          <div className="space-y-2">
-            {view.porTema.map((b) => (
-              <Bucket key={b.rotulo} b={b} />
-            ))}
-          </div>
+          <ChartVertical buckets={view.porTema} ink={ink} />
+          <ChartLegend />
         </div>
       </div>
 
