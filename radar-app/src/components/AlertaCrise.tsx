@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { findSecretario } from "@/config/secretarios";
 
 interface Props {
@@ -59,8 +60,8 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
         <span>Alertar Secretário</span>
       </button>
 
-      {/* Modal */}
-      {aberto && (
+      {/* Modal — renderizado via Portal no document.body para evitar stacking context dos containers pai */}
+      {aberto && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.8)" }}
@@ -174,7 +175,8 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
               </a>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
