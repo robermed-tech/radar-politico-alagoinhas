@@ -1,8 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
-import { fetchInfluencers, type Influencer } from "@/lib/data";
-import { fmtInt } from "@/lib/format";
+import { fetchInfluencers } from "@/lib/data";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
 
@@ -14,65 +13,6 @@ const ALIN_COR: Record<string, string> = {
   neutro: "#EAB308",
   cidadao: "#3B82F6",
 };
-
-const CLASSE_LABEL: Record<string, string> = {
-  macro: "Grande alcance",
-  micro: "Influenciador segmentado",
-  nano: "Cidadão com rede",
-  formador: "Formador de opinião",
-};
-
-function Row({ inf }: { inf: Influencer }) {
-  const cor = ALIN_COR[inf.alinhamento] || "#9FB0CC";
-  return (
-    <div className="rounded-lg border border-line bg-bg-2 p-3 transition hover:border-line-strong">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <div
-            className="grid h-9 w-9 place-items-center rounded-lg font-bold text-white"
-            style={{ background: cor }}
-          >
-            {(inf.handle[0] || "?").toUpperCase()}
-          </div>
-          <div>
-            <div className="font-semibold text-txt-1">@{inf.handle}</div>
-            <div className="text-[11px] text-txt-3">
-              {inf.categoria} · {CLASSE_LABEL[inf.classe] || inf.classe}
-            </div>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="tnum text-xl font-extrabold" style={{ color: cor }}>
-            {Math.round(inf.influencia_score)}
-          </div>
-          <div className="text-[10px] uppercase tracking-wide text-txt-3">score</div>
-        </div>
-      </div>
-      <div className="mt-2 grid grid-cols-3 gap-2 text-[11px]">
-        <div>
-          <div className="text-txt-3">Alcance</div>
-          <div className="tnum font-semibold text-txt-1">{fmtInt(inf.alcance)}</div>
-        </div>
-        <div>
-          <div className="text-txt-3">Engajamento</div>
-          <div className="tnum font-semibold text-txt-1">{fmtInt(inf.engajamento)}</div>
-        </div>
-        <div>
-          <div className="text-txt-3">{inf.tipo === "cidadao" ? "Comentários" : "Posts"}</div>
-          <div className="tnum font-semibold text-txt-1">{inf.frequencia}</div>
-        </div>
-      </div>
-      <div className="mt-2 flex items-center gap-2">
-        <span
-          className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
-          style={{ background: `${cor}1A`, color: cor }}
-        >
-          {inf.alinhamento}
-        </span>
-      </div>
-    </div>
-  );
-}
 
 export function InfluencersPage() {
   const [filtro, setFiltro] = useState<Filtro>("todos");
@@ -236,13 +176,6 @@ export function InfluencersPage() {
           style={{ height: Math.max(160, Math.min(filtrada.length, 10) * 34 + 32) }}
           notMerge
         />
-      </div>
-
-      {/* Lista detalhada */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {filtrada.map((inf, i) => (
-          <Row key={`${inf.tipo}-${inf.handle}-${i}`} inf={inf} />
-        ))}
       </div>
     </div>
   );

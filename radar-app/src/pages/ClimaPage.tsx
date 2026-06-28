@@ -1,6 +1,6 @@
 ﻿import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadar, fetchBoletim, fetchBriefing, fetchCrisisPlans, filtrarPorPeriodo, parseData, type Post, type Boletim, type BoletimAlerta, type Briefing, type CrisisPlan } from "@/lib/data";
+import { fetchRadar, fetchBoletim, fetchBriefing, fetchCrisisPlans, filtrarPorPeriodo, parseData, type Post, type Boletim, type Briefing, type CrisisPlan } from "@/lib/data";
 import { calcIAD, distribuicao, NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
 import { fmtInt } from "@/lib/format";
@@ -11,11 +11,11 @@ const PERIODOS = [
   { dias: 30, label: "30 dias" },
 ];
 
-function forcaAmostra(comentarios: number): { label: string; emoji: string } {
-  if (comentarios >= 300) return { label: "Amostra forte", emoji: "👍" };
-  if (comentarios >= 100) return { label: "Boa amostra", emoji: "🙂" };
-  if (comentarios >= 30) return { label: "Amostra inicial", emoji: "🌱" };
-  return { label: "Amostra pequena", emoji: "🔎" };
+function forcaAmostra(comentarios: number): { label: string; nivel: number } {
+  if (comentarios >= 300) return { label: "Amostra forte", nivel: 3 };
+  if (comentarios >= 100) return { label: "Boa amostra", nivel: 2 };
+  if (comentarios >= 30) return { label: "Amostra inicial", nivel: 1 };
+  return { label: "Amostra pequena", nivel: 0 };
 }
 
 function scoreParaNivel(score: number): NivelCrise {
@@ -25,19 +25,97 @@ function scoreParaNivel(score: number): NivelCrise {
   return "baixo";
 }
 
-const COR_NIVEL: Record<string, string> = {
-  amarelo: "#EAB308",
-  laranja: "#EA580C",
-  vermelho: "#EF4444",
-};
-const ICONE_FRENTE: Record<string, string> = {
-  sol: "☀️",
-  nuvem: "☁️",
-  chuva: "🌧️",
-  tempestade: "⛈️",
+// Título e rótulo do diagnóstico variam conforme o período selecionado.
+function periodoTitulo(dias: number): string {
+  if (dias <= 1) return "Temperatura do dia";
+  if (dias <= 7) return "Temperatura da semana";
+  return "Temperatura do mês";
+}
+function periodoClima(dias: number): string {
+  if (dias <= 1) return "análise do clima do dia";
+  if (dias <= 7) return "análise do clima da semana";
+  return "análise do clima do mês";
+}
+
+// Frente de instabilidade → classe de clima usada pelo WeatherIcon.
+const FRENTE_TO_CLS: Record<string, string> = {
+  sol: "sunny",
+  nuvem: "cloudy",
+  chuva: "rain",
+  tempestade: "storm",
 };
 
-function DiagnosticoCard({ briefing }: { briefing: Briefing }) {
+// Ícone de clima minimalista (linha, estilo sidebar) — substitui os emojis.
+function WeatherIcon({ cls, size = 64, color = "currentColor", strokeWidth = 1.5 }: {
+  cls: string; size?: number; color?: string; strokeWidth?: number;
+}) {
+  const p = {
+    width: size, height: size, viewBox: "0 0 24 24", fill: "none",
+    stroke: color, strokeWidth, strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
+  };
+  switch (cls) {
+    case "sunny":
+      return (
+        <svg {...p}>
+          <circle cx="12" cy="12" r="4.2" />
+          <path d="M12 2v2.2M12 19.8V22M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2 12h2.2M19.8 12H22M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" />
+        </svg>
+      );
+    case "partly":
+      return (
+        <svg {...p}>
+          <circle cx="8.5" cy="7.5" r="3" />
+          <path d="M8.5 1.8v1.4M2.9 7.5H1.5M3.9 2.9l1 1M14.1 2.9l-1 1" />
+          <path d="M7 19h9.2a3.4 3.4 0 0 0 .3-6.8A5 5 0 0 0 7 13.4 3.3 3.3 0 0 0 7 19z" />
+        </svg>
+      );
+    case "cloudy":
+      return (
+        <svg {...p}>
+          <path d="M7 18h9.2a4 4 0 0 0 .3-8A5.5 5.5 0 0 0 6 11.6 3.8 3.8 0 0 0 7 18z" />
+        </svg>
+      );
+    case "rain":
+      return (
+        <svg {...p}>
+          <path d="M7 14h9.2a4 4 0 0 0 .3-8A5.5 5.5 0 0 0 6 7.6 3.8 3.8 0 0 0 7 14z" />
+          <path d="M8.5 17.5l-1 3M12 17.5l-1 3M15.5 17.5l-1 3" />
+        </svg>
+      );
+    case "storm":
+      return (
+        <svg {...p}>
+          <path d="M7 14h9.2a4 4 0 0 0 .3-8A5.5 5.5 0 0 0 6 7.6 3.8 3.8 0 0 0 7 14z" />
+          <path d="M12.5 15l-2.5 4h3l-2.5 4.5" />
+        </svg>
+      );
+    default: // severe
+      return (
+        <svg {...p}>
+          <path d="M7 13h9.2a4 4 0 0 0 .3-8A5.5 5.5 0 0 0 6 6.6 3.8 3.8 0 0 0 7 13z" />
+          <path d="M8 16.5l-1 3M16 16.5l-1 3M12.5 14l-2 3.5h3L11 21" />
+        </svg>
+      );
+  }
+}
+
+// Ícones minimalistas inline (linha) usados nos chips do hero.
+function IconPosts({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+      <line x1="5" y1="20" x2="5" y2="13" /><line x1="12" y1="20" x2="12" y2="7" /><line x1="19" y1="20" x2="19" y2="10" />
+    </svg>
+  );
+}
+function IconVozes({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number }) {
   const nivel = (briefing.nivel_crise as NivelCrise) ?? "baixo";
   const cor = NIVEL_COLOR[nivel];
   return (
@@ -52,7 +130,7 @@ function DiagnosticoCard({ briefing }: { briefing: Briefing }) {
         >
           {NIVEL_LABEL[nivel]}
         </span>
-        <span className="text-xs text-txt-3">diagnóstico do dia · {briefing.dia}</span>
+        <span className="text-xs text-txt-3">{periodoClima(dias)} · {briefing.dia}</span>
       </div>
       <p className="text-[15px] font-semibold leading-relaxed text-txt-1">{briefing.diagnostico}</p>
     </div>
@@ -128,85 +206,6 @@ function AcoesImediatas({ planos }: { planos: CrisisPlan[] }) {
   );
 }
 
-function AlertaSCCT({ alerta, nivelCor }: { alerta: BoletimAlerta; nivelCor: string | null }) {
-  const [aberto, setAberto] = useState(false);
-  const cor = COR_NIVEL[nivelCor ?? "laranja"] ?? COR_NIVEL.laranja;
-  const { scct } = alerta;
-  const tema = temaDoMotivo(alerta);
-  return (
-    <div
-      className="rounded-[28px] border bg-bg-1 p-6"
-      style={{ borderColor: cor, borderWidth: 1.5 }}
-    >
-      {/* Linha de topo: ícone de alerta + badges de classificação */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-lg" style={{ color: cor }}>⚠</span>
-          <span className="text-xs font-bold text-txt-3">Atenção</span>
-        </div>
-        <span
-          className="rounded-full px-3 py-1 text-xs font-bold"
-          style={{ background: `${cor}22`, color: cor }}
-        >
-          {scct.rotulo_cluster} · {scct.rotulo_responsabilidade}
-        </span>
-      </div>
-
-      {/* Tema em alta — destaque principal */}
-      <div className="mt-4">
-        <div className="mt-1 text-xl font-extrabold text-txt-1">{tema}</div>
-      </div>
-
-      {/* Por que está em alta */}
-      <div className="mt-4">
-        <div className="text-[11px] font-bold text-txt-3">Por que preocupa</div>
-        <p className="mt-1 text-sm leading-relaxed text-txt-2">{alerta.motivo}</p>
-      </div>
-
-      {/* Recomendação */}
-      <div className="mt-4 border-t border-line pt-4">
-        <div className="text-[11px] font-bold text-txt-3">Recomendação</div>
-        <p className="mt-1 text-sm font-medium leading-relaxed text-txt-1">
-          {alerta.recomendacao_irt}
-        </p>
-
-        {aberto && alerta.por_que_funciona && (
-          <p className="mt-2 text-sm leading-relaxed text-txt-2">
-            <span className="font-bold">Por que funciona: </span>
-            {alerta.por_que_funciona}
-          </p>
-        )}
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          {alerta.url_post && (
-            <a
-              href={alerta.url_post}
-              target="_blank"
-              rel="noreferrer"
-              className="glass-btn rounded-full px-4 py-1.5 text-sm font-semibold text-txt-1"
-            >
-              Ver post ↗
-            </a>
-          )}
-          {alerta.por_que_funciona && (
-            <button
-              onClick={() => setAberto((v) => !v)}
-              className="glass-btn rounded-full px-4 py-1.5 text-sm font-semibold text-txt-1"
-            >
-              {aberto ? "Ocultar detalhe" : "Por que funciona"}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function temaDoMotivo(alerta: BoletimAlerta): string {
-  const m = alerta.motivo.match(/"([^"]+)"/);
-  return m ? m[1] : alerta.scct.rotulo_cluster;
-}
-
 function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
   if (!frentes.length) return null;
   return (
@@ -221,7 +220,7 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
           return (
             <div key={f.tema} className="flex items-center justify-between py-1 text-sm">
               <span className="flex items-center gap-2 text-txt-1">
-                <span>{ICONE_FRENTE[f.icone] ?? "☁️"}</span>
+                <span className="text-txt-3"><WeatherIcon cls={FRENTE_TO_CLS[f.icone] ?? "cloudy"} size={18} strokeWidth={1.6} /></span>
                 {f.tema}
               </span>
               <span
@@ -366,7 +365,7 @@ export function ClimaPage() {
   if (view.vazio)
     return (
       <div className="p-5">
-        <h1 className="text-2xl font-extrabold">Visão da Gestão</h1>
+        <h1 className="text-2xl font-extrabold">{periodoTitulo(dias)}</h1>
         <div className="mt-4 rounded-[28px] border border-line bg-bg-1 p-6 text-txt-2">
           Sem dados no período. Rode o AGORA para popular.
         </div>
@@ -383,7 +382,7 @@ export function ClimaPage() {
     <div className="space-y-4 p-5">
       <div className="reveal reveal-1 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Visão da Gestão</h1>
+          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">{periodoTitulo(dias)}</h1>
           <p className="text-base text-txt-2">Alagoinhas/BA · imagem do prefeito e da prefeitura</p>
         </div>
         <div className="flex rounded-full p-1 glass-btn">
@@ -428,8 +427,8 @@ export function ClimaPage() {
             </div>
 
             <div className="mt-5 flex items-center gap-6">
-              <div className="text-[92px] leading-none" style={{ filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.22))" }}>
-                {wx.icon}
+              <div style={{ filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.22))" }}>
+                <WeatherIcon cls={wx.cls} size={88} color="#FFFFFF" strokeWidth={1.4} />
               </div>
               <div>
                 <div className="flex items-end gap-1">
@@ -447,16 +446,16 @@ export function ClimaPage() {
 
             <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
               <span
-                className="rounded-full px-3 py-1.5 text-sm font-bold"
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold"
                 style={{ background: "rgba(255,255,255,0.16)", color: "#FFFFFF", backdropFilter: "blur(6px)" }}
               >
-                📊 {fmtInt(view.posts)} publicações analisadas
+                <IconPosts /> {fmtInt(view.posts)} publicações analisadas
               </span>
               <span
-                className="rounded-full px-3 py-1.5 text-sm font-bold"
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold"
                 style={{ background: "rgba(255,255,255,0.16)", color: "#FFFFFF", backdropFilter: "blur(6px)" }}
               >
-                💬 {fmtInt(view.comentarios)} vozes ouvidas
+                <IconVozes /> {fmtInt(view.comentarios)} vozes ouvidas
               </span>
             </div>
           </div>
@@ -486,7 +485,12 @@ export function ClimaPage() {
               className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold"
               style={{ background: "#BEDB1D", color: "#1A2400" }}
             >
-              {amostra.emoji} {amostra.label}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                <line x1="6" y1="20" x2="6" y2="15" />
+                <line x1="12" y1="20" x2="12" y2={amostra.nivel >= 2 ? "9" : "13"} style={{ opacity: amostra.nivel >= 1 ? 1 : 0.3 }} />
+                <line x1="18" y1="20" x2="18" y2="5" style={{ opacity: amostra.nivel >= 3 ? 1 : 0.3 }} />
+              </svg>
+              {amostra.label}
             </div>
 
             <div className="mt-auto pt-6">
@@ -503,11 +507,7 @@ export function ClimaPage() {
         </div>
       </div>
 
-      {briefing && <DiagnosticoCard briefing={briefing} />}
-
-      {boletim?.alerta_ativo && (
-        <AlertaSCCT alerta={boletim.alerta_ativo} nivelCor={boletim.nivel_cor} />
-      )}
+      {briefing && <DiagnosticoCard briefing={briefing} dias={dias} />}
 
       {briefing?.alertas?.length ? (
         <TemasEmCrise alertas={briefing.alertas} />
