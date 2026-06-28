@@ -261,12 +261,18 @@ export default function App() {
               className="glass-btn flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-txt-2 hover:text-txt-1"
               title="Sair da conta"
             >
-              <span className="text-xs">⎋</span> Sair
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Sair
             </button>
           )}
           <div className="px-2">
-            <div className="text-[11px] font-semibold text-txt-2">
-              {userEmail ? `👤 ${userEmail.split("@")[0]}` : `${wx.icon} ${wx.label}`}
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-txt-2">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="3.2" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
+              </svg>
+              {userEmail ? userEmail.split("@")[0] : wx.label}
             </div>
             <div className="mt-0.5 text-[10px] tracking-wide text-txt-3">
               {fetching ? "atualizando…" : horaAtualizado ? `Atualizado às ${horaAtualizado}` : "Conectado ao Postgres"}
