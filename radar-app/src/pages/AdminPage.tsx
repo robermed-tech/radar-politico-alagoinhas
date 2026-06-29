@@ -202,12 +202,31 @@ function KeywordsSection() {
   );
 }
 
+const FILTRO_OPTS = [
+  { value: "governo",  label: "Governo" },
+  { value: "oposicao", label: "Oposição" },
+  { value: "imprensa", label: "Imprensa" },
+];
+
+const FILTRO_BADGE: Record<string, string> = {
+  governo:  "rgba(22,163,74,0.12)",
+  oposicao: "rgba(239,68,68,0.12)",
+  imprensa: "rgba(99,102,241,0.12)",
+};
+const FILTRO_COLOR: Record<string, string> = {
+  governo:  "#16A34A",
+  oposicao: "#EF4444",
+  imprensa: "#6366F1",
+};
+
 // ── Fontes monitoradas ───────────────────────────────────────
 function SourcesSection() {
   const qc = useQueryClient();
   const { data: sources } = useQuery({ queryKey: ["admin-sources"], queryFn: fetchSources });
   const [platform, setPlatform] = useState("instagram");
   const [handle, setHandle] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [filtro, setFiltro] = useState("governo");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin-sources"] });
 
@@ -217,9 +236,16 @@ function SourcesSection() {
     if (!err) refresh();
   }
 
+  function adicionar() {
+    if (!handle.trim()) return;
+    run(() => addSource(platform, handle, categoria || handle.trim(), filtro), "✔ Adicionada");
+    setHandle("");
+    setCategoria("");
+  }
+
   return (
     <Card title="Fontes monitoradas">
-      <div className="flex gap-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         <select
           value={platform}
           onChange={(e) => setPlatform(e.target.value)}
@@ -234,24 +260,53 @@ function SourcesSection() {
         <input
           value={handle}
           onChange={(e) => setHandle(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && adicionar()}
           placeholder="@perfil"
-          className="flex-1 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
+          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
         />
+        <input
+          value={categoria}
+          onChange={(e) => setCategoria(e.target.value)}
+          placeholder="Categoria (ex: Prefeito, Imprensa local…)"
+          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
+        />
+        <select
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
+        >
+          {FILTRO_OPTS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+      <div className="mt-2 flex items-center gap-3">
         <button
-          onClick={() => { if (handle.trim()) { run(() => addSource(platform, handle), "✔ Adicionada"); setHandle(""); } }}
+          onClick={adicionar}
           className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:opacity-90"
         >
           Adicionar
         </button>
+        <Feedback msg={msg} />
       </div>
-      <div className="my-3"><Feedback msg={msg} /></div>
-      <div className="space-y-1.5">
+      <div className="mt-3 space-y-1.5">
         {(sources ?? []).map((s) => (
           <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
-            <span className={s.active ? "text-txt-1" : "text-txt-3 line-through"}>
-              <span className="text-txt-3">{s.platform}/</span>{s.handle}
-            </span>
-            <div className="flex items-center gap-3">
+            <div className="min-w-0 flex items-center gap-2">
+              <span
+                className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                style={{ background: FILTRO_BADGE[s.filtro] ?? "rgba(100,100,100,0.1)", color: FILTRO_COLOR[s.filtro] ?? "#888" }}
+              >
+                {FILTRO_OPTS.find(o => o.value === s.filtro)?.label ?? s.filtro}
+              </span>
+              <span className={s.active ? "text-txt-1" : "text-txt-3 line-through"}>
+                <span className="text-txt-3">{s.platform}/</span>{s.handle}
+                {s.categoria && s.categoria !== s.handle && (
+                  <span className="ml-1 text-txt-3">· {s.categoria}</span>
+                )}
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
               <button
                 onClick={() => run(() => toggleSource(s.id, !s.active), "✔ Atualizada")}
                 className="text-xs font-semibold text-txt-3 hover:text-txt-1"

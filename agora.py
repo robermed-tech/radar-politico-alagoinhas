@@ -88,20 +88,26 @@ def _carregar_perfis_do_banco():
     try:
         r = requests.get(
             f"{url}/rest/v1/monitored_sources",
-            params={"platform": "eq.instagram", "active": "eq.true", "select": "handle"},
+            params={"platform": "eq.instagram", "active": "eq.true",
+                    "select": "handle,categoria,filtro"},
             headers={"apikey": key, "Authorization": f"Bearer {key}"},
             timeout=10,
         )
         if r.status_code != 200:
             return _PERFIS_FALLBACK
-        handles = [row["handle"].lstrip("@").lower() for row in r.json()]
-        if not handles:
+        rows = r.json()
+        if not rows:
             return _PERFIS_FALLBACK
-        # Monta PERFIS: usa metadados conhecidos; novos handles recebem default governo
-        return {
-            h: _PERFIS_FALLBACK.get(h, {"categoria": "Monitorado", "filtro": "governo"})
-            for h in handles
-        }
+        perfis = {}
+        for row in rows:
+            handle = row["handle"].lstrip("@").lower()
+            # Usa categoria/filtro do banco se presentes; senão tenta fallback; senão default
+            fallback = _PERFIS_FALLBACK.get(handle, {"categoria": "Monitorado", "filtro": "governo"})
+            perfis[handle] = {
+                "categoria": row.get("categoria") or fallback["categoria"],
+                "filtro":    row.get("filtro")    or fallback["filtro"],
+            }
+        return perfis
     except Exception:
         return _PERFIS_FALLBACK
 
