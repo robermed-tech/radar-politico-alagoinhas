@@ -427,7 +427,7 @@ def _normalizar_posts(resultados_brutos):
             "categoria":     categoria,
             "data_post":     data_post,
             "curtidas":      int(extrair(p, "likesCount", "likes", "like_count", padrao=0)),
-            "total_coments": int(extrair(p, "commentsCount", "comments", "comment_count", padrao=0)),
+            "comentarios_total": int(extrair(p, "commentsCount", "comments", "comment_count", padrao=0)),
             "caption":       caption[:500],
             "shortcode":     extrair(p, "shortCode", "shortcode", "code", padrao=""),
             "_media_pk":     p.get("_media_pk", ""),  # Instagrapi — usado na coleta de comentários
@@ -535,7 +535,7 @@ def coletar_comentarios(posts):
     Roda Instagrapi E Apify e faz merge por id de comentário — nenhuma fonte
     única interrompe o fluxo.
     """
-    posts_com_coments = [p for p in posts if p["total_coments"] > 0]
+    posts_com_coments = [p for p in posts if p["comentarios_total"] > 0]
     if not posts_com_coments:
         log("  Nenhum post com comentários para coletar")
         return {p["url"]: [] for p in posts}
@@ -941,7 +941,7 @@ POST PARA ANALISE
 Perfil: @{post["autor"]} ({post["categoria"]}) — LADO POLITICO: {lado}
 Data: {post["data_post"]}
 URL: {post["url"]}
-Curtidas: {post["curtidas"]} | Comentarios totais: {post["total_coments"]}
+Curtidas: {post["curtidas"]} | Comentarios totais: {post["comentarios_total"]}
 Caption: {post["caption"] or "(sem legenda)"}
 
 {coments_txt if coments_txt else "Nenhum comentario coletado neste post."}
@@ -1175,7 +1175,7 @@ def deve_disparar_alerta(score_risco: int, post: dict) -> bool:
     if OVERRIDE_EXIGE_TRACAO:
         crescendo  = post.get("tendencia", "") == "crescendo"
         engaj_alto = (int(post.get("curtidas", 0) or 0) > 300
-                      or int(post.get("total_coments", 0) or 0) > 100)
+                      or int(post.get("comentarios_total", 0) or 0) > 100)
         if not crescendo and not engaj_alto:
             return False
     return True
@@ -1244,7 +1244,7 @@ def gravar_no_sheets(planilha, posts_analisados, comentarios_por_post):
             continue
         linha = [
             p.get("url", ""), p.get("data_post", ""), p.get("autor", ""),
-            p.get("categoria", ""), p.get("curtidas", 0), p.get("total_coments", 0),
+            p.get("categoria", ""), p.get("curtidas", 0), p.get("comentarios_total", 0),
             p.get("total_cidadaos", 0), p.get("total_politicos", 0),
             p.get("sentimento_post", ""), p.get("sentimento_comentarios", ""),
             p.get("comentarios_pct_pos", 0), p.get("comentarios_pct_neg", 0),
@@ -1311,7 +1311,8 @@ def gravar_no_sheets(planilha, posts_analisados, comentarios_por_post):
 # ==============================================================
 
 def _supabase_upsert(tabela, linhas, on_conflict):
-    """Upsert via PostgREST. Retorna qtd gravada ou 0 em falha/desativado."""
+    """Upsert via PostgREST. Retorna qtd gravada ou 0 em falha/desativado.
+    Faz 1 retry após 5s em caso de falha de rede ou status inesperado."""
     if not SUPABASE_URL or not SUPABASE_KEY or not linhas:
         return 0
     url = f"{SUPABASE_URL}/rest/v1/{tabela}?on_conflict={on_conflict}"
@@ -1321,15 +1322,19 @@ def _supabase_upsert(tabela, linhas, on_conflict):
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=minimal",
     }
-    try:
-        r = requests.post(url, headers=headers, data=json.dumps(linhas), timeout=30)
-        if r.status_code in (200, 201, 204):
-            return len(linhas)
-        log(f"    Supabase {tabela}: HTTP {r.status_code} {r.text[:160]}")
-        return 0
-    except Exception as e:
-        log(f"    Supabase {tabela}: erro {e}")
-        return 0
+    for tentativa in range(2):
+        try:
+            r = requests.post(url, headers=headers, data=json.dumps(linhas), timeout=30)
+            if r.status_code in (200, 201, 204):
+                return len(linhas)
+            log(f"    Supabase {tabela}: HTTP {r.status_code} {r.text[:160]}"
+                + (" — retentando" if tentativa == 0 else " — desistindo"))
+        except Exception as e:
+            log(f"    Supabase {tabela}: erro {e}"
+                + (" — retentando" if tentativa == 0 else " — desistindo"))
+        if tentativa == 0:
+            time.sleep(5)
+    return 0
 
 def _supabase_patch(tabela, filtro, payload):
     """PATCH (update) em massa via PostgREST. Ex: filtro='tenant=eq.alagoinhas'."""
@@ -1397,7 +1402,7 @@ def gravar_no_supabase(posts_analisados, comentarios_por_post):
             "data_post": p.get("data_post", ""), "autor": p.get("autor", ""),
             "categoria": p.get("categoria", ""),
             "curtidas": int(p.get("curtidas", 0) or 0),
-            "comentarios_total": int(p.get("total_coments", 0) or 0),
+            "comentarios_total": int(p.get("comentarios_total", 0) or 0),
             "total_cidadaos": int(p.get("total_cidadaos", 0) or 0),
             "total_politicos": int(p.get("total_politicos", 0) or 0),
             "sentimento_post": p.get("sentimento_post", ""),
@@ -1466,7 +1471,7 @@ def calc_iad(posts):
     """Indice de Aprovacao Digital (0-100) — sentimento de comentarios ponderado por volume."""
     sPos = sNeg = sNeu = 0.0
     for p in posts:
-        n = int(p.get("total_coments", 0) or p.get("comentarios_total", 0) or 0)
+        n = int(p.get("comentarios_total", 0) or 0)
         peso = 1 + math.log10(1 + n)
         pPos = float(p.get("comentarios_pct_pos", 0) or 0) / 100
         pNeg = float(p.get("comentarios_pct_neg", 0) or 0) / 100
@@ -1483,7 +1488,7 @@ def calc_ica(posts):
     """Indice de Confianca da Amostra (0-100)."""
     if not posts:
         return 0.0
-    nComents = sum(int(p.get("total_coments", 0) or 0) for p in posts)
+    nComents = sum(int(p.get("comentarios_total", 0) or 0) for p in posts)
     fVol = min(1.0, math.log10(1 + nComents) / math.log10(1 + 500))
     perfis = len(set(p.get("autor", "") for p in posts))
     fFontes = min(1.0, perfis / 8)
@@ -1544,7 +1549,7 @@ def gravar_daily_metrics(posts_analisados):
             "iad": round(iad, 1), "ica": round(ica, 1), "risco": round(risco, 1),
             "nivel_crise": nivel,
             "volume_posts": len(ps),
-            "volume_coments": sum(int(p.get("total_coments", 0) or 0) for p in ps),
+            "volume_coments": sum(int(p.get("comentarios_total", 0) or 0) for p in ps),
             "pct_pos": round(pos / tot * 100), "pct_neg": round(neg / tot * 100),
             "pct_neu": round(neu / tot * 100),
         })
@@ -1937,7 +1942,7 @@ def gravar_influencers(posts_analisados, comentarios_por_post):
         })
         d["posts"]    += 1
         d["curtidas"] += int(p.get("curtidas", 0) or 0)
-        d["coments"]  += int(p.get("total_coments", 0) or p.get("comentarios_total", 0) or 0)
+        d["coments"]  += int(p.get("comentarios_total", 0) or 0)
         s = _sent(p)
         if s == "positivo": d["pos"] += 1
         elif s == "negativo": d["neg"] += 1
@@ -2296,7 +2301,7 @@ def gravar_narratives(posts_analisados, comentarios_por_post):
         c["posts"].append(p)
         c["perfis"].add(p.get("autor", ""))
         c["amplificacao"] += int(p.get("curtidas", 0) or 0)
-        c["vol_coments"]  += int(p.get("total_coments", 0) or p.get("comentarios_total", 0) or 0)
+        c["vol_coments"]  += int(p.get("comentarios_total", 0) or 0)
 
         q = (p.get("queixa_dominante") or "").strip()
         e = (p.get("elogio_dominante") or "").strip()
@@ -2431,7 +2436,7 @@ def gravar_daily_themes(posts_analisados):
             "pos": 0, "neg": 0, "neu": 0, "risco_sum": 0,
         })
         d["posts"]    += 1
-        d["coments"]  += int(p.get("total_coments", 0) or p.get("comentarios_total", 0) or 0)
+        d["coments"]  += int(p.get("comentarios_total", 0) or 0)
         d["curtidas"] += int(p.get("curtidas", 0) or 0)
         d["risco_sum"] += int(p.get("score_risco", 0) or 0)
         s = _sent(p)
@@ -2737,7 +2742,7 @@ def _origem_dominante(posts_analisados):
     por_cat = {}
     for p in posts_analisados:
         cat = p.get("categoria", "Outros")
-        por_cat[cat] = por_cat.get(cat, 0) + int(p.get("total_coments", 0) or 0)
+        por_cat[cat] = por_cat.get(cat, 0) + int(p.get("comentarios_total", 0) or 0)
     total = sum(por_cat.values()) or 1
     cat, n = max(por_cat.items(), key=lambda kv: kv[1]) if por_cat else ("-", 0)
     return cat, round(n / total * 100)
@@ -2828,7 +2833,7 @@ def main():
     log(f"  Conectado: {planilha.title}")
 
     # Carrega URLs ja analisados com contagem de comentarios (para filtrar alertas repetidos)
-    existentes_radar = {}  # url -> total_coments gravados
+    existentes_radar = {}  # url -> comentarios_total gravados
     try:
         aba_r = garantir_aba(planilha, "Radar", CABECALHO_RADAR)
         for r in aba_r.get_all_records():
@@ -2877,11 +2882,11 @@ def main():
         p for p in posts_analisados
         if p.get("url") in existentes_radar
         and p.get("score_risco", 0) >= SCORE_RISCO_ALERTA
-        and (p.get("total_coments", 0) - existentes_radar.get(p.get("url", ""), 0)) >= 5
+        and (p.get("comentarios_total", 0) - existentes_radar.get(p.get("url", ""), 0)) >= 5
     ]
     alertas = disparar_alertas(posts_novos)
     for p in posts_com_update:
-        delta = p.get("total_coments", 0) - existentes_radar.get(p.get("url", ""), 0)
+        delta = p.get("comentarios_total", 0) - existentes_radar.get(p.get("url", ""), 0)
         enviar_update_coments(p, delta)
     try:
         atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
@@ -3023,14 +3028,14 @@ def reprocessar():
             "categoria":     p.get("categoria", ""),
             "data_post":     p.get("data_post", ""),
             "curtidas":      int(p.get("curtidas", 0) or 0),
-            "total_coments": int(p.get("comentarios_total", 0) or 0),
+            "comentarios_total": int(p.get("comentarios_total", 0) or 0),
             "caption":       p.get("caption", "") or "",
         }
         for p in rows
     ]
 
     print(f"[reprocessar] {len(posts)} posts. Analisando com Claude…")
-    posts_analisados = analisar_com_agora(posts, {}, {})
+    posts_analisados = analisar_com_agora(posts, {}, "")
 
     print(f"[reprocessar] {len(posts_analisados)} posts analisados. Gravando no Supabase (upsert)…")
     gravar_no_supabase(posts_analisados, {})
