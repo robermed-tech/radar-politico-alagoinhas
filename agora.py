@@ -2908,9 +2908,67 @@ def main_multi_tenant():
             log(f"  ERRO no tenant {tid}: {e}")
 
 
+def teste_filtro():
+    """Busca os últimos 5 posts do dataset Apify mais recente e testa o filtro de relevância."""
+    import sys as _sys
+
+    if not APIFY_TOKEN:
+        print("[teste-filtro] APIFY_API_TOKEN não configurado.")
+        _sys.exit(1)
+
+    # Keywords em uso
+    if _keywords_banco:
+        print(f"[keywords] Supabase: {len(_keywords_banco)} keywords → {_keywords_banco}")
+    else:
+        print(f"[keywords] Fallback — governo:{KEYWORDS_GOVERNO} | oposicao:{KEYWORDS_OPOSICAO} | imprensa:{KEYWORDS_IMPRENSA}")
+
+    # Busca o run mais recente do actor de posts
+    print(f"\n[teste-filtro] Buscando último run do actor {ACTOR_POSTS}…")
+    url = f"{APIFY_BASE}/acts/{ACTOR_POSTS}/runs/last"
+    r = requests.get(url, params={"token": APIFY_TOKEN, "status": "SUCCEEDED"}, timeout=15)
+    if r.status_code != 200:
+        print(f"[teste-filtro] Erro ao buscar último run: {r.status_code} {r.text[:200]}")
+        _sys.exit(1)
+
+    dataset_id = r.json().get("data", {}).get("defaultDatasetId")
+    if not dataset_id:
+        print("[teste-filtro] Nenhum dataset encontrado no último run.")
+        _sys.exit(1)
+
+    print(f"[teste-filtro] Dataset: {dataset_id}")
+    posts = apify_buscar_resultados(dataset_id, limit=5)
+    if not posts:
+        print("[teste-filtro] Dataset vazio.")
+        _sys.exit(1)
+
+    print(f"\n[teste-filtro] {len(posts)} posts brutos — testando filtro de relevância:\n")
+    for i, p in enumerate(posts, 1):
+        handle   = extrair(p, "ownerUsername", "username", "owner", padrao="(desconhecido)").lower()
+        caption  = extrair_caption(extrair(p, "caption", "text", "description"))
+        info     = PERFIS.get(handle, {"categoria": "Desconhecido", "filtro": "governo"})
+        filtro   = info["filtro"]
+
+        if filtro == "governo":
+            passou = True
+            motivo = "governo — sem filtro de relevância aplicado"
+        else:
+            kws = KEYWORDS_OPOSICAO if filtro == "oposicao" else KEYWORDS_IMPRENSA
+            match = next((kw for kw in kws if kw in caption.lower()), None)
+            passou = match is not None
+            motivo = f"keyword '{match}' encontrada" if passou else f"nenhuma keyword bateu (lista={kws})"
+
+        status = "✔ PASSOU" if passou else "✘ DESCARTADO"
+        print(f"  [{i}] @{handle} ({filtro}) → {status}")
+        print(f"       motivo : {motivo}")
+        print(f"       caption: {caption[:300]!r}")
+        print()
+
+
 if __name__ == "__main__":
     import sys
     if "--multi-tenant" in sys.argv:
         main_multi_tenant()
+    elif "--teste-filtro" in sys.argv:
+        teste_filtro()
     else:
         main()
