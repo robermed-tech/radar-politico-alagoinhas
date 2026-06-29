@@ -2942,6 +2942,7 @@ def teste_filtro():
         _sys.exit(1)
 
     print(f"\n[teste-filtro] {len(posts)} posts brutos — testando filtro de relevância:\n")
+    print(f"[teste-filtro] Campos do 1º item: {list(posts[0].keys()) if posts else '[]'}\n")
     for i, p in enumerate(posts, 1):
         handle   = extrair(p, "ownerUsername", "username", "owner", padrao="(desconhecido)").lower()
         caption  = extrair_caption(extrair(p, "caption", "text", "description"))
