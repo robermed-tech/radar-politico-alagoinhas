@@ -462,8 +462,7 @@ def coletar_posts():
     if APIFY_TOKEN:
         log("=== MODULO 1b - Coletando posts via Apify ===")
         try:
-            profile_urls = [f"https://www.instagram.com/{h}/" for h in perfis]
-            input_data   = {"directUrls": profile_urls, "resultsLimit": MAX_POSTS_POR_PERFIL}
+            input_data = {"username": perfis, "resultsLimit": MAX_POSTS_POR_PERFIL}
             run_id = apify_iniciar_run(ACTOR_POSTS, input_data)
             if run_id:
                 dataset_id = apify_aguardar_run(run_id, timeout=300)
