@@ -2960,11 +2960,62 @@ def teste_filtro():
         print()
 
 
+def reprocessar():
+    """Busca os últimos 20 posts do último run Apify e reenvia ao Supabase (upsert).
+    Ignora deduplicação: URLs já existentes no Supabase são atualizadas.
+    Não grava no Google Sheets para evitar duplicatas e cota de escrita."""
+    if not APIFY_TOKEN:
+        print("[reprocessar] APIFY_API_TOKEN não configurado.")
+        return
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("[reprocessar] SUPABASE_URL / SUPABASE_SERVICE_KEY não configurados.")
+        return
+
+    print("[reprocessar] Buscando último run SUCCEEDED do actor de posts…")
+    r = requests.get(
+        f"{APIFY_BASE}/acts/{ACTOR_POSTS}/runs/last",
+        params={"token": APIFY_TOKEN, "status": "SUCCEEDED"},
+        timeout=15,
+    )
+    if r.status_code != 200:
+        print(f"[reprocessar] Erro ao buscar último run: {r.status_code} {r.text[:200]}")
+        return
+    data = r.json().get("data", {})
+    dataset_id = data.get("defaultDatasetId")
+    if not dataset_id:
+        print("[reprocessar] Nenhum dataset encontrado no último run.")
+        return
+
+    print(f"[reprocessar] Dataset: {dataset_id} — buscando 20 itens…")
+    brutos = apify_buscar_resultados(dataset_id, limit=20)
+    if not brutos:
+        print("[reprocessar] Dataset vazio ou erro ao buscar itens.")
+        return
+
+    posts = _normalizar_posts(brutos)
+    if not posts:
+        print("[reprocessar] Nenhum post válido após normalização.")
+        return
+
+    print(f"[reprocessar] {len(posts)} posts normalizados. Coletando comentários…")
+    comentarios_por_post = coletar_comentarios(posts)
+
+    print("[reprocessar] Analisando com Claude…")
+    posts_analisados = analisar_com_agora(posts, comentarios_por_post, {})
+
+    print(f"[reprocessar] {len(posts_analisados)} posts analisados. Gravando no Supabase (upsert)…")
+    gravar_no_supabase(posts_analisados, comentarios_por_post)
+
+    print("[reprocessar] Concluído.")
+
+
 if __name__ == "__main__":
     import sys
     if "--multi-tenant" in sys.argv:
         main_multi_tenant()
     elif "--teste-filtro" in sys.argv:
         teste_filtro()
+    elif "--reprocessar" in sys.argv:
+        reprocessar()
     else:
         main()
