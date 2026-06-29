@@ -111,6 +111,8 @@ export interface Source {
   tenant_id: string;
   platform: string;
   handle: string;
+  categoria: string;
+  filtro: string;
   active: boolean;
 }
 
@@ -123,10 +125,15 @@ export async function fetchSources(): Promise<Source[]> {
   return (data as Source[]) ?? [];
 }
 
-export async function addSource(platform: string, handle: string): Promise<string | null> {
+export async function addSource(
+  platform: string,
+  handle: string,
+  categoria: string,
+  filtro: string,
+): Promise<string | null> {
   const { error } = await supabase
     .from("monitored_sources")
-    .insert({ tenant_id: TENANT, platform, handle: handle.trim() });
+    .insert({ tenant_id: TENANT, platform, handle: handle.trim(), categoria, filtro });
   return explainError(error);
 }
 
