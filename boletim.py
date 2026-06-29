@@ -84,13 +84,13 @@ def icone_frente(score: float) -> str:
     return "tempestade"
 
 
-def _previsao(serie_7d: list[float]) -> str:
+def _previsao(serie_7d: list[float], limiar: float = LIMIAR_PREVISAO) -> str:
     if not serie_7d or len(serie_7d) < 2:
         return "estavel"
     delta = serie_7d[-1] - serie_7d[-2]
-    if delta >= LIMIAR_PREVISAO:
+    if delta >= limiar:
         return "agravamento"
-    if delta <= -LIMIAR_PREVISAO:
+    if delta <= -limiar:
         return "melhora"
     return "estavel"
 
@@ -112,6 +112,8 @@ def gerar_boletim(
     frentes: list[dict],
     alerta_post: Optional[dict] = None,
     override_resp_min: int = 70,
+    limiar_previsao: float = LIMIAR_PREVISAO,
+    limiar_tempestade_com_alerta: float = LIMIAR_TEMPESTADE_COM_ALERTA,
 ) -> dict:
     """Gera o bloco `boletim` (jsonb). Determinístico e auditável.
 
@@ -143,7 +145,7 @@ def gerar_boletim(
     #   - dia calmo => no mínimo "tempo fechando" (alerta PONTUAL, não sistêmico)
     elevado_por_post = False
     if alerta_post:
-        if _clamp(risco) >= LIMIAR_TEMPESTADE_COM_ALERTA:
+        if _clamp(risco) >= limiar_tempestade_com_alerta:
             if condicao != "tempestade":
                 elevado_por_post = True
             condicao, nivel_cor = "tempestade", "vermelho"
@@ -157,7 +159,7 @@ def gerar_boletim(
         or (frentes_ord[0]["tema"] if frentes_ord else "monitoramento geral")
     )
 
-    previsao = _previsao(serie_7d)
+    previsao = _previsao(serie_7d, limiar=limiar_previsao)
     delta_24h = round(serie_7d[-1] - serie_7d[-2], 1) if len(serie_7d) >= 2 else 0.0
 
     alerta_ativo = None
