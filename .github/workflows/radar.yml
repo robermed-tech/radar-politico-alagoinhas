@@ -6,7 +6,8 @@ on:
     # Rodar radar_agente.py em paralelo duplicava custo (Apify+Claude) e alertas,
     # sem alimentar o dashboard. Mantido só o relatório semanal de sexta — que
     # roda radar_agente.py 1x e gera o relatório. Use "Run workflow" p/ avulso.
-    # - cron: '0 9 * * *'    # 6h BRT  (DESATIVADO — duplicava agora.py)
+    - cron: '0 20 * * *'
+    - cron: '0 9 * * *'
     # - cron: '0 15 * * *'   # 12h BRT (DESATIVADO — duplicava agora.py)
     # - cron: '0 21 * * *'   # 18h BRT (DESATIVADO — duplicava agora.py)
     # - cron: '0 2 * * *'    # 23h BRT (DESATIVADO — duplicava agora.py)
