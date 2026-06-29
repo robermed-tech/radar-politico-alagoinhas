@@ -2909,12 +2909,10 @@ def main_multi_tenant():
 
 
 def teste_filtro():
-    """Busca os últimos 5 posts do dataset Apify mais recente e testa o filtro de relevância."""
-    import sys as _sys
-
-    if not APIFY_TOKEN:
-        print("[teste-filtro] APIFY_API_TOKEN não configurado.")
-        _sys.exit(1)
+    """Busca os últimos 5 posts do Supabase e testa o filtro de relevância."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("[teste-filtro] SUPABASE_URL / SUPABASE_SERVICE_KEY não configurados.")
+        return
 
     # Keywords em uso
     if _keywords_banco:
@@ -2922,32 +2920,29 @@ def teste_filtro():
     else:
         print(f"[keywords] Fallback — governo:{KEYWORDS_GOVERNO} | oposicao:{KEYWORDS_OPOSICAO} | imprensa:{KEYWORDS_IMPRENSA}")
 
-    # Busca o run mais recente do actor de posts
-    print(f"\n[teste-filtro] Buscando último run do actor {ACTOR_POSTS}…")
-    url = f"{APIFY_BASE}/acts/{ACTOR_POSTS}/runs/last"
-    r = requests.get(url, params={"token": APIFY_TOKEN, "status": "SUCCEEDED"}, timeout=15)
+    print("\n[teste-filtro] Buscando últimos 5 posts do Supabase…")
+    r = requests.get(
+        f"{SUPABASE_URL}/rest/v1/posts",
+        params={"tenant": "eq.alagoinhas", "select": "autor,caption,categoria",
+                "order": "data_post.desc", "limit": 5},
+        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+        timeout=10,
+    )
     if r.status_code != 200:
-        print(f"[teste-filtro] Erro ao buscar último run: {r.status_code} {r.text[:200]}")
-        _sys.exit(1)
+        print(f"[teste-filtro] Erro ao buscar posts: {r.status_code} {r.text[:200]}")
+        return
 
-    dataset_id = r.json().get("data", {}).get("defaultDatasetId")
-    if not dataset_id:
-        print("[teste-filtro] Nenhum dataset encontrado no último run.")
-        _sys.exit(1)
-
-    print(f"[teste-filtro] Dataset: {dataset_id}")
-    posts = apify_buscar_resultados(dataset_id, limit=5)
+    posts = r.json()
     if not posts:
-        print("[teste-filtro] Dataset vazio.")
-        _sys.exit(1)
+        print("[teste-filtro] Nenhum post encontrado no Supabase.")
+        return
 
-    print(f"\n[teste-filtro] {len(posts)} posts brutos — testando filtro de relevância:\n")
-    print(f"[teste-filtro] Campos do 1º item: {list(posts[0].keys()) if posts else '[]'}\n")
+    print(f"\n[teste-filtro] {len(posts)} posts — testando filtro de relevância:\n")
     for i, p in enumerate(posts, 1):
-        handle   = extrair(p, "ownerUsername", "username", "owner", padrao="(desconhecido)").lower()
-        caption  = extrair_caption(extrair(p, "caption", "text", "description"))
-        info     = PERFIS.get(handle, {"categoria": "Desconhecido", "filtro": "governo"})
-        filtro   = info["filtro"]
+        handle  = (p.get("autor") or "(desconhecido)").lower()
+        caption = p.get("caption") or ""
+        info    = PERFIS.get(handle, {"categoria": "Desconhecido", "filtro": "governo"})
+        filtro  = info["filtro"]
 
         if filtro == "governo":
             passou = True
