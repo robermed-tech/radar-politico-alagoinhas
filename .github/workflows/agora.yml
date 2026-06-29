@@ -54,16 +54,16 @@ jobs:
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          COUNT=$(curl -sf \
+          STATUS=$(curl -s \
             "$SUPABASE_URL/rest/v1/posts?tenant=eq.alagoinhas&select=url&limit=1" \
             -H "apikey: $SUPABASE_SERVICE_KEY" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
-            -H "Prefer: count=exact" \
             -o /dev/null -w "%{http_code}")
-          if [ "$COUNT" != "200" ]; then
-            echo "::error::Supabase não acessível após run (HTTP $COUNT) — verifique SUPABASE_SERVICE_KEY"
+          if [ "${STATUS:0:1}" != "2" ]; then
+            echo "::error::Supabase não acessível após run (HTTP $STATUS) — verifique SUPABASE_SERVICE_KEY"
             exit 1
           fi
+          echo "Supabase OK (HTTP $STATUS)"
 
       - name: Notifica falha no WhatsApp
         if: failure()
