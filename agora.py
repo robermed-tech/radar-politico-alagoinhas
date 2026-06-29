@@ -136,10 +136,12 @@ def _carregar_keywords_do_banco():
             headers={"apikey": key, "Authorization": f"Bearer {key}"},
             timeout=10,
         )
+        print(f"[keywords-debug] HTTP {r.status_code} | resp: {r.text[:200]}")
         if r.status_code != 200 or not r.json():
             return None
         return [row["keyword"].lower() for row in r.json()]
-    except Exception:
+    except Exception as e:
+        print(f"[keywords-debug] exception: {e}")
         return None
 
 _keywords_banco = _carregar_keywords_do_banco()
