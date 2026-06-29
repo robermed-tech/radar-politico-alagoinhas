@@ -114,12 +114,39 @@ def _carregar_perfis_do_banco():
 PERFIS = _carregar_perfis_do_banco()
 
 # Palavras-chave de relevancia por filtro
-KEYWORDS_GOVERNO  = ["prefeitura", "prefeito", "gustavo", "gestao", "alagoinhas",
-                     "obra", "servico", "municipal", "secretaria", "secom"]
-KEYWORDS_OPOSICAO = ["prefeitura", "prefeito", "gustavo carmo", "gestao municipal",
-                     "alagoinhas", "administracao"]
-KEYWORDS_IMPRENSA = ["prefeitura de alagoinhas", "gustavo carmo", "gestao municipal",
-                     "prefeito de alagoinhas"]
+_KEYWORDS_FALLBACK_GOVERNO  = ["prefeitura", "prefeito", "gustavo", "gestao", "alagoinhas",
+                               "obra", "servico", "municipal", "secretaria", "secom"]
+_KEYWORDS_FALLBACK_OPOSICAO = ["prefeitura", "prefeito", "gustavo carmo", "gestao municipal",
+                               "alagoinhas", "administracao"]
+_KEYWORDS_FALLBACK_IMPRENSA = ["prefeitura de alagoinhas", "gustavo carmo", "gestao municipal",
+                               "prefeito de alagoinhas"]
+
+def _carregar_keywords_do_banco():
+    """Busca keywords ativas de relevance_keywords (lista única para todos os filtros).
+    Fallback por categoria se o banco estiver vazio ou inacessível."""
+    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    if not url or not key:
+        return None
+    try:
+        r = requests.get(
+            f"{url}/rest/v1/relevance_keywords",
+            params={"tenant_id": "eq.alagoinhas", "active": "eq.true", "select": "keyword"},
+            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            timeout=10,
+        )
+        if r.status_code != 200 or not r.json():
+            return None
+        return [row["keyword"].lower() for row in r.json()]
+    except Exception:
+        return None
+
+_keywords_banco = _carregar_keywords_do_banco()
+# Se o banco retornou keywords, todas as categorias usam a mesma lista.
+# Caso contrário, cada categoria usa seu fallback específico.
+KEYWORDS_GOVERNO  = _keywords_banco or _KEYWORDS_FALLBACK_GOVERNO
+KEYWORDS_OPOSICAO = _keywords_banco or _KEYWORDS_FALLBACK_OPOSICAO
+KEYWORDS_IMPRENSA = _keywords_banco or _KEYWORDS_FALLBACK_IMPRENSA
 
 # Score de alerta
 SCORE_IMAGEM_ALERTA = 30
