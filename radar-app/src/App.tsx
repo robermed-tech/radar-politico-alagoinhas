@@ -5,7 +5,7 @@ import { ClimaPage } from "@/pages/ClimaPage"; // landing eager (sem ECharts)
 const AlertasAcoesPage = lazy(() => import("@/pages/AlertasAcoesPage").then((m) => ({ default: m.AlertasAcoesPage })));
 const TemasPage = lazy(() => import("@/pages/TemasPage").then((m) => ({ default: m.TemasPage })));
 const FeedPage = lazy(() => import("@/pages/FeedPage").then((m) => ({ default: m.FeedPage })));
-const SettingsPage = lazy(() => import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const AdminPage = lazy(() => import("@/pages/AdminPage").then((m) => ({ default: m.AdminPage })));
 // Seção avançada — analistas
 const CommandCenter = lazy(() => import("@/pages/CommandCenter").then((m) => ({ default: m.CommandCenter })));
 const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
@@ -15,15 +15,16 @@ import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
 import { calcIAD } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
 import { useThemeStore } from "@/stores/theme";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { signOut, supabase } from "@/lib/auth";
+import { RequireAuth, RequireAdmin } from "@/components/ProtectedRoute";
+import { useAuth } from "@/components/AuthProvider";
+import { signOut } from "@/lib/auth";
 
 type Page =
   | "clima"
   | "actions"
   | "feed"
   | "topics"
-  | "settings"
+  | "admin"
   // avançado
   | "command"
   | "approval"
@@ -66,7 +67,7 @@ const NAV_MAIN: NavItem[] = [
   { id: "approval", label: "Aprovação Detalhada", icon: <NIcoBarChart /> },
   { id: "feed",     label: "O que o povo diz",    icon: <NIcoMessage /> },
   { id: "topics",   label: "Tendências",           icon: <NIcoTrending /> },
-  { id: "settings", label: "Configuração",         icon: <NIcoSliders /> },
+  { id: "admin",    label: "Configuração",         icon: <NIcoSliders /> },
 ];
 
 const NAV_ADVANCED: NavItem[] = [
@@ -112,22 +113,16 @@ function RefreshIcon({ spinning }: { spinning?: boolean }) {
 export default function App() {
   const [page, setPage] = useState<Page>("clima");
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { session, isAdmin } = useAuth();
+  const userEmail = session?.user?.email ?? null;
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
   const qc = useQueryClient();
   const fetching = useIsFetching() > 0;
   const atualizar = () => qc.invalidateQueries();
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUserEmail(data.session?.user?.email ?? null);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
-      setUserEmail(s?.user?.email ?? null);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+  // Itens de menu visíveis conforme o papel (Configuração só p/ admin).
+  const navMain = NAV_MAIN.filter((n) => n.id !== "admin" || isAdmin);
 
   // Aplica tema no <html> + persiste
   useEffect(() => {
@@ -173,7 +168,7 @@ export default function App() {
   );
 
   return (
-    <ProtectedRoute>
+    <RequireAuth>
     <div className="flex h-full">
       <aside
         className="hidden w-56 shrink-0 flex-col border-r border-line bg-bg-1 p-3 md:flex"
@@ -196,7 +191,7 @@ export default function App() {
         </div>
 
         <nav className="flex flex-col gap-1.5">
-          {NAV_MAIN.map((n) => {
+          {navMain.map((n) => {
             const isCurrent = n.id === page;
             return (
               <button
@@ -286,7 +281,7 @@ export default function App() {
         {/* Nav mobile (topo) */}
         <div className="flex items-center gap-1 border-b border-line bg-bg-1 p-2 md:hidden">
           <div className="flex flex-1 gap-1 overflow-x-auto">
-            {[...NAV_MAIN, ...NAV_ADVANCED].map((n) => (
+            {[...navMain, ...NAV_ADVANCED].map((n) => (
               <button
                 key={n.id}
                 onClick={() => setPage(n.id)}
@@ -308,7 +303,7 @@ export default function App() {
             {page === "actions"  && <AlertasAcoesPage />}
             {page === "feed"     && <FeedPage />}
             {page === "topics"   && <TemasPage />}
-            {page === "settings" && <SettingsPage />}
+            {page === "admin"    && <RequireAdmin><AdminPage /></RequireAdmin>}
             {/* Avançado */}
             {page === "command"     && <CommandCenter />}
             {page === "approval"    && <ApprovalPage />}
@@ -318,6 +313,6 @@ export default function App() {
         </main>
       </div>
     </div>
-    </ProtectedRoute>
+    </RequireAuth>
   );
 }

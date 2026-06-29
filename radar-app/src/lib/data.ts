@@ -6,6 +6,8 @@
  * Configure VITE_SCRIPT_URL em .env (veja .env.example).
  */
 
+import { supabase } from "@/lib/auth";
+
 export interface Post {
   url: string;
   data_post: string;
@@ -248,7 +250,8 @@ export interface BoletimAlerta {
 
 export interface BoletimFrente {
   tema: string;
-  score: number;
+  /** Ausente no boletim público (view dashboard_public) — é um score numérico. */
+  score?: number;
   tendencia: string;
   icone: string;
 }
@@ -260,25 +263,30 @@ export interface Boletim {
   frase_resumo: string;
   previsao_24h: string;
   frase_previsao: string;
-  pressao: { valor: number; delta_24h: number; serie_7d: number[] };
-  termometro: Record<string, number>;
-  rajadas: Record<string, unknown>;
+  /** Campos numéricos de score — só presentes para admin (tabela completa). */
+  pressao?: { valor: number; delta_24h: number; serie_7d: number[] };
+  termometro?: Record<string, number>;
+  rajadas?: Record<string, unknown>;
   frentes: BoletimFrente[];
   alerta_ativo: BoletimAlerta | null;
 }
 
-/** Último Boletim Climático (camada SCCT da página Clima). Null se indisponível. */
-export async function fetchBoletim(): Promise<Boletim | null> {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
-  const q =
-    `${SUPABASE_URL}/rest/v1/boletins?tenant=eq.${TENANT}` +
-    `&select=boletim&order=dia.desc&limit=1`;
-  const res = await fetch(q, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  }).catch(() => null);
-  if (!res || !res.ok) return null;
-  const rows = (await res.json()) as { boletim: Boletim }[];
-  return rows[0]?.boletim ?? null;
+/**
+ * Último Boletim Climático, respeitando o papel:
+ *   • admin → tabela `boletins` (boletim completo, com score numérico);
+ *   • usuário comum → view `dashboard_public` (boletim sem score).
+ * Usa o cliente autenticado (JWT da sessão), então o RLS é aplicado de fato.
+ */
+export async function fetchBoletimByRole(isAdmin: boolean): Promise<Boletim | null> {
+  const from = isAdmin ? "boletins" : "dashboard_public";
+  const { data, error } = await supabase
+    .from(from)
+    .select("boletim")
+    .eq("tenant", TENANT)
+    .order("dia", { ascending: false })
+    .limit(1);
+  if (error || !data?.length) return null;
+  return (data[0] as { boletim: Boletim }).boletim ?? null;
 }
 
 export interface Influencer {

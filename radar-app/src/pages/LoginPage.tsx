@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { sendMagicLink } from "@/lib/auth";
+import { signInWithPassword } from "@/lib/auth";
 
 const svgProps = {
   width: 22, height: 22, viewBox: "0 0 24 24", fill: "none",
@@ -37,22 +37,20 @@ const FEATURES = [
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !password) return;
     setLoading(true);
     setError(null);
-    const result = await sendMagicLink(email.trim());
+    const result = await signInWithPassword(email.trim(), password);
     setLoading(false);
-    if (result.error) {
-      setError(result.error);
-    } else {
-      setSent(true);
-    }
+    // Em caso de sucesso, o AuthProvider atualiza a sessão e a guarda
+    // de rota troca para o dashboard automaticamente.
+    if (result.error) setError(result.error);
   }
 
   return (
@@ -123,68 +121,64 @@ export function LoginPage() {
           </div>
 
           <div className="reveal reveal-2 rounded-[28px] border border-line bg-bg-1 p-8">
-            {sent ? (
-              <div className="text-center">
-                <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full" style={{ background: "rgba(249,115,22,0.12)" }}>
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3.5 7l8.5 6 8.5-6" />
-                  </svg>
-                </div>
-                <div className="text-lg font-extrabold text-txt-1">Link enviado!</div>
-                <p className="mt-1.5 text-sm text-txt-2">
-                  Verifique <strong className="text-txt-1">{email}</strong>. O link expira em 15 minutos.
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <h2 className="text-[30px] font-extrabold leading-tight tracking-tight">Entrar</h2>
+                <p className="mt-1.5 text-base text-txt-2">
+                  Acesse com seu e-mail e senha institucionais.
                 </p>
-                <button
-                  onClick={() => { setSent(false); setEmail(""); }}
-                  className="mt-4 text-xs font-semibold text-txt-3 underline hover:text-txt-2"
-                >
-                  Usar outro email
-                </button>
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <h2 className="text-[30px] font-extrabold leading-tight tracking-tight">Entrar</h2>
-                  <p className="mt-1.5 text-base text-txt-2">
-                    Informe seu email institucional para receber o link de acesso.
-                  </p>
-                </div>
 
-                <div>
-                  <label className="mb-1.5 block text-sm font-bold uppercase tracking-wide text-txt-3">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="secretario@prefeitura.ba.gov.br"
-                    required
-                    autoFocus
-                    className="w-full rounded-2xl border border-line bg-bg-2 px-4 py-3 text-base outline-none transition focus:border-skycard"
-                  />
-                </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-bold uppercase tracking-wide text-txt-3">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="secretario@prefeitura.ba.gov.br"
+                  required
+                  autoFocus
+                  autoComplete="email"
+                  className="w-full rounded-2xl border border-line bg-bg-2 px-4 py-3 text-base outline-none transition focus:border-skycard"
+                />
+              </div>
 
-                {error && (
-                  <p
-                    className="rounded-2xl px-4 py-2.5 text-xs text-risk-crit"
-                    style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)" }}
-                  >
-                    {error}
-                  </p>
-                )}
+              <div>
+                <label className="mb-1.5 block text-sm font-bold uppercase tracking-wide text-txt-3">
+                  Senha
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                  className="w-full rounded-2xl border border-line bg-bg-2 px-4 py-3 text-base outline-none transition focus:border-skycard"
+                />
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={loading || !email.trim()}
-                  className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-base font-bold text-white transition hover:opacity-90 disabled:opacity-50"
-                  style={{ background: "#0B1220" }}
+              {error && (
+                <p
+                  className="rounded-2xl px-4 py-2.5 text-xs text-risk-crit"
+                  style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)" }}
                 >
-                  {loading ? "Enviando…" : "Receber link de acesso"}
-                  {!loading && <span aria-hidden>→</span>}
-                </button>
-              </form>
-            )}
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !email.trim() || !password}
+                className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-base font-bold text-white transition hover:opacity-90 disabled:opacity-50"
+                style={{ background: "#0B1220" }}
+              >
+                {loading ? "Entrando…" : "Entrar"}
+                {!loading && <span aria-hidden>→</span>}
+              </button>
+            </form>
 
             <p className="mt-6 text-center text-xs text-txt-3">
               Acesso restrito a usuários cadastrados pela prefeitura.

@@ -19,12 +19,41 @@ export async function getUserTenant(userId: string): Promise<string> {
   return (data as string | null) ?? (import.meta.env.VITE_TENANT as string) ?? "alagoinhas";
 }
 
-export async function sendMagicLink(email: string): Promise<{ error: string | null }> {
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.origin },
-  });
-  return { error: error?.message ?? null };
+export type Role = "admin" | "user";
+
+export interface Profile {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  role: Role;
+  tenant_id: string;
+}
+
+/** Login por e-mail + senha (Supabase Auth). */
+export async function signInWithPassword(
+  email: string,
+  password: string
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (!error) return { error: null };
+  // Traduz os erros mais comuns do Supabase Auth.
+  if (/invalid login credentials/i.test(error.message)) {
+    return { error: "E-mail ou senha incorretos." };
+  }
+  if (/email not confirmed/i.test(error.message)) {
+    return { error: "E-mail ainda não confirmado. Procure o administrador." };
+  }
+  return { error: error.message };
+}
+
+/** Carrega o profile (papel + tenant) do usuário logado. Null se não houver. */
+export async function loadProfile(userId: string): Promise<Profile | null> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, role, tenant_id")
+    .eq("id", userId)
+    .single();
+  return (data as Profile | null) ?? null;
 }
 
 export async function signOut(): Promise<void> {

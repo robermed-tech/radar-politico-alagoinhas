@@ -1,0 +1,200 @@
+/**
+ * Camada de acesso da Página Admin.
+ * Tudo passa pelo cliente autenticado (JWT da sessão) → o RLS do Supabase
+ * aplica as regras: SELECT para o tenant, escrita só admin. Erros de RLS
+ * voltam como mensagem "sem permissão".
+ */
+import { supabase, type Role } from "@/lib/auth";
+
+const TENANT = (import.meta.env.VITE_TENANT as string | undefined) || "alagoinhas";
+
+/** Traduz erros do PostgREST/RLS em mensagens claras. */
+export function explainError(err: { code?: string; message?: string } | null): string | null {
+  if (!err) return null;
+  if (err.code === "42501" || /row-level security|permission/i.test(err.message ?? "")) {
+    return "Sem permissão para esta operação.";
+  }
+  return err.message ?? "Erro desconhecido.";
+}
+
+// ── tenant_settings ──────────────────────────────────────────
+export interface ScoreWeights {
+  risco_iad: number;
+  risco_pct_alto: number;
+  risco_velocidade: number;
+  risco_amplificacao: number;
+  risco_ica: number;
+  iad_neutro: number;
+}
+
+export interface ClimateThresholds {
+  faixas: [number, number, string, string | null][];
+  limiar_previsao: number;
+  limiar_tempestade_com_alerta: number;
+  override_resp_min: number;
+}
+
+export interface NotificationConfig {
+  iad_limiar: number;
+  iad_ativo: boolean;
+  neg_limiar: number;
+  neg_ativo: boolean;
+  tema_limiar: number;
+  tema_ativo: boolean;
+  canal_whats: boolean;
+  canal_email: boolean;
+}
+
+export interface TenantSettings {
+  tenant_id: string;
+  score_weights: ScoreWeights;
+  climate_thresholds: ClimateThresholds;
+  notification_config: NotificationConfig;
+}
+
+export async function fetchSettings(): Promise<TenantSettings | null> {
+  const { data } = await supabase
+    .from("tenant_settings")
+    .select("*")
+    .eq("tenant_id", TENANT)
+    .single();
+  return (data as TenantSettings | null) ?? null;
+}
+
+export async function saveSettings(
+  patch: Partial<Pick<TenantSettings, "score_weights" | "climate_thresholds" | "notification_config">>
+): Promise<string | null> {
+  const { error } = await supabase
+    .from("tenant_settings")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("tenant_id", TENANT);
+  return explainError(error);
+}
+
+// ── relevance_keywords ───────────────────────────────────────
+export interface Keyword {
+  id: number;
+  tenant_id: string;
+  keyword: string;
+  active: boolean;
+}
+
+export async function fetchKeywords(): Promise<Keyword[]> {
+  const { data } = await supabase
+    .from("relevance_keywords")
+    .select("*")
+    .eq("tenant_id", TENANT)
+    .order("keyword");
+  return (data as Keyword[]) ?? [];
+}
+
+export async function addKeyword(keyword: string): Promise<string | null> {
+  const { error } = await supabase
+    .from("relevance_keywords")
+    .insert({ tenant_id: TENANT, keyword: keyword.trim() });
+  return explainError(error);
+}
+
+export async function toggleKeyword(id: number, active: boolean): Promise<string | null> {
+  const { error } = await supabase.from("relevance_keywords").update({ active }).eq("id", id);
+  return explainError(error);
+}
+
+export async function deleteKeyword(id: number): Promise<string | null> {
+  const { error } = await supabase.from("relevance_keywords").delete().eq("id", id);
+  return explainError(error);
+}
+
+// ── monitored_sources ────────────────────────────────────────
+export interface Source {
+  id: number;
+  tenant_id: string;
+  platform: string;
+  handle: string;
+  active: boolean;
+}
+
+export async function fetchSources(): Promise<Source[]> {
+  const { data } = await supabase
+    .from("monitored_sources")
+    .select("*")
+    .eq("tenant_id", TENANT)
+    .order("handle");
+  return (data as Source[]) ?? [];
+}
+
+export async function addSource(platform: string, handle: string): Promise<string | null> {
+  const { error } = await supabase
+    .from("monitored_sources")
+    .insert({ tenant_id: TENANT, platform, handle: handle.trim() });
+  return explainError(error);
+}
+
+export async function toggleSource(id: number, active: boolean): Promise<string | null> {
+  const { error } = await supabase.from("monitored_sources").update({ active }).eq("id", id);
+  return explainError(error);
+}
+
+export async function deleteSource(id: number): Promise<string | null> {
+  const { error } = await supabase.from("monitored_sources").delete().eq("id", id);
+  return explainError(error);
+}
+
+// ── profiles (gestão de usuários) ────────────────────────────
+export interface UserRow {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  role: Role;
+  tenant_id: string;
+  created_at: string;
+}
+
+export async function fetchUsers(): Promise<UserRow[]> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("tenant_id", TENANT)
+    .order("created_at");
+  return (data as UserRow[]) ?? [];
+}
+
+/** Convida um usuário via Edge Function (cria com senha + define papel). */
+export async function inviteUser(input: {
+  email: string;
+  password: string;
+  full_name: string;
+  role: Role;
+}): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke("manage-users", {
+    body: { action: "invite", ...input },
+  });
+  if (error) return error.message ?? "Falha ao convidar usuário.";
+  if (data?.error) return data.error as string;
+  return null;
+}
+
+/** Altera o papel de um usuário via Edge Function. */
+export async function setUserRole(user_id: string, role: Role): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke("manage-users", {
+    body: { action: "set_role", user_id, role },
+  });
+  if (error) return error.message ?? "Falha ao alterar papel.";
+  if (data?.error) return data.error as string;
+  return null;
+}
+
+// ── message_log (auditoria de disparos aos secretários) ──────
+/** Registra um disparo. Best-effort: não bloqueia o envio em caso de falha. */
+export async function logMessageSend(
+  channel: "whatsapp" | "email",
+  recipient: string,
+  status: "aberto" | "erro" = "aberto"
+): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase
+    .from("message_log")
+    .insert({ tenant_id: TENANT, sent_by: user.id, channel, recipient, status })
+    .then(undefined, () => {});
+}

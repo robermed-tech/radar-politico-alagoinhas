@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { findSecretario } from "@/config/secretarios";
+import { logMessageSend } from "@/lib/admin";
 
 interface Props {
   tema: string;
@@ -63,6 +64,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
         "_blank"
       );
     }
+    void logMessageSend(canal, contato.trim());
     flash("✓ Abrindo…");
   }
 
