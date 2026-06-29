@@ -148,6 +148,11 @@ KEYWORDS_GOVERNO  = _keywords_banco or _KEYWORDS_FALLBACK_GOVERNO
 KEYWORDS_OPOSICAO = _keywords_banco or _KEYWORDS_FALLBACK_OPOSICAO
 KEYWORDS_IMPRENSA = _keywords_banco or _KEYWORDS_FALLBACK_IMPRENSA
 
+if _keywords_banco:
+    print(f"[keywords] Supabase: {len(_keywords_banco)} keywords carregadas → {_keywords_banco}")
+else:
+    print(f"[keywords] Fallback hardcoded — governo:{len(KEYWORDS_GOVERNO)} oposicao:{len(KEYWORDS_OPOSICAO)} imprensa:{len(KEYWORDS_IMPRENSA)}")
+
 # Score de alerta
 SCORE_IMAGEM_ALERTA = 30
 SCORE_RISCO_ALERTA  = 70
@@ -353,6 +358,7 @@ def verificar_creditos_apify():
 def _normalizar_posts(resultados_brutos):
     """Normaliza posts brutos (Apify ou Instagrapi) para o formato interno."""
     todos_posts = []
+    _debug_count = 0
     for p in resultados_brutos:
         handle = extrair(p, "ownerUsername", "username", "owner", padrao="").lower()
         if handle not in PERFIS:
@@ -375,6 +381,19 @@ def _normalizar_posts(resultados_brutos):
 
         if not dentro_do_periodo(data_post):
             continue
+
+        if _debug_count < 3:
+            if filtro == "governo":
+                passou = True
+                motivo = "governo (sem filtro de relevância)"
+            else:
+                kw_match = next((kw for kw in (KEYWORDS_OPOSICAO if filtro == "oposicao" else KEYWORDS_IMPRENSA) if kw in caption.lower()), None)
+                passou = kw_match is not None
+                motivo = f"keyword '{kw_match}' encontrada" if passou else "nenhuma keyword encontrada"
+            print(f"[filtro-debug #{_debug_count+1}] @{handle} ({filtro}) | passou={passou} | motivo={motivo}")
+            print(f"  caption: {caption[:200]!r}")
+            _debug_count += 1
+
         if filtro != "governo" and not filtrar_relevante(caption, filtro):
             continue
 
