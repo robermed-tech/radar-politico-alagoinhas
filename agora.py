@@ -142,6 +142,30 @@ def _carregar_keywords_do_banco():
     except Exception:
         return None
 
+def _carregar_tenant_settings():
+    """Busca tenant_settings do Supabase. Retorna dict vazio se indisponível."""
+    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    if not url or not key:
+        return {}
+    try:
+        r = requests.get(
+            f"{url}/rest/v1/tenant_settings",
+            params={"tenant_id": f"eq.{os.environ.get('RADAR_TENANT', 'alagoinhas')}",
+                    "select": "score_weights,climate_thresholds,notification_config"},
+            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            timeout=10,
+        )
+        if r.status_code != 200 or not r.json():
+            return {}
+        return r.json()[0]
+    except Exception:
+        return {}
+
+_TENANT_SETTINGS = _carregar_tenant_settings()
+_ct = _TENANT_SETTINGS.get("climate_thresholds", {})
+_nc = _TENANT_SETTINGS.get("notification_config", {})
+
 _keywords_banco = _carregar_keywords_do_banco()
 # Se o banco retornou keywords, todas as categorias usam a mesma lista.
 # Caso contrário, cada categoria usa seu fallback específico.
@@ -160,11 +184,14 @@ SCORE_RISCO_ALERTA  = 70
 
 # Override SCCT criterioso — alerta crises intencionais de alta responsabilidade
 # mesmo quando o score nao atinge 70 (posts de oposicao eficazes ficam em ~62).
-# Ajuste estes 4 valores para calibrar (veja GUIA_CALIBRACAO_ALERTAS.md):
-OVERRIDE_ALERTA_ATIVO         = True   # False volta ao comportamento antigo
-OVERRIDE_RESPONSABILIDADE_MIN = 70     # responsabilidade_atribuida minima
-OVERRIDE_SCORE_MIN            = 55     # piso de score (abaixo disso, ignora)
-OVERRIDE_EXIGE_TRACAO         = True   # exige tendencia crescendo OU engajamento alto
+OVERRIDE_ALERTA_ATIVO         = True
+OVERRIDE_RESPONSABILIDADE_MIN = int(_ct.get("override_resp_min", 70))
+OVERRIDE_SCORE_MIN            = 55
+OVERRIDE_EXIGE_TRACAO         = True
+
+# Limiares do boletim climático (passados como parâmetro ao gerar_boletim).
+_LIMIAR_PREVISAO              = float(_ct.get("limiar_previsao", 8.0))
+_LIMIAR_TEMPESTADE_COM_ALERTA = float(_ct.get("limiar_tempestade_com_alerta", 60.0))
 
 # Limites de coleta
 MAX_POSTS_POR_PERFIL    = 5
@@ -1792,10 +1819,13 @@ def verificar_alertas(posts_analisados):
         return
     neg_pct = round(sum(1 for p in posts_analisados if _sent(p) == "negativo") / total * 100)
 
-    # Lê config do dashboard (tabela alerta_config) — fallback para env vars
-    limiar_iad   = int(os.environ.get("ALERTA_IAD_LIMIAR",   40))
-    limiar_neg   = int(os.environ.get("ALERTA_NEG_LIMIAR",   60))
-    limiar_tema  = int(os.environ.get("ALERTA_TEMA_LIMIAR",  50))
+    # Prioridade: tenant_settings.notification_config > alerta_config > env vars
+    limiar_iad  = int(_nc.get("iad_limiar",  os.environ.get("ALERTA_IAD_LIMIAR",  40)))
+    limiar_neg  = int(_nc.get("neg_limiar",  os.environ.get("ALERTA_NEG_LIMIAR",  60)))
+    limiar_tema = int(_nc.get("tema_limiar", os.environ.get("ALERTA_TEMA_LIMIAR", 50)))
+    ativo_iad   = bool(_nc.get("iad_ativo",  True))
+    ativo_neg   = bool(_nc.get("neg_ativo",  True))
+    ativo_tema  = bool(_nc.get("tema_ativo", False))
 
     cfg = _supabase_get("alerta_config", f"tenant_id=eq.{TENANT}&select=tipo,limiar,ativo")
     for row in cfg:
@@ -1810,10 +1840,10 @@ def verificar_alertas(posts_analisados):
 
     alertas = []
 
-    if iad < limiar_iad:
+    if ativo_iad and iad < limiar_iad:
         alertas.append(f"⚠ IAD em {iad}% — abaixo do limiar de {limiar_iad}%. Monitoramento recomendado.")
 
-    if neg_pct > limiar_neg:
+    if ativo_neg and neg_pct > limiar_neg:
         alertas.append(f"🔴 {neg_pct}% dos posts são negativos — acima do limiar de {limiar_neg}%.")
 
     # Tema com maior negatividade
@@ -1824,12 +1854,13 @@ def verificar_alertas(posts_analisados):
         tema_map.setdefault(t, {"neg": 0, "tot": 0})
         tema_map[t]["tot"] += 1
         if _sent(p) == "negativo": tema_map[t]["neg"] += 1
-    for tema, v in tema_map.items():
-        if v["tot"] < 3: continue
-        pneg = round(v["neg"] / v["tot"] * 100)
-        if pneg >= limiar_tema:
-            alertas.append(f"⚡ Tema '{tema}' com {pneg}% negativo — acima do limiar de {limiar_tema}%.")
-            break
+    if ativo_tema:
+        for tema, v in tema_map.items():
+            if v["tot"] < 3: continue
+            pneg = round(v["neg"] / v["tot"] * 100)
+            if pneg >= limiar_tema:
+                alertas.append(f"⚡ Tema '{tema}' com {pneg}% negativo — acima do limiar de {limiar_tema}%.")
+                break
 
     if not alertas:
         return
@@ -2766,6 +2797,8 @@ def gravar_boletim_climatico(posts_analisados):
         frentes=_frentes_por_tema(posts_analisados),
         alerta_post=alerta_post,
         override_resp_min=OVERRIDE_RESPONSABILIDADE_MIN,
+        limiar_previsao=_LIMIAR_PREVISAO,
+        limiar_tempestade_com_alerta=_LIMIAR_TEMPESTADE_COM_ALERTA,
     )
 
     dia = hist_asc[-1].get("dia") or datetime.now().strftime("%Y-%m-%d")
