@@ -2998,6 +2998,8 @@ def reprocessar():
         print("[reprocessar] Dataset vazio ou erro ao buscar itens.")
         return
 
+    print(f"[reprocessar] {len(brutos)} itens brutos. Campos do 1º item: {list(brutos[0].keys())}")
+
     posts = _normalizar_posts(brutos)
     if not posts:
         print("[reprocessar] Nenhum post válido após normalização.")
