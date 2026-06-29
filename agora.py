@@ -117,7 +117,7 @@ PERFIS = _carregar_perfis_do_banco()
 _KEYWORDS_FALLBACK_GOVERNO  = ["prefeitura", "prefeito", "gustavo", "gestao", "alagoinhas",
                                "obra", "servico", "municipal", "secretaria", "secom"]
 _KEYWORDS_FALLBACK_OPOSICAO = ["prefeitura", "prefeito", "gustavo carmo", "gestao municipal",
-                               "alagoinhas", "administracao"]
+                               "administracao", "gestao de alagoinhas", "prefeito de alagoinhas"]
 _KEYWORDS_FALLBACK_IMPRENSA = ["prefeitura de alagoinhas", "gustavo carmo", "gestao municipal",
                                "prefeito de alagoinhas"]
 
