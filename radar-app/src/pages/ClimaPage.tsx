@@ -1,9 +1,10 @@
 ﻿import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadar, fetchBoletim, fetchBriefing, fetchCrisisPlans, filtrarPorPeriodo, parseData, type Post, type Boletim, type Briefing, type CrisisPlan } from "@/lib/data";
+import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchCrisisPlans, filtrarPorPeriodo, parseData, type Post, type Boletim, type BoletimFrente, type Briefing, type CrisisPlan } from "@/lib/data";
 import { calcIAD, distribuicao, NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
-import { getWeather } from "@/lib/weather";
+import { getWeather, weatherFromCondicao } from "@/lib/weather";
 import { fmtInt } from "@/lib/format";
+import { useAuth } from "@/components/AuthProvider";
 
 const PERIODOS = [
   { dias: 1, label: "24h" },
@@ -23,6 +24,16 @@ function scoreParaNivel(score: number): NivelCrise {
   if (score >= 55) return "alto";
   if (score >= 35) return "moderado";
   return "baixo";
+}
+
+// No boletim público (usuário comum) o score numérico das frentes é removido;
+// derivamos o nível pelo ícone (já calculado no backend), sem expor número.
+const ICONE_TO_NIVEL: Record<string, NivelCrise> = {
+  sol: "baixo", nuvem: "moderado", chuva: "alto", tempestade: "critico",
+};
+function frenteNivel(f: BoletimFrente): NivelCrise {
+  if (typeof f.score === "number") return scoreParaNivel(f.score);
+  return ICONE_TO_NIVEL[f.icone] ?? "moderado";
 }
 
 // Título e rótulo do diagnóstico variam conforme o período selecionado.
@@ -215,7 +226,7 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
       </div>
       <div className="mt-3 space-y-1">
         {frentes.filter((f) => f.tema !== "outros").map((f) => {
-          const nivel = scoreParaNivel(f.score);
+          const nivel = frenteNivel(f);
           const cor = NIVEL_COLOR[nivel];
           return (
             <div key={f.tema} className="flex items-center justify-between py-1 text-sm">
@@ -316,14 +327,15 @@ function BarrasDistribuicao({ pctPos, pctNeu }: { pctPos: number; pctNeu: number
 
 export function ClimaPage() {
   const [dias, setDias] = useState(1);
+  const { isAdmin } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ["radar"],
     queryFn: fetchRadar,
     staleTime: 5 * 60 * 1000,
   });
   const { data: boletim } = useQuery({
-    queryKey: ["boletim"],
-    queryFn: fetchBoletim,
+    queryKey: ["boletim", isAdmin],
+    queryFn: () => fetchBoletimByRole(isAdmin),
     staleTime: 5 * 60 * 1000,
   });
   const { data: briefing } = useQuery({
@@ -372,7 +384,9 @@ export function ClimaPage() {
       </div>
     );
 
-  const { wx } = view;
+  // Admin vê o clima derivado do score (client). Usuário comum vê a condição
+  // que vem pronta do boletim (backend) — sem o número.
+  const wx = isAdmin ? view.wx : weatherFromCondicao(boletim?.condicao);
   const txt1 = "#FFFFFF";
   const txt2 = "rgba(255,255,255,0.86)";
   const heroBg = `linear-gradient(105deg, rgba(8,11,18,0.72) 0%, rgba(8,11,18,0.32) 50%, rgba(8,11,18,0.58) 100%), url("${wx.image}") center/cover no-repeat, ${wx.bg}`;
@@ -431,12 +445,18 @@ export function ClimaPage() {
                 <WeatherIcon cls={wx.cls} size={88} color="#FFFFFF" strokeWidth={1.4} />
               </div>
               <div>
-                <div className="flex items-end gap-1">
-                  <span className="tnum text-[84px] leading-[0.85] tracking-tight" style={{ color: txt1, fontWeight: 200 }}>
-                    {view.iad}
-                  </span>
-                  <span className="mb-3 text-2xl font-bold" style={{ color: txt2 }}>%</span>
-                </div>
+                {isAdmin ? (
+                  <div className="flex items-end gap-1">
+                    <span className="tnum text-[84px] leading-[0.85] tracking-tight" style={{ color: txt1, fontWeight: 200 }}>
+                      {view.iad}
+                    </span>
+                    <span className="mb-3 text-2xl font-bold" style={{ color: txt2 }}>%</span>
+                  </div>
+                ) : (
+                  <div className="text-[40px] font-extrabold leading-[1.0] tracking-tight" style={{ color: txt1 }}>
+                    {wx.label}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -545,17 +565,19 @@ export function ClimaPage() {
           </div>
         </div>
 
-        <div
-          className="rounded-[28px] border p-6"
-          style={{ borderColor: "rgba(249,115,22,0.35)", background: "rgba(249,115,22,0.05)" }}
-        >
-          <div className="text-[12px] font-bold tracking-[0.04em]" style={{ color: "#F97316" }}>
-            Aprovação digital — últimos 30 dias
+        {isAdmin && (
+          <div
+            className="rounded-[28px] border p-6"
+            style={{ borderColor: "rgba(249,115,22,0.35)", background: "rgba(249,115,22,0.05)" }}
+          >
+            <div className="text-[12px] font-bold tracking-[0.04em]" style={{ color: "#F97316" }}>
+              Aprovação digital — últimos 30 dias
+            </div>
+            <div className="mt-3">
+              <SparklineIAD pontos={view.sparkline} media={view.iad30} />
+            </div>
           </div>
-          <div className="mt-3">
-            <SparklineIAD pontos={view.sparkline} media={view.iad30} />
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

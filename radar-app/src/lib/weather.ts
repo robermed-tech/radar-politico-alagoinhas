@@ -78,6 +78,21 @@ export function getWeather(pct: number): WeatherCond {
   };
 }
 
+/**
+ * Condição climática a partir do `condicao` do boletim (gerado no backend),
+ * sem expor o score numérico. Usado na visão do usuário comum.
+ */
+const CONDICAO_TO_PCT: Record<string, number> = {
+  ceu_limpo: 80,
+  nuvens_isoladas: 55,
+  tempo_fechando: 35,
+  tempestade: 12,
+};
+
+export function weatherFromCondicao(condicao: string | undefined | null): WeatherCond {
+  return getWeather(CONDICAO_TO_PCT[condicao ?? ""] ?? 50);
+}
+
 export function getDestaque(pct: number, tema: string): string {
   const t = tema ? `"${tema}"` : "temas locais";
   if (pct >= 70) return `A maioria aprova. Comentários positivos dominam, especialmente sobre ${t}.`;
