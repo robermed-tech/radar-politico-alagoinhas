@@ -132,16 +132,14 @@ def _carregar_keywords_do_banco():
     try:
         r = requests.get(
             f"{url}/rest/v1/relevance_keywords",
-            params={"tenant_id": "eq.alagoinhas", "active": "eq.true", "select": "keyword"},
+            params={"tenant_id": "eq.alagoinhas", "select": "keyword,active"},
             headers={"apikey": key, "Authorization": f"Bearer {key}"},
             timeout=10,
         )
-        print(f"[keywords-debug] HTTP {r.status_code} | resp: {r.text[:200]}")
         if r.status_code != 200 or not r.json():
             return None
-        return [row["keyword"].lower() for row in r.json()]
-    except Exception as e:
-        print(f"[keywords-debug] exception: {e}")
+        return [row["keyword"].lower() for row in r.json() if row.get("active", True)]
+    except Exception:
         return None
 
 _keywords_banco = _carregar_keywords_do_banco()
