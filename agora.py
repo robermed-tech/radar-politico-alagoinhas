@@ -58,6 +58,9 @@ APIFY_BASE = "https://api.apify.com/v2"
 ACTOR_POSTS    = "apify~instagram-post-scraper"
 ACTOR_COMMENTS = "apify~instagram-comment-scraper"
 
+# Quando True (--reprocessar), o filtro de período é ignorado na normalização.
+MODO_REPROCESSAR = False
+
 # Perfis monitorados — fallback hardcoded (usado se monitored_sources estiver vazio)
 _PERFIS_FALLBACK = {
     # Governo
@@ -379,7 +382,7 @@ def _normalizar_posts(resultados_brutos):
         ts_raw    = extrair(p, "timestamp", "taken_at", "takenAt", "date")
         data_post = timestamp_para_data(ts_raw)
 
-        if not dentro_do_periodo(data_post):
+        if not MODO_REPROCESSAR and not dentro_do_periodo(data_post):
             continue
 
         if _debug_count < 3:
@@ -2963,7 +2966,10 @@ def teste_filtro():
 def reprocessar():
     """Busca os últimos 20 posts do último run Apify e reenvia ao Supabase (upsert).
     Ignora deduplicação: URLs já existentes no Supabase são atualizadas.
+    Ignora filtro de período: processa posts independente da data.
     Não grava no Google Sheets para evitar duplicatas e cota de escrita."""
+    global MODO_REPROCESSAR
+    MODO_REPROCESSAR = True
     if not APIFY_TOKEN:
         print("[reprocessar] APIFY_API_TOKEN não configurado.")
         return
