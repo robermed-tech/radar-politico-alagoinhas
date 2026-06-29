@@ -108,16 +108,14 @@ const TENANT = (import.meta.env.VITE_TENANT as string | undefined) || "alagoinha
 
 /** Lê do Postgres (Supabase) via PostgREST. Retorna [] se vazio/indisponível. */
 async function fetchFromSupabase(): Promise<Post[]> {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
-  const q =
-    `${SUPABASE_URL}/rest/v1/posts?tenant=eq.${TENANT}` +
-    `&select=*&order=data_post.desc&limit=3000`;
-  const res = await fetch(q, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  });
-  if (!res.ok) return [];
-  const rows = (await res.json()) as Record<string, unknown>[];
-  return rows.map(normalizePost);
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("tenant", TENANT)
+    .order("data_post", { ascending: false })
+    .limit(3000);
+  if (error || !data?.length) return [];
+  return (data as Record<string, unknown>[]).map(normalizePost);
 }
 
 /** Lê do Apps Script (Sheets) — fonte original. */
