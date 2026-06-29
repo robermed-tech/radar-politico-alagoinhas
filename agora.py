@@ -292,12 +292,8 @@ def garantir_aba(planilha, nome, cabecalho):
 def apify_iniciar_run(actor_id, input_data, memory_mbytes=256):
     """Inicia um actor run no Apify e retorna o run ID."""
     url = f"{APIFY_BASE}/acts/{actor_id}/runs"
-    params = {"token": APIFY_TOKEN}
-    body = {
-        "memory": memory_mbytes,
-        **input_data
-    }
-    r = requests.post(url, params=params, json=body, timeout=30)
+    params = {"token": APIFY_TOKEN, "memory": memory_mbytes}
+    r = requests.post(url, params=params, json=input_data, timeout=30)
     if r.status_code not in (200, 201):
         log(f"    Erro ao iniciar actor {actor_id}: {r.status_code} | {r.text[:200]}")
         return None
@@ -466,8 +462,8 @@ def coletar_posts():
     if APIFY_TOKEN:
         log("=== MODULO 1b - Coletando posts via Apify ===")
         try:
-            usernames  = [f"https://www.instagram.com/{h}/" for h in perfis]
-            input_data = {"username": usernames, "resultsLimit": MAX_POSTS_POR_PERFIL}
+            profile_urls = [f"https://www.instagram.com/{h}/" for h in perfis]
+            input_data   = {"directUrls": profile_urls, "resultsLimit": MAX_POSTS_POR_PERFIL}
             run_id = apify_iniciar_run(ACTOR_POSTS, input_data)
             if run_id:
                 dataset_id = apify_aguardar_run(run_id, timeout=300)
