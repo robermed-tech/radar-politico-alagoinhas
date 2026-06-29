@@ -13,6 +13,7 @@
 """
 
 import os
+import re
 import json
 import time
 import math
@@ -57,8 +58,8 @@ APIFY_BASE = "https://api.apify.com/v2"
 ACTOR_POSTS    = "apify~instagram-post-scraper"
 ACTOR_COMMENTS = "apify~instagram-comment-scraper"
 
-# Perfis monitorados - 14 perfis em 3 categorias
-PERFIS = {
+# Perfis monitorados — fallback hardcoded (usado se monitored_sources estiver vazio)
+_PERFIS_FALLBACK = {
     # Governo
     "gustavoascarmo":       {"categoria": "Prefeito",    "filtro": "governo"},
     "prefeituraalagoinhas": {"categoria": "Prefeitura",  "filtro": "governo"},
@@ -77,6 +78,34 @@ PERFIS = {
     "alagoinhas24h":        {"categoria": "Imprensa",    "filtro": "imprensa"},
     "alagonews":            {"categoria": "Imprensa",    "filtro": "imprensa"},
 }
+
+def _carregar_perfis_do_banco():
+    """Carrega fontes ativas de monitored_sources. Fallback para _PERFIS_FALLBACK."""
+    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    if not url or not key:
+        return _PERFIS_FALLBACK
+    try:
+        r = requests.get(
+            f"{url}/rest/v1/monitored_sources",
+            params={"platform": "eq.instagram", "active": "eq.true", "select": "handle"},
+            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return _PERFIS_FALLBACK
+        handles = [row["handle"].lstrip("@").lower() for row in r.json()]
+        if not handles:
+            return _PERFIS_FALLBACK
+        # Monta PERFIS: usa metadados conhecidos; novos handles recebem default governo
+        return {
+            h: _PERFIS_FALLBACK.get(h, {"categoria": "Monitorado", "filtro": "governo"})
+            for h in handles
+        }
+    except Exception:
+        return _PERFIS_FALLBACK
+
+PERFIS = _carregar_perfis_do_banco()
 
 # Palavras-chave de relevancia por filtro
 KEYWORDS_GOVERNO  = ["prefeitura", "prefeito", "gustavo", "gestao", "alagoinhas",
