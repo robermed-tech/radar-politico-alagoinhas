@@ -58,8 +58,6 @@ APIFY_BASE = "https://api.apify.com/v2"
 ACTOR_POSTS    = "apify~instagram-post-scraper"
 ACTOR_COMMENTS = "apify~instagram-comment-scraper"
 
-# Quando True (--reprocessar), o filtro de período é ignorado na normalização.
-MODO_REPROCESSAR = False
 
 # Perfis monitorados — fallback hardcoded (usado se monitored_sources estiver vazio)
 _PERFIS_FALLBACK = {
@@ -382,7 +380,7 @@ def _normalizar_posts(resultados_brutos):
         ts_raw    = extrair(p, "timestamp", "taken_at", "takenAt", "date")
         data_post = timestamp_para_data(ts_raw)
 
-        if not MODO_REPROCESSAR and not dentro_do_periodo(data_post):
+        if not dentro_do_periodo(data_post):
             continue
 
         if _debug_count < 3:
@@ -2964,55 +2962,49 @@ def teste_filtro():
 
 
 def reprocessar():
-    """Busca os últimos 20 posts do último run Apify e reenvia ao Supabase (upsert).
-    Ignora deduplicação: URLs já existentes no Supabase são atualizadas.
-    Ignora filtro de período: processa posts independente da data.
-    Não grava no Google Sheets para evitar duplicatas e cota de escrita."""
-    global MODO_REPROCESSAR
-    MODO_REPROCESSAR = True
-    if not APIFY_TOKEN:
-        print("[reprocessar] APIFY_API_TOKEN não configurado.")
-        return
+    """Busca os últimos 20 posts do Supabase e re-analisa com Claude (upsert).
+    Não depende do Apify ter um run recente sem erros 429.
+    Não coleta comentários novos; usa caption já gravado.
+    Não grava no Google Sheets."""
     if not SUPABASE_URL or not SUPABASE_KEY:
         print("[reprocessar] SUPABASE_URL / SUPABASE_SERVICE_KEY não configurados.")
         return
 
-    print("[reprocessar] Buscando último run SUCCEEDED do actor de posts…")
+    print("[reprocessar] Buscando últimos 20 posts do Supabase…")
     r = requests.get(
-        f"{APIFY_BASE}/acts/{ACTOR_POSTS}/runs/last",
-        params={"token": APIFY_TOKEN, "status": "SUCCEEDED"},
+        f"{SUPABASE_URL}/rest/v1/posts",
+        params={"tenant": f"eq.{TENANT}", "select": "url,autor,categoria,data_post,curtidas,comentarios_total,caption",
+                "order": "data_post.desc", "limit": "20"},
+        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
         timeout=15,
     )
     if r.status_code != 200:
-        print(f"[reprocessar] Erro ao buscar último run: {r.status_code} {r.text[:200]}")
-        return
-    data = r.json().get("data", {})
-    dataset_id = data.get("defaultDatasetId")
-    if not dataset_id:
-        print("[reprocessar] Nenhum dataset encontrado no último run.")
+        print(f"[reprocessar] Erro ao buscar posts: {r.status_code} {r.text[:200]}")
         return
 
-    print(f"[reprocessar] Dataset: {dataset_id} — buscando 20 itens…")
-    brutos = apify_buscar_resultados(dataset_id, limit=20)
-    if not brutos:
-        print("[reprocessar] Dataset vazio ou erro ao buscar itens.")
+    rows = r.json()
+    if not rows:
+        print("[reprocessar] Nenhum post encontrado no Supabase.")
         return
 
-    print(f"[reprocessar] {len(brutos)} itens brutos. Campos do 1º item: {list(brutos[0].keys())}")
+    posts = [
+        {
+            "url":           p["url"],
+            "autor":         p.get("autor", ""),
+            "categoria":     p.get("categoria", ""),
+            "data_post":     p.get("data_post", ""),
+            "curtidas":      int(p.get("curtidas", 0) or 0),
+            "total_coments": int(p.get("comentarios_total", 0) or 0),
+            "caption":       p.get("caption", "") or "",
+        }
+        for p in rows
+    ]
 
-    posts = _normalizar_posts(brutos)
-    if not posts:
-        print("[reprocessar] Nenhum post válido após normalização.")
-        return
-
-    print(f"[reprocessar] {len(posts)} posts normalizados. Coletando comentários…")
-    comentarios_por_post = coletar_comentarios(posts)
-
-    print("[reprocessar] Analisando com Claude…")
-    posts_analisados = analisar_com_agora(posts, comentarios_por_post, {})
+    print(f"[reprocessar] {len(posts)} posts. Analisando com Claude…")
+    posts_analisados = analisar_com_agora(posts, {}, {})
 
     print(f"[reprocessar] {len(posts_analisados)} posts analisados. Gravando no Supabase (upsert)…")
-    gravar_no_supabase(posts_analisados, comentarios_por_post)
+    gravar_no_supabase(posts_analisados, {})
 
     print("[reprocessar] Concluído.")
 
