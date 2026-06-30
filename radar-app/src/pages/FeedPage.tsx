@@ -66,9 +66,6 @@ function PostCard({ p }: { p: Post }) {
         </div>
         <span className="ml-auto shrink-0 text-xs text-txt-3">{tempoRelativo(p.data_post)}</span>
       </div>
-      {resumo && (
-        <p className="mb-2.5 line-clamp-2 text-sm text-txt-2">{resumo}</p>
-      )}
       {p.comentarios_destaque && (
         <div className="mb-2.5 rounded-lg bg-bg-2 px-3 py-2">
           <div className="text-xs font-semibold text-txt-3">Comentário mais curtido</div>
@@ -77,6 +74,9 @@ function PostCard({ p }: { p: Post }) {
             <span className="text-xs text-txt-3">— @{p.comentarios_destaque_autor}</span>
           )}
         </div>
+      )}
+      {resumo && (
+        <p className="mb-2.5 line-clamp-2 text-sm text-txt-2">{resumo}</p>
       )}
       <PostChips
         sentimento={p.sentimento_post}
