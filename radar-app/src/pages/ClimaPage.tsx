@@ -38,9 +38,9 @@ function frenteNivel(f: BoletimFrente): NivelCrise {
 
 // Título e rótulo do diagnóstico variam conforme o período selecionado.
 function periodoTitulo(dias: number): string {
-  if (dias <= 1) return "Temperatura do dia";
-  if (dias <= 7) return "Temperatura da semana";
-  return "Temperatura do mês";
+  if (dias <= 1) return "Previsão do dia";
+  if (dias <= 7) return "Clima da semana";
+  return "Clima do mês";
 }
 function periodoClima(dias: number): string {
   if (dias <= 1) return "análise do clima do dia";
