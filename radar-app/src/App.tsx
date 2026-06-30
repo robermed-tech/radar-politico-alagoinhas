@@ -56,17 +56,14 @@ function NIcoFileText() {
 }
 
 const NAV_MAIN: NavItem[] = [
-  { id: "clima",    label: "Visão da Gestão",     icon: <NIcoDashboard /> },
-  { id: "actions",  label: "Alertas & Ações",     icon: <NIcoBell /> },
-  { id: "approval", label: "Aprovação Detalhada", icon: <NIcoBarChart /> },
-  { id: "feed",     label: "O que o povo diz",    icon: <NIcoMessage /> },
-  { id: "topics",   label: "Tendências",           icon: <NIcoTrending /> },
-  { id: "admin",    label: "Configuração",         icon: <NIcoSliders /> },
-];
-
-const NAV_ADVANCED: NavItem[] = [
-  { id: "influencers", label: "Influenciadores",   icon: <NIcoNetwork /> },
-  { id: "narratives",  label: "Narrativas",         icon: <NIcoFileText /> },
+  { id: "clima",       label: "Visão da Gestão",     icon: <NIcoDashboard /> },
+  { id: "actions",     label: "Alertas & Ações",     icon: <NIcoBell /> },
+  { id: "approval",    label: "Aprovação Detalhada", icon: <NIcoBarChart /> },
+  { id: "feed",        label: "O que o povo diz",    icon: <NIcoMessage /> },
+  { id: "topics",      label: "Tendências",           icon: <NIcoTrending /> },
+  { id: "influencers", label: "Influenciadores",      icon: <NIcoNetwork /> },
+  { id: "narratives",  label: "Narrativas",           icon: <NIcoFileText /> },
+  { id: "admin",       label: "Configuração",         icon: <NIcoSliders /> },
 ];
 
 /** Botão ativo do menu: laranja sólido com sombra. */
@@ -105,7 +102,6 @@ function RefreshIcon({ spinning }: { spinning?: boolean }) {
 
 export default function App() {
   const [page, setPage] = useState<Page>("clima");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const { session, isAdmin } = useAuth();
   const userEmail = session?.user?.email ?? null;
   const theme = useThemeStore((s) => s.theme);
@@ -205,40 +201,6 @@ export default function App() {
             );
           })}
 
-          {/* Seção avançada colapsável */}
-          <button
-            onClick={() => setAdvancedOpen((v) => !v)}
-            className="mt-3 flex w-full items-center gap-2 px-3 py-1 text-left transition-colors hover:text-txt-2"
-          >
-            <span className="flex-1 text-[10px] font-bold uppercase tracking-[0.14em] text-txt-3">
-              Análise Avançada
-            </span>
-            <span
-              className="text-[10px] text-txt-3 transition-transform duration-200"
-              style={{ display: "inline-block", transform: advancedOpen ? "rotate(90deg)" : "rotate(0deg)" }}
-            >›</span>
-          </button>
-
-          {advancedOpen && NAV_ADVANCED.map((n) => {
-            const isCurrent = n.id === page;
-            return (
-              <button
-                key={n.id}
-                onClick={() => setPage(n.id)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-left text-sm font-semibold transition-all duration-200 ${
-                  isCurrent
-                    ? "text-white"
-                    : "text-txt-3 hover:bg-bg-2 hover:text-txt-2"
-                }`}
-                style={isCurrent ? NAV_GLOW : undefined}
-              >
-                <span className="flex h-4 w-4 items-center justify-center shrink-0" style={{ color: isCurrent ? "#FDBA74" : "var(--txt3)" }}>
-                  {n.icon}
-                </span>
-                {n.label}
-              </button>
-            );
-          })}
         </nav>
         <div className="mt-auto space-y-2 pt-3">
           <RefreshButton />
@@ -274,7 +236,7 @@ export default function App() {
         {/* Nav mobile (topo) */}
         <div className="flex items-center gap-1 border-b border-line bg-bg-1 p-2 md:hidden">
           <div className="flex flex-1 gap-1 overflow-x-auto">
-            {[...navMain, ...NAV_ADVANCED].map((n) => (
+            {navMain.map((n) => (
               <button
                 key={n.id}
                 onClick={() => setPage(n.id)}
