@@ -693,7 +693,7 @@ def triar_post_rapido(post, comentarios):
         f'{coments_txt}\n'
         'Retorne JSON (pct_pos e pct_neg = % dos comentarios acima FAVORAVEIS / CONTRARIOS ao prefeito Gustavo):\n'
         '{"score_risco":<0-100>,"urgencia":"<alta|media|baixa>",'
-        '"tema":"<saude|educacao|obras|seguranca|transporte|emprego|impostos|outros>",'
+        '"tema":"<saude|educacao|obras|seguranca|transporte|emprego|impostos|saneamento|cultura_eventos|comunicacao>",'
         '"sentimento_comentarios":"<positivo|negativo|neutro|misto>",'
         '"comentarios_pct_pos":<0-100>,"comentarios_pct_neg":<0-100>}'
     )
@@ -962,7 +962,7 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
   "comentarios_destaque_autor": "<username do autor desse comentario; vazio se nao houver>",
   "resumo": "<1 frase descrevendo o tom geral dos comentarios e o impacto na imagem>",
   "padrao_detectado": "<campanha coordenada, bot, oposicao organizada ou Isolado>",
-  "tema": "<tema principal: saude|educacao|obras|seguranca|transporte|emprego|impostos|outros>",
+  "tema": "<tema: saude|educacao|obras|seguranca|transporte|emprego|impostos|saneamento|cultura_eventos|comunicacao — saneamento=agua/esgoto/SAAE; cultura_eventos=festejos/shows/eventos; comunicacao=divulgacao/transparencia/mobilizacao-sem-tema-especifico>",
   "atribuicao": "<prefeito_pessoal|prefeitura_instituicao|secretaria|camara_vereadores|oposicao|governo_estadual|governo_federal|sociedade_civil|outros>",
   "tendencia": "<crescendo|estavel|caindo>",
   "urgencia": "<alta|media|baixa>",
