@@ -1932,7 +1932,13 @@ def _classe_influenciador(categoria, alcance):
         return "micro"
     return "nano"
 
-def _alinhamento(pct_pos, pct_neg):
+def _alinhamento(pct_pos, pct_neg, categoria=""):
+    cat = (categoria or "").lower()
+    if any(k in cat for k in ("prefeitura", "prefeito", "governo", "gestao", "aliado")):
+        return "aliado"
+    if any(k in cat for k in ("oposi",)):
+        return "opositor"
+    # Para imprensa/neutros: inferir pelos sentimentos dos posts
     if pct_pos >= 55:
         return "aliado"
     if pct_neg >= 40:
@@ -1998,7 +2004,7 @@ def gravar_influencers(posts_analisados, comentarios_por_post):
             "frequencia": d["posts"],
             "influencia_score": round(score, 1),
             "classe": _classe_influenciador(d["categoria"], d["curtidas"]),
-            "alinhamento": _alinhamento(pct_pos, pct_neg),
+            "alinhamento": _alinhamento(pct_pos, pct_neg, d["categoria"]),
             "pct_positivo": pct_pos,
             "pct_negativo": pct_neg,
             "atualizado_em": datetime.now().isoformat(),
