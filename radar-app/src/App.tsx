@@ -56,11 +56,11 @@ function NIcoFileText() {
 }
 
 const NAV_MAIN: NavItem[] = [
-  { id: "clima",       label: "Visão da Gestão",     icon: <NIcoDashboard /> },
-  { id: "actions",     label: "Alertas & Ações",     icon: <NIcoBell /> },
-  { id: "approval",    label: "Aprovação Detalhada", icon: <NIcoBarChart /> },
-  { id: "feed",        label: "O que o povo diz",    icon: <NIcoMessage /> },
-  { id: "topics",      label: "Tendências",           icon: <NIcoTrending /> },
+  { id: "clima",       label: "Estação Meteorológica", icon: <NIcoDashboard /> },
+  { id: "actions",     label: "Alertas & Ações",       icon: <NIcoBell /> },
+  { id: "approval",    label: "Análise do Clima",      icon: <NIcoBarChart /> },
+  { id: "feed",        label: "O que o povo diz",      icon: <NIcoMessage /> },
+  { id: "topics",      label: "Previsões",              icon: <NIcoTrending /> },
   { id: "influencers", label: "Influenciadores",      icon: <NIcoNetwork /> },
   { id: "narratives",  label: "Narrativas",           icon: <NIcoFileText /> },
   { id: "admin",       label: "Configuração",         icon: <NIcoSliders /> },

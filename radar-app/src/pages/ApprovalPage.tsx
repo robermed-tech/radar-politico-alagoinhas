@@ -338,7 +338,7 @@ export function ApprovalPage() {
   if (view.vazio)
     return (
       <div className="p-5">
-        <h1 className="text-2xl font-extrabold">Aprovação Digital</h1>
+        <h1 className="text-2xl font-extrabold">Análise do Clima</h1>
         <div className="mt-4 rounded-xl border border-line bg-bg-1 p-6">
           <div className="font-bold text-txt-1">📭 Sem dados no período</div>
           <div className="mt-2 space-y-1 text-sm text-txt-2">
@@ -354,7 +354,7 @@ export function ApprovalPage() {
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold">Aprovação Digital</h1>
+          <h1 className="text-2xl font-extrabold">Análise do Clima</h1>
           <p className="text-sm text-txt-2">
             Drill-down do IAD · quem aprova, quem rejeita e por quais temas
           </p>
