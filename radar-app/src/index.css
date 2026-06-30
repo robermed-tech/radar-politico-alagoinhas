@@ -167,5 +167,5 @@ button:disabled {
   100% { transform: translate3d(14px, 300px, 0); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .raindrop { display: none; }
+  .raindrop { animation: none; opacity: 0.18; transform: translate3d(0, 140px, 0); }
 }
