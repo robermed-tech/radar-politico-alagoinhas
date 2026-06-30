@@ -1883,7 +1883,7 @@ def verificar_alertas(posts_analisados):
             # Registra no histórico
             for msg in alertas:
                 _supabase_upsert("alerta_historico", [{
-                    "tenant_id": TENANT, "tipo": "auto", "valor": iad,
+                    "tenant_id": TENANT, "tipo": "auto", "valor": int(round(iad)),
                     "mensagem": msg, "canal": "whatsapp",
                     "criado_em": datetime.now().isoformat(),
                 }], "id")
