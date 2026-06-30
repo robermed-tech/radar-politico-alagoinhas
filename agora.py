@@ -892,6 +892,30 @@ ARMADILHA — NAO COMETA ESTE ERRO:
   O TEXTO DO RESUMO DIZ "comentarios unanimemente negativos" ou
   "acusam de fake" ou "critica ao portal" mas voce classificou
   sentimento_post = "positivo"? Isso e um ERRO. Corrija para negativo.
+
+  CASO FREQUENTE — POST DE ALIADO COM COMENTARIOS CRITICOS:
+    A prefeitura/prefeito posta sobre programa, obra ou evento.
+    Cidadaos comentam criticando a EXECUCAO ("nao funciona", "cadê o
+    onibus", "parem de iludir o povo", "promessa sem cumprimento").
+    ERRADO: sentimento_post = "positivo" (o POST e de aliado, mas os
+    COMENTARIOS sao negativos — e a reacao que conta).
+    CORRETO: sentimento_post = "negativo".
+    A regra "ALIADO = POSITIVO" aplica-se ao sentimento de UM COMENTARIO
+    que elogia o aliado. Se o comentario CRITICA o programa do aliado,
+    esse comentario e NEGATIVO — e sentimento_post deve refletir isso.
+
+VERIFICACAO FINAL OBRIGATORIA — execute antes de escrever sentimento_post:
+  1. Qual e o sentimento_comentarios que voce ja calculou?
+  2. Qual e o comentarios_pct_neg que voce ja calculou?
+  Regras de derivacao:
+    sentimento_comentarios = "negativo"            -> sentimento_post = "negativo"
+    sentimento_comentarios = "misto" e pct_neg > pct_pos -> sentimento_post = "negativo"
+    sentimento_comentarios = "misto" e pct_pos > pct_neg -> sentimento_post = "neutro"
+    sentimento_comentarios = "positivo"            -> sentimento_post = "positivo"
+    sentimento_comentarios = "neutro"              -> sentimento_post = "neutro"
+  Esta derivacao e OBRIGATORIA. Supera qualquer outro raciocinio sobre
+  quem fez o post (aliado ou nao). Nunca escreva sentimento_post = "positivo"
+  quando sentimento_comentarios = "negativo" ou "misto" com pct_neg dominante.
 ═══════════════════════════════════════════════════════════════════════
 
 Regras de analise:
