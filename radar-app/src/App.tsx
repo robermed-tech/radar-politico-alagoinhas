@@ -6,8 +6,6 @@ const AlertasAcoesPage = lazy(() => import("@/pages/AlertasAcoesPage").then((m) 
 const TemasPage = lazy(() => import("@/pages/TemasPage").then((m) => ({ default: m.TemasPage })));
 const FeedPage = lazy(() => import("@/pages/FeedPage").then((m) => ({ default: m.FeedPage })));
 const AdminPage = lazy(() => import("@/pages/AdminPage").then((m) => ({ default: m.AdminPage })));
-// Seção avançada — analistas
-const CommandCenter = lazy(() => import("@/pages/CommandCenter").then((m) => ({ default: m.CommandCenter })));
 const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
 const InfluencersPage = lazy(() => import("@/pages/InfluencersPage").then((m) => ({ default: m.InfluencersPage })));
 const NarrativesPage = lazy(() => import("@/pages/NarrativesPage").then((m) => ({ default: m.NarrativesPage })));
@@ -26,7 +24,6 @@ type Page =
   | "topics"
   | "admin"
   // avançado
-  | "command"
   | "approval"
   | "influencers"
   | "narratives";
@@ -51,9 +48,6 @@ function NIcoTrending() {
 function NIcoSliders() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="5" x2="7" y2="5"/><circle cx="9" cy="5" r="2"/><line x1="11" y1="5" x2="20" y2="5"/><line x1="4" y1="12" x2="13" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="17" y1="12" x2="20" y2="12"/><line x1="4" y1="19" x2="7" y2="19"/><circle cx="9" cy="19" r="2"/><line x1="11" y1="19" x2="20" y2="19"/></svg>;
 }
-function NIcoTarget() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
-}
 function NIcoNetwork() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>;
 }
@@ -71,7 +65,6 @@ const NAV_MAIN: NavItem[] = [
 ];
 
 const NAV_ADVANCED: NavItem[] = [
-  { id: "command",     label: "Centro de Comando", icon: <NIcoTarget /> },
   { id: "influencers", label: "Influenciadores",   icon: <NIcoNetwork /> },
   { id: "narratives",  label: "Narrativas",         icon: <NIcoFileText /> },
 ];
@@ -305,7 +298,6 @@ export default function App() {
             {page === "topics"   && <TemasPage />}
             {page === "admin"    && <RequireAdmin><AdminPage /></RequireAdmin>}
             {/* Avançado */}
-            {page === "command"     && <CommandCenter />}
             {page === "approval"    && <ApprovalPage />}
             {page === "influencers" && <InfluencersPage />}
             {page === "narratives"  && <NarrativesPage />}

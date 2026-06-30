@@ -1883,7 +1883,7 @@ def verificar_alertas(posts_analisados):
             # Registra no histórico
             for msg in alertas:
                 _supabase_upsert("alerta_historico", [{
-                    "tenant_id": TENANT, "tipo": "auto", "valor": iad,
+                    "tenant_id": TENANT, "tipo": "auto", "valor": int(round(iad)),
                     "mensagem": msg, "canal": "whatsapp",
                     "criado_em": datetime.now().isoformat(),
                 }], "id")
@@ -2517,35 +2517,47 @@ def atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas
 # ==============================================================
 
 def formatar_mensagem_alerta(post):
-    score_img = post.get("score_imagem", 50)
+    score_img   = post.get("score_imagem", 50)
+    score_risco = post.get("score_risco", 0)
     emoji = "🔴" if score_img <= 20 else "🟠"
-    msg = f"""{emoji} *ALERTA AGORA - Radar Politico Alagoinhas*
+    queixa   = (post.get("queixa_dominante", "") or "—").strip()
+    destaque = (post.get("comentarios_destaque", post.get("comentario_destaque", "")) or "").strip()
+    autor_d  = (post.get("comentarios_destaque_autor", "") or "").strip()
+    likes_d  = int(post.get("comentarios_destaque_curtidas", 0) or 0)
+    resumo   = (post.get("resumo", "") or "").strip()
+    motivo   = (post.get("motivo_alerta", "") or f"Score risco {score_risco}").strip()
 
-Perfil: @{post.get("autor","")} ({post.get("categoria","")})
-Data: {post.get("data_post","")}
-{post.get("url","")}
+    linhas = [
+        f"{emoji} *ALERTA — Radar Político Alagoinhas*",
+        "",
+        f"*@{post.get('autor','')}* ({post.get('categoria','')})  ·  {post.get('data_post','')}",
+        f"Imagem {score_img}/100  ·  Risco {score_risco}/100",
+        post.get("url", ""),
+        "",
+        "*🔍 Queixa a observar:*",
+        f"_{queixa}_",
+    ]
 
-Score de Imagem: {score_img}/100
-Score de Risco: {post.get("score_risco", 0)}/100
+    if destaque:
+        ref = f" — @{autor_d} ({likes_d}❤)" if autor_d else ""
+        linhas += [
+            "",
+            "*💬 Comentário em destaque:*",
+            f'>>> "{destaque}"{ref}',
+        ]
 
-Queixa dominante:
-{post.get("queixa_dominante", "Nao identificada")}
+    if resumo:
+        linhas += ["", f"*📊 Contexto:* _{resumo}_"]
 
-Comentario destaque:
-"{post.get("comentarios_destaque", post.get("comentario_destaque", ""))}"
-
-Sugestao de acao:
-{post.get("sugestao_acao", "")}
-
-Abordagem recomendada (SCCT):
-{post.get("abordagem_recomendada", "") or "—"}
-
-Por que alertou: {post.get("motivo_alerta", "") or f"Score imagem {post.get('score_imagem',0)} / risco {post.get('score_risco',0)}"}
-
-Janela: {post.get("janela_acao", "")}
-
-_Mensagem automatica do AGORA_"""
-    return msg
+    linhas += [
+        "",
+        f"*Ação:* {post.get('sugestao_acao', '')}  ·  janela: {post.get('janela_acao', '')}",
+        f"*SCCT:* {post.get('abordagem_recomendada', '') or '—'}",
+        "",
+        f"_{motivo}_",
+        "_Mensagem automática do AGORA_",
+    ]
+    return "\n".join(linhas)
 
 def disparar_alertas(posts_analisados):
     log("=== MODULO 6 - Verificando alertas ===")
@@ -2592,25 +2604,41 @@ def disparar_alertas(posts_analisados):
 # MODULO 6b - UPDATE DE COMENTARIOS NOVOS
 # ==============================================================
 
-def enviar_update_coments(post, delta_coments):
-    """Alerta resumido de novos comentarios em post de alto risco ja analisado."""
+def enviar_update_coments(post, motivo_update):
+    """Alerta de mudança relevante em post de alto risco já analisado."""
     if not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER:
         return
-    log(f"  Update coments: @{post.get('autor','')} +{delta_coments} comentarios")
-    msg = f"""🔔 *NOVOS COMENTARIOS - Radar Politico Alagoinhas*
+    log(f"  Update: @{post.get('autor','')} — {motivo_update}")
+    queixa   = (post.get("queixa_dominante", "") or "—").strip()
+    destaque = (post.get("comentarios_destaque", "") or "").strip()
+    autor_d  = (post.get("comentarios_destaque_autor", "") or "").strip()
+    likes_d  = int(post.get("comentarios_destaque_curtidas", 0) or 0)
 
-Perfil: @{post.get("autor","")} ({post.get("categoria","")})
-{post.get("url","")}
+    linhas = [
+        "🔔 *ATUALIZAÇÃO — Radar Político Alagoinhas*",
+        "",
+        f"*@{post.get('autor','')}* ({post.get('categoria','')})  ·  {post.get('data_post','')}",
+        f"Risco {post.get('score_risco', 0)}/100  ·  {motivo_update}",
+        post.get("url", ""),
+        "",
+        "*🔍 Queixa a observar:*",
+        f"_{queixa}_",
+    ]
 
-+{delta_coments} novos comentarios desde ultima analise
-Score de Risco: {post.get("score_risco", 0)}/100
+    if destaque:
+        ref = f" — @{autor_d} ({likes_d}❤)" if autor_d else ""
+        linhas += [
+            "",
+            "*💬 Comentário em destaque:*",
+            f'>>> "{destaque}"{ref}',
+        ]
 
-Comentario destaque:
-"{post.get("comentarios_destaque", "")}"
-
-Sugestao de acao: {post.get("sugestao_acao", "")}
-
-_Mensagem automatica do AGORA_"""
+    linhas += [
+        "",
+        f"*Ação:* {post.get('sugestao_acao', '')}",
+        "_Mensagem automática do AGORA_",
+    ]
+    msg = "\n".join(linhas)
     try:
         r = requests.post(
             f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE','radar')}",
@@ -2831,17 +2859,38 @@ def main():
     planilha = conectar_sheets()
     log(f"  Conectado: {planilha.title}")
 
-    # Carrega URLs ja analisados com contagem de comentarios (para filtrar alertas repetidos)
-    existentes_radar = {}  # url -> comentarios_total gravados
-    try:
-        aba_r = garantir_aba(planilha, "Radar", CABECALHO_RADAR)
-        for r in aba_r.get_all_records():
-            u = r.get("url", "")
-            if u:
-                existentes_radar[u] = int(r.get("comentarios_total", 0) or 0)
-        log(f"  {len(existentes_radar)} posts ja analisados carregados")
-    except Exception as e:
-        log(f"  Aviso: nao foi possivel carregar existentes ({e})")
+    # Carrega estado anterior dos posts para detectar mudanças reais (dedup de alertas).
+    # Supabase é a fonte primária; Sheets é fallback caso Supabase esteja indisponível.
+    # Estrutura: {url: {"comentarios_total": int, "score_risco": int, "queixa_dominante": str}}
+    def _snap(r):
+        return {
+            "comentarios_total": int(r.get("comentarios_total", 0) or 0),
+            "score_risco":       int(r.get("score_risco", 0) or 0),
+            "queixa_dominante":  (r.get("queixa_dominante", "") or "").strip(),
+        }
+
+    existentes_radar = {}
+    if SUPABASE_URL and SUPABASE_KEY:
+        try:
+            rows = _supabase_get(
+                "posts",
+                f"tenant=eq.{TENANT}&select=url,comentarios_total,score_risco,queixa_dominante"
+            )
+            existentes_radar = {r["url"]: _snap(r) for r in rows if r.get("url")}
+            log(f"  {len(existentes_radar)} posts carregados do Supabase")
+        except Exception as e:
+            log(f"  Supabase existentes: falha ({e})")
+    if not existentes_radar:
+        try:
+            aba_r = garantir_aba(planilha, "Radar", CABECALHO_RADAR)
+            existentes_radar = {
+                r["url"]: _snap(r)
+                for r in aba_r.get_all_records()
+                if r.get("url")
+            }
+            log(f"  {len(existentes_radar)} posts carregados do Sheets (fallback)")
+        except Exception as e:
+            log(f"  Aviso: nao foi possivel carregar existentes ({e})")
 
     posts = coletar_posts()
     if not posts:
@@ -2875,18 +2924,41 @@ def main():
     _safe("narratives", gravar_narratives, posts_analisados, comentarios_por_post)         # narrativas (tema + sentimento)
     _safe("daily_themes", gravar_daily_themes, posts_analisados)                           # tendencias por tema (Fase 3e)
     _safe("alertas_limiar", verificar_alertas, posts_analisados)                           # alertas por limiar (Sprint 2)
-    # Apenas posts NOVOS recebem alerta; posts existentes com muitos novos comentarios recebem update
+    # Posts novos: nunca vistos antes → alerta completo se score disparar.
+    # Posts existentes: só re-alerta se houver mudança real (comentários, risco ou queixa).
     posts_novos = [p for p in posts_analisados if p.get("url") not in existentes_radar]
-    posts_com_update = [
-        p for p in posts_analisados
-        if p.get("url") in existentes_radar
-        and p.get("score_risco", 0) >= SCORE_RISCO_ALERTA
-        and (p.get("comentarios_total", 0) - existentes_radar.get(p.get("url", ""), 0)) >= 5
-    ]
+
+    def _motivo_update(url, post_novo):
+        """Retorna string descritiva da mudança, ou '' se não houve mudança relevante."""
+        ant = existentes_radar[url]
+        delta_c = post_novo.get("comentarios_total", 0) - ant["comentarios_total"]
+        delta_r = post_novo.get("score_risco", 0) - ant["score_risco"]
+        queixa_nova = (post_novo.get("queixa_dominante", "") or "").strip()
+        partes = []
+        if delta_c >= 5:
+            partes.append(f"+{delta_c} novos comentários")
+        if delta_r >= 10:
+            partes.append(f"risco subiu {delta_r} pts")
+        if queixa_nova and queixa_nova != ant["queixa_dominante"]:
+            partes.append(f"nova queixa: {queixa_nova}")
+        return ", ".join(partes)
+
+    posts_com_update = []
+    motivos_update = {}
+    for p in posts_analisados:
+        url = p.get("url", "")
+        if url not in existentes_radar:
+            continue
+        if not deve_disparar_alerta(int(p.get("score_risco", 0) or 0), p):
+            continue
+        motivo = _motivo_update(url, p)
+        if motivo:
+            posts_com_update.append(p)
+            motivos_update[url] = motivo
+
     alertas = disparar_alertas(posts_novos)
     for p in posts_com_update:
-        delta = p.get("comentarios_total", 0) - existentes_radar.get(p.get("url", ""), 0)
-        enviar_update_coments(p, delta)
+        enviar_update_coments(p, motivos_update[p["url"]])
     try:
         atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
     except Exception as e:
