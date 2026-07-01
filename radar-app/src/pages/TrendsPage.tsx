@@ -146,6 +146,7 @@ function KeywordCloud({ posts }: { posts: Post[] }) {
 export function TrendsPage() {
   const [metrica, setMetrica] = useState<Metrica>("volume");
   const [janela, setJanela] = useState(14); // dias
+  const [vsAnterior, setVsAnterior] = useState(false);
   const ink = chartInk(useThemeStore((s) => s.theme));
   const { data, isLoading } = useQuery({
     queryKey: ["daily-themes"],
@@ -196,7 +197,20 @@ export function TrendsPage() {
     const outrosTemas = outrosStats.map(s => s.tema);
     const outrosTemasSet = new Set(outrosTemas);
 
-    return { stats, topIndiv, outrosSerie, outrosTotal, outrosTemas, outrosTemasSet, dias, metr };
+    // Previous period (same length, immediately before current)
+    const cutoffPrevStr = new Date(cutoff.getTime() - janela * 86400000).toISOString().slice(0, 10);
+    const filtradas_prev = linhas.filter((r) => r.dia >= cutoffPrevStr && r.dia < cutoffStr);
+    const dias_prev = Array.from(new Set(filtradas_prev.map((r) => r.dia))).sort();
+    const prevStats: Record<string, number[]> = {};
+    for (const t of temas) {
+      const map: Record<string, number> = {};
+      filtradas_prev.filter((r) => r.tema === t).forEach((r) => {
+        map[r.dia] = Number(r[metr.campo] ?? 0);
+      });
+      prevStats[t] = dias_prev.map((d) => map[d] ?? 0);
+    }
+
+    return { stats, topIndiv, outrosSerie, outrosTotal, outrosTemas, outrosTemasSet, dias, metr, prevStats };
   }, [data, metrica, janela]);
 
   if (isLoading) return <div className="p-8 text-txt-2">Carregando tendências…</div>;
@@ -212,7 +226,7 @@ export function TrendsPage() {
       </div>
     );
 
-  const { stats, topIndiv, outrosSerie, outrosTotal, outrosTemas, outrosTemasSet, dias, metr } = view;
+  const { stats, topIndiv, outrosSerie, outrosTotal, outrosTemas, outrosTemasSet, dias, metr, prevStats } = view;
 
   // Gráfico de linhas temporal: top 7 individuais + OUTROS agregado (linha tracejada cinza)
   const lineOption = {
@@ -277,6 +291,18 @@ export function TrendsPage() {
               data: outrosSerie,
             },
           ]
+        : []),
+      // Período anterior (dashed, mais fino, sem legenda principal)
+      ...(vsAnterior
+        ? topIndiv.map((s, i) => ({
+            name: `${s.tema} (ant.)`,
+            type: "line" as const,
+            smooth: true,
+            showSymbol: false,
+            lineStyle: { width: 1, type: "dashed" as const, opacity: 0.5 },
+            itemStyle: { color: PALETA[i % PALETA.length] },
+            data: prevStats[s.tema] ?? [],
+          }))
         : []),
     ],
   };
@@ -370,6 +396,17 @@ export function TrendsPage() {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setVsAnterior((v) => !v)}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+              vsAnterior
+                ? "border-brand bg-brand/10 text-brand"
+                : "border-line bg-bg-1 text-txt-2 hover:text-txt-1"
+            }`}
+            title="Comparar com o período anterior de mesmo comprimento"
+          >
+            vs anterior
+          </button>
         </div>
       </div>
 
@@ -430,8 +467,10 @@ export function TrendsPage() {
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm font-bold">{metr.label} · evolução por tema (janela {janela}d)</div>
           <div className="text-[10px] text-txt-3">
-            linha cinza tracejada = temas agrupados em{" "}
-            <span style={{ color: COR_OUTROS }}>Outros</span>
+            {vsAnterior
+              ? <span>linha tracejada fina = período anterior · <span style={{ color: COR_OUTROS }}>cinza = Outros</span></span>
+              : <span>linha cinza tracejada = temas agrupados em <span style={{ color: COR_OUTROS }}>Outros</span></span>
+            }
           </div>
         </div>
         <ReactECharts option={lineOption} style={{ height: 280 }} notMerge />

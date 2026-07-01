@@ -11,7 +11,8 @@ const CommandCenter = lazy(() => import("@/pages/CommandCenter").then((m) => ({ 
 const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
 const InfluencersPage = lazy(() => import("@/pages/InfluencersPage").then((m) => ({ default: m.InfluencersPage })));
 const NarrativesPage = lazy(() => import("@/pages/NarrativesPage").then((m) => ({ default: m.NarrativesPage })));
-import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
+const AlertasHistPage = lazy(() => import("@/pages/AlertasHistPage").then((m) => ({ default: m.AlertasHistPage })));
+import { fetchRadar, fetchPipelineHealth, filtrarPorPeriodo } from "@/lib/data";
 import { calcIAD } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
 import { useThemeStore } from "@/stores/theme";
@@ -29,7 +30,8 @@ type Page =
   | "command"
   | "approval"
   | "influencers"
-  | "narratives";
+  | "narratives"
+  | "alerts-hist";
 
 interface NavItem { id: Page; label: string; icon: JSX.Element }
 
@@ -60,6 +62,9 @@ function NIcoNetwork() {
 function NIcoFileText() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
 }
+function NIcoAlertHist() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="12" y1="2" x2="12" y2="4"/></svg>;
+}
 
 const NAV_MAIN: NavItem[] = [
   { id: "clima",    label: "Visão da Gestão",     icon: <NIcoDashboard /> },
@@ -74,6 +79,7 @@ const NAV_ADVANCED: NavItem[] = [
   { id: "command",     label: "Centro de Comando", icon: <NIcoTarget /> },
   { id: "influencers", label: "Influenciadores",   icon: <NIcoNetwork /> },
   { id: "narratives",  label: "Narrativas",         icon: <NIcoFileText /> },
+  { id: "alerts-hist", label: "Histórico Alertas", icon: <NIcoAlertHist /> },
 ];
 
 /** Botão ativo do menu: laranja sólido com sombra. */
@@ -133,6 +139,17 @@ export default function App() {
   // Clima predominante (7 dias) — usado no accent e no rodapé (o background é
   // um degradê azul fixo, definido no index.css por tema).
   const { data, dataUpdatedAt } = useQuery({ queryKey: ["radar"], queryFn: fetchRadar, staleTime: 5 * 60 * 1000 });
+  const { data: pipelineHealth } = useQuery({
+    queryKey: ["pipeline-health"],
+    queryFn: fetchPipelineHealth,
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  });
+  const dadosDesatualizados = (() => {
+    if (!pipelineHealth?.executado_em) return false;
+    const diff = Date.now() - new Date(pipelineHealth.executado_em).getTime();
+    return diff > 8 * 60 * 60 * 1000; // > 8h
+  })();
   const horaAtualizado = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
     : null;
@@ -297,6 +314,23 @@ export default function App() {
           <RefreshButton compact />
           <ThemeToggle compact />
         </div>
+        {dadosDesatualizados && (
+          <div
+            className="flex items-center gap-2 border-b border-yellow-500/30 px-4 py-2 text-sm font-semibold"
+            style={{ background: "#78350F22", color: "#FCD34D" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            Dados desatualizados — pipeline rodou há mais de 8h.
+            {pipelineHealth?.executado_em && (
+              <span className="font-normal text-yellow-400/80">
+                {" "}Última execução:{" "}
+                {new Date(pipelineHealth.executado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </div>
+        )}
         <main className="flex-1 overflow-y-auto">
           <Suspense fallback={<div className="p-8 text-txt-2">Carregando…</div>}>
             {page === "clima"    && <ClimaPage />}
@@ -305,10 +339,11 @@ export default function App() {
             {page === "topics"   && <TemasPage />}
             {page === "admin"    && <RequireAdmin><AdminPage /></RequireAdmin>}
             {/* Avançado */}
-            {page === "command"     && <CommandCenter />}
-            {page === "approval"    && <ApprovalPage />}
-            {page === "influencers" && <InfluencersPage />}
-            {page === "narratives"  && <NarrativesPage />}
+            {page === "command"      && <CommandCenter />}
+            {page === "approval"     && <ApprovalPage />}
+            {page === "influencers"  && <InfluencersPage />}
+            {page === "narratives"   && <NarrativesPage />}
+            {page === "alerts-hist"  && <AlertasHistPage />}
           </Suspense>
         </main>
       </div>

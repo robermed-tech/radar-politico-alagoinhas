@@ -194,9 +194,10 @@ _LIMIAR_PREVISAO              = float(_ct.get("limiar_previsao", 8.0))
 _LIMIAR_TEMPESTADE_COM_ALERTA = float(_ct.get("limiar_tempestade_com_alerta", 60.0))
 
 # Limites de coleta
-MAX_POSTS_POR_PERFIL    = 5
+MAX_POSTS_POR_PERFIL    = 10
 MAX_COMENTARIOS_POR_POST = 50
-DIAS_RETROATIVOS        = 3
+DIAS_RETROATIVOS        = 5
+MAX_ALERTAS_POR_RUN     = 3   # cap de alertas WhatsApp por execução (anti-spam)
 
 # ==============================================================
 # MODULO 0 - UTILITARIOS
@@ -213,7 +214,9 @@ def _safe(nome, fn, *args, **kwargs):
     try:
         return fn(*args, **kwargs)
     except Exception as e:
-        log(f"  [etapa '{nome}' FALHOU] {e} — seguindo")
+        import traceback
+        log(f"  [etapa '{nome}' FALHOU] {e}")
+        log(traceback.format_exc().strip())
         return None
 
 def timestamp_para_data(ts):
@@ -250,7 +253,7 @@ def dentro_do_periodo(data_str, dias=DIAS_RETROATIVOS):
         dt = datetime(int(partes[2]), int(partes[1]), int(partes[0]))
         return dt >= datetime.now() - timedelta(days=dias)
     except Exception:
-        return True
+        return False  # data inválida não passa o filtro (evita posts fantasma)
 
 def filtrar_relevante(caption, categoria_filtro):
     texto = caption.lower()
@@ -335,6 +338,31 @@ def apify_buscar_resultados(dataset_id, limit=500):
         return []
     return r.json()
 
+def _enviar_whatsapp(mensagem: str, tentativas: int = 2) -> bool:
+    """Envia mensagem WhatsApp via Evolution API com retry e verificação HTTPS.
+    Retorna True se enviado com sucesso."""
+    if not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER:
+        return False
+    if not EVOLUTION_URL.startswith("https://"):
+        log("  WhatsApp: EVOLUTION_API_URL deve usar HTTPS — envio bloqueado")
+        return False
+    instance = os.environ.get("EVOLUTION_INSTANCE", "radar")
+    url = f"{EVOLUTION_URL}/message/sendText/{instance}"
+    headers = {"Content-Type": "application/json", "apikey": EVOLUTION_KEY}
+    payload = {"number": WHATSAPP_NUMBER, "text": mensagem}
+    for t in range(tentativas):
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=15)
+            if r.status_code in (200, 201):
+                return True
+            log(f"  WhatsApp: HTTP {r.status_code}{' — retentando' if t == 0 else ' — desistindo'}")
+        except Exception as e:
+            log(f"  WhatsApp: erro {e}{' — retentando' if t == 0 else ' — desistindo'}")
+        if t == 0:
+            time.sleep(3)
+    return False
+
+
 def verificar_creditos_apify():
     """Verifica uso de créditos Apify e dispara alerta WhatsApp se > 80% consumido."""
     if not APIFY_TOKEN:
@@ -357,7 +385,7 @@ def verificar_creditos_apify():
             return
         pct = (uso / teto) * 100
         log(f"  Apify credits: ${uso:.2f} / ${teto:.2f} ({pct:.0f}%)")
-        if pct >= 80 and EVOLUTION_URL and EVOLUTION_KEY and WHATSAPP_NUMBER:
+        if pct >= 80:
             restante = teto - uso
             msg = (
                 f"⚠️ *RADAR — Créditos Apify em {pct:.0f}%*\n"
@@ -365,13 +393,8 @@ def verificar_creditos_apify():
                 f"Restante: ${restante:.2f}\n"
                 f"Acesse apify.com/billing para recarregar antes que a coleta pare."
             )
-            requests.post(
-                f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE','radar')}",
-                headers={"Content-Type": "application/json", "apikey": EVOLUTION_KEY},
-                json={"number": WHATSAPP_NUMBER, "text": msg},
-                timeout=15,
-            )
-            log(f"  Alerta de créditos enviado via WhatsApp")
+            if _enviar_whatsapp(msg):
+                log(f"  Alerta de créditos enviado via WhatsApp")
     except Exception as e:
         log(f"  Apify credits: erro ao verificar ({e})")
 
@@ -1814,6 +1837,20 @@ def verificar_alertas(posts_analisados):
     if not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER:
         return
 
+    # Throttle: no máximo 1 alerta de limiar a cada 6h para não repetir o mesmo alerta 3x/dia
+    try:
+        limite_6h = (datetime.utcnow() - timedelta(hours=6)).isoformat()
+        recentes = _supabase_get(
+            "alerta_historico",
+            f"tenant_id=eq.{TENANT}&tipo=eq.auto&canal=eq.whatsapp"
+            f"&criado_em=gte.{limite_6h}&select=id&limit=1"
+        )
+        if recentes:
+            log("  verificar_alertas: alerta ja enviado nas ultimas 6h — pulando")
+            return
+    except Exception:
+        pass  # se falhar a checagem, deixa enviar
+
     # Calcula índices do ciclo atual
     iad = calc_iad(posts_analisados)
     total = len(posts_analisados)
@@ -1873,26 +1910,16 @@ def verificar_alertas(posts_analisados):
     mensagem += "\n".join(alertas)
     mensagem += f"\n\n_Alagoinhas/BA · IAD atual: {iad}%_"
 
-    try:
-        resp = requests.post(
-            f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE', 'radar')}",
-            headers={"Content-Type": "application/json", "apikey": EVOLUTION_KEY},
-            json={"number": WHATSAPP_NUMBER, "text": mensagem},
-            timeout=15,
-        )
-        if resp.status_code < 300:
-            log(f"  Alerta WhatsApp enviado: {len(alertas)} gatilho(s)")
-            # Registra no histórico
-            for msg in alertas:
-                _supabase_upsert("alerta_historico", [{
-                    "tenant_id": TENANT, "tipo": "auto", "valor": iad,
-                    "mensagem": msg, "canal": "whatsapp",
-                    "criado_em": datetime.now().isoformat(),
-                }], "id")
-        else:
-            log(f"  Alerta WhatsApp: erro {resp.status_code}")
-    except Exception as e:
-        log(f"  Alerta WhatsApp: falha ({e})")
+    if _enviar_whatsapp(mensagem):
+        log(f"  Alerta WhatsApp enviado: {len(alertas)} gatilho(s)")
+        for msg in alertas:
+            _supabase_upsert("alerta_historico", [{
+                "tenant_id": TENANT, "tipo": "auto", "valor": iad,
+                "mensagem": msg, "canal": "whatsapp",
+                "criado_em": datetime.now().isoformat(),
+            }], "id")
+    else:
+        log("  Alerta WhatsApp: falhou (ver log acima)")
 
 
 # ==============================================================
@@ -2550,45 +2577,70 @@ _Mensagem automatica do AGORA_"""
     return msg
 
 def disparar_alertas(posts_analisados):
+    """Agrupa todos os posts que disparam alerta em UMA mensagem (anti-spam).
+    Envia no máximo MAX_ALERTAS_POR_RUN posts detalhados; os excedentes são listados
+    com handle + score no rodapé da mensagem."""
     log("=== MODULO 6 - Verificando alertas ===")
     if not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER:
         log("  Evolution API nao configurada - alertas desativados")
         return 0
 
-    alertas_enviados = 0
+    # Coleta posts que disparam
+    disparados = []
     for post in posts_analisados:
         score_img   = post.get("score_imagem", 50)
         score_risco = post.get("score_risco", 0)
-        dispara_por_imagem = score_img <= SCORE_IMAGEM_ALERTA
-        dispara_por_risco  = deve_disparar_alerta(score_risco, post)
-        if not dispara_por_imagem and not dispara_por_risco:
+        if not (score_img <= SCORE_IMAGEM_ALERTA or deve_disparar_alerta(score_risco, post)):
             continue
-        # Garante que o motivo_alerta esta preenchido (calculado em analisar_com_agora)
-        if not post.get("motivo_alerta") and dispara_por_risco:
+        if not post.get("motivo_alerta") and deve_disparar_alerta(score_risco, post):
             post["motivo_alerta"] = motivo_do_alerta(score_risco, post)
+        disparados.append(post)
 
-        log(f"  Alerta: @{post['autor']} | Imagem: {score_img} | Risco: {score_risco}")
-        mensagem = formatar_mensagem_alerta(post)
+    if not disparados:
+        log("  Nenhum post atingiu o limiar de alerta")
+        return 0
 
-        try:
-            # Evolution API v2: 'text' no nivel raiz (mesmo formato do gerar_relatorio.py).
-            r = requests.post(
-                f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE','radar')}",
-                headers={"Content-Type": "application/json", "apikey": EVOLUTION_KEY},
-                json={"number": WHATSAPP_NUMBER, "text": mensagem},
-                timeout=15
-            )
-            if r.status_code in (200, 201):
-                log(f"    Alerta enviado")
-                alertas_enviados += 1
-            else:
-                log(f"    Erro Evolution: {r.status_code} - {r.text[:200]}")
-        except Exception as e:
-            log(f"    Erro ao enviar: {e}")
-        time.sleep(2)
+    # Ordena por score_risco desc, aplica cap
+    disparados.sort(key=lambda p: p.get("score_risco", 0), reverse=True)
+    principais = disparados[:MAX_ALERTAS_POR_RUN]
+    excedentes = disparados[MAX_ALERTAS_POR_RUN:]
 
-    log(f"  {alertas_enviados} alertas enviados")
-    return alertas_enviados
+    log(f"  {len(disparados)} post(s) disparam alerta — enviando 1 mensagem consolidada")
+
+    # Monta mensagem consolidada
+    partes = []
+    for i, post in enumerate(principais, 1):
+        score_img   = post.get("score_imagem", 50)
+        score_risco = post.get("score_risco", 0)
+        emoji = "🔴" if score_img <= 20 or score_risco >= 85 else "🟠"
+        bloco = (
+            f"{emoji} *#{i} @{post.get('autor','')} ({post.get('categoria','')})*\n"
+            f"Risco: {score_risco}/100 | Imagem: {score_img}/100\n"
+            f"Queixa: {post.get('queixa_dominante','—')}\n"
+            f"Ação: {post.get('sugestao_acao','—')}\n"
+            f"Janela: {post.get('janela_acao','—')}\n"
+            f"{post.get('url','')}"
+        )
+        partes.append(bloco)
+
+    data_hora = datetime.now().strftime("%d/%m/%Y %H:%M")
+    mensagem = f"🚨 *ALERTA AGORA — Radar Político ({data_hora})*\n{len(disparados)} post(s) em atenção\n\n"
+    mensagem += "\n\n──────────\n\n".join(partes)
+
+    if excedentes:
+        mensagem += "\n\n*+ outros posts em alerta:*\n"
+        for p in excedentes:
+            mensagem += f"• @{p.get('autor','')} — risco {p.get('score_risco',0)}/100\n"
+
+    mensagem += "\n\n_Mensagem automática do AGORA_"
+
+    ok = _enviar_whatsapp(mensagem)
+    if ok:
+        log(f"  Alerta consolidado enviado ({len(disparados)} post(s))")
+        return len(disparados)
+    else:
+        log("  Falha ao enviar alerta consolidado")
+        return 0
 
 # ==============================================================
 # MODULO 6b - UPDATE DE COMENTARIOS NOVOS
@@ -2596,36 +2648,19 @@ def disparar_alertas(posts_analisados):
 
 def enviar_update_coments(post, delta_coments):
     """Alerta resumido de novos comentarios em post de alto risco ja analisado."""
-    if not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER:
-        return
     log(f"  Update coments: @{post.get('autor','')} +{delta_coments} comentarios")
-    msg = f"""🔔 *NOVOS COMENTARIOS - Radar Politico Alagoinhas*
-
-Perfil: @{post.get("autor","")} ({post.get("categoria","")})
-{post.get("url","")}
-
-+{delta_coments} novos comentarios desde ultima analise
-Score de Risco: {post.get("score_risco", 0)}/100
-
-Comentario destaque:
-"{post.get("comentarios_destaque", "")}"
-
-Sugestao de acao: {post.get("sugestao_acao", "")}
-
-_Mensagem automatica do AGORA_"""
-    try:
-        r = requests.post(
-            f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE','radar')}",
-            headers={"Content-Type": "application/json", "apikey": EVOLUTION_KEY},
-            json={"number": WHATSAPP_NUMBER, "text": msg},
-            timeout=15
-        )
-        if r.status_code in (200, 201):
-            log(f"    Update enviado")
-        else:
-            log(f"    Erro update: {r.status_code}")
-    except Exception as e:
-        log(f"    Erro ao enviar update: {e}")
+    msg = (
+        f"🔔 *NOVOS COMENTARIOS - Radar Politico Alagoinhas*\n\n"
+        f"Perfil: @{post.get('autor','')} ({post.get('categoria','')})\n"
+        f"{post.get('url','')}\n\n"
+        f"+{delta_coments} novos comentarios desde ultima analise\n"
+        f"Score de Risco: {post.get('score_risco', 0)}/100\n\n"
+        f"Comentario destaque:\n\"{post.get('comentarios_destaque', '')}\"\n\n"
+        f"Sugestao de acao: {post.get('sugestao_acao', '')}\n\n"
+        f"_Mensagem automatica do AGORA_"
+    )
+    if _enviar_whatsapp(msg):
+        log("    Update enviado")
 
 
 # ==============================================================
@@ -2649,6 +2684,22 @@ def enviar_briefing_matinal(posts_analisados, briefing_ia):
 
     emoji_nivel = {"baixo": "🟢", "moderado": "🟡", "alto": "🟠", "critico": "🔴"}.get(nivel, "⚪")
 
+    # Contexto histórico: compara com ontem via daily_metrics
+    delta_iad = delta_risco = None
+    try:
+        ontem = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+        hist = _supabase_get("daily_metrics",
+            f"tenant=eq.{TENANT}&dia=eq.{ontem}&select=iad,risco&limit=1")
+        if hist:
+            delta_iad   = round(iad   - float(hist[0].get("iad",   iad)),   1)
+            delta_risco = round(risco - float(hist[0].get("risco", risco)), 1)
+    except Exception:
+        pass
+
+    def _seta(v):
+        if v is None: return ""
+        return f" ({"▲" if v > 0 else "▼"}{abs(v):+.0f} vs ontem)"
+
     # Temas com maior risco (top 3)
     temas = {}
     for p in posts_analisados:
@@ -2665,8 +2716,8 @@ def enviar_briefing_matinal(posts_analisados, briefing_ia):
         f"📅 {hoje} | {hora} BRT",
         "",
         "📊 *ÍNDICES*",
-        f"• Aprovação Digital (IAD): {iad:.0f}/100",
-        f"• Risco Político: {risco:.0f}/100 {emoji_nivel} {nivel.upper()}",
+        f"• Aprovação Digital (IAD): {iad:.0f}/100{_seta(delta_iad)}",
+        f"• Risco Político: {risco:.0f}/100 {emoji_nivel} {nivel.upper()}{_seta(delta_risco)}",
         f"• Confiança da Amostra (ICA): {ica:.0f}/100",
         "",
         "🔍 *DIAGNÓSTICO*",
@@ -2693,19 +2744,10 @@ def enviar_briefing_matinal(posts_analisados, briefing_ia):
     linhas += ["", "_Gerado automaticamente pelo AGORA_"]
     mensagem = "\n".join(linhas)
 
-    try:
-        r = requests.post(
-            f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE','radar')}",
-            headers={"Content-Type": "application/json", "apikey": EVOLUTION_KEY},
-            json={"number": WHATSAPP_NUMBER, "text": mensagem},
-            timeout=15,
-        )
-        if r.status_code in (200, 201):
-            log("  Briefing matinal enviado via WhatsApp")
-        else:
-            log(f"  Briefing matinal: erro Evolution {r.status_code} — {r.text[:200]}")
-    except Exception as e:
-        log(f"  Briefing matinal: erro {e}")
+    if _enviar_whatsapp(mensagem):
+        log("  Briefing matinal enviado via WhatsApp")
+    else:
+        log("  Briefing matinal: falhou no envio")
 
 
 # ==============================================================
@@ -2833,28 +2875,27 @@ def main():
     planilha = conectar_sheets()
     log(f"  Conectado: {planilha.title}")
 
-    # Carrega URLs ja analisados com contagem de comentarios (para filtrar alertas repetidos).
-    # Sentinel None = carregamento falhou; bloqueia alertas para evitar spam em caso de falha.
+    # Carrega URLs ja analisados (Supabase = primário; Sheets = fallback legado).
+    # Sentinel None = carregamento falhou; bloqueia alertas para evitar spam.
     existentes_radar = None
-    try:
-        aba_r = garantir_aba(planilha, "Radar", CABECALHO_RADAR)
-        existentes_radar = {}
-        for r in aba_r.get_all_records():
-            u = r.get("url", "")
-            if u:
-                existentes_radar[u] = int(r.get("comentarios_total", 0) or 0)
-        log(f"  {len(existentes_radar)} posts ja analisados carregados (Sheets)")
-    except Exception as e:
-        log(f"  Sheets indisponivel ({e}) — tentando Supabase como fallback")
-        if SUPABASE_URL and SUPABASE_KEY:
-            try:
-                rows = _supabase_get("posts", f"tenant=eq.{TENANT}&select=url,comentarios_total&limit=2000")
-                existentes_radar = {r["url"]: int(r.get("comentarios_total", 0) or 0) for r in rows if r.get("url")}
-                log(f"  {len(existentes_radar)} posts carregados via Supabase (fallback)")
-            except Exception as e2:
-                log(f"  Supabase tambem falhou ({e2}) — alertas suspensos neste run para evitar spam")
-        else:
-            log("  Supabase nao configurado — alertas suspensos neste run para evitar spam")
+    if SUPABASE_URL and SUPABASE_KEY:
+        try:
+            rows = _supabase_get("posts", f"tenant=eq.{TENANT}&select=url,comentarios_total&limit=5000")
+            existentes_radar = {r["url"]: int(r.get("comentarios_total", 0) or 0) for r in rows if r.get("url")}
+            log(f"  {len(existentes_radar)} posts ja analisados carregados (Supabase)")
+        except Exception as e:
+            log(f"  Supabase indisponivel ({e}) — tentando Sheets como fallback")
+    if existentes_radar is None:
+        try:
+            aba_r = garantir_aba(planilha, "Radar", CABECALHO_RADAR)
+            existentes_radar = {}
+            for r in aba_r.get_all_records():
+                u = r.get("url", "")
+                if u:
+                    existentes_radar[u] = int(r.get("comentarios_total", 0) or 0)
+            log(f"  {len(existentes_radar)} posts carregados via Sheets (fallback)")
+        except Exception as e:
+            log(f"  Sheets tambem falhou ({e}) — alertas suspensos neste run para evitar spam")
 
     posts = coletar_posts()
     if not posts:
@@ -2921,6 +2962,17 @@ def main():
     log(f"|  Alertas enviados:   {alertas:<4}                          |")
     log(f"|  Duracao:            {duracao}s                           |")
     log("+======================================================+")
+
+    # Grava saude do pipeline no Supabase para o dashboard monitorar
+    _safe("pipeline_health", _supabase_upsert, "pipeline_health", [{
+        "tenant":          TENANT,
+        "executado_em":    fim.isoformat(),
+        "duracao_s":       duracao,
+        "posts_coletados": len(posts),
+        "posts_analisados": len(posts_analisados),
+        "alertas_enviados": alertas if isinstance(alertas, int) else 0,
+        "status":          "ok",
+    }], "tenant")
 
 def main_multi_tenant():
     """Itera por todos os tenants ativos no Supabase.
