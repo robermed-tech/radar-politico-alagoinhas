@@ -1875,7 +1875,7 @@ def verificar_alertas(posts_analisados):
 
     try:
         resp = requests.post(
-            f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE', '')}",
+            f"{EVOLUTION_URL}/message/sendText/{os.environ.get('EVOLUTION_INSTANCE', 'radar')}",
             headers={"Content-Type": "application/json", "apikey": EVOLUTION_KEY},
             json={"number": WHATSAPP_NUMBER, "text": mensagem},
             timeout=15,
@@ -2833,17 +2833,28 @@ def main():
     planilha = conectar_sheets()
     log(f"  Conectado: {planilha.title}")
 
-    # Carrega URLs ja analisados com contagem de comentarios (para filtrar alertas repetidos)
-    existentes_radar = {}  # url -> comentarios_total gravados
+    # Carrega URLs ja analisados com contagem de comentarios (para filtrar alertas repetidos).
+    # Sentinel None = carregamento falhou; bloqueia alertas para evitar spam em caso de falha.
+    existentes_radar = None
     try:
         aba_r = garantir_aba(planilha, "Radar", CABECALHO_RADAR)
+        existentes_radar = {}
         for r in aba_r.get_all_records():
             u = r.get("url", "")
             if u:
                 existentes_radar[u] = int(r.get("comentarios_total", 0) or 0)
-        log(f"  {len(existentes_radar)} posts ja analisados carregados")
+        log(f"  {len(existentes_radar)} posts ja analisados carregados (Sheets)")
     except Exception as e:
-        log(f"  Aviso: nao foi possivel carregar existentes ({e})")
+        log(f"  Sheets indisponivel ({e}) — tentando Supabase como fallback")
+        if SUPABASE_URL and SUPABASE_KEY:
+            try:
+                rows = _supabase_get("posts", f"tenant=eq.{TENANT}&select=url,comentarios_total&limit=2000")
+                existentes_radar = {r["url"]: int(r.get("comentarios_total", 0) or 0) for r in rows if r.get("url")}
+                log(f"  {len(existentes_radar)} posts carregados via Supabase (fallback)")
+            except Exception as e2:
+                log(f"  Supabase tambem falhou ({e2}) — alertas suspensos neste run para evitar spam")
+        else:
+            log("  Supabase nao configurado — alertas suspensos neste run para evitar spam")
 
     posts = coletar_posts()
     if not posts:
@@ -2867,28 +2878,33 @@ def main():
     _safe("daily_metrics", gravar_daily_metrics, posts_analisados)                 # historico de indices (Fase 3)
     _safe("boletim_climatico", gravar_boletim_climatico, posts_analisados)         # boletim climatico (Radar Comando)
     briefing_ia = _safe("briefing_estrategico", gerar_briefing_estrategico, posts_analisados)  # assistente IA (Fase 3d)
-    # Briefing matinal: run das 05h BRT (08h UTC) — aceita 8 ou 9 UTC p/ tolerar
+    # Briefing matinal: run das 08h BRT (11h UTC) — aceita 11 ou 12 UTC p/ tolerar
     # atraso do cron do GitHub Actions. Forcar com BRIEFING_MATINAL=true.
     hora_utc = datetime.utcnow().hour
-    if briefing_ia and (hora_utc in (8, 9) or os.environ.get("BRIEFING_MATINAL", "").lower() == "true"):
+    if briefing_ia and (hora_utc in (11, 12) or os.environ.get("BRIEFING_MATINAL", "").lower() == "true"):
         _safe("briefing_matinal", enviar_briefing_matinal, posts_analisados, briefing_ia)
     _safe("cacador_crises", rodar_cacador_crises, posts_analisados, comentarios_por_post)  # agente caçador de crises (Fase B)
     _safe("influencers", gravar_influencers, posts_analisados, comentarios_por_post)       # ranking de influenciadores
     _safe("narratives", gravar_narratives, posts_analisados, comentarios_por_post)         # narrativas (tema + sentimento)
     _safe("daily_themes", gravar_daily_themes, posts_analisados)                           # tendencias por tema (Fase 3e)
     _safe("alertas_limiar", verificar_alertas, posts_analisados)                           # alertas por limiar (Sprint 2)
-    # Apenas posts NOVOS recebem alerta; posts existentes com muitos novos comentarios recebem update
-    posts_novos = [p for p in posts_analisados if p.get("url") not in existentes_radar]
-    posts_com_update = [
-        p for p in posts_analisados
-        if p.get("url") in existentes_radar
-        and p.get("score_risco", 0) >= SCORE_RISCO_ALERTA
-        and (p.get("comentarios_total", 0) - existentes_radar.get(p.get("url", ""), 0)) >= 5
-    ]
-    alertas = disparar_alertas(posts_novos)
-    for p in posts_com_update:
-        delta = p.get("comentarios_total", 0) - existentes_radar.get(p.get("url", ""), 0)
-        enviar_update_coments(p, delta)
+    # Apenas posts NOVOS recebem alerta; posts existentes com muitos novos comentarios recebem update.
+    # Se existentes_radar=None (falha de carregamento), alertas sao suspensos para evitar spam.
+    if existentes_radar is None:
+        log("  Alertas WhatsApp suspensos: nao foi possivel carregar historico de posts")
+        alertas = 0
+    else:
+        posts_novos = [p for p in posts_analisados if p.get("url") not in existentes_radar]
+        posts_com_update = [
+            p for p in posts_analisados
+            if p.get("url") in existentes_radar
+            and p.get("score_risco", 0) >= SCORE_RISCO_ALERTA
+            and (p.get("comentarios_total", 0) - existentes_radar.get(p.get("url", ""), 0)) >= 5
+        ]
+        alertas = disparar_alertas(posts_novos)
+        for p in posts_com_update:
+            delta = p.get("comentarios_total", 0) - existentes_radar.get(p.get("url", ""), 0)
+            enviar_update_coments(p, delta)
     try:
         atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
     except Exception as e:
