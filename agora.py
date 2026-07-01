@@ -298,6 +298,15 @@ def apify_iniciar_run(actor_id, input_data, memory_mbytes=256):
     params = {"token": APIFY_TOKEN, "memory": memory_mbytes}
     r = requests.post(url, params=params, json=input_data, timeout=30)
     if r.status_code not in (200, 201):
+        if r.status_code == 403:
+            try:
+                err = r.json().get("error", {})
+                if err.get("type") == "platform-feature-disabled":
+                    log(f"    [APIFY — LIMITE MENSAL ATINGIDO] {err.get('message', 'Monthly usage hard limit exceeded')}")
+                    log("    Acesse apify.com/billing para recarregar ou aguarde a virada do ciclo.")
+                    return None
+            except Exception:
+                pass
         log(f"    Erro ao iniciar actor {actor_id}: {r.status_code} | {r.text[:200]}")
         return None
     data = r.json().get("data", {})
@@ -385,6 +394,16 @@ def verificar_creditos_apify():
             return
         pct = (uso / teto) * 100
         log(f"  Apify credits: ${uso:.2f} / ${teto:.2f} ({pct:.0f}%)")
+        # Persiste no Supabase para o admin dashboard
+        try:
+            _supabase_upsert("service_status", [{
+                "tenant": TENANT, "servico": "apify",
+                "uso_pct": round(pct, 1), "uso_usd": round(uso, 4),
+                "teto_usd": round(teto, 4),
+                "atualizado_em": datetime.utcnow().isoformat(),
+            }], "tenant,servico")
+        except Exception:
+            pass
         if pct >= 80:
             restante = teto - uso
             msg = (
@@ -2900,6 +2919,7 @@ def main():
     posts = coletar_posts()
     if not posts:
         log("  Nenhum post coletado. Pipeline encerrado.")
+        _safe("creditos_apify", verificar_creditos_apify)  # registra status mesmo sem posts (ex: limite mensal atingido)
         return
 
     comentarios_por_post = coletar_comentarios(posts)
