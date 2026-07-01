@@ -459,10 +459,12 @@ def coletar_posts():
             log(f"  Instagrapi falhou: {e}")
 
     # ── Apify ────────────────────────────────────────────────────
+    if not APIFY_TOKEN:
+        log("  Apify: APIFY_API_TOKEN nao configurado — pulando")
     if APIFY_TOKEN:
         log("=== MODULO 1b - Coletando posts via Apify ===")
         try:
-            input_data = {"username": perfis, "resultsLimit": MAX_POSTS_POR_PERFIL}
+            input_data = {"usernames": perfis, "resultsLimit": MAX_POSTS_POR_PERFIL}
             run_id = apify_iniciar_run(ACTOR_POSTS, input_data)
             if run_id:
                 dataset_id = apify_aguardar_run(run_id, timeout=300)

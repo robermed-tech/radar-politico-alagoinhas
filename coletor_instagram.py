@@ -26,6 +26,7 @@ Boas práticas anti-ban:
 
 import os
 import json
+import re
 import time
 import random
 from datetime import datetime, timedelta, timezone
@@ -33,10 +34,7 @@ from pathlib import Path
 
 try:
     from instagrapi import Client
-    from instagrapi.exceptions import (
-        LoginRequired, ChallengeRequired,
-        UserNotFound, MediaNotFound, RateLimitError,
-    )
+    from instagrapi.exceptions import UserNotFound, MediaNotFound, RateLimitError
     INSTAGRAPI_DISPONIVEL = True
 except ImportError:
     INSTAGRAPI_DISPONIVEL = False
@@ -172,7 +170,7 @@ def coletar_posts(perfis: list[str], dias_atras: int = DIAS_ATRAS) -> list[dict]
         except UserNotFound:
             print(f"  ⚠ @{username}: perfil não encontrado ou privado")
         except RateLimitError:
-            print(f"  ⚠ Rate limit atingido — pausando 60s...")
+            print("  ⚠ Rate limit atingido — pausando 60s...")
             time.sleep(60)
         except Exception as e:
             print(f"  ⚠ Erro ao coletar @{username}: {e}")
@@ -221,7 +219,7 @@ def coletar_comentarios(posts: list[dict]) -> list[dict]:
         except MediaNotFound:
             print(f"  ⚠ Post não encontrado: {post_url}")
         except RateLimitError:
-            print(f"  ⚠ Rate limit — pausando 60s...")
+            print("  ⚠ Rate limit — pausando 60s...")
             time.sleep(60)
         except Exception as e:
             print(f"  ⚠ Erro ao coletar comentários de {post_url}: {e}")
@@ -231,6 +229,26 @@ def coletar_comentarios(posts: list[dict]) -> list[dict]:
 
 
 # ── Interface compatível com o pipeline (substitui Apify) ─────────────────────
+
+def _limpar_texto_basico(texto: str) -> str:
+    """
+    Limpeza leve do texto de um comentário antes de entrar no prompt do Claude
+    — remove URLs e caracteres de controle/ruído, colapsa espaços. Espelha
+    limpar_texto() de radar_agente.py (duplicada aqui só para evitar import
+    circular entre os dois módulos).
+
+    Propositalmente NÃO filtra por palavra-chave: um filtro aqui reintroduziria
+    o mesmo problema já corrigido do lado Apify (radar_agente.coletar_comentarios)
+    — descartar comentários de crise genuínos que não citam explicitamente
+    "prefeitura"/"gestão" (ex.: "que vergonha, incompetente!").
+    """
+    if not texto:
+        return ""
+    texto = re.sub(r"http\S+", "", texto)
+    texto = re.sub(r"[^\w\s\.,!?;:\-áéíóúàâêôãõüçÁÉÍÓÚÀÂÊÔÃÕÜÇ@]", " ", texto)
+    texto = re.sub(r"\s+", " ", texto).strip()
+    return texto
+
 
 def coletar_posts_e_comentarios(perfis: list[str], dias_atras: int = DIAS_ATRAS) -> tuple[list[dict], dict]:
     """
@@ -255,7 +273,7 @@ def coletar_posts_e_comentarios(perfis: list[str], dias_atras: int = DIAS_ATRAS)
     for c in comentarios_brutos:
         url      = c.get("postUrl", "").rstrip("/")
         username = c.get("ownerUsername", "anon")
-        texto    = c.get("text", "").strip()
+        texto    = _limpar_texto_basico(c.get("text", ""))
         if url and texto:
             mapa.setdefault(url, []).append(f"{username}: {texto}")
 
