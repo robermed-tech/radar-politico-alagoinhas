@@ -35,6 +35,7 @@ function direcao(s: number): "subindo" | "estavel" | "caindo" {
 const DIR_ICON: Record<string, string> = { subindo: "▲", estavel: "─", caindo: "▼" };
 const DIR_COR: Record<string, string> = { subindo: "#22C55E", estavel: "#9FB0CC", caindo: "#EF4444" };
 const COR_OUTROS = "#94A3B8";
+const PALETA = ["#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", "#F97316", "#06B6D4"];
 
 interface TemaStats {
   tema: string;
@@ -211,7 +212,74 @@ export function TrendsPage() {
       </div>
     );
 
-  const { stats, outrosTemasSet, metr } = view;
+  const { stats, topIndiv, outrosSerie, outrosTotal, outrosTemas, outrosTemasSet, dias, metr } = view;
+
+  // Gráfico de linhas temporal: top 7 individuais + OUTROS agregado (linha tracejada cinza)
+  const lineOption = {
+    grid: { left: 48, right: 16, top: 20, bottom: 52 },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: ink.tooltipBg,
+      borderColor: ink.tooltipBorder,
+      textStyle: { color: ink.tooltipText },
+      formatter: (params: any) => {
+        const arr: any[] = Array.isArray(params) ? params : [params];
+        let html = `<b>${arr[0]?.axisValue ?? ""}</b><br/>`;
+        for (const p of arr) {
+          if (p.seriesName === "Outros" && outrosTemas.length > 0) {
+            html += `<span style="color:${COR_OUTROS}">●</span> <b>Outros</b> (${outrosTemas.join(", ")}): <b>${p.value}</b><br/>`;
+          } else {
+            html += `<span style="color:${p.color}">●</span> ${p.seriesName}: <b>${p.value}</b><br/>`;
+          }
+        }
+        return html;
+      },
+    },
+    legend: {
+      data: [...topIndiv.map((s) => s.tema), ...(outrosTotal > 0 ? ["Outros"] : [])],
+      bottom: 0,
+      textStyle: { color: ink.axis, fontSize: 10 },
+      itemWidth: 14,
+      itemHeight: 8,
+    },
+    xAxis: {
+      type: "category",
+      data: dias,
+      axisLine: { lineStyle: { color: ink.axisLine } },
+      axisLabel: { color: ink.axis, fontSize: 10, rotate: 30 },
+    },
+    yAxis: {
+      type: "value",
+      splitLine: { lineStyle: { color: ink.grid } },
+      axisLabel: { color: ink.axis, fontSize: 10 },
+    },
+    series: [
+      ...topIndiv.map((s, i) => ({
+        name: s.tema,
+        type: "line" as const,
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 4,
+        lineStyle: { width: 2 },
+        itemStyle: { color: PALETA[i % PALETA.length] },
+        data: s.serie,
+      })),
+      ...(outrosTotal > 0
+        ? [
+            {
+              name: "Outros",
+              type: "line" as const,
+              smooth: true,
+              symbol: "circle",
+              symbolSize: 4,
+              lineStyle: { width: 2, type: "dashed" as const },
+              itemStyle: { color: COR_OUTROS },
+              data: outrosSerie,
+            },
+          ]
+        : []),
+    ],
+  };
 
   // Barra divergente de variação: cada tema vira uma barra cuja cor mostra o
   // sentido da tendência (verde sobe · vermelho cai · cinza estável). Responde
@@ -355,6 +423,18 @@ export function TrendsPage() {
             {caindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em queda.</div>}
           </div>
         </div>
+      </div>
+
+      {/* Evolução temporal por tema: top 7 individuais + OUTROS agregado */}
+      <div className="rounded-xl border border-line bg-bg-1 p-4">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm font-bold">{metr.label} · evolução por tema (janela {janela}d)</div>
+          <div className="text-[10px] text-txt-3">
+            linha cinza tracejada = temas agrupados em{" "}
+            <span style={{ color: COR_OUTROS }}>Outros</span>
+          </div>
+        </div>
+        <ReactECharts option={lineOption} style={{ height: 280 }} notMerge />
       </div>
 
       {/* Variação por tema (barra divergente) */}
