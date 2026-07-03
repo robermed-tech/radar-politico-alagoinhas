@@ -16,6 +16,7 @@ import { AvisoAmostra } from "@/components/AvisoAmostra";
 import { fmtInt, fmtDiaBR } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassArea, glowLine, withAlpha, colorByIAD } from "@/lib/chartTheme";
+import { IconInbox, IconTrendUp, IconTrendDown, IconHeart, IconWarningTriangle } from "@/components/icons";
 
 interface AprovBucket {
   rotulo: string;
@@ -98,7 +99,8 @@ function ChartVertical({
         if (!b) return "";
         const lado = classificaLado(b.cat || b.rotulo);
         const ladoTag = lado ? ` <span style="color:${lado.cor};font-weight:700">[${lado.label}]</span>` : "";
-        return `<b>${b.rotulo}</b>${ladoTag}<br/>🔴 Críticas: <b>${b.pNeg}%</b><br/>🟢 Elogios: <b>${b.pPos}%</b><br/><span style="opacity:.6">${b.posts} post${b.posts !== 1 ? "s" : ""} · ${fmtInt(b.coments)} coment.</span>`;
+        const dot = (cor: string) => `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${cor}"></span>`;
+        return `<b>${b.rotulo}</b>${ladoTag}<br/>${dot("#EF4444")} Críticas: <b>${b.pNeg}%</b><br/>${dot("#22C55E")} Elogios: <b>${b.pPos}%</b><br/><span style="opacity:.6">${b.posts} post${b.posts !== 1 ? "s" : ""} · ${fmtInt(b.coments)} coment.</span>`;
       },
     },
     xAxis: {
@@ -191,12 +193,26 @@ function ComentarioRow({ c, color }: { c: Comment; color: string }) {
       style={{ borderColor: `${color}55` }}
     >
       <p className="italic">"{c.texto.slice(0, 220)}{c.texto.length > 220 ? "…" : ""}"</p>
-      <div className="mt-2 flex items-center justify-between text-[11px]">
+      <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
         <span className="text-txt-3">
           @{c.username} · em @{c.autor_post}
+          {c.url_post && (
+            <>
+              {" · "}
+              <a
+                href={c.url_post}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-brand hover:underline"
+              >
+                ver post ↗
+              </a>
+            </>
+          )}
         </span>
-        <span className="tnum font-bold" style={{ color }}>
-          ❤ {fmtInt(c.curtidas)}
+        <span className="tnum flex shrink-0 items-center gap-1 font-bold" style={{ color }} title="Curtidas do comentário">
+          <IconHeart size={12} />
+          {fmtInt(c.curtidas)} curtidas
         </span>
       </div>
     </div>
@@ -340,7 +356,10 @@ export function ApprovalPage() {
       <div className="p-5">
         <h1 className="text-2xl font-extrabold">Análise do Clima</h1>
         <div className="mt-4 rounded-xl border border-line bg-bg-1 p-6">
-          <div className="font-bold text-txt-1">📭 Sem dados no período</div>
+          <div className="flex items-center gap-2 font-bold text-txt-1">
+            <IconInbox size={20} className="text-txt-3" />
+            Sem dados no período
+          </div>
           <div className="mt-2 space-y-1 text-sm text-txt-2">
             <div>• Fonte atual: <span className="font-semibold">{radar?.source === "supabase" ? "Supabase (Postgres)" : "Google Sheets"}</span></div>
             <div>• Próximas coletas: AGORA roda às <span className="font-semibold">08h, 14h e 19h BRT</span></div>
@@ -397,7 +416,15 @@ export function ApprovalPage() {
         <KpiStat
           label="Confiança"
           value={view.ica}
-          sub={view.ica < 40 ? "⚠ amostra insuficiente" : "amostra confiável"}
+          sub={
+            view.ica < 40 ? (
+              <span className="flex items-center gap-1">
+                <IconWarningTriangle size={11} /> amostra insuficiente
+              </span>
+            ) : (
+              "amostra confiável"
+            )
+          }
         />
         <KpiStat label="Comentários" value={fmtInt(view.coments)} sub={`${view.posts} posts (${periodoLabel})`} />
         {/* Temas em Atenção — 1 tema por vez, carousel automático */}
@@ -525,8 +552,9 @@ export function ApprovalPage() {
       )}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-3 text-sm font-bold text-risk-low">
-            🟢 Vozes que aprovam (top 5 mais curtidos)
+          <div className="mb-3 flex items-center gap-1.5 text-sm font-bold text-risk-low">
+            <IconTrendUp size={16} />
+            Vozes que aprovam (top 5 mais curtidos)
           </div>
           <div className="space-y-2">
             {cms.pos.length === 0 && (
@@ -540,8 +568,9 @@ export function ApprovalPage() {
           </div>
         </div>
         <div className="rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-3 text-sm font-bold text-risk-crit">
-            🔴 Vozes que reprovam (top 5 mais curtidos)
+          <div className="mb-3 flex items-center gap-1.5 text-sm font-bold text-risk-crit">
+            <IconTrendDown size={16} />
+            Vozes que reprovam (top 5 mais curtidos)
           </div>
           <div className="space-y-2">
             {cms.neg.length === 0 && (

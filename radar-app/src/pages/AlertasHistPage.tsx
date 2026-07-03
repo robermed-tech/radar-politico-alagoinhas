@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchAlertHistory, type AlertaHistorico } from "@/lib/data";
+import { IconAlertBell } from "@/components/icons";
 
 function fmtDt(iso: string): string {
   try {
     return new Date(iso).toLocaleString("pt-BR", {
-      day: "2-digit", month: "2-digit", year: "2-digit",
+      day: "2-digit", month: "2-digit",
       hour: "2-digit", minute: "2-digit",
     });
   } catch {
@@ -48,7 +49,7 @@ function BadgeTipo({ tipo }: { tipo: string }) {
 function EmptyState() {
   return (
     <div className="rounded-xl border border-line bg-bg-1 p-10 text-center">
-      <div className="mb-2 text-3xl">🔔</div>
+      <IconAlertBell size={28} className="mx-auto mb-2 text-txt-3" />
       <div className="font-semibold text-txt-1">Nenhum alerta registrado</div>
       <div className="mt-1 text-sm text-txt-3">
         Os alertas automáticos aparecem aqui quando o AGORA os dispara via WhatsApp.

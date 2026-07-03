@@ -10,6 +10,7 @@ import {
 } from "@/lib/admin";
 import { fetchServiceStatus } from "@/lib/data";
 import { type Role } from "@/lib/auth";
+import { IconWarningTriangle } from "@/components/icons";
 
 type Tab = "score" | "relevancia" | "fontes" | "usuarios" | "notificacoes" | "clima";
 
@@ -73,8 +74,9 @@ function ApifyStatusBanner() {
     <div className="rounded-xl border p-4" style={{ background: bg, borderColor: bord }}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-sm font-bold" style={{ color: cor }}>
-            {critico ? "🔴 Créditos Apify quase esgotados" : "🟠 Créditos Apify em atenção"}
+          <div className="flex items-center gap-1.5 text-sm font-bold" style={{ color: cor }}>
+            <IconWarningTriangle size={16} />
+            {critico ? "Créditos Apify quase esgotados" : "Créditos Apify em atenção"}
           </div>
           <div className="mt-0.5 text-xs text-txt-3">
             ${status.uso_usd.toFixed(2)} de ${status.teto_usd.toFixed(2)} consumidos · {pct.toFixed(0)}% do limite mensal

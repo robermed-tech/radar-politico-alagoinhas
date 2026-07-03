@@ -5,6 +5,7 @@ import {
   fetchCoordinationGroups,
   type CoordinationGroup,
 } from "@/lib/data";
+import { IconRadar } from "@/components/icons";
 
 const SENT_COR_G: Record<string, string> = {
   positivo: "#22C55E",
@@ -17,7 +18,7 @@ function CoordinationPanel({ grupos }: { grupos: CoordinationGroup[] }) {
   return (
     <div className="rounded-xl border p-4" style={{ borderColor: "rgba(220,74,74,0.28)", background: "rgba(220,74,74,0.07)" }}>
       <div className="mb-1 flex items-center gap-2">
-        <span className="text-lg">🕵️</span>
+        <IconRadar size={18} className="shrink-0" style={{ color: "#DC4A4A" }} />
         <h2 className="text-base font-extrabold" style={{ color: "#DC4A4A" }}>
           {grupos.length} campanha(s) coordenada(s) detectada(s)
         </h2>

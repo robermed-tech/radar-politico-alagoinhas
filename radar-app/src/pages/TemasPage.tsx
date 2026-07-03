@@ -318,8 +318,10 @@ export function TemasPage() {
               Barras mostram variação semanal — passa o mouse para ver o valor exato
             </div>
           </div>
-          <div className="text-[10px] text-txt-3">
-            🔴 subindo · 🟢 caindo · ⚪ estável
+          <div className="flex items-center gap-3 text-[10px] text-txt-3">
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-risk-crit" /> subindo</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-risk-low" /> caindo</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-txt-3" /> estável</span>
           </div>
         </div>
         <ReactECharts

@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchBriefing, fetchCrisisPlans, type CrisisPlan } from "@/lib/data";
 import { NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
+import { IconAlertBell, IconCheckCircle, IconWarningTriangle } from "@/components/icons";
 
 const JANELA_LABEL: Record<string, string> = {
   imediato: "Agir agora",
@@ -36,7 +37,7 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
   return (
     <div className="rounded-xl border bg-bg-1 p-5" style={{ borderColor: "rgba(249,115,22,0.35)" }}>
       <div className="mb-1 flex items-center gap-2">
-        <span className="text-xl">🚨</span>
+        <IconAlertBell size={20} className="shrink-0" style={{ color: "#F97316" }} />
         <h2 className="text-base font-extrabold" style={{ color: "#F97316" }}>
           {reais.length > 0
             ? `${reais.length} situação(ões) que precisa(m) de atenção`
@@ -45,8 +46,9 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
       </div>
 
       {reais.length === 0 && (
-        <p className="mt-2 rounded-lg border border-risk-low/30 bg-risk-low/5 p-3 text-sm text-txt-2">
-          ✅ Os posts de alto risco foram analisados pela IA e classificados como ruído — não exigem ação imediata.
+        <p className="mt-2 flex items-start gap-2 rounded-lg border border-risk-low/30 bg-risk-low/5 p-3 text-sm text-txt-2">
+          <IconCheckCircle size={16} className="mt-0.5 shrink-0 text-risk-low" />
+          Os posts de alto risco foram analisados pela IA e classificados como ruído — não exigem ação imediata.
         </p>
       )}
 
@@ -129,7 +131,7 @@ export function AlertasAcoesPage() {
           {(b!.alertas ?? []).length > 0 && (
             <div className="rounded-xl border border-line bg-bg-1 p-5">
               <div className="mb-3 flex items-center gap-2">
-                <span className="text-risk-crit">⚠</span>
+                <IconWarningTriangle size={16} className="text-risk-crit" />
                 <h2 className="text-sm font-extrabold">Pontos de atenção</h2>
               </div>
               <div className="space-y-2">
@@ -179,7 +181,9 @@ export function AlertasAcoesPage() {
 
           <div className="text-xs text-txt-3">
             Gerado automaticamente a partir dos dados do dia ·{" "}
-            {new Date(b!.gerado_em).toLocaleString("pt-BR")}
+            {new Date(b!.gerado_em).toLocaleString("pt-BR", {
+              day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+            })}
           </div>
         </>
       )}

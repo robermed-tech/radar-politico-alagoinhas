@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchRadar, parseData, filtrarPorPeriodo, type Post } from "@/lib/data";
 import { PostChips } from "@/components/PostChips";
+import { IconNewspaper, IconSwords, IconBuilding, IconPerson, IconDocument } from "@/components/icons";
 
 type Filtro = "todos" | "negativos" | "positivos" | "urgentes";
 type Periodo = 1 | 7 | 30;
@@ -25,13 +26,13 @@ const SENT_BORDER: Record<string, string> = {
   neutro: "#64748B",
 };
 
-function avatarEmoji(categoria: string): string {
+function AvatarIcone({ categoria }: { categoria: string }) {
   const cat = categoria.toLowerCase();
-  if (cat.includes("imprensa")) return "📰";
-  if (cat.includes("oposi")) return "⚔";
-  if (cat.includes("prefeitura")) return "🏛";
-  if (cat.includes("prefeito")) return "👤";
-  return "📄";
+  if (cat.includes("imprensa")) return <IconNewspaper size={16} />;
+  if (cat.includes("oposi")) return <IconSwords size={16} />;
+  if (cat.includes("prefeitura")) return <IconBuilding size={16} />;
+  if (cat.includes("prefeito")) return <IconPerson size={16} />;
+  return <IconDocument size={16} />;
 }
 
 function tempoRelativo(dataStr: string): string {
@@ -55,8 +56,8 @@ function PostCard({ p }: { p: Post }) {
       style={{ borderLeftColor: borderColor, borderLeftWidth: 3 }}
     >
       <div className="mb-2 flex items-center gap-2">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bg-2 text-base">
-          {avatarEmoji(p.categoria)}
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bg-2 text-txt-2">
+          <AvatarIcone categoria={p.categoria} />
         </span>
         <div className="min-w-0">
           <span className="text-sm font-bold text-txt-1">@{p.autor}</span>
