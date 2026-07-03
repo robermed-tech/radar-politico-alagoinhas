@@ -26,6 +26,13 @@ const SENT_BORDER: Record<string, string> = {
   neutro: "#64748B",
 };
 
+// Rótulos/cores dos clusters SCCT (mesma taxonomia do boletim climático)
+const SCCT_CLUSTER: Record<string, { label: string; cor: string }> = {
+  vitima:      { label: "Vítima de ataque/boato", cor: "#3B82F6" },
+  acidental:   { label: "Falha acidental",         cor: "#EAB308" },
+  intencional: { label: "Crise evitável",          cor: "#EF4444" },
+};
+
 function AvatarIcone({ categoria }: { categoria: string }) {
   const cat = categoria.toLowerCase();
   if (cat.includes("imprensa")) return <IconNewspaper size={16} />;
@@ -78,6 +85,37 @@ function PostCard({ p }: { p: Post }) {
       )}
       {resumo && (
         <p className="mb-2.5 line-clamp-2 text-sm text-txt-2">{resumo}</p>
+      )}
+      {/* Camada SCCT/Coombs — só quando o post configura crise */}
+      {SCCT_CLUSTER[p.cluster_crise] && (
+        <div
+          className="mb-2.5 rounded-lg border px-3 py-2"
+          style={{
+            borderColor: `${SCCT_CLUSTER[p.cluster_crise].cor}44`,
+            background: `${SCCT_CLUSTER[p.cluster_crise].cor}0D`,
+          }}
+        >
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <span
+              className="rounded px-1.5 py-0.5 font-bold uppercase"
+              style={{
+                background: `${SCCT_CLUSTER[p.cluster_crise].cor}1A`,
+                color: SCCT_CLUSTER[p.cluster_crise].cor,
+              }}
+            >
+              SCCT · {SCCT_CLUSTER[p.cluster_crise].label}
+            </span>
+            <span className="tnum text-txt-3">
+              responsabilização {p.responsabilidade_atribuida}/100
+            </span>
+          </div>
+          {p.abordagem_recomendada && (
+            <p className="mt-1 text-xs text-txt-2" title={p.por_que_funciona}>
+              <span className="font-semibold text-txt-1">Resposta recomendada: </span>
+              {p.abordagem_recomendada}
+            </p>
+          )}
+        </div>
       )}
       <PostChips
         sentimento={p.sentimento_post}

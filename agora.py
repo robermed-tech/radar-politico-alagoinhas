@@ -1492,6 +1492,13 @@ def gravar_no_supabase(posts_analisados, comentarios_por_post):
             "sugestao_acao": p.get("sugestao_acao", ""),
             "janela_acao": p.get("janela_acao", ""),
             "caption": (p.get("caption", "") or "")[:500],
+            # Camada SCCT/Coombs (requer colunas de supabase/scct_posts_e_irt.sql)
+            "cluster_crise": p.get("cluster_crise", "nenhum") or "nenhum",
+            "responsabilidade_atribuida": int(p.get("responsabilidade_atribuida", 0) or 0),
+            "confianca": int(p.get("confianca", 0) or 0),
+            "abordagem_recomendada": p.get("abordagem_recomendada", ""),
+            "por_que_funciona": p.get("por_que_funciona", ""),
+            "motivo_alerta": p.get("motivo_alerta", ""),
             "atualizado_em": agora,
         })
     n_posts = _supabase_upsert("posts", posts_rows, "url")
@@ -1874,11 +1881,12 @@ def rodar_cacador_crises(posts_analisados, comentarios_por_post):
 # ==============================================================
 
 def verificar_alertas(posts_analisados):
-    """Lê config de alertas do Supabase (ou usa defaults de env) e dispara WhatsApp."""
+    """Lê config de alertas do Supabase (ou usa defaults de env) e dispara WhatsApp.
+    Retorna a lista de temas que dispararam alerta temático (p/ o laço IRT)."""
     if not SUPABASE_URL or not SUPABASE_KEY:
-        return
+        return []
     if not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER:
-        return
+        return []
 
     # Throttle: no máximo 1 alerta de limiar a cada 6h para não repetir o mesmo alerta 3x/dia
     try:
@@ -1890,7 +1898,7 @@ def verificar_alertas(posts_analisados):
         )
         if recentes:
             log("  verificar_alertas: alerta ja enviado nas ultimas 6h — pulando")
-            return
+            return []
     except Exception:
         pass  # se falhar a checagem, deixa enviar
 
@@ -1898,7 +1906,7 @@ def verificar_alertas(posts_analisados):
     iad = calc_iad(posts_analisados)
     total = len(posts_analisados)
     if total == 0:
-        return
+        return []
     neg_pct = round(sum(1 for p in posts_analisados if _sent(p) == "negativo") / total * 100)
 
     # Prioridade: tenant_settings.notification_config > alerta_config > env vars
@@ -1933,19 +1941,26 @@ def verificar_alertas(posts_analisados):
     for p in posts_analisados:
         t = p.get("tema", "") or ""
         if not t or t == "—": continue
-        tema_map.setdefault(t, {"neg": 0, "tot": 0})
+        tema_map.setdefault(t, {"neg": 0, "tot": 0, "coments": 0})
         tema_map[t]["tot"] += 1
+        tema_map[t]["coments"] += int(p.get("comentarios_total", 0) or 0)
         if _sent(p) == "negativo": tema_map[t]["neg"] += 1
+    temas_alertados = []
     if ativo_tema:
         for tema, v in tema_map.items():
             if v["tot"] < 3: continue
             pneg = round(v["neg"] / v["tot"] * 100)
             if pneg >= limiar_tema:
-                alertas.append(f"⚡ Tema '{tema}' com {pneg}% negativo — acima do limiar de {limiar_tema}%.")
+                alertas.append(
+                    f"⚡ Tema '{tema}' com {pneg}% negativo em {v['tot']} posts "
+                    f"({v['coments']} comentários) — acima do limiar de {limiar_tema}%. "
+                    f"Preocupação coletiva, não menção isolada."
+                )
+                temas_alertados.append(tema)
                 break
 
     if not alertas:
-        return
+        return temas_alertados
 
     log(f"=== ALERTAS: {len(alertas)} disparo(s) ===")
     data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
@@ -1963,6 +1978,110 @@ def verificar_alertas(posts_analisados):
             }], "id")
     else:
         log("  Alerta WhatsApp: falhou (ver log acima)")
+    return temas_alertados
+
+
+# ==============================================================
+# MODULO IRT - ACOMPANHAMENTO DE RECUPERACAO POS-ALERTA
+# ==============================================================
+# Image Restoration Theory (Benoit): depois que um tema dispara alerta,
+# registra o pico e acompanha nos runs seguintes se o volume/negatividade
+# esta caindo (resposta efetiva) ou persistindo (resposta nao efetiva).
+# Tabela: temas_monitorados (supabase/scct_posts_e_irt.sql).
+
+def atualizar_temas_monitorados(posts_analisados, temas_alertados):
+    """Registra picos de temas alertados e atualiza a tendencia de recuperacao."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+
+    hoje = datetime.now().strftime("%Y-%m-%d")
+
+    # Estatisticas atuais por tema (mesma janela que o run enxerga: DIAS_RETROATIVOS)
+    stats = {}
+    for p in posts_analisados:
+        t = (p.get("tema", "") or "").strip().lower()
+        if not t or t == "—":
+            continue
+        s = stats.setdefault(t, {"tot": 0, "neg": 0})
+        s["tot"] += 1
+        if _sent(p) == "negativo":
+            s["neg"] += 1
+
+    # Temas que dispararam alerta neste run: alerta tematico + posts com motivo_alerta
+    temas_novos = {t.strip().lower() for t in temas_alertados if t}
+    for p in posts_analisados:
+        if p.get("motivo_alerta"):
+            t = (p.get("tema", "") or "").strip().lower()
+            if t and t != "—":
+                temas_novos.add(t)
+
+    existentes = {
+        r["tema"]: r
+        for r in _supabase_get("temas_monitorados", f"tenant=eq.{TENANT}&select=*")
+        if r.get("tema")
+    }
+
+    rows = []
+
+    # 1. Registra picos novos (ou re-arma tema ja recuperado que voltou a alertar)
+    for tema in temas_novos:
+        s = stats.get(tema, {"tot": 0, "neg": 0})
+        pneg = round(s["neg"] / s["tot"] * 100) if s["tot"] else 0
+        atual = existentes.get(tema)
+        if atual and atual.get("status") == "monitorando":
+            # pico ainda subindo: atualiza o pico se o volume atual superou
+            if s["tot"] > int(atual.get("volume_pico", 0) or 0):
+                atual["volume_pico"] = s["tot"]
+                atual["pneg_pico"] = pneg
+                atual["pico_em"] = hoje
+            continue  # atualizacao de tendencia acontece no passo 2
+        rows.append({
+            "tenant": TENANT, "tema": tema, "pico_em": hoje,
+            "origem": "alerta automatico",
+            "volume_pico": s["tot"], "pneg_pico": pneg,
+            "volume_atual": s["tot"], "pneg_atual": pneg,
+            "tendencia": "estavel", "status": "monitorando",
+            "atualizado_em": datetime.now().isoformat(),
+        })
+
+    # 2. Atualiza tendencia/status dos temas ja em monitoramento
+    for tema, r in existentes.items():
+        if r.get("status") not in ("monitorando", "persistente"):
+            continue
+        s = stats.get(tema, {"tot": 0, "neg": 0})
+        pneg = round(s["neg"] / s["tot"] * 100) if s["tot"] else 0
+        vol_pico = int(r.get("volume_pico", 0) or 0) or 1
+        try:
+            dias = (datetime.now() - datetime.strptime(str(r.get("pico_em"))[:10], "%Y-%m-%d")).days
+        except Exception:
+            dias = 0
+        if s["tot"] > vol_pico:
+            tendencia = "em_alta"
+        elif s["tot"] <= vol_pico * 0.5:
+            tendencia = "em_queda"
+        else:
+            tendencia = "estavel"
+        status = r.get("status", "monitorando")
+        if dias >= 3 and tendencia == "em_queda":
+            status = "recuperado"
+        elif dias >= 7 and tendencia != "em_queda":
+            status = "persistente"  # resposta nao foi efetiva
+        rows.append({
+            "tenant": TENANT, "tema": tema,
+            "pico_em": str(r.get("pico_em"))[:10],
+            "origem": r.get("origem", ""),
+            "volume_pico": int(r.get("volume_pico", 0) or 0),
+            "pneg_pico": float(r.get("pneg_pico", 0) or 0),
+            "volume_atual": s["tot"], "pneg_atual": pneg,
+            "tendencia": tendencia, "status": status,
+            "atualizado_em": datetime.now().isoformat(),
+        })
+
+    if not rows:
+        return
+    n = _supabase_upsert("temas_monitorados", rows, "tenant,tema")
+    log(f"  IRT: {n} tema(s) monitorado(s) atualizados "
+        f"({len(temas_novos)} pico(s) neste run)")
 
 
 # ==============================================================
@@ -3024,7 +3143,7 @@ def main():
     _safe("influencers", gravar_influencers, posts_analisados, comentarios_por_post)       # ranking de influenciadores
     _safe("narratives", gravar_narratives, posts_analisados, comentarios_por_post)         # narrativas (tema + sentimento)
     _safe("daily_themes", gravar_daily_themes, posts_analisados)                           # tendencias por tema (Fase 3e)
-    _safe("alertas_limiar", verificar_alertas, posts_analisados)                           # alertas por limiar (Sprint 2)
+    temas_alertados = _safe("alertas_limiar", verificar_alertas, posts_analisados) or []   # alertas por limiar (Sprint 2)
     # Posts novos: nunca vistos antes → alerta completo se score disparar.
     # Posts existentes: só re-alerta se houver mudança real (comentários, risco ou queixa).
     # Se existentes_radar=None (falha de carregamento nas duas fontes), alertas sao
@@ -3066,6 +3185,8 @@ def main():
         alertas = disparar_alertas(posts_novos)
         for p in posts_com_update:
             enviar_update_coments(p, motivos_update[p["url"]])
+    # Laço IRT: registra picos dos temas alertados e mede recuperação nos runs seguintes
+    _safe("irt_temas", atualizar_temas_monitorados, posts_analisados, temas_alertados)
     try:
         atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
     except Exception as e:

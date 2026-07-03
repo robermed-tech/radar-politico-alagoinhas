@@ -36,6 +36,11 @@ export interface Post {
   comentarios_destaque_curtidas: number;
   comentarios_destaque_autor: string;
   resumo: string;
+  // Camada SCCT/Coombs (colunas de supabase/scct_posts_e_irt.sql)
+  cluster_crise: string;
+  responsabilidade_atribuida: number;
+  abordagem_recomendada: string;
+  por_que_funciona: string;
 }
 
 export interface Perfil {
@@ -99,6 +104,10 @@ function normalizePost(r: Record<string, unknown>): Post {
     comentarios_destaque_curtidas: num(r.comentarios_destaque_curtidas),
     comentarios_destaque_autor: String(r.comentarios_destaque_autor ?? ""),
     resumo: String(r.resumo ?? ""),
+    cluster_crise: String(r.cluster_crise ?? "").toLowerCase(),
+    responsabilidade_atribuida: num(r.responsabilidade_atribuida),
+    abordagem_recomendada: String(r.abordagem_recomendada ?? ""),
+    por_que_funciona: String(r.por_que_funciona ?? ""),
   };
 }
 
@@ -396,6 +405,31 @@ export async function fetchDailyThemes(): Promise<DailyTheme[]> {
   }).catch(() => null);
   if (!res || !res.ok) return [];
   return (await res.json()) as DailyTheme[];
+}
+
+/** Laço IRT: tema que disparou alerta fica em monitoramento de recuperação. */
+export interface TemaMonitorado {
+  tema: string;
+  pico_em: string;
+  volume_pico: number;
+  pneg_pico: number;
+  volume_atual: number;
+  pneg_atual: number;
+  tendencia: string; // em_queda | estavel | em_alta
+  status: string;    // monitorando | recuperado | persistente
+  atualizado_em: string;
+}
+
+export async function fetchTemasMonitorados(): Promise<TemaMonitorado[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/temas_monitorados?tenant=eq.${TENANT}` +
+    `&select=*&order=pico_em.desc&limit=50`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  return (await res.json()) as TemaMonitorado[];
 }
 
 export interface Comment {

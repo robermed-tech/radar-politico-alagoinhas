@@ -3,11 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import {
   fetchDailyThemes,
+  fetchTemasMonitorados,
   type DailyTheme,
+  type TemaMonitorado,
 } from "@/lib/data";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
 import { AlertaCrise } from "@/components/AlertaCrise";
+import { IconTrendUp, IconTrendDown, IconCheckCircle, IconWarningTriangle } from "@/components/icons";
+import { fmtDiaBR } from "@/lib/format";
 
 // ── Métricas do gráfico — apenas Volume ──────────────────────────────────────
 type Metrica = "volume";
@@ -38,6 +42,72 @@ function direcaoSlope(serie: number[]): "subindo" | "estavel" | "caindo" {
 }
 
 const COR_OUTROS = "#94A3B8";
+
+// ── Laço IRT: recuperação de imagem pós-alerta ───────────────────────────────
+const IRT_STATUS: Record<string, { label: string; cor: string }> = {
+  monitorando: { label: "Monitorando",              cor: "#EAB308" },
+  recuperado:  { label: "Recuperado",               cor: "#22C55E" },
+  persistente: { label: "Persistente — reavaliar",  cor: "#EF4444" },
+};
+const IRT_TEND: Record<string, { label: string; cor: string }> = {
+  em_queda: { label: "em queda", cor: "#22C55E" },
+  estavel:  { label: "estável",  cor: "#9FB0CC" },
+  em_alta:  { label: "em alta",  cor: "#EF4444" },
+};
+
+function TendenciaIcone({ tendencia, status }: { tendencia: string; status: string }) {
+  if (status === "recuperado") return <IconCheckCircle size={14} />;
+  if (status === "persistente") return <IconWarningTriangle size={14} />;
+  if (tendencia === "em_queda") return <IconTrendDown size={14} />;
+  if (tendencia === "em_alta") return <IconTrendUp size={14} />;
+  return null;
+}
+
+/** Temas que dispararam alerta e estão em acompanhamento de recuperação (IRT/Benoit). */
+function PainelRecuperacaoIRT() {
+  const { data } = useQuery({
+    queryKey: ["temas-monitorados"],
+    queryFn: fetchTemasMonitorados,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const temas: TemaMonitorado[] = (data ?? []).slice(0, 6);
+  if (temas.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-line bg-bg-1 p-4">
+      <div className="text-sm font-bold">Recuperação pós-alerta</div>
+      <p className="mb-3 text-[10px] text-txt-3">
+        Temas que dispararam alerta ficam em acompanhamento — queda sustentada indica que a resposta funcionou
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {temas.map((t) => {
+          const st = IRT_STATUS[t.status] ?? IRT_STATUS.monitorando;
+          const td = IRT_TEND[t.tendencia] ?? IRT_TEND.estavel;
+          return (
+            <div key={t.tema} className="rounded-lg border border-line bg-bg-2 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-bold capitalize text-txt-1">{t.tema}</span>
+                <span
+                  className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                  style={{ background: `${st.cor}1A`, color: st.cor }}
+                >
+                  <TendenciaIcone tendencia={t.tendencia} status={t.status} />
+                  {st.label}
+                </span>
+              </div>
+              <div className="mt-1 text-[11px] text-txt-3">
+                pico em {fmtDiaBR(t.pico_em)} · volume {t.volume_pico}→{t.volume_atual} posts
+                {" · "}
+                <span className="font-semibold" style={{ color: td.cor }}>{td.label}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 // ── Interfaces ───────────────────────────────────────────────────────────────
 interface TemaResumido {
@@ -249,6 +319,9 @@ export function TemasPage() {
           </div>
         </div>
       </div>
+
+      {/* Laço IRT: recuperação de imagem pós-alerta (só aparece quando há tema monitorado) */}
+      <PainelRecuperacaoIRT />
 
       {/* Subindo + Caindo lado a lado */}
       <div className="grid gap-3 sm:grid-cols-2">
