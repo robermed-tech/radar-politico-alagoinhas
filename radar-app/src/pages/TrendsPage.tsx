@@ -35,6 +35,7 @@ function direcao(s: number): "subindo" | "estavel" | "caindo" {
 const DIR_ICON: Record<string, string> = { subindo: "▲", estavel: "─", caindo: "▼" };
 const DIR_COR: Record<string, string> = { subindo: "#22C55E", estavel: "#9FB0CC", caindo: "#EF4444" };
 const COR_OUTROS = "#94A3B8";
+const PALETA = ["#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", "#F97316", "#06B6D4"];
 
 interface TemaStats {
   tema: string;
@@ -145,6 +146,7 @@ function KeywordCloud({ posts }: { posts: Post[] }) {
 export function TrendsPage() {
   const [metrica, setMetrica] = useState<Metrica>("volume");
   const [janela, setJanela] = useState(14); // dias
+  const [vsAnterior, setVsAnterior] = useState(false);
   const ink = chartInk(useThemeStore((s) => s.theme));
   const { data, isLoading } = useQuery({
     queryKey: ["daily-themes"],
@@ -195,7 +197,20 @@ export function TrendsPage() {
     const outrosTemas = outrosStats.map(s => s.tema);
     const outrosTemasSet = new Set(outrosTemas);
 
-    return { stats, topIndiv, outrosSerie, outrosTotal, outrosTemas, outrosTemasSet, dias, metr };
+    // Previous period (same length, immediately before current)
+    const cutoffPrevStr = new Date(cutoff.getTime() - janela * 86400000).toISOString().slice(0, 10);
+    const filtradas_prev = linhas.filter((r) => r.dia >= cutoffPrevStr && r.dia < cutoffStr);
+    const dias_prev = Array.from(new Set(filtradas_prev.map((r) => r.dia))).sort();
+    const prevStats: Record<string, number[]> = {};
+    for (const t of temas) {
+      const map: Record<string, number> = {};
+      filtradas_prev.filter((r) => r.tema === t).forEach((r) => {
+        map[r.dia] = Number(r[metr.campo] ?? 0);
+      });
+      prevStats[t] = dias_prev.map((d) => map[d] ?? 0);
+    }
+
+    return { stats, topIndiv, outrosSerie, outrosTotal, outrosTemas, outrosTemasSet, dias, metr, prevStats };
   }, [data, metrica, janela]);
 
   if (isLoading) return <div className="p-8 text-txt-2">Carregando tendências…</div>;
@@ -211,7 +226,86 @@ export function TrendsPage() {
       </div>
     );
 
-  const { stats, outrosTemasSet, metr } = view;
+  const { stats, topIndiv, outrosSerie, outrosTotal, outrosTemas, outrosTemasSet, dias, metr, prevStats } = view;
+
+  // Gráfico de linhas temporal: top 7 individuais + OUTROS agregado (linha tracejada cinza)
+  const lineOption = {
+    grid: { left: 48, right: 16, top: 20, bottom: 52 },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: ink.tooltipBg,
+      borderColor: ink.tooltipBorder,
+      textStyle: { color: ink.tooltipText },
+      formatter: (params: any) => {
+        const arr: any[] = Array.isArray(params) ? params : [params];
+        let html = `<b>${arr[0]?.axisValue ?? ""}</b><br/>`;
+        for (const p of arr) {
+          if (p.seriesName === "Outros" && outrosTemas.length > 0) {
+            html += `<span style="color:${COR_OUTROS}">●</span> <b>Outros</b> (${outrosTemas.join(", ")}): <b>${p.value}</b><br/>`;
+          } else {
+            html += `<span style="color:${p.color}">●</span> ${p.seriesName}: <b>${p.value}</b><br/>`;
+          }
+        }
+        return html;
+      },
+    },
+    legend: {
+      data: [...topIndiv.map((s) => s.tema), ...(outrosTotal > 0 ? ["Outros"] : [])],
+      bottom: 0,
+      textStyle: { color: ink.axis, fontSize: 10 },
+      itemWidth: 14,
+      itemHeight: 8,
+    },
+    xAxis: {
+      type: "category",
+      data: dias,
+      axisLine: { lineStyle: { color: ink.axisLine } },
+      axisLabel: { color: ink.axis, fontSize: 10, rotate: 30 },
+    },
+    yAxis: {
+      type: "value",
+      splitLine: { lineStyle: { color: ink.grid } },
+      axisLabel: { color: ink.axis, fontSize: 10 },
+    },
+    series: [
+      ...topIndiv.map((s, i) => ({
+        name: s.tema,
+        type: "line" as const,
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 4,
+        lineStyle: { width: 2 },
+        itemStyle: { color: PALETA[i % PALETA.length] },
+        data: s.serie,
+      })),
+      ...(outrosTotal > 0
+        ? [
+            {
+              name: "Outros",
+              type: "line" as const,
+              smooth: true,
+              symbol: "circle",
+              symbolSize: 4,
+              lineStyle: { width: 2, type: "dashed" as const },
+              itemStyle: { color: COR_OUTROS },
+              data: outrosSerie,
+            },
+          ]
+        : []),
+      // Período anterior (dashed, mais fino, sem legenda principal)
+      ...(vsAnterior
+        ? topIndiv.map((s, i) => ({
+            name: `${s.tema} (ant.)`,
+            type: "line" as const,
+            smooth: true,
+            showSymbol: false,
+            lineStyle: { width: 1, type: "dashed" as const, opacity: 0.5 },
+            itemStyle: { color: PALETA[i % PALETA.length] },
+            data: prevStats[s.tema] ?? [],
+          }))
+        : []),
+    ],
+  };
 
   // Barra divergente de variação: cada tema vira uma barra cuja cor mostra o
   // sentido da tendência (verde sobe · vermelho cai · cinza estável). Responde
@@ -302,6 +396,17 @@ export function TrendsPage() {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setVsAnterior((v) => !v)}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+              vsAnterior
+                ? "border-brand bg-brand/10 text-brand"
+                : "border-line bg-bg-1 text-txt-2 hover:text-txt-1"
+            }`}
+            title="Comparar com o período anterior de mesmo comprimento"
+          >
+            vs anterior
+          </button>
         </div>
       </div>
 
@@ -355,6 +460,20 @@ export function TrendsPage() {
             {caindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em queda.</div>}
           </div>
         </div>
+      </div>
+
+      {/* Evolução temporal por tema: top 7 individuais + OUTROS agregado */}
+      <div className="rounded-xl border border-line bg-bg-1 p-4">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm font-bold">{metr.label} · evolução por tema (janela {janela}d)</div>
+          <div className="text-[10px] text-txt-3">
+            {vsAnterior
+              ? <span>linha tracejada fina = período anterior · <span style={{ color: COR_OUTROS }}>cinza = Outros</span></span>
+              : <span>linha cinza tracejada = temas agrupados em <span style={{ color: COR_OUTROS }}>Outros</span></span>
+            }
+          </div>
+        </div>
+        <ReactECharts option={lineOption} style={{ height: 280 }} notMerge />
       </div>
 
       {/* Variação por tema (barra divergente) */}

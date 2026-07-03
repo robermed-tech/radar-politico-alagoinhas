@@ -8,6 +8,7 @@ import {
   fetchUsers, inviteUser, setUserRole,
   type ScoreWeights, type ClimateThresholds, type NotificationConfig,
 } from "@/lib/admin";
+import { fetchServiceStatus } from "@/lib/data";
 import { type Role } from "@/lib/auth";
 
 type Tab = "score" | "relevancia" | "fontes" | "usuarios" | "notificacoes" | "clima";
@@ -47,6 +48,51 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
+function ApifyStatusBanner() {
+  const { data: status } = useQuery({
+    queryKey: ["service-status-apify"],
+    queryFn: () => fetchServiceStatus("apify"),
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  });
+
+  if (!status || status.uso_pct < 70) return null;
+
+  const pct = status.uso_pct;
+  const critico = pct >= 90;
+  const cor  = critico ? "#EF4444" : "#F97316";
+  const bg   = critico ? "rgba(239,68,68,0.08)" : "rgba(249,115,22,0.08)";
+  const bord = critico ? "rgba(239,68,68,0.30)" : "rgba(249,115,22,0.30)";
+
+  const atualizado = (() => {
+    try { return new Date(status.atualizado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
+    catch { return "—"; }
+  })();
+
+  return (
+    <div className="rounded-xl border p-4" style={{ background: bg, borderColor: bord }}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-bold" style={{ color: cor }}>
+            {critico ? "🔴 Créditos Apify quase esgotados" : "🟠 Créditos Apify em atenção"}
+          </div>
+          <div className="mt-0.5 text-xs text-txt-3">
+            ${status.uso_usd.toFixed(2)} de ${status.teto_usd.toFixed(2)} consumidos · {pct.toFixed(0)}% do limite mensal
+            {critico && " — coleta pode ser bloqueada a qualquer momento"}
+          </div>
+        </div>
+        <div className="text-[11px] text-txt-3">Atualizado {atualizado}</div>
+      </div>
+      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-bg-2">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${Math.min(pct, 100)}%`, background: cor }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function AdminPage() {
   const [tab, setTab] = useState<Tab>("score");
 
@@ -56,6 +102,7 @@ export function AdminPage() {
         <h1 className="text-2xl font-extrabold">Administração</h1>
         <p className="text-sm text-txt-2">Configuração do Radar Comando — acesso exclusivo de administradores</p>
       </div>
+      <ApifyStatusBanner />
 
       <div className="flex flex-wrap gap-1 rounded-xl border border-line bg-bg-1 p-1">
         {TABS.map((t) => (

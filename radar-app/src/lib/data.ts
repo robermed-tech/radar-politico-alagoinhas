@@ -424,6 +424,69 @@ export async function fetchComments(limit = 1000): Promise<Comment[]> {
   return (await res.json()) as Comment[];
 }
 
+export interface PipelineHealth {
+  tenant: string;
+  executado_em: string;
+  duracao_s: number;
+  posts_coletados: number;
+  posts_analisados: number;
+  alertas_enviados: number;
+  status: string;
+}
+
+export interface AlertaHistorico {
+  id?: number;
+  tenant_id: string;
+  tipo: string;
+  valor?: number;
+  mensagem: string;
+  canal: string;
+  criado_em: string;
+}
+
+export async function fetchPipelineHealth(): Promise<PipelineHealth | null> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  const q = `${SUPABASE_URL}/rest/v1/pipeline_health?tenant=eq.${TENANT}&order=executado_em.desc&limit=1`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return null;
+  const rows = (await res.json()) as PipelineHealth[];
+  return rows[0] ?? null;
+}
+
+export interface ServiceStatus {
+  tenant: string;
+  servico: string;
+  uso_pct: number;
+  uso_usd: number;
+  teto_usd: number;
+  atualizado_em: string;
+}
+
+export async function fetchServiceStatus(servico: string): Promise<ServiceStatus | null> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  const q = `${SUPABASE_URL}/rest/v1/service_status?tenant=eq.${TENANT}&servico=eq.${servico}&limit=1`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return null;
+  const rows = (await res.json()) as ServiceStatus[];
+  return rows[0] ?? null;
+}
+
+export async function fetchAlertHistory(limit = 100): Promise<AlertaHistorico[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/alerta_historico?tenant_id=eq.${TENANT}` +
+    `&order=criado_em.desc&limit=${limit}`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  return (await res.json()) as AlertaHistorico[];
+}
+
 export function filtrarPorPeriodo(posts: Post[], dias: number): Post[] {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dias);
