@@ -1036,8 +1036,8 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
   "urgencia": "<alta|media|baixa>",
   "sugestao_acao": "<acao concreta: monitorar|responder publicamente|acionar assessoria|conter crise|ampliar positivo>",
   "janela_acao": "<imediato|24h|esta semana>",
-  "cluster_crise": "<vitima|acidental|intencional|nenhum — tipo de crise: vitima=gestao sofre ataque/boato; acidental=erro nao-intencional; intencional=descaso/negligencia percebida; nenhum=sem crise>",
-  "responsabilidade_atribuida": <numero 0-100, quanto o publico culpa o prefeito Gustavo por esta situacao>,
+  "cluster_crise": "<vitima|acidental|intencional|nenhum — cluster SCCT (Situational Crisis Communication Theory, Coombs): vitima=gestao sofre ataque/boato; acidental=erro nao-intencional; intencional=descaso/negligencia percebida; nenhum=sem crise>",
+  "responsabilidade_atribuida": <numero 0-100, atribuicao de responsabilidade SCCT: quanto o publico culpa o prefeito Gustavo por esta situacao>,
   "confianca": <numero 0-100, sua confianca nesta classificacao — baixe se texto for ambiguo, ironico ou faltar contexto>,
   "sentimentos_comentarios": [
     /* array com o sentimento de CADA comentario de cidadao listado acima, na MESMA ORDEM dos indices [0], [1], [2]...
