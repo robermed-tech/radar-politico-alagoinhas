@@ -9,7 +9,10 @@ on:
 
 concurrency:
   group: surge-deploy
-  cancel-in-progress: true
+  # false: cancelar um run em andamento pode matar o "npx surge" no meio do
+  # upload e deixar o domínio em "project not found" até o próximo deploy
+  # terminar. Com false, pushes próximos apenas enfileiram.
+  cancel-in-progress: false
 
 jobs:
   deploy:
