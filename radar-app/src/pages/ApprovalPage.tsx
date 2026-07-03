@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import {
@@ -15,7 +15,7 @@ import { AlertaCrise } from "@/components/AlertaCrise";
 import { AvisoAmostra } from "@/components/AvisoAmostra";
 import { fmtInt } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk, glassArea, glowLine, glassGradient, withAlpha, colorByIAD, COLOR_SENTIMENT } from "@/lib/chartTheme";
+import { chartInk, glassArea, glowLine, withAlpha, colorByIAD } from "@/lib/chartTheme";
 
 interface AprovBucket {
   rotulo: string;
@@ -213,6 +213,8 @@ export function ApprovalPage() {
   // Período em destaque — padrão 24h (leitura mais próxima do tempo real).
   // O seletor permite ampliar para 7d/30d quando a amostra de 24h for pequena.
   const [dias, setDias] = useState<number>(7);
+  // Carousel de temas: índice do tema exibido no card "Temas em Atenção"
+  const [temaIdx, setTemaIdx] = useState(0);
   // Drill-down: filtra as "Vozes da população" pelo perfil/categoria clicado.
   const [filtroVoz, setFiltroVoz] = useState<{ tipo: "perfil" | "categoria"; valor: string } | null>(null);
   const periodoLabel = PERIODOS.find((p) => p.dias === dias)?.label ?? `${dias}d`;
@@ -287,6 +289,15 @@ export function ApprovalPage() {
     return { pos, neg };
   }, [coms, filtroVoz]);
 
+  // Reseta o carousel ao trocar de período
+  useEffect(() => { setTemaIdx(0); }, [view]);
+  // Auto-avança o carousel a cada 4 s quando há mais de 1 tema
+  useEffect(() => {
+    if (!view || view.vazio || view.porTema.length <= 1) return;
+    const id = setInterval(() => setTemaIdx((i) => (i + 1) % view.porTema.length), 4000);
+    return () => clearInterval(id);
+  }, [view]);
+
   // Histórico de IAD (últimos 14 dias)
   const histOption = useMemo(() => {
     const serie = (hist ?? []).slice(-30);
@@ -327,7 +338,7 @@ export function ApprovalPage() {
   if (view.vazio)
     return (
       <div className="p-5">
-        <h1 className="text-2xl font-extrabold">Aprovação Digital</h1>
+        <h1 className="text-2xl font-extrabold">Análise do Clima</h1>
         <div className="mt-4 rounded-xl border border-line bg-bg-1 p-6">
           <div className="font-bold text-txt-1">📭 Sem dados no período</div>
           <div className="mt-2 space-y-1 text-sm text-txt-2">
@@ -343,7 +354,7 @@ export function ApprovalPage() {
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold">Aprovação Digital</h1>
+          <h1 className="text-2xl font-extrabold">Análise do Clima</h1>
           <p className="text-sm text-txt-2">
             Drill-down do IAD · quem aprova, quem rejeita e por quais temas
           </p>
@@ -389,54 +400,55 @@ export function ApprovalPage() {
           sub={view.ica < 40 ? "⚠ amostra insuficiente" : "amostra confiável"}
         />
         <KpiStat label="Comentários" value={fmtInt(view.coments)} sub={`${view.posts} posts (${periodoLabel})`} />
-        {/* Donut verde/vermelho — Aprova e Reprova em destaque, Neutro discreto */}
-        <div className="rounded-xl border border-line bg-bg-1 p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">
-            Aprova / Reprova
-          </div>
-          <div className="mt-1 flex items-center justify-between gap-1">
-            {/* Aprova — número grande verde */}
-            <div className="flex flex-col items-center">
-              <span className="tnum text-3xl font-extrabold leading-none" style={{ color: COLOR_SENTIMENT.pos }}>
-                {view.pctPos}%
-              </span>
-              <span className="mt-0.5 text-[10px] font-semibold text-txt-3">Aprova</span>
+        {/* Temas em Atenção — 1 tema por vez, carousel automático */}
+        {(() => {
+          const temas = view.porTema;
+          const tema = temas[temaIdx % Math.max(temas.length, 1)];
+          const nivel = !tema ? null : tema.pNeg >= 50 ? "CRÍTICO" : tema.pNeg >= 30 ? "ATENÇÃO" : "MONITORAR";
+          const cor = nivel === "CRÍTICO" ? "#EF4444" : nivel === "ATENÇÃO" ? "#EAB308" : "#6B7280";
+          return (
+            <div className="flex flex-col rounded-xl border border-line bg-bg-1 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">
+                Temas em Atenção
+              </div>
+              {!tema ? (
+                <div className="flex flex-1 items-center justify-center text-sm text-txt-3">Sem dados</div>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center gap-1.5 py-1">
+                  <div
+                    className="text-center text-2xl font-extrabold capitalize leading-tight"
+                    style={{ color: "var(--txt1)" }}
+                  >
+                    {tema.rotulo}
+                  </div>
+                  <span
+                    className="rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                    style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}44` }}
+                  >
+                    {nivel}
+                  </span>
+                  <div className="text-[10px] text-txt-3">{tema.pNeg}% negativo</div>
+                  {temas.length > 1 && (
+                    <div className="mt-1 flex items-center gap-1">
+                      {temas.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setTemaIdx(i)}
+                          className="rounded-full transition-all duration-300"
+                          style={{
+                            height: 5,
+                            width: i === temaIdx % temas.length ? 14 : 5,
+                            background: i === temaIdx % temas.length ? cor : "var(--line)",
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            {/* Donut central — menor, só como apoio visual */}
-            <ReactECharts
-              option={{
-                tooltip: { show: false },
-                series: [{
-                  type: "pie",
-                  radius: ["56%", "82%"],
-                  center: ["50%", "50%"],
-                  label: { show: false },
-                  labelLine: { show: false },
-                  silent: true,
-                  itemStyle: { borderRadius: 4, borderColor: withAlpha("#FFFFFF", 0.18), borderWidth: 1 },
-                  data: [
-                    { value: view.pctPos, itemStyle: { color: glassGradient("#22C55E"), shadowBlur: 10, shadowColor: withAlpha("#22C55E", 0.45) } },
-                    { value: view.pctNeu, itemStyle: { color: glassGradient("#5F6E8C") } },
-                    { value: view.pctNeg, itemStyle: { color: glassGradient("#EF4444"), shadowBlur: 10, shadowColor: withAlpha("#EF4444", 0.45) } },
-                  ],
-                }],
-              }}
-              style={{ height: 64, width: 64 }}
-              notMerge
-            />
-            {/* Reprova — número grande vermelho */}
-            <div className="flex flex-col items-center">
-              <span className="tnum text-3xl font-extrabold leading-none" style={{ color: COLOR_SENTIMENT.neg }}>
-                {view.pctNeg}%
-              </span>
-              <span className="mt-0.5 text-[10px] font-semibold text-txt-3">Reprova</span>
-            </div>
-          </div>
-          {/* Neutro — discreto, abaixo */}
-          <div className="mt-1.5 text-center text-[10px] text-txt-3">
-            Neutro <span className="font-semibold">{view.pctNeu}%</span>
-          </div>
-        </div>
+          );
+        })()}
       </div>
 
       {/* Histórico */}

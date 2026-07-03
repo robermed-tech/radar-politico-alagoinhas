@@ -218,7 +218,7 @@ export function TrendsPage() {
   if (!view)
     return (
       <div className="p-5">
-        <h1 className="text-2xl font-extrabold">Tendências</h1>
+        <h1 className="text-2xl font-extrabold">Previsões</h1>
         <div className="mt-4 rounded-xl border border-line bg-bg-1 p-6 text-txt-2">
           Sem histórico tema/dia ainda. Crie a tabela <code>daily_themes</code> no
           Supabase (<code>supabase/daily_themes.sql</code>) e rode o AGORA.
@@ -364,7 +364,7 @@ export function TrendsPage() {
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold">Tendências</h1>
+          <h1 className="text-2xl font-extrabold">Previsões</h1>
           <p className="text-sm text-txt-2">
             Evolução de cada tema ao longo do tempo — quem está subindo, estável ou caindo
           </p>

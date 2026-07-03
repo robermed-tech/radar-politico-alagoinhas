@@ -506,7 +506,7 @@ def coletar_posts():
     if APIFY_TOKEN:
         log("=== MODULO 1b - Coletando posts via Apify ===")
         try:
-            input_data = {"usernames": perfis, "resultsLimit": MAX_POSTS_POR_PERFIL}
+            input_data = {"username": perfis, "resultsLimit": MAX_POSTS_POR_PERFIL}
             run_id = apify_iniciar_run(ACTOR_POSTS, input_data)
             if run_id:
                 dataset_id = apify_aguardar_run(run_id, timeout=300)
@@ -737,7 +737,7 @@ def triar_post_rapido(post, comentarios):
         f'{coments_txt}\n'
         'Retorne JSON (pct_pos e pct_neg = % dos comentarios acima FAVORAVEIS / CONTRARIOS ao prefeito Gustavo):\n'
         '{"score_risco":<0-100>,"urgencia":"<alta|media|baixa>",'
-        '"tema":"<saude|educacao|obras|seguranca|transporte|emprego|impostos|outros>",'
+        '"tema":"<saude|educacao|obras|seguranca|transporte|emprego|impostos|saneamento|cultura_eventos|comunicacao>",'
         '"sentimento_comentarios":"<positivo|negativo|neutro|misto>",'
         '"comentarios_pct_pos":<0-100>,"comentarios_pct_neg":<0-100>}'
     )
@@ -936,6 +936,30 @@ ARMADILHA — NAO COMETA ESTE ERRO:
   O TEXTO DO RESUMO DIZ "comentarios unanimemente negativos" ou
   "acusam de fake" ou "critica ao portal" mas voce classificou
   sentimento_post = "positivo"? Isso e um ERRO. Corrija para negativo.
+
+  CASO FREQUENTE — POST DE ALIADO COM COMENTARIOS CRITICOS:
+    A prefeitura/prefeito posta sobre programa, obra ou evento.
+    Cidadaos comentam criticando a EXECUCAO ("nao funciona", "cadê o
+    onibus", "parem de iludir o povo", "promessa sem cumprimento").
+    ERRADO: sentimento_post = "positivo" (o POST e de aliado, mas os
+    COMENTARIOS sao negativos — e a reacao que conta).
+    CORRETO: sentimento_post = "negativo".
+    A regra "ALIADO = POSITIVO" aplica-se ao sentimento de UM COMENTARIO
+    que elogia o aliado. Se o comentario CRITICA o programa do aliado,
+    esse comentario e NEGATIVO — e sentimento_post deve refletir isso.
+
+VERIFICACAO FINAL OBRIGATORIA — execute antes de escrever sentimento_post:
+  1. Qual e o sentimento_comentarios que voce ja calculou?
+  2. Qual e o comentarios_pct_neg que voce ja calculou?
+  Regras de derivacao:
+    sentimento_comentarios = "negativo"            -> sentimento_post = "negativo"
+    sentimento_comentarios = "misto" e pct_neg > pct_pos -> sentimento_post = "negativo"
+    sentimento_comentarios = "misto" e pct_pos > pct_neg -> sentimento_post = "neutro"
+    sentimento_comentarios = "positivo"            -> sentimento_post = "positivo"
+    sentimento_comentarios = "neutro"              -> sentimento_post = "neutro"
+  Esta derivacao e OBRIGATORIA. Supera qualquer outro raciocinio sobre
+  quem fez o post (aliado ou nao). Nunca escreva sentimento_post = "positivo"
+  quando sentimento_comentarios = "negativo" ou "misto" com pct_neg dominante.
 ═══════════════════════════════════════════════════════════════════════
 
 Regras de analise:
@@ -1006,7 +1030,7 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
   "comentarios_destaque_autor": "<username do autor desse comentario; vazio se nao houver>",
   "resumo": "<1 frase descrevendo o tom geral dos comentarios e o impacto na imagem>",
   "padrao_detectado": "<campanha coordenada, bot, oposicao organizada ou Isolado>",
-  "tema": "<tema principal: saude|educacao|obras|seguranca|transporte|emprego|impostos|outros>",
+  "tema": "<tema: saude|educacao|obras|seguranca|transporte|emprego|impostos|saneamento|cultura_eventos|comunicacao — saneamento=agua/esgoto/SAAE; cultura_eventos=festejos/shows/eventos; comunicacao=divulgacao/transparencia/mobilizacao-sem-tema-especifico>",
   "atribuicao": "<prefeito_pessoal|prefeitura_instituicao|secretaria|camara_vereadores|oposicao|governo_estadual|governo_federal|sociedade_civil|outros>",
   "tendencia": "<crescendo|estavel|caindo>",
   "urgencia": "<alta|media|baixa>",
@@ -1933,7 +1957,7 @@ def verificar_alertas(posts_analisados):
         log(f"  Alerta WhatsApp enviado: {len(alertas)} gatilho(s)")
         for msg in alertas:
             _supabase_upsert("alerta_historico", [{
-                "tenant_id": TENANT, "tipo": "auto", "valor": iad,
+                "tenant_id": TENANT, "tipo": "auto", "valor": int(round(iad)),
                 "mensagem": msg, "canal": "whatsapp",
                 "criado_em": datetime.now().isoformat(),
             }], "id")
@@ -1956,7 +1980,13 @@ def _classe_influenciador(categoria, alcance):
         return "micro"
     return "nano"
 
-def _alinhamento(pct_pos, pct_neg):
+def _alinhamento(pct_pos, pct_neg, categoria=""):
+    cat = (categoria or "").lower()
+    if any(k in cat for k in ("prefeitura", "prefeito", "governo", "gestao", "aliado")):
+        return "aliado"
+    if any(k in cat for k in ("oposi",)):
+        return "opositor"
+    # Para imprensa/neutros: inferir pelos sentimentos dos posts
     if pct_pos >= 55:
         return "aliado"
     if pct_neg >= 40:
@@ -2022,7 +2052,7 @@ def gravar_influencers(posts_analisados, comentarios_por_post):
             "frequencia": d["posts"],
             "influencia_score": round(score, 1),
             "classe": _classe_influenciador(d["categoria"], d["curtidas"]),
-            "alinhamento": _alinhamento(pct_pos, pct_neg),
+            "alinhamento": _alinhamento(pct_pos, pct_neg, d["categoria"]),
             "pct_positivo": pct_pos,
             "pct_negativo": pct_neg,
             "atualizado_em": datetime.now().isoformat(),
@@ -2565,35 +2595,47 @@ def atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas
 # ==============================================================
 
 def formatar_mensagem_alerta(post):
-    score_img = post.get("score_imagem", 50)
+    score_img   = post.get("score_imagem", 50)
+    score_risco = post.get("score_risco", 0)
     emoji = "🔴" if score_img <= 20 else "🟠"
-    msg = f"""{emoji} *ALERTA AGORA - Radar Politico Alagoinhas*
+    queixa   = (post.get("queixa_dominante", "") or "—").strip()
+    destaque = (post.get("comentarios_destaque", post.get("comentario_destaque", "")) or "").strip()
+    autor_d  = (post.get("comentarios_destaque_autor", "") or "").strip()
+    likes_d  = int(post.get("comentarios_destaque_curtidas", 0) or 0)
+    resumo   = (post.get("resumo", "") or "").strip()
+    motivo   = (post.get("motivo_alerta", "") or f"Score risco {score_risco}").strip()
 
-Perfil: @{post.get("autor","")} ({post.get("categoria","")})
-Data: {post.get("data_post","")}
-{post.get("url","")}
+    linhas = [
+        f"{emoji} *ALERTA — Radar Político Alagoinhas*",
+        "",
+        f"*@{post.get('autor','')}* ({post.get('categoria','')})  ·  {post.get('data_post','')}",
+        f"Imagem {score_img}/100  ·  Risco {score_risco}/100",
+        post.get("url", ""),
+        "",
+        "*🔍 Queixa a observar:*",
+        f"_{queixa}_",
+    ]
 
-Score de Imagem: {score_img}/100
-Score de Risco: {post.get("score_risco", 0)}/100
+    if destaque:
+        ref = f" — @{autor_d} ({likes_d}❤)" if autor_d else ""
+        linhas += [
+            "",
+            "*💬 Comentário em destaque:*",
+            f'>>> "{destaque}"{ref}',
+        ]
 
-Queixa dominante:
-{post.get("queixa_dominante", "Nao identificada")}
+    if resumo:
+        linhas += ["", f"*📊 Contexto:* _{resumo}_"]
 
-Comentario destaque:
-"{post.get("comentarios_destaque", post.get("comentario_destaque", ""))}"
-
-Sugestao de acao:
-{post.get("sugestao_acao", "")}
-
-Abordagem recomendada (SCCT):
-{post.get("abordagem_recomendada", "") or "—"}
-
-Por que alertou: {post.get("motivo_alerta", "") or f"Score imagem {post.get('score_imagem',0)} / risco {post.get('score_risco',0)}"}
-
-Janela: {post.get("janela_acao", "")}
-
-_Mensagem automatica do AGORA_"""
-    return msg
+    linhas += [
+        "",
+        f"*Ação:* {post.get('sugestao_acao', '')}  ·  janela: {post.get('janela_acao', '')}",
+        f"*SCCT:* {post.get('abordagem_recomendada', '') or '—'}",
+        "",
+        f"_{motivo}_",
+        "_Mensagem automática do AGORA_",
+    ]
+    return "\n".join(linhas)
 
 def disparar_alertas(posts_analisados):
     """Agrupa todos os posts que disparam alerta em UMA mensagem (anti-spam).
@@ -2665,19 +2707,39 @@ def disparar_alertas(posts_analisados):
 # MODULO 6b - UPDATE DE COMENTARIOS NOVOS
 # ==============================================================
 
-def enviar_update_coments(post, delta_coments):
-    """Alerta resumido de novos comentarios em post de alto risco ja analisado."""
-    log(f"  Update coments: @{post.get('autor','')} +{delta_coments} comentarios")
-    msg = (
-        f"🔔 *NOVOS COMENTARIOS - Radar Politico Alagoinhas*\n\n"
-        f"Perfil: @{post.get('autor','')} ({post.get('categoria','')})\n"
-        f"{post.get('url','')}\n\n"
-        f"+{delta_coments} novos comentarios desde ultima analise\n"
-        f"Score de Risco: {post.get('score_risco', 0)}/100\n\n"
-        f"Comentario destaque:\n\"{post.get('comentarios_destaque', '')}\"\n\n"
-        f"Sugestao de acao: {post.get('sugestao_acao', '')}\n\n"
-        f"_Mensagem automatica do AGORA_"
-    )
+def enviar_update_coments(post, motivo_update):
+    """Alerta de mudança relevante em post de alto risco já analisado."""
+    log(f"  Update: @{post.get('autor','')} — {motivo_update}")
+    queixa   = (post.get("queixa_dominante", "") or "—").strip()
+    destaque = (post.get("comentarios_destaque", "") or "").strip()
+    autor_d  = (post.get("comentarios_destaque_autor", "") or "").strip()
+    likes_d  = int(post.get("comentarios_destaque_curtidas", 0) or 0)
+
+    linhas = [
+        "🔔 *ATUALIZAÇÃO — Radar Político Alagoinhas*",
+        "",
+        f"*@{post.get('autor','')}* ({post.get('categoria','')})  ·  {post.get('data_post','')}",
+        f"Risco {post.get('score_risco', 0)}/100  ·  {motivo_update}",
+        post.get("url", ""),
+        "",
+        "*🔍 Queixa a observar:*",
+        f"_{queixa}_",
+    ]
+
+    if destaque:
+        ref = f" — @{autor_d} ({likes_d}❤)" if autor_d else ""
+        linhas += [
+            "",
+            "*💬 Comentário em destaque:*",
+            f'>>> "{destaque}"{ref}',
+        ]
+
+    linhas += [
+        "",
+        f"*Ação:* {post.get('sugestao_acao', '')}",
+        "_Mensagem automática do AGORA_",
+    ]
+    msg = "\n".join(linhas)
     if _enviar_whatsapp(msg):
         log("    Update enviado")
 
@@ -2717,7 +2779,8 @@ def enviar_briefing_matinal(posts_analisados, briefing_ia):
 
     def _seta(v):
         if v is None: return ""
-        return f" ({"▲" if v > 0 else "▼"}{abs(v):+.0f} vs ontem)"
+        seta = "▲" if v > 0 else "▼"
+        return f" ({seta}{abs(v):+.0f} vs ontem)"
 
     # Temas com maior risco (top 3)
     temas = {}
@@ -2894,25 +2957,38 @@ def main():
     planilha = conectar_sheets()
     log(f"  Conectado: {planilha.title}")
 
-    # Carrega URLs ja analisados (Supabase = primário; Sheets = fallback legado).
-    # Sentinel None = carregamento falhou; bloqueia alertas para evitar spam.
+    # Carrega estado anterior dos posts para detectar mudanças reais (dedup de alertas).
+    # Supabase é a fonte primária; Sheets é fallback caso Supabase esteja indisponível.
+    # Sentinel None = carregamento falhou nas duas fontes; bloqueia alertas para evitar spam
+    # (se existentes_radar virasse {} por falha, todo post pareceria "novo" e todo alerta disparava).
+    # Estrutura: {url: {"comentarios_total": int, "score_risco": int, "queixa_dominante": str}}
+    def _snap(r):
+        return {
+            "comentarios_total": int(r.get("comentarios_total", 0) or 0),
+            "score_risco":       int(r.get("score_risco", 0) or 0),
+            "queixa_dominante":  (r.get("queixa_dominante", "") or "").strip(),
+        }
+
     existentes_radar = None
     if SUPABASE_URL and SUPABASE_KEY:
         try:
-            rows = _supabase_get("posts", f"tenant=eq.{TENANT}&select=url,comentarios_total&limit=5000")
-            existentes_radar = {r["url"]: int(r.get("comentarios_total", 0) or 0) for r in rows if r.get("url")}
-            log(f"  {len(existentes_radar)} posts ja analisados carregados (Supabase)")
+            rows = _supabase_get(
+                "posts",
+                f"tenant=eq.{TENANT}&select=url,comentarios_total,score_risco,queixa_dominante"
+            )
+            existentes_radar = {r["url"]: _snap(r) for r in rows if r.get("url")}
+            log(f"  {len(existentes_radar)} posts carregados do Supabase")
         except Exception as e:
-            log(f"  Supabase indisponivel ({e}) — tentando Sheets como fallback")
+            log(f"  Supabase existentes: falha ({e}) — tentando Sheets como fallback")
     if existentes_radar is None:
         try:
             aba_r = garantir_aba(planilha, "Radar", CABECALHO_RADAR)
-            existentes_radar = {}
-            for r in aba_r.get_all_records():
-                u = r.get("url", "")
-                if u:
-                    existentes_radar[u] = int(r.get("comentarios_total", 0) or 0)
-            log(f"  {len(existentes_radar)} posts carregados via Sheets (fallback)")
+            existentes_radar = {
+                r["url"]: _snap(r)
+                for r in aba_r.get_all_records()
+                if r.get("url")
+            }
+            log(f"  {len(existentes_radar)} posts carregados do Sheets (fallback)")
         except Exception as e:
             log(f"  Sheets tambem falhou ({e}) — alertas suspensos neste run para evitar spam")
 
@@ -2949,23 +3025,47 @@ def main():
     _safe("narratives", gravar_narratives, posts_analisados, comentarios_por_post)         # narrativas (tema + sentimento)
     _safe("daily_themes", gravar_daily_themes, posts_analisados)                           # tendencias por tema (Fase 3e)
     _safe("alertas_limiar", verificar_alertas, posts_analisados)                           # alertas por limiar (Sprint 2)
-    # Apenas posts NOVOS recebem alerta; posts existentes com muitos novos comentarios recebem update.
-    # Se existentes_radar=None (falha de carregamento), alertas sao suspensos para evitar spam.
+    # Posts novos: nunca vistos antes → alerta completo se score disparar.
+    # Posts existentes: só re-alerta se houver mudança real (comentários, risco ou queixa).
+    # Se existentes_radar=None (falha de carregamento nas duas fontes), alertas sao
+    # suspensos neste run para evitar spam (toda a base pareceria "posts novos").
     if existentes_radar is None:
         log("  Alertas WhatsApp suspensos: nao foi possivel carregar historico de posts")
         alertas = 0
     else:
         posts_novos = [p for p in posts_analisados if p.get("url") not in existentes_radar]
-        posts_com_update = [
-            p for p in posts_analisados
-            if p.get("url") in existentes_radar
-            and p.get("score_risco", 0) >= SCORE_RISCO_ALERTA
-            and (p.get("comentarios_total", 0) - existentes_radar.get(p.get("url", ""), 0)) >= 5
-        ]
+
+        def _motivo_update(url, post_novo):
+            """Retorna string descritiva da mudança, ou '' se não houve mudança relevante."""
+            ant = existentes_radar[url]
+            delta_c = post_novo.get("comentarios_total", 0) - ant["comentarios_total"]
+            delta_r = post_novo.get("score_risco", 0) - ant["score_risco"]
+            queixa_nova = (post_novo.get("queixa_dominante", "") or "").strip()
+            partes = []
+            if delta_c >= 5:
+                partes.append(f"+{delta_c} novos comentários")
+            if delta_r >= 10:
+                partes.append(f"risco subiu {delta_r} pts")
+            if queixa_nova and queixa_nova != ant["queixa_dominante"]:
+                partes.append(f"nova queixa: {queixa_nova}")
+            return ", ".join(partes)
+
+        posts_com_update = []
+        motivos_update = {}
+        for p in posts_analisados:
+            url = p.get("url", "")
+            if url not in existentes_radar:
+                continue
+            if not deve_disparar_alerta(int(p.get("score_risco", 0) or 0), p):
+                continue
+            motivo = _motivo_update(url, p)
+            if motivo:
+                posts_com_update.append(p)
+                motivos_update[url] = motivo
+
         alertas = disparar_alertas(posts_novos)
         for p in posts_com_update:
-            delta = p.get("comentarios_total", 0) - existentes_radar.get(p.get("url", ""), 0)
-            enviar_update_coments(p, delta)
+            enviar_update_coments(p, motivos_update[p["url"]])
     try:
         atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
     except Exception as e:
