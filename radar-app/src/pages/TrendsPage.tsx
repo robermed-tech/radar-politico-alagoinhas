@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import { fetchDailyThemes, fetchRadar, type DailyTheme, type Post } from "@/lib/data";
-import { fmtInt } from "@/lib/format";
+import { fmtInt, fmtDiaBR } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
 
@@ -258,7 +258,7 @@ export function TrendsPage() {
     },
     xAxis: {
       type: "category",
-      data: dias,
+      data: dias.map(fmtDiaBR),
       axisLine: { lineStyle: { color: ink.axisLine } },
       axisLabel: { color: ink.axis, fontSize: 10, rotate: 30 },
     },

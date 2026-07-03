@@ -13,7 +13,7 @@ import { calcIAD, calcICA } from "@/lib/indices";
 import { KpiStat } from "@/components/KpiStat";
 import { AlertaCrise } from "@/components/AlertaCrise";
 import { AvisoAmostra } from "@/components/AvisoAmostra";
-import { fmtInt } from "@/lib/format";
+import { fmtInt, fmtDiaBR } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassArea, glowLine, withAlpha, colorByIAD } from "@/lib/chartTheme";
 
@@ -306,7 +306,7 @@ export function ApprovalPage() {
       tooltip: { trigger: "axis", backgroundColor: ink.tooltipBg, borderColor: ink.tooltipBorder, textStyle: { color: ink.tooltipText } },
       xAxis: {
         type: "category",
-        data: serie.map((s) => s.dia.slice(5)),
+        data: serie.map((s) => fmtDiaBR(s.dia)),
         axisLine: { lineStyle: { color: ink.axisLine } },
         axisLabel: { color: ink.axis },
       },

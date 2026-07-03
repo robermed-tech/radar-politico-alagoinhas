@@ -3,10 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import {
   fetchNarratives,
   fetchCoordinationGroups,
-  type Narrative,
   type CoordinationGroup,
 } from "@/lib/data";
-import { fmtInt } from "@/lib/format";
 
 const SENT_COR_G: Record<string, string> = {
   positivo: "#22C55E",
@@ -64,159 +62,6 @@ function CoordinationPanel({ grupos }: { grupos: CoordinationGroup[] }) {
 
 type Filtro = "ativa" | "todas";
 
-const SENT_COR: Record<string, string> = {
-  positivo: "#22C55E",
-  negativo: "#EF4444",
-  neutro: "#9FB0CC",
-};
-
-const STATUS_COR: Record<string, string> = {
-  ativa: "#22C55E",
-  esfriando: "#EAB308",
-  encerrada: "#5F6E8C",
-};
-
-function tempoRelativo(iso: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const horas = (Date.now() - d.getTime()) / 36e5;
-  if (horas < 1) return `${Math.round(horas * 60)}min atrás`;
-  if (horas < 24) return `${Math.round(horas)}h atrás`;
-  return `${Math.round(horas / 24)}d atrás`;
-}
-
-function Card({ n, maxAmp }: { n: Narrative; maxAmp: number }) {
-  const corSent = SENT_COR[n.sentimento] ?? "#9FB0CC";
-  const corStatus = STATUS_COR[n.status] ?? "#9FB0CC";
-  const pctAmp = maxAmp > 0 ? (n.amplificacao / maxAmp) * 100 : 0;
-
-  return (
-    <div className="rounded-xl border border-line bg-bg-1 p-4 transition hover:border-line-strong">
-      {/* Cabeçalho */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ background: corSent }} />
-            <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: corSent }}>
-              {n.sentimento}
-            </span>
-            <span
-              className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
-              style={{ background: `${corStatus}1A`, color: corStatus }}
-            >
-              {n.status}
-            </span>
-            {(n.coordenacao_score ?? 0) >= 30 && (
-              <span
-                className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
-                style={{
-                  background: "rgba(220,74,74,0.07)",
-                  color: "#DC4A4A",
-                  border: "1px solid rgba(220,74,74,0.28)",
-                }}
-                title={(n.coordenacao_sinais ?? []).join(" · ")}
-              >
-                {(n.coordenacao_score ?? 0) >= 50 ? "⚠ Campanha detectada" : "⚠ Possível coordenação"}
-              </span>
-            )}
-          </div>
-          <h3 className="mt-1 text-base font-bold text-txt-1">{n.rotulo}</h3>
-        </div>
-        <div className="text-right">
-          <div className="tnum text-lg font-extrabold text-txt-1">{fmtInt(n.amplificacao)}</div>
-          <div className="text-[10px] uppercase tracking-wide text-txt-3">curtidas</div>
-        </div>
-      </div>
-
-      {/* Barra de amplificação */}
-      <div className="mt-2 h-1 w-full rounded-full bg-bg-3">
-        <div className="h-full rounded-full transition-all" style={{ width: `${pctAmp}%`, background: corSent }} />
-      </div>
-
-      {/* Origem + cronologia */}
-      <div className="mt-3 grid grid-cols-2 gap-3 text-[11px]">
-        <div>
-          <div className="text-txt-3">Origem</div>
-          <div className="truncate font-semibold text-txt-1" title={n.origem_handle}>
-            @{n.origem_handle}
-          </div>
-          <div className="text-txt-3">{tempoRelativo(n.primeiro_visto)}</div>
-        </div>
-        <div>
-          <div className="text-txt-3">Última atividade</div>
-          <div className="tnum font-semibold text-txt-1">{tempoRelativo(n.ultimo_visto)}</div>
-          <div className="text-txt-3">
-            {n.volume_posts} posts · {n.perfis_distintos} perfis
-          </div>
-        </div>
-      </div>
-
-      {/* Queixa/elogio dominante */}
-      {(n.queixa_top || n.elogio_top) && (
-        <div className="mt-3 space-y-1.5 text-[12px]">
-          {n.queixa_top && (
-            <div className="rounded border border-risk-crit/20 bg-risk-crit/5 px-2 py-1.5 text-txt-2">
-              <span className="font-semibold text-risk-crit">🔥 </span>
-              {n.queixa_top}
-            </div>
-          )}
-          {n.elogio_top && (
-            <div className="rounded border border-risk-low/20 bg-risk-low/5 px-2 py-1.5 text-txt-2">
-              <span className="font-semibold text-risk-low">👏 </span>
-              {n.elogio_top}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Comentário mais curtido do cluster */}
-      {n.comentario_top && (
-        <div className="mt-3 rounded border-l-2 border-brand bg-brand/5 px-3 py-2 text-[12px] italic text-txt-1">
-          "{n.comentario_top}"
-          <div className="mt-1 not-italic">
-            <span className="tnum text-[11px] font-bold text-risk-crit">
-              ❤ {fmtInt(n.comentario_top_curtidas)}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Painel de coordenação detalhada */}
-      {(n.coordenacao_score ?? 0) >= 30 && (
-        <div className="mt-3 rounded-lg border p-2.5" style={{ borderColor: "rgba(220,74,74,0.28)", background: "rgba(220,74,74,0.07)" }}>
-          <div className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: "#DC4A4A" }}>
-            ⚠ Possível campanha coordenada
-          </div>
-          <div className="space-y-0.5">
-            {(n.coordenacao_sinais ?? []).map((s, i) => (
-              <div key={i} className="text-[12px] text-txt-2">
-                • {s}
-              </div>
-            ))}
-          </div>
-          {(n.suspeitos_usernames ?? []).length > 0 && (
-            <div className="mt-1.5 text-[10px] text-txt-3">
-              Suspeitos: {(n.suspeitos_usernames ?? []).slice(0, 5).map((u) => `@${u}`).join(", ")}
-              {(n.suspeitos_usernames ?? []).length > 5 && ` +${n.suspeitos_usernames!.length - 5}`}
-            </div>
-          )}
-        </div>
-      )}
-
-      {n.origem_url && (
-        <a
-          href={n.origem_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-block text-[11px] font-semibold text-brand hover:underline"
-        >
-          Ver post de origem ↗
-        </a>
-      )}
-    </div>
-  );
-}
-
 export function NarrativesPage() {
   const [filtro, setFiltro] = useState<Filtro>("ativa");
   const { data, isLoading } = useQuery({
@@ -251,9 +96,6 @@ export function NarrativesPage() {
   const esfriando = lista.filter((n) => n.status === "esfriando");
   const positivas = lista.filter((n) => n.sentimento === "positivo").length;
   const negativas = lista.filter((n) => n.sentimento === "negativo").length;
-
-  const filtrada = filtro === "ativa" ? ativas : lista;
-  const maxAmp = Math.max(...filtrada.map((n) => n.amplificacao), 1);
 
   return (
     <div className="space-y-4 p-5">
@@ -314,13 +156,6 @@ export function NarrativesPage() {
           >
             {p.label}
           </button>
-        ))}
-      </div>
-
-      {/* Grid de narrativas */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {filtrada.map((n) => (
-          <Card key={n.id} n={n} maxAmp={maxAmp} />
         ))}
       </div>
     </div>

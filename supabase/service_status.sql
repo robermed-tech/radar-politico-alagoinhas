@@ -12,13 +12,15 @@ create table if not exists service_status (
   primary key (tenant, servico)
 );
 
--- RLS: apenas o tenant dona do registro pode ler/escrever
 alter table service_status enable row level security;
 
-create policy "tenant lê seu próprio status"
-  on service_status for select
-  using (tenant = current_setting('app.tenant', true));
+-- Leitura pública (o app React usa a anon key e filtra por tenant na query,
+-- igual às demais tabelas do dashboard — current_setting('app.tenant') não
+-- funciona para chamadas anônimas do PostgREST, por isso a policy anterior
+-- sempre retornava vazio).
+drop policy if exists "tenant lê seu próprio status" on service_status;
+drop policy if exists "leitura publica service_status" on service_status;
+create policy "leitura publica service_status" on service_status
+  for select to anon using (true);
 
 -- O pipeline grava via service_role (sem RLS), então não precisa de policy de insert/update.
--- Mas se quiser permitir também via anon com JWT:
--- create policy "service_role pode tudo" on service_status for all using (true);
