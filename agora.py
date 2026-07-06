@@ -3313,6 +3313,120 @@ def teste_filtro():
         print()
 
 
+def main_retroanalise():
+    """Varredura completa: re-analisa todos os posts existentes no Supabase.
+
+    Posts de oposicao: analise profunda com Sonnet + comentarios reais.
+      (O Haiku interpretava pct_pos como "elogio ao opositor", nao ao prefeito.)
+    Demais posts: apenas re-aplica o safety net local (sem chamada a API).
+    Ao final recalcula daily_metrics com os dados corrigidos.
+    """
+    log("+====================================================+")
+    log("|  RETROANALISE — varredura de todos os posts         |")
+    log("+====================================================+")
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log("ERRO: SUPABASE_URL/SUPABASE_SERVICE_KEY ausentes.")
+        return
+
+    def _ler_tudo(tabela, params_base):
+        """Lê tabela com paginacao (limite padrao Supabase = 1000 rows)."""
+        resultado, offset = [], 0
+        while True:
+            lote = _supabase_get(tabela, f"{params_base}&limit=1000&offset={offset}")
+            if not lote:
+                break
+            resultado.extend(lote)
+            if len(lote) < 1000:
+                break
+            offset += 1000
+        return resultado
+
+    log("Lendo posts do Supabase...")
+    todos_posts_raw = _ler_tudo("posts",
+        f"tenant=eq.{TENANT}&select=*&order=data_post.desc")
+    log(f"  {len(todos_posts_raw)} posts carregados.")
+
+    log("Lendo comentarios do Supabase...")
+    todos_coments_raw = _ler_tudo("comments", f"tenant=eq.{TENANT}&select=*")
+    log(f"  {len(todos_coments_raw)} comentarios carregados.")
+
+    # Agrupa comentarios por url do post (formato esperado por analisar_com_agora)
+    coments_por_url = {}
+    for c in todos_coments_raw:
+        url = c.get("url_post", "")
+        if url:
+            coments_por_url.setdefault(url, []).append({
+                "id":       c.get("id", ""),
+                "username": c.get("username", ""),
+                "texto":    c.get("texto", ""),
+                "curtidas": int(c.get("curtidas", 0) or 0),
+                "tipo":     c.get("tipo", "cidadao"),
+                "data":     c.get("data_comentario", ""),
+            })
+
+    # Memoria contextual (sheets; tolerado falhar)
+    memoria = ""
+    try:
+        planilha = conectar_sheets()
+        memoria  = carregar_memoria(planilha)
+        log("  Memoria carregada do Sheets.")
+    except Exception as e:
+        log(f"  Sheets indisponivel ({e}) — memoria vazia")
+
+    # Separa por categoria
+    posts_oposicao_raw = [p for p in todos_posts_raw
+                          if (p.get("categoria") or "").lower() == "oposicao"]
+    posts_outros_raw   = [p for p in todos_posts_raw
+                          if (p.get("categoria") or "").lower() != "oposicao"]
+
+    log(f"  {len(posts_oposicao_raw)} posts de oposicao → Sonnet com comentarios")
+    log(f"  {len(posts_outros_raw)} outros posts → safety net local (sem API)")
+
+    # --- Posts de oposicao: re-analise completa com Sonnet ---
+    posts_oposicao = [
+        {
+            "url":               p.get("url", ""),
+            "autor":             p.get("autor", ""),
+            "categoria":         p.get("categoria", ""),
+            "caption":           p.get("caption", "") or "",
+            "data_post":         p.get("data_post", ""),
+            "curtidas":          int(p.get("curtidas", 0) or 0),
+            "comentarios_total": int(p.get("comentarios_total", 0) or 0),
+        }
+        for p in posts_oposicao_raw if p.get("url")
+    ]
+    analisados_oposicao = []
+    if posts_oposicao:
+        log(f"\nRe-analisando {len(posts_oposicao)} posts de oposicao...")
+        analisados_oposicao = analisar_com_agora(posts_oposicao, coments_por_url, memoria)
+        gravar_no_supabase(analisados_oposicao, coments_por_url)
+        log(f"  {len(analisados_oposicao)} posts de oposicao gravados.")
+
+    # --- Demais posts: safety net local (sem chamada a Claude) ---
+    posts_outros_corrigidos = []
+    for p in posts_outros_raw:
+        pct_neg = float(p.get("comentarios_pct_neg", 0) or 0)
+        pct_pos = float(p.get("comentarios_pct_pos", 0) or 0)
+        if pct_neg > 50:
+            sentimento = "negativo"
+        elif pct_pos > 60:
+            sentimento = "positivo"
+        else:
+            s = p.get("sentimento_post", "neutro") or "neutro"
+            sentimento = s if s in ("positivo", "negativo", "neutro") else "neutro"
+        posts_outros_corrigidos.append({**p, "sentimento_post": sentimento})
+
+    # --- Recalcula daily_metrics com todos os posts corrigidos ---
+    todos_corrigidos = analisados_oposicao + posts_outros_corrigidos
+    if todos_corrigidos:
+        log(f"\nRecalculando daily_metrics ({len(todos_corrigidos)} posts)...")
+        gravar_daily_metrics(todos_corrigidos)
+
+    log("+====================================================+")
+    log("|  RETROANALISE concluida.                            |")
+    log("+====================================================+")
+
+
 def reprocessar():
     """Busca os últimos 20 posts do Supabase e re-analisa com Claude (upsert).
     Não depende do Apify ter um run recente sem erros 429.
@@ -3369,5 +3483,7 @@ if __name__ == "__main__":
         teste_filtro()
     elif "--reprocessar" in sys.argv:
         reprocessar()
+    elif "--retroanalise" in sys.argv:
+        main_retroanalise()
     else:
         main()
