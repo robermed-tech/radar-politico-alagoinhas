@@ -1110,7 +1110,10 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
             log(f"    Triagem falhou ({e}) — defaults")
 
         score_tri = int(triagem.get("score_risco", 0) or 0)
-        analise_profunda = score_tri >= LIMIAR_TRIAGEM or triagem.get("urgencia") == "alta"
+        # Posts de oposicao sempre vao para o Sonnet: o Haiku confunde
+        # "elogio ao opositor" com pct_pos alto, invertendo a polaridade.
+        eh_oposicao = (post.get("categoria") or "").lower() == "oposicao"
+        analise_profunda = score_tri >= LIMIAR_TRIAGEM or triagem.get("urgencia") == "alta" or eh_oposicao
 
         # --- Passo 2: analise profunda (Sonnet) apenas se necessario --------
         analise = {}
@@ -1150,8 +1153,13 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
         pct_pos = float(analise.get("comentarios_pct_pos", 0) or 0)
         if pct_neg > 50:
             analise["sentimento_post"] = "negativo"
-        elif pct_pos > 60:
+        elif pct_pos > 60 and not eh_oposicao:
+            # Em perfis de oposicao, pct_pos alto e sinal de dado suspeito:
+            # o modelo provavelmente contou elogios ao opositor como "positivo",
+            # quando deveriam ser "negativo" para o prefeito.
             analise["sentimento_post"] = "positivo"
+        elif pct_pos > 60 and eh_oposicao:
+            analise["sentimento_post"] = "negativo"
         elif analise.get("sentimento_post") not in ("positivo", "negativo", "neutro"):
             analise["sentimento_post"] = "neutro"
 
