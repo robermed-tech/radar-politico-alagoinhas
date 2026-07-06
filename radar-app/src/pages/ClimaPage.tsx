@@ -6,6 +6,123 @@ import { getWeather, weatherFromCondicao } from "@/lib/weather";
 import { fmtInt } from "@/lib/format";
 import { useAuth } from "@/components/AuthProvider";
 
+const TEMA_LABEL: Record<string, string> = {
+  saude: "Saúde",
+  educacao: "Educação",
+  obras: "Obras e Infraestrutura",
+  seguranca: "Segurança Pública",
+  transporte: "Transporte",
+  emprego: "Emprego e Economia",
+  impostos: "Impostos e Tributos",
+  saneamento: "Saneamento (Água/Esgoto)",
+  cultura_eventos: "Cultura e Eventos",
+  comunicacao: "Comunicação e Transparência",
+};
+
+function somarComents(posts: Post[]): { neg: number; pos: number; neu: number } {
+  let neg = 0, pos = 0;
+  let total = 0;
+  for (const p of posts) {
+    const tot = p.comentarios_total || 0;
+    total += tot;
+    neg += Math.round(((p.comentarios_pct_neg || 0) / 100) * tot);
+    pos += Math.round(((p.comentarios_pct_pos || 0) / 100) * tot);
+  }
+  return { neg, pos, neu: Math.max(0, total - neg - pos) };
+}
+
+function TabelaComentarios({ allPosts }: { allPosts: Post[] }) {
+  const periodos = [
+    { label: "Hoje (24h)", posts: filtrarPorPeriodo(allPosts, 1) },
+    { label: "Esta semana", posts: filtrarPorPeriodo(allPosts, 7) },
+    { label: "Este mês", posts: filtrarPorPeriodo(allPosts, 30) },
+  ];
+
+  const posts30 = filtrarPorPeriodo(allPosts, 30);
+  const byTema: Record<string, Post[]> = {};
+  for (const p of posts30) {
+    const tema = (p.tema || "").toLowerCase().trim();
+    if (!TEMA_LABEL[tema]) continue;
+    (byTema[tema] ??= []).push(p);
+  }
+  const temas = Object.entries(byTema)
+    .map(([tema, ps]) => ({ tema, ...somarComents(ps) }))
+    .filter((t) => t.neg + t.pos + t.neu > 0)
+    .sort((a, b) => b.neg - a.neg);
+
+  const thCls = "pb-2 text-[10px] font-bold uppercase tracking-wide";
+  const tdCls = "py-2.5 tnum";
+
+  return (
+    <div className="rounded-[28px] border border-line bg-bg-1 p-6 space-y-6">
+      <div className="text-[12px] font-bold tracking-[0.04em] text-txt-3">
+        Volume de comentários por período e tema
+      </div>
+
+      <div>
+        <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-txt-3">Por período</div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-line">
+                <th className={`${thCls} text-left text-txt-3`}>Período</th>
+                <th className={`${thCls} text-right text-risk-crit`}>Negativos</th>
+                <th className={`${thCls} text-right`} style={{ color: "#84A800" }}>Positivos</th>
+                <th className={`${thCls} text-right text-txt-3`}>Neutros</th>
+                <th className={`${thCls} text-right text-txt-2`}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {periodos.map(({ label, posts }) => {
+                const { neg, pos, neu } = somarComents(posts);
+                return (
+                  <tr key={label} className="border-b border-line/30 last:border-0">
+                    <td className={`${tdCls} text-txt-1 font-medium`}>{label}</td>
+                    <td className={`${tdCls} text-right font-bold text-risk-crit`}>{fmtInt(neg)}</td>
+                    <td className={`${tdCls} text-right font-bold`} style={{ color: "#84A800" }}>{fmtInt(pos)}</td>
+                    <td className={`${tdCls} text-right text-txt-3`}>{fmtInt(neu)}</td>
+                    <td className={`${tdCls} text-right text-txt-2`}>{fmtInt(neg + pos + neu)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {temas.length > 0 && (
+        <div>
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-txt-3">Por tema — últimos 30 dias</div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-line">
+                  <th className={`${thCls} text-left text-txt-3`}>Tema</th>
+                  <th className={`${thCls} text-right text-risk-crit`}>Negativos</th>
+                  <th className={`${thCls} text-right`} style={{ color: "#84A800" }}>Positivos</th>
+                  <th className={`${thCls} text-right text-txt-3`}>Neutros</th>
+                  <th className={`${thCls} text-right text-txt-2`}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {temas.map(({ tema, neg, pos, neu }) => (
+                  <tr key={tema} className="border-b border-line/30 last:border-0">
+                    <td className={`${tdCls} text-txt-1 font-medium`}>{TEMA_LABEL[tema]}</td>
+                    <td className={`${tdCls} text-right font-bold text-risk-crit`}>{fmtInt(neg)}</td>
+                    <td className={`${tdCls} text-right font-bold`} style={{ color: "#84A800" }}>{fmtInt(pos)}</td>
+                    <td className={`${tdCls} text-right text-txt-3`}>{fmtInt(neu)}</td>
+                    <td className={`${tdCls} text-right text-txt-2`}>{fmtInt(neg + pos + neu)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const PERIODOS = [
   { dias: 1, label: "24h" },
   { dias: 7, label: "7 dias" },
@@ -447,7 +564,7 @@ export function ClimaPage() {
               <div>
                 {isAdmin ? (
                   <div className="flex items-end gap-1">
-                    <span className="tnum text-[84px] leading-[0.85] tracking-tight" style={{ color: txt1, fontWeight: 200 }}>
+                    <span className="tnum text-[60px] leading-[0.85] tracking-tight sm:text-[84px]" style={{ color: txt1, fontWeight: 200 }}>
                       {view.iad}
                     </span>
                     <span className="mb-3 text-2xl font-bold" style={{ color: txt2 }}>%</span>
@@ -579,6 +696,8 @@ export function ClimaPage() {
           </div>
         )}
       </div>
+
+      <TabelaComentarios allPosts={data!.data} />
     </div>
   );
 }

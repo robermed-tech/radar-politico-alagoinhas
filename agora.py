@@ -1146,22 +1146,31 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
             analise["confianca"]    = 45  # triagem e menos precisa
         analise.setdefault("score_risco", score_tri)
 
-        # Safety net: corrige sentimento_post com base nos percentuais calculados.
-        # Garante que o campo reflita a reacao do publico, nao o tom da caption,
-        # mesmo que o modelo ignore a regra no prompt.
+        # Safety net: corrige sentimento_post com base nos percentuais e no
+        # sentimento_comentarios. Captura casos onde o modelo classifica como
+        # "negativo" mas pct_neg < 50%, ou "misto" com negativo dominante.
         pct_neg = float(analise.get("comentarios_pct_neg", 0) or 0)
         pct_pos = float(analise.get("comentarios_pct_pos", 0) or 0)
+        sent_coments = (analise.get("sentimento_comentarios") or "").lower()
         if pct_neg > 50:
             analise["sentimento_post"] = "negativo"
+        elif sent_coments == "negativo" and analise_profunda:
+            # Sonnet classificou explicitamente como negativo — prevalece mesmo com pct_neg < 50
+            analise["sentimento_post"] = "negativo"
+        elif sent_coments == "misto" and pct_neg > pct_pos:
+            # Misto mas negativo-dominante: critica supera elogio em volume
+            analise["sentimento_post"] = "negativo"
         elif pct_pos > 60 and not eh_oposicao:
-            # Em perfis de oposicao, pct_pos alto e sinal de dado suspeito:
-            # o modelo provavelmente contou elogios ao opositor como "positivo",
-            # quando deveriam ser "negativo" para o prefeito.
             analise["sentimento_post"] = "positivo"
         elif pct_pos > 60 and eh_oposicao:
             analise["sentimento_post"] = "negativo"
         elif analise.get("sentimento_post") not in ("positivo", "negativo", "neutro"):
             analise["sentimento_post"] = "neutro"
+        # Normaliza tema: valores fora do conjunto permitido → "comunicacao"
+        _tema_validos = {"saude", "educacao", "obras", "seguranca", "transporte",
+                         "emprego", "impostos", "saneamento", "cultura_eventos", "comunicacao"}
+        if (analise.get("tema") or "").lower().strip() not in _tema_validos:
+            analise["tema"] = "comunicacao"
 
         post_enriquecido = {**post, **analise}
         post_enriquecido["total_cidadaos"]  = len([c for c in comentarios if c["tipo"] == "cidadao"])
