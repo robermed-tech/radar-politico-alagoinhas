@@ -165,7 +165,7 @@ def normalizar_localidade(valor: str, mapa_bairros: dict) -> str:
 
 APIFY_TOKEN      = os.environ.get("APIFY_API_TOKEN", "")
 ANTHROPIC_KEY    = os.environ["ANTHROPIC_API_KEY"]
-SPREADSHEET_ID   = os.environ.get("SPREADSHEET_ID", "")  # lazy: so exigido em conectar_sheets()
+SPREADSHEET_ID   = os.environ.get("SPREADSHEET_ID") or os.environ.get("GOOGLE_SHEET_ID", "")  # lazy: so exigido em conectar_sheets()
 EVOLUTION_URL    = os.environ.get("EVOLUTION_API_URL", "")
 EVOLUTION_KEY    = os.environ.get("EVOLUTION_API_KEY", "")
 WHATSAPP_NUMBER  = os.environ.get("WHATSAPP_NUMBER", "")
