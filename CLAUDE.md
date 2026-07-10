@@ -1,65 +1,37 @@
-# CLAUDE.md
+# Radar Político Alagoinhas — instruções para Claude Code
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+Este arquivo é lido automaticamente pelo Claude Code no início de cada sessão neste repositório. Ele existe para reduzir o número de idas e voltas com o Robério durante depuração.
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+## Contexto do projeto (resumo)
 
-## 1. Think Before Coding
+- Sistema de monitoramento político via Instagram para a SECOM de Alagoinhas/BA (prefeito Gustavo Carmo).
+- Pipeline ativo: Apify (scraping) → `agora.py` (Python) → Claude Haiku API → Google Sheets (abas Radar/Perfis) + Supabase (dual-write) → dashboard HTML + Radar Comando (Vite/React).
+- **`agora.py` é o agente ativo.** `radar_agente.py` está descontinuado — nunca editar esse arquivo.
+- GitHub Actions (`radar.yml`) roda o pipeline 2x/dia (06h e 17h BRT) para poupar créditos Apify.
+- Frontend admin: `radar-comando.surge.sh` (Supabase, projeto `radar-politico`, tenant `alagoinhas`).
+- **Pendência conhecida**: pesos de score e limiares de clima estão hardcoded em `agora.py`. A UI do admin só terá efeito real quando o backend passar a ler de `tenant_settings` no Supabase.
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+## Protocolo de depuração autônoma
 
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+Ao investigar um bug, siga esta ordem sem esperar aprovação a cada passo:
 
-## 2. Simplicity First
+1. **Formule uma hipótese antes de editar código.** Se a causa não está clara, adicione instrumentação (log) primeiro — não altere lógica "no escuro".
+2. **Rode você mesmo.** Execute `python agora.py` (ou a flag relevante) e leia o output diretamente. Não peça para o Robério colar prints a menos que o comando dependa de algo que só ele tem acesso (ex: conta do Google, WhatsApp, aprovação visual do dashboard).
+3. **Isole antes de tocar produção.** Use ou crie uma flag de teste (`--teste-filtro`, `--reprocessar` ou similar) em vez de rodar contra o pipeline de produção ou gastar créditos Apify desnecessariamente. Se não existir uma flag adequada para o teste que você precisa fazer, crie uma.
+4. **Descarte hipóteses uma a uma.** Se o log esperado não aparecer, isso já é informação — não repita o mesmo teste, ajuste a hipótese (ex: o pipeline pode estar saindo antes mesmo de chegar na etapa que você está logando, como aconteceu com a deduplicação mascarando o bug do filtro de relevância).
+5. **Depois de confirmar a causa raiz, limpe.** Remova logs de debug temporários ou coloque-os atrás de uma flag `--debug` — não deixe `print()` soltos no código de produção.
+6. **Reporte de forma concisa**: o que quebrou, por que, o que foi mudado. Sem narrar todo o processo de tentativa e erro.
 
-**Minimum code that solves the problem. Nothing speculative.**
+## Quando escalar para o Robério
 
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
+Só pare e pergunte quando:
+- A correção exige uma decisão de produto (ex: qual deve ser o comportamento correto, não só o bug técnico).
+- Falta uma credencial, secret ou acesso que você não tem.
+- O teste isolado já confirma o fix, mas rodar contra produção vai consumir créditos Apify de forma não trivial — aí sim, confirme antes de rodar contra produção real.
 
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+Fora isso, resolva e implemente diretamente, sem pausar para aprovação passo a passo.
 
-## 3. Surgical Changes
+## Referências
 
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
----
-
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+- Pegadinhas de ambiente conhecidas: ver `GOTCHAS.md` neste mesmo diretório.
+- Spec de arquitetura do admin: `2026-06-28-radar-comando-admin-rbac-design.md`.

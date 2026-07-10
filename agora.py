@@ -29,7 +29,29 @@ try:
     _INSTAGRAPI_OK = _ig.disponivel()
 except Exception:
     _INSTAGRAPI_OK = False
+from dotenv import load_dotenv
+load_dotenv()
+# ── Taxonomia de subtemas (editavel) ──────────────────────────────
+SUBTEMAS_POR_TEMA = {
+    "saude": ["ubs_postos","hospital","upa","samu","medicamentos","filas_agendamento","atendimento"],
+    "educacao": ["escolas","creches","merenda","transporte_escolar","professores","matriculas","infra_escolar"],
+    "obras": ["pavimentacao","buracos","drenagem","calcadas","iluminacao_publica","pracas","obra_parada"],
+    "seguranca": ["guarda_municipal","videomonitoramento","ronda","policiamento"],
+    "transporte": ["onibus","mobilidade","transito","sinalizacao","tarifa_onibus"],
+    "emprego": ["vagas","comercio_local","feiras","empreendedorismo","qualificacao"],
+    "impostos": ["iptu","iss","taxas","refis"],
+    "saneamento": ["abastecimento_agua","esgoto","tarifa_agua","coleta_lixo","limpeza_urbana"],
+    "cultura_eventos": ["festas_festivais","shows","esporte_lazer","turismo","eventos"],
+    "comunicacao": ["prestacao_contas","transparencia_portal","divulgacao_redes","ouvidoria","licitacoes"],
+}
 
+def _mapa_subtemas_txt():
+    return "\n".join(f'  {t}: {"|".join(subs)}|outro' for t, subs in SUBTEMAS_POR_TEMA.items())
+
+def normalizar_subtema(tema, subtema):
+    tema = (tema or "").strip().lower()
+    subtema = (subtema or "").strip().lower()
+    return subtema if subtema in SUBTEMAS_POR_TEMA.get(tema, []) else "outro"
 # ==============================================================
 # CONFIGURACAO
 # ==============================================================
@@ -268,7 +290,12 @@ def filtrar_relevante(caption, categoria_filtro):
 def conectar_sheets():
     creds_json = os.environ.get("GOOGLE_CREDENTIALS", "")
     if not creds_json:
-        raise ValueError("GOOGLE_CREDENTIALS nao configurado")
+        _cred_file = os.environ.get("GOOGLE_CREDENTIALS_FILE", "service_account.json")
+        if os.path.exists(_cred_file):
+            with open(_cred_file, "r", encoding="utf-8") as f:
+                creds_json = f.read()
+        else:
+            raise ValueError("GOOGLE_CREDENTIALS nao configurado")
     creds_dict = json.loads(creds_json)
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -735,12 +762,20 @@ def triar_post_rapido(post, comentarios):
         f'Caption: {post["caption"][:200] or "(sem legenda)"}\n\n'
         f'COMENTARIOS (top {len(cidadaos)} por curtidas — otica do prefeito Gustavo Carmo):\n'
         f'{coments_txt}\n'
+        'Escolha o TEMA e depois um SUBTEMA valido para esse tema. Use "outro" se nenhum encaixar.\n'
+        'Desambiguacao: drenagem/alagamento=obras; iluminacao publica=obras; '
+        'coleta de lixo/limpeza/falta dagua/esgoto=saneamento; '
+        'tarifa de onibus=transporte; tarifa/conta de agua=saneamento.\n'
+        'SUBTEMAS validos por tema:\n'
+        f'{_mapa_subtemas_txt()}\n\n'
         'Retorne JSON (pct_pos e pct_neg = % dos comentarios acima FAVORAVEIS / CONTRARIOS ao prefeito Gustavo):\n'
         '{"score_risco":<0-100>,"urgencia":"<alta|media|baixa>",'
         '"tema":"<saude|educacao|obras|seguranca|transporte|emprego|impostos|saneamento|cultura_eventos|comunicacao>",'
+        '"subtema":"<slug conforme a lista acima>",'
         '"sentimento_comentarios":"<positivo|negativo|neutro|misto>",'
         '"comentarios_pct_pos":<0-100>,"comentarios_pct_neg":<0-100>}'
     )
+    
 
 
 PROMPT_SISTEMA = """Voce e o AGORA, agente de inteligencia politica especializado em monitorar
@@ -1183,6 +1218,10 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
         _sc = int(analise.get("score_risco", 0) or 0)
         post_enriquecido["motivo_alerta"] = (
             motivo_do_alerta(_sc, post_enriquecido) if deve_disparar_alerta(_sc, post_enriquecido) else ""
+        )
+        print("[DEBUG] Haiku:", repr(analise.get("tema")), "|", repr(analise.get("subtema")))
+        post_enriquecido["subtema"] = normalizar_subtema(
+            analise.get("tema"), analise.get("subtema")
         )
         resultado.append(post_enriquecido)
 
