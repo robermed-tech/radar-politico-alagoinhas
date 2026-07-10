@@ -52,13 +52,120 @@ def normalizar_subtema(tema, subtema):
     tema = (tema or "").strip().lower()
     subtema = (subtema or "").strip().lower()
     return subtema if subtema in SUBTEMAS_POR_TEMA.get(tema, []) else "outro"
+
+# ── Normalizacao de texto e localidade (bairros) ──────────────────
+import unicodedata
+import hashlib
+from functools import lru_cache
+from zoneinfo import ZoneInfo
+
+TZ_BAHIA = ZoneInfo("America/Bahia")
+
+def _norm(txt: str) -> str:
+    """minusculas, sem acento, espacos colapsados."""
+    txt = unicodedata.normalize("NFKD", txt or "")
+    txt = "".join(ch for ch in txt if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", txt).strip().lower()
+
+@lru_cache(maxsize=2048)
+def _padrao(termo: str) -> re.Pattern:
+    return re.compile(rf"(?<!\w){re.escape(termo)}(?!\w)")
+
+def _tem_termo(texto: str, termo: str) -> bool:
+    """True se `termo` aparece como palavra inteira em `texto`."""
+    return bool(_padrao(_norm(termo)).search(_norm(texto)))
+
+def hash_autor(tenant: str, username: str) -> str:
+    """Hash irreversivel do autor do comentario (LGPD). Falha alto se o salt nao existir."""
+    salt = os.environ["AUTOR_HASH_SALT"]
+    base = f"{salt}|{tenant}|{(username or '').strip().lower()}"
+    return hashlib.sha256(base.encode("utf-8")).hexdigest()[:32]
+
+_BAIRRO_FALLBACK_MINIMO = {"nao_identificado": "nao_identificado"}
+
+def carregar_bairros(tenant: str = None, abortar_em_falha: bool = True) -> dict:
+    """
+    Le public.bairros (ativo=true) do Supabase. Retorna {alias_normalizado: slug},
+    incluindo `nome` e `slug` como aliases de si mesmos.
+
+    Em falha durante execucao normal (abortar_em_falha=True, default): loga ERRO CRITICO
+    e levanta RuntimeError — o pipeline nao deve gravar localidade='nao_identificado' em
+    massa por uma falha de leitura (indistinguivel depois de "o cidadao nao citou bairro").
+    Abortar e recuperavel; poluir a base nao e.
+
+    So aceita o fallback minimo (so o sentinela nao_identificado) quando abortar_em_falha=False
+    (uso: --teste-localidade), e mesmo assim loga um WARNING alto.
+    """
+    tenant = tenant or TENANT
+
+    def _falhar(motivo):
+        if abortar_em_falha:
+            log(f"[bairros] ERRO CRITICO - leitura de public.bairros falhou ({motivo})")
+            raise RuntimeError("bairros indisponivel - abortando para nao gravar localidade=nao_identificado em massa")
+        log(f"[bairros] WARNING ALTO - FALLBACK HARDCODED - leitura do Supabase falhou ({motivo}) - modo teste")
+        return dict(_BAIRRO_FALLBACK_MINIMO)
+
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return _falhar("SUPABASE_URL/SUPABASE_SERVICE_KEY ausentes")
+
+    try:
+        rows = _supabase_get(
+            "bairros",
+            f"tenant=eq.{tenant}&ativo=eq.true&select=nome,slug,aliases",
+        )
+    except Exception as e:
+        return _falhar(str(e))
+
+    if not rows:
+        return _falhar("nenhum bairro ativo retornado")
+
+    mapa = {}
+    for r in rows:
+        slug = (r.get("slug") or "").strip().lower()
+        if not slug:
+            continue
+        mapa[_norm(slug)] = slug
+        nome = r.get("nome") or ""
+        if nome:
+            mapa[_norm(nome)] = slug
+        for alias in (r.get("aliases") or []):
+            if alias:
+                mapa[_norm(alias)] = slug
+
+    if not mapa:
+        return _falhar("mapa de bairros vazio apos processamento")
+
+    log(f"[bairros] Supabase: {len(rows)} bairros ativos, {len(mapa)} aliases carregados")
+    return mapa
+
+def normalizar_localidade(valor: str, mapa_bairros: dict) -> str:
+    """
+    Sempre devolve slug valido de public.bairros, ou 'nao_identificado'.
+    Nunca texto livre. Nunca levanta excecao.
+
+    Ordem de resolucao: match exato do slug -> match exato de alias normalizado ->
+    _tem_termo (palavra inteira) -> 'nao_identificado'.
+    """
+    try:
+        if not valor or not mapa_bairros:
+            return "nao_identificado"
+        v = _norm(valor)
+        if v in mapa_bairros:
+            return mapa_bairros[v]
+        for alias_norm, slug in mapa_bairros.items():
+            if alias_norm and _tem_termo(valor, alias_norm):
+                return slug
+    except Exception:
+        pass
+    return "nao_identificado"
+
 # ==============================================================
 # CONFIGURACAO
 # ==============================================================
 
 APIFY_TOKEN      = os.environ.get("APIFY_API_TOKEN", "")
 ANTHROPIC_KEY    = os.environ["ANTHROPIC_API_KEY"]
-SPREADSHEET_ID   = os.environ["SPREADSHEET_ID"]
+SPREADSHEET_ID   = os.environ.get("SPREADSHEET_ID", "")  # lazy: so exigido em conectar_sheets()
 EVOLUTION_URL    = os.environ.get("EVOLUTION_API_URL", "")
 EVOLUTION_KEY    = os.environ.get("EVOLUTION_API_KEY", "")
 WHATSAPP_NUMBER  = os.environ.get("WHATSAPP_NUMBER", "")
@@ -288,6 +395,8 @@ def filtrar_relevante(caption, categoria_filtro):
     return True
 
 def conectar_sheets():
+    if not SPREADSHEET_ID:
+        raise ValueError("SPREADSHEET_ID nao configurado")
     creds_json = os.environ.get("GOOGLE_CREDENTIALS", "")
     if not creds_json:
         _cred_file = os.environ.get("GOOGLE_CREDENTIALS_FILE", "service_account.json")
@@ -557,6 +666,23 @@ def coletar_posts():
 # MODULO 2 - COLETA DE COMENTARIOS VIA APIFY
 # ==============================================================
 
+def _parse_ts_bahia(ts_raw):
+    """Converte timestamp ISO bruto (Apify) para (ts_iso, dia_bahia).
+    Nunca inventa hora: retorna (None, None) se nao for parseavel — meia-noite
+    UTC e 21h do dia anterior em Alagoinhas; sem o fuso, comentarios caem no
+    bucket errado e enviesam daily_metrics."""
+    if not ts_raw:
+        return None, None
+    try:
+        s_iso = str(ts_raw).strip().replace("Z", "+00:00")
+        dt = datetime.fromisoformat(s_iso)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+        dt_bahia = dt.astimezone(TZ_BAHIA)
+        return dt.isoformat(), dt_bahia.strftime("%Y-%m-%d")
+    except Exception:
+        return None, None
+
 def _normalizar_comentarios(resultados_brutos, posts, posts_com_coments):
     """Normaliza comentários brutos (Apify ou Instagrapi) para o formato interno."""
     handles_monitorados = set(PERFIS.keys())
@@ -584,13 +710,18 @@ def _normalizar_comentarios(resultados_brutos, posts, posts_com_coments):
         username = extrair(c, "ownerUsername", "username", "author", padrao="")
         tipo     = "politico" if username.lower() in handles_monitorados else "cidadao"
 
+        ts_raw = str(extrair(c, "timestamp", "createdAt", "date", padrao=""))
+        data_ts, data_dia = _parse_ts_bahia(ts_raw)
+
         comentario = {
             "id":       str(extrair(c, "id", "pk", padrao="")),
             "texto":    texto[:300],
             "username": username,
             "tipo":     tipo,
             "curtidas": int(extrair(c, "likesCount", "likes", "likeCount", padrao=0)),
-            "data":     str(extrair(c, "timestamp", "createdAt", "date", padrao=""))[:10],
+            "data":     ts_raw[:10],
+            "data_ts":  data_ts,
+            "data_dia": data_dia,
         }
 
         if post_url in resultado:
@@ -1073,29 +1204,140 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
   "janela_acao": "<imediato|24h|esta semana>",
   "cluster_crise": "<vitima|acidental|intencional|nenhum — cluster SCCT (Situational Crisis Communication Theory, Coombs): vitima=gestao sofre ataque/boato; acidental=erro nao-intencional; intencional=descaso/negligencia percebida; nenhum=sem crise>",
   "responsabilidade_atribuida": <numero 0-100, atribuicao de responsabilidade SCCT: quanto o publico culpa o prefeito Gustavo por esta situacao>,
-  "confianca": <numero 0-100, sua confianca nesta classificacao — baixe se texto for ambiguo, ironico ou faltar contexto>,
-  "sentimentos_comentarios": [
-    /* array com o sentimento de CADA comentario de cidadao listado acima, na MESMA ORDEM dos indices [0], [1], [2]...
-       Use apenas: "positivo" | "negativo" | "neutro".
-
-       APLIQUE A REGRA CENTRAL DE POLARIDADE (do system prompt):
-       sempre sob a otica do PREFEITO GUSTAVO CARMO.
-
-       - positivo = favorece a imagem do prefeito Gustavo (elogio ao prefeito,
-         critica a opositores como Luciano/Joaquim/Jaldice, defesa da gestao).
-       - negativo = prejudica a imagem (critica a Gustavo/prefeitura, APOIO a
-         opositores, queixa de servico municipal, comparacao desfavoravel).
-       - neutro = pergunta pratica, off-topic, sem polaridade clara.
-
-       ATENCAO: se o comentario foi feito em perfil de OPOSITOR e APOIA esse
-       opositor, classifique como NEGATIVO (e ruim para Gustavo).
-       Se o comentario foi feito em perfil de OPOSITOR e CRITICA esse opositor,
-       classifique como POSITIVO (e bom para Gustavo).
-
-       O array DEVE ter exatamente {{LEN}} itens (1 por comentario numerado). */
-  ]
-}}""".replace("{{LEN}}", str(len(cidadaos_top)))
+  "confianca": <numero 0-100, sua confianca nesta classificacao — baixe se texto for ambiguo, ironico ou faltar contexto>
+}}"""
     return prompt
+
+# ==============================================================
+# MODULO 4b - HAIKU DEDICADO A COMENTARIOS (tema/subtema/localidade/pedido)
+# ==============================================================
+# Roda para TODO post que tem comentarios, independente do tier (rapido/profundo)
+# do post — a demanda ordinaria do cidadao mora nos posts rotineiros, que ficam
+# no tier rapido (so triagem) na maioria das vezes. O Sonnet NAO duplica esta
+# analise; ele so faz a analise de crise no nivel do post.
+
+LOTE_COMENTARIOS = 40  # teto por chamada — evita estourar max_tokens em post viral
+
+PROMPT_COMENTARIOS = (
+    "Classificador de comentarios de cidadaos em posts politicos. "
+    "REGRA CRITICA DE OTICA: todo sentimento e medido pelo impacto na imagem do "
+    "prefeito Gustavo Carmo de Alagoinhas/BA — NAO pelo tom do comentario isolado. "
+    "POSITIVO = comentario favorece o prefeito Gustavo (elogio a gestao, defesa do prefeito, "
+    "critica a opositores). "
+    "NEGATIVO = comentario prejudica o prefeito Gustavo (critica a gestao, apoio a opositor, "
+    "queixa sobre servico publico, sarcasmo/ironia sobre a prefeitura). "
+    "REGRA PARA PERFIL OPOSITOR: comentarios apoiando/elogiando o opositor = NEGATIVO. "
+    "Comentarios concordando com criticas ao prefeito = NEGATIVO. "
+    "Apenas comentarios DEFENDENDO o prefeito ou ATACANDO o opositor = POSITIVO. "
+    "REGRA PARA PERFIL ALIADO/GOVERNO: comentarios elogiando a gestao = POSITIVO. "
+    "REGRA DO NEUTRO: comentario que nao menciona nem implica julgamento sobre a gestao = NEUTRO. "
+    "IRONIA: emoji de risada (😂🤣😆) combinado com 'elogio' a gestao e quase sempre sarcasmo — "
+    "classifique como NEGATIVO e baixe confianca_tema para no maximo 60.\n\n"
+    "TEMA: e o tema DO COMENTARIO, nao do post — um cidadao pode reclamar da UPA debaixo "
+    "de um post sobre pavimentacao.\n"
+    "SUBTEMA: slug conforme a lista de subtemas por tema fornecida no prompt do usuario. "
+    "Use 'outro' se nenhum encaixar.\n"
+    "LOCALIDADE: bairro, praca, rua, escola ou equipamento publico citado NO COMENTARIO. "
+    "Devolva EXATAMENTE como escrito pelo cidadao — nao normalize, nao corrija grafia. "
+    "null se nenhum lugar for citado. NAO infira lugar a partir do tema nem do post.\n"
+    "PEDIDO: demanda concreta, ate 8 palavras, no infinitivo (ex.: 'recapear a Avenida Juracy "
+    "Magalhaes', 'aumentar o plantao medico na UPA'). null se for apenas opiniao, elogio ou "
+    "ofensa, sem pedido concreto.\n"
+    "CONFIANCA_TEMA: inteiro 0-100, confianca na classificacao de tema + sentimento deste "
+    "comentario. Abaixo de 70 quando houver ironia, sarcasmo, giria ambigua, ou texto curto "
+    "demais para decidir.\n\n"
+    "Retorne APENAS JSON valido, sem markdown, sem texto extra."
+)
+
+def montar_prompt_comentarios(post, lote, offset):
+    """Monta o prompt de um lote de ate LOTE_COMENTARIOS comentarios, numerados
+    com indice GLOBAL (offset + posicao no lote) — nao reinicia a cada lote."""
+    cat = (post.get("categoria") or "").lower()
+    lado = ("OPOSITOR" if cat == "oposicao"
+            else "ALIADO" if cat in ("prefeito", "prefeitura", "governo")
+            else "IMPRENSA")
+    nota_lado = (
+        "ATENCAO: este e um perfil OPOSITOR. Comentarios apoiando/elogiando este perfil "
+        "= NEGATIVO para o prefeito. So e POSITIVO se o comentario defende Gustavo ou "
+        "ataca o opositor diretamente."
+        if lado == "OPOSITOR" else
+        "ATENCAO: este e um perfil ALIADO/GOVERNO. Comentarios elogiando a gestao = "
+        "POSITIVO. Criticas = NEGATIVO."
+        if lado == "ALIADO" else
+        "Analise o conteudo de cada comentario para determinar o impacto na imagem do prefeito."
+    )
+    linhas = "".join(
+        f'  [{offset + idx}] {c.get("curtidas", 0)}❤ @{c.get("username", "")}: "{c.get("texto", "")[:300]}"\n'
+        for idx, c in enumerate(lote)
+    )
+    return (
+        f'Perfil: @{post.get("autor", "")} ({post.get("categoria", "")}) [LADO: {lado}]\n'
+        f'{nota_lado}\n\n'
+        f'COMENTARIOS NUMERADOS (classifique CADA UM individualmente, pelo indice entre colchetes):\n'
+        f'{linhas}\n'
+        'SUBTEMAS validos por tema:\n'
+        f'{_mapa_subtemas_txt()}\n\n'
+        'Retorne APENAS este JSON:\n'
+        '{"analise_comentarios": [\n'
+        '  {"i": <indice EXATAMENTE como numerado acima>, '
+        '"sentimento": "<positivo|negativo|neutro>", '
+        '"tema": "<saude|educacao|obras|seguranca|transporte|emprego|impostos|saneamento|cultura_eventos|comunicacao>", '
+        '"subtema": "<slug conforme a lista acima>", '
+        '"localidade": "<bairro/praca/rua/escola citado, como escrito, ou null>", '
+        '"pedido": "<demanda concreta ate 8 palavras no infinitivo, ou null>", '
+        '"confianca_tema": <0-100>}, ...\n'
+        ']}\n'
+        f'O array deve ter exatamente {len(lote)} itens (1 por comentario numerado acima).'
+    )
+
+def analisar_comentarios_haiku(post, cidadaos_ordenados, cliente):
+    """Classifica TODOS os comentarios de cidadaos de um post via Haiku dedicado,
+    em lotes de LOTE_COMENTARIOS, com indice GLOBAL. Roda independente do tier
+    (rapido/profundo) do post — o Sonnet nao analisa comentario individualmente.
+
+    Retorna {indice_global: {"i", "sentimento", "tema", "subtema", "localidade",
+    "pedido", "confianca_tema"}}. Indices ausentes na resposta ficam de fora do
+    dict — quem chama preenche o default (nunca alinha por posicao)."""
+    n = len(cidadaos_ordenados)
+    if n == 0:
+        return {}
+
+    resultado_por_i = {}
+    for offset in range(0, n, LOTE_COMENTARIOS):
+        lote = cidadaos_ordenados[offset: offset + LOTE_COMENTARIOS]
+        try:
+            resp = cliente.messages.create(
+                model=MODELO_ANALISTA,
+                max_tokens=200 + 120 * len(lote),
+                system=PROMPT_COMENTARIOS,
+                messages=[{"role": "user", "content": montar_prompt_comentarios(post, lote, offset)}],
+            )
+            data = _parse_json_resposta(resp.content[0].text)
+            analises = data.get("analise_comentarios")
+            if analises is None:
+                # Compat: formato antigo (array de strings de sentimento apenas)
+                antigos = data.get("sentimentos_comentarios") or []
+                log(f"    [comentarios] WARNING: resposta sem 'analise_comentarios' — "
+                    f"caindo no formato antigo 'sentimentos_comentarios' ({len(antigos)} itens)")
+                analises = [
+                    {"i": offset + idx, "sentimento": s, "tema": "outro", "subtema": "outro",
+                     "localidade": None, "pedido": None, "confianca_tema": 0}
+                    for idx, s in enumerate(antigos)
+                ]
+            if len(analises) != len(lote):
+                log(f"    [comentarios] WARNING: {len(lote)} comentarios, "
+                    f"{len(analises)} analises recebidas (lote offset={offset})")
+            for item in analises:
+                try:
+                    idx_i = int(item.get("i"))
+                except (TypeError, ValueError):
+                    continue
+                resultado_por_i[idx_i] = item
+        except Exception as e:
+            log(f"    [comentarios] Haiku falhou no lote offset={offset} ({e}) — defaults")
+        time.sleep(0.5)
+    return resultado_por_i
+
 
 _DEFAULTS_ANALISE = {
     "score_imagem": 50, "score_risco": 0, "risco_crise": "baixo",
@@ -1119,9 +1361,9 @@ def _parse_json_resposta(texto):
             texto = texto[4:]
     return json.loads(texto.strip())
 
-def analisar_com_agora(posts, comentarios_por_post, memoria):
+def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
     log(f"=== MODULO 4 - Analisando com o AGORA (triagem 2 niveis | limiar={LIMIAR_TRIAGEM}) ===")
-    log(f"    Triagem: {MODELO_ANALISTA} | Profundo: {MODELO_PROFUNDO}")
+    log(f"    Triagem: {MODELO_ANALISTA} | Profundo: {MODELO_PROFUNDO} | Comentarios: {MODELO_ANALISTA}")
     cliente = Anthropic(api_key=ANTHROPIC_KEY)
     resultado = []
     n_profundo = n_rapido = 0
@@ -1225,22 +1467,43 @@ def analisar_com_agora(posts, comentarios_por_post, memoria):
         )
         resultado.append(post_enriquecido)
 
-        # Sentimento individual dos comentarios
+        # Classificacao individual dos comentarios de cidadaos (Haiku dedicado,
+        # roda para TODO post independente do tier). Indice ausente na resposta
+        # -> defaults explicitos; NUNCA alinha por posicao (enumerate paralelo).
         cidadaos_lista = sorted(
             [c for c in comentarios if c["tipo"] == "cidadao"],
             key=lambda x: x["curtidas"], reverse=True
         )
-        sentimentos = analise.get("sentimentos_comentarios", []) or []
+        analise_por_i = analisar_comentarios_haiku(post, cidadaos_lista, cliente)
+        classificados = 0
+        for idx, c in enumerate(cidadaos_lista):
+            item = analise_por_i.get(idx)
+            if item:
+                sent = item.get("sentimento")
+                c["sentimento"] = sent if sent in ("positivo", "negativo", "neutro") else "neutro"
+                tema_c = item.get("tema") or "outro"
+                c["tema"] = tema_c
+                c["subtema"] = normalizar_subtema(tema_c, item.get("subtema"))
+                c["localidade"] = normalizar_localidade(item.get("localidade"), mapa_bairros)
+                c["pedido"] = item.get("pedido") or None
+                try:
+                    c["confianca_tema"] = int(item.get("confianca_tema") or 0)
+                except (TypeError, ValueError):
+                    c["confianca_tema"] = 0
+                classificados += 1
+            else:
+                c["sentimento"] = "neutro"
+                c["tema"] = "outro"
+                c["subtema"] = "outro"
+                c["localidade"] = "nao_identificado"
+                c["pedido"] = None
+                c["confianca_tema"] = 0
+
+        # Perfis politicos (nao classificados pelo Haiku de comentarios): herdam
+        # o sentimento agregado do post.
         fallback = analise.get("sentimento_comentarios", "neutro")
         if fallback == "misto":
             fallback = "neutro"
-        classificados = 0
-        for idx, c in enumerate(cidadaos_lista):
-            if idx < len(sentimentos) and sentimentos[idx] in ("positivo", "negativo", "neutro"):
-                c["sentimento"] = sentimentos[idx]
-                classificados += 1
-            else:
-                c["sentimento"] = fallback
         for c in comentarios:
             if c["tipo"] != "cidadao" and not c.get("sentimento"):
                 c["sentimento"] = fallback
@@ -1543,6 +1806,7 @@ def gravar_no_supabase(posts_analisados, comentarios_por_post):
             "resumo": p.get("resumo", ""),
             "padrao_detectado": p.get("padrao_detectado", ""),
             "tema": p.get("tema", ""), "atribuicao": p.get("atribuicao", ""),
+            "subtema": p.get("subtema", "outro"),
             "tendencia": p.get("tendencia", "estavel"),
             "urgencia": p.get("urgencia", "baixa"),
             "sugestao_acao": p.get("sugestao_acao", ""),
@@ -1572,6 +1836,14 @@ def gravar_no_supabase(posts_analisados, comentarios_por_post):
                 "username": c.get("username", ""), "tipo": c.get("tipo", ""),
                 "texto": c.get("texto", ""), "curtidas": int(c.get("curtidas", 0) or 0),
                 "sentimento": c.get("sentimento", "neutro"),
+                "tema":               c.get("tema", "outro"),
+                "subtema":            c.get("subtema", "outro"),
+                "localidade":         c.get("localidade", "nao_identificado"),
+                "pedido":             c.get("pedido") or None,
+                "confianca_tema":     int(c["confianca_tema"]) if c.get("confianca_tema") is not None else None,
+                "autor_hash":         hash_autor(TENANT, c.get("username", "")),
+                "data_comentario_ts":  c.get("data_ts") or None,
+                "data_comentario_dia": c.get("data_dia"),
                 # Reseta flags de coordenação a cada execução (gravar_narratives remarca depois)
                 "suspeito_coordenacao": False, "motivo_suspeita": "",
                 "data_comentario": str(c.get("data", "")), "atualizado_em": agora,
@@ -3175,7 +3447,10 @@ def main():
 
     comentarios_por_post = coletar_comentarios(posts)
     memoria = carregar_memoria(planilha)
-    posts_analisados = analisar_com_agora(posts, comentarios_por_post, memoria)
+    # Falha em carregar bairros aborta o run (RuntimeError) — nao gravamos
+    # localidade='nao_identificado' em massa por indisponibilidade do Supabase.
+    mapa_bairros = carregar_bairros(abortar_em_falha=True)
+    posts_analisados = analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros)
     # Sheets é legado e tem cota de escrita/min (erro 429). NÃO pode derrubar o
     # dual-write do Supabase, que é o que alimenta o dashboard (Radar Comando).
     try:
@@ -3446,7 +3721,8 @@ def main_retroanalise():
     analisados_oposicao = []
     if posts_oposicao:
         log(f"\nRe-analisando {len(posts_oposicao)} posts de oposicao...")
-        analisados_oposicao = analisar_com_agora(posts_oposicao, coments_por_url, memoria)
+        mapa_bairros = carregar_bairros(abortar_em_falha=True)
+        analisados_oposicao = analisar_com_agora(posts_oposicao, coments_por_url, memoria, mapa_bairros)
         gravar_no_supabase(analisados_oposicao, coments_por_url)
         log(f"  {len(analisados_oposicao)} posts de oposicao gravados.")
 
@@ -3473,6 +3749,57 @@ def main_retroanalise():
     log("+====================================================+")
     log("|  RETROANALISE concluida.                            |")
     log("+====================================================+")
+
+
+def teste_localidade():
+    """Le 50 comentarios do Supabase e roda APENAS normalizar_localidade() sobre
+    o texto de cada um — sem chamar Claude, sem gravar nada no banco/planilha.
+    Serve para medir a qualidade do dicionario de aliases de bairros ANTES de
+    subir para producao. Nao exige SPREADSHEET_ID (variaveis do Sheets sao lazy)."""
+    print("[teste-localidade] Carregando bairros...")
+    mapa_bairros = carregar_bairros(abortar_em_falha=False)
+    if mapa_bairros == _BAIRRO_FALLBACK_MINIMO:
+        print("[teste-localidade] WARNING ALTO: fallback minimo em uso "
+              "(leitura de public.bairros falhou ou banco vazio) — resultado nao e confiavel.")
+
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("[teste-localidade] SUPABASE_URL / SUPABASE_SERVICE_KEY não configurados.")
+        return
+
+    print("\n[teste-localidade] Buscando 50 comentários do Supabase…")
+    r = requests.get(
+        f"{SUPABASE_URL}/rest/v1/comments",
+        params={"tenant": f"eq.{TENANT}", "select": "texto", "limit": "50"},
+        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+        timeout=15,
+    )
+    if r.status_code != 200:
+        print(f"[teste-localidade] Erro ao buscar comentários: {r.status_code} {r.text[:200]}")
+        return
+
+    rows = r.json()
+    if not rows:
+        print("[teste-localidade] Nenhum comentário encontrado no Supabase.")
+        return
+
+    total = len(rows)
+    resolvidos = nao_identificados = 0
+    print(f"\n[teste-localidade] {total} comentários — testando normalizar_localidade():\n")
+    for row in rows:
+        texto = row.get("texto", "") or ""
+        slug = normalizar_localidade(texto, mapa_bairros)
+        if slug == "nao_identificado":
+            nao_identificados += 1
+        else:
+            resolvidos += 1
+        print(f"  {texto[:60]!r} | {texto!r} | {slug}")
+
+    pct_resolvido = round(resolvidos / total * 100)
+    pct_nao_ident = round(nao_identificados / total * 100)
+    print(f"\n[teste-localidade] resolvido: {pct_resolvido}% | nao_identificado: {pct_nao_ident}%")
+    if pct_nao_ident > 60:
+        print("[teste-localidade] ATENÇÃO: nao_identificado > 60% — "
+              "o dicionário de aliases de bairros está pobre. Revisar antes de subir para produção.")
 
 
 def reprocessar():
@@ -3515,7 +3842,8 @@ def reprocessar():
     ]
 
     print(f"[reprocessar] {len(posts)} posts. Analisando com Claude…")
-    posts_analisados = analisar_com_agora(posts, {}, "")
+    # Sem comentarios (dict vazio) — mapa_bairros nao e usado neste fluxo.
+    posts_analisados = analisar_com_agora(posts, {}, "", {})
 
     print(f"[reprocessar] {len(posts_analisados)} posts analisados. Gravando no Supabase (upsert)…")
     gravar_no_supabase(posts_analisados, {})
@@ -3529,6 +3857,8 @@ if __name__ == "__main__":
         main_multi_tenant()
     elif "--teste-filtro" in sys.argv:
         teste_filtro()
+    elif "--teste-localidade" in sys.argv:
+        teste_localidade()
     elif "--reprocessar" in sys.argv:
         reprocessar()
     elif "--retroanalise" in sys.argv:
