@@ -3954,7 +3954,12 @@ def backfill_comentarios(limite=None):
     log(f"  {len(por_post)} posts distintos.")
 
     cliente = Anthropic(api_key=ANTHROPIC_KEY)
-    rows, classificados_tot, i_post = [], 0, 0
+    # 3 listas de formato HOMOGENEO — o PostgREST exige que todas as linhas de
+    # um mesmo upsert em lote tenham exatamente as mesmas chaves (senao da
+    # PGRST102 "All object keys must match" e o LOTE INTEIRO falha ao gravar,
+    # incluindo linhas boas misturadas com as problematicas).
+    rows_cidadao, rows_politico = [], []
+    classificados_tot, pulados_tot, i_post = 0, 0, 0
     for url, coments in por_post.items():
         i_post += 1
         amostra = coments[0]
@@ -3970,41 +3975,40 @@ def backfill_comentarios(limite=None):
         analise_por_i = analisar_comentarios_haiku(post_ctx, cidadaos, cliente) if cidadaos else {}
 
         # Cidadaos: classificacao tematica + hash. Mesma logica de analisar_com_agora.
+        # Indice SEM resposta do Haiku (falha de infra: credito, rede, timeout) ->
+        # PULA o comentario (nao grava default por cima de uma classificacao boa
+        # que ja estava no banco). O backfill e idempotente — um proximo run
+        # reprocessa este comentario do zero, entao nao ha perda permanente.
         for idx, c in enumerate(cidadaos):
             item = analise_por_i.get(idx)
-            if item:
-                tema_c = item.get("tema") or "outro"
-                try:
-                    conf = int(item.get("confianca_tema") or 0)
-                except (TypeError, ValueError):
-                    conf = 0
-                sent = item.get("sentimento")
-                row = {
-                    "id": str(c.get("id", "")),
-                    "tema": tema_c,
-                    "subtema": normalizar_subtema(tema_c, item.get("subtema")),
-                    "localidade": normalizar_localidade(item.get("localidade"), mapa_bairros),
-                    "pedido": item.get("pedido") or None,
-                    "confianca_tema": conf,
-                    "autor_hash": hash_autor(TENANT, c.get("username", "")),
-                }
-                if sent in ("positivo", "negativo", "neutro"):
-                    row["sentimento"] = sent
-                rows.append(row)
-                classificados_tot += 1
-            else:
-                rows.append({
-                    "id": str(c.get("id", "")),
-                    "tema": "outro", "subtema": "outro",
-                    "localidade": "nao_identificado", "pedido": None,
-                    "confianca_tema": 0,
-                    "autor_hash": hash_autor(TENANT, c.get("username", "")),
-                })
+            if not item:
+                pulados_tot += 1
+                continue
+            tema_c = item.get("tema") or "outro"
+            try:
+                conf = int(item.get("confianca_tema") or 0)
+            except (TypeError, ValueError):
+                conf = 0
+            sent = item.get("sentimento")
+            rows_cidadao.append({
+                "id": str(c.get("id", "")),
+                "tema": tema_c,
+                "subtema": normalizar_subtema(tema_c, item.get("subtema")),
+                "localidade": normalizar_localidade(item.get("localidade"), mapa_bairros),
+                "pedido": item.get("pedido") or None,
+                "confianca_tema": conf,
+                "autor_hash": hash_autor(TENANT, c.get("username", "")),
+                # sentimento sempre presente (mesma forma em toda a lista) —
+                # cai em 'neutro' apenas se o Haiku respondeu mas com um
+                # valor fora do enum esperado (dado ruim, nao falha de infra).
+                "sentimento": sent if sent in ("positivo", "negativo", "neutro") else "neutro",
+            })
+            classificados_tot += 1
 
         # Politicos: so autor_hash (LGPD), sem classificacao tematica.
         for c in coments:
             if (c.get("tipo") or "") != "cidadao":
-                rows.append({
+                rows_politico.append({
                     "id": str(c.get("id", "")),
                     "autor_hash": hash_autor(TENANT, c.get("username", "")),
                 })
@@ -4012,12 +4016,14 @@ def backfill_comentarios(limite=None):
         if i_post % 20 == 0:
             log(f"  ... {i_post}/{len(por_post)} posts processados")
 
-    # Upsert em lotes de 500 (payload PostgREST)
+    # Upsert em lotes de 500, uma chamada por formato (nunca mistura formatos)
     n_grav = 0
-    for k in range(0, len(rows), 500):
-        n_grav += _supabase_upsert("comments", rows[k:k + 500], "id")
+    for rows in (rows_cidadao, rows_politico):
+        for k in range(0, len(rows), 500):
+            n_grav += _supabase_upsert("comments", rows[k:k + 500], "id")
     log(f"  Backfill concluido: {n_grav} comentarios atualizados "
-        f"({classificados_tot} cidadaos classificados pelo Haiku).")
+        f"({classificados_tot} cidadaos classificados pelo Haiku, "
+        f"{pulados_tot} pulados por falha do Haiku — preservam valor anterior).")
 
 
 if __name__ == "__main__":
