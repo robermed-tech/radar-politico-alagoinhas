@@ -84,10 +84,11 @@ const NAV_MAIN: NavItem[] = [
   { id: "admin",       label: "Configuração",          icon: <NIcoSliders /> },
 ];
 
-/** Botão ativo do menu: laranja sólido com sombra. */
+/** Botão ativo do menu: pílula laranja com degradê, glow quente e fio de luz. */
 const NAV_GLOW = {
-  background: "#F97316",
-  boxShadow: "0 4px 14px -4px rgba(249,115,22,0.55)",
+  background: "linear-gradient(180deg, #FB923C 0%, #F97316 100%)",
+  boxShadow:
+    "0 8px 22px -6px var(--brand-glow), inset 0 1px 0 rgba(255,255,255,0.28)",
 } as const;
 
 function SunIcon() {
@@ -215,10 +216,10 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => setPage(n.id)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold tracking-wide transition-all duration-200 ${
+                className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm tracking-wide transition-all duration-200 ${
                   isCurrent
                     ? "text-white"
-                    : "bg-bg-2 text-txt-2 shadow-sm hover:bg-bg-3 hover:text-txt-1 hover:shadow-md"
+                    : "text-txt-2 hover:bg-bg-2 hover:text-txt-1"
                 }`}
                 style={isCurrent ? NAV_GLOW : undefined}
               >

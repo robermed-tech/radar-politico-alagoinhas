@@ -6,19 +6,28 @@
 :root,
 .theme-dark {
   color-scheme: dark;
-  /* Degradê preto dominante → cinza escuro */
-  --wx-bg: linear-gradient(160deg, #000000 0%, #000000 42%, #0e0e0e 62%, #181818 80%, #222222 100%);
-  --g1: rgba(255, 255, 255, 0.09);
-  --g2: rgba(255, 255, 255, 0.06);
-  --g3: rgba(255, 255, 255, 0.12);
-  --line: rgba(255, 255, 255, 0.16);
-  --line-strong: rgba(255, 255, 255, 0.26);
-  --txt1: #f1f5fb;
-  --txt2: #b4c2da;
-  --txt3: #8693ad;
-  --glass-btn: rgba(255, 255, 255, 0.08);
-  --glass-btn-border: rgba(255, 255, 255, 0.14);
-  --glass-btn-hover: rgba(255, 255, 255, 0.14);
+  /* Céu noturno de tempestade: azul-carvão profundo + brilho quente de accent
+     no topo (radial) que faz o vidro e o laranja "cantarem". */
+  --wx-bg:
+    radial-gradient(120% 80% at 15% -10%, rgba(249, 115, 22, 0.10) 0%, rgba(249, 115, 22, 0) 42%),
+    radial-gradient(90% 70% at 100% 0%, rgba(56, 89, 168, 0.16) 0%, rgba(56, 89, 168, 0) 55%),
+    linear-gradient(165deg, #070B14 0%, #0A1120 40%, #0C1424 68%, #0E1830 100%);
+  --g1: rgba(255, 255, 255, 0.065);
+  --g2: rgba(255, 255, 255, 0.04);
+  --g3: rgba(255, 255, 255, 0.10);
+  --g-raised: rgba(255, 255, 255, 0.085);
+  --line: rgba(255, 255, 255, 0.11);
+  --line-strong: rgba(255, 255, 255, 0.22);
+  --hairline: rgba(255, 255, 255, 0.14); /* highlight superior do vidro */
+  --shadow-ambient: 0 18px 48px -18px rgba(0, 0, 0, 0.66), 0 2px 8px -2px rgba(0, 0, 0, 0.5);
+  --shadow-raised: 0 28px 64px -24px rgba(0, 0, 0, 0.72), 0 4px 14px -4px rgba(0, 0, 0, 0.55);
+  --txt1: #F2F6FD;
+  --txt2: #AEBED6;
+  --txt3: #7C8BA6;
+  --glass-btn: rgba(255, 255, 255, 0.06);
+  --glass-btn-border: rgba(255, 255, 255, 0.12);
+  --glass-btn-hover: rgba(255, 255, 255, 0.12);
+  --brand-glow: rgba(249, 115, 22, 0.34);
   /* Violeta acessível (substitui o lilás de baixo contraste) */
   --violet: #a78bfa;
   --violet-soft: rgba(167, 139, 250, 0.12);
@@ -28,19 +37,26 @@
 /* ── TEMA CLARO ── */
 .theme-light {
   color-scheme: light;
-  /* Branco em cima → azul-claro embaixo (intensidade suave) */
-  --wx-bg: linear-gradient(180deg, #FFFFFF 0%, #F5FAFF 38%, #E7F1FF 72%, #D5E7FF 100%);
-  --g1: rgba(255, 255, 255, 0.85);
-  --g2: rgba(255, 255, 255, 0.60);
-  --g3: rgba(15, 23, 42, 0.06);
-  --line: rgba(15, 23, 42, 0.12);
-  --line-strong: rgba(15, 23, 42, 0.22);
+  /* Céu diurno: branco luminoso → azul-claro, com leve calor de accent no topo. */
+  --wx-bg:
+    radial-gradient(110% 70% at 12% -8%, rgba(249, 115, 22, 0.06) 0%, rgba(249, 115, 22, 0) 40%),
+    linear-gradient(180deg, #FFFFFF 0%, #F6FAFF 36%, #E9F2FF 70%, #D8E9FF 100%);
+  --g1: rgba(255, 255, 255, 0.78);
+  --g2: rgba(255, 255, 255, 0.55);
+  --g3: rgba(15, 23, 42, 0.05);
+  --g-raised: rgba(255, 255, 255, 0.92);
+  --line: rgba(15, 23, 42, 0.10);
+  --line-strong: rgba(15, 23, 42, 0.20);
+  --hairline: rgba(255, 255, 255, 0.9); /* highlight superior do vidro */
+  --shadow-ambient: 0 14px 40px -18px rgba(20, 40, 80, 0.24), 0 2px 6px -2px rgba(20, 40, 80, 0.10);
+  --shadow-raised: 0 24px 56px -22px rgba(20, 40, 80, 0.30), 0 4px 12px -4px rgba(20, 40, 80, 0.14);
   --txt1: #0b1220;
   --txt2: #3f4b5e;
   --txt3: #586577;
-  --glass-btn: rgba(255, 255, 255, 0.70);
-  --glass-btn-border: rgba(15, 23, 42, 0.12);
-  --glass-btn-hover: rgba(255, 255, 255, 0.92);
+  --glass-btn: rgba(255, 255, 255, 0.72);
+  --glass-btn-border: rgba(15, 23, 42, 0.10);
+  --glass-btn-hover: rgba(255, 255, 255, 0.95);
+  --brand-glow: rgba(249, 115, 22, 0.22);
   /* Violeta acessível no tema claro (violet-700 ~6:1) */
   --violet: #6d28d9;
   --violet-soft: rgba(109, 40, 217, 0.07);
@@ -96,14 +112,66 @@ button:disabled {
 .bg-bg-1,
 .bg-bg-2,
 .bg-bg-3 {
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
 }
-/* Sombra suave de vidro nos cards arredondados */
+/* Sombra ambiente de vidro + fio de luz no topo (borda luminosa em camadas).
+   Profundidade vem de sombra suave grande + highlight interno, não de peso. */
 .rounded-xl.bg-bg-1,
 .rounded-2xl.bg-bg-1,
-.rounded-xl.bg-bg-2 {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+.rounded-xl.bg-bg-2,
+.rounded-2xl.bg-bg-2 {
+  box-shadow: var(--shadow-ambient), inset 0 1px 0 var(--hairline);
+}
+
+/* ── ELEVAÇÃO E HOVER-LIFT ──────────────────────────────
+   .card-hover: micro-interação padrão dos cards clicáveis/importantes. */
+.card-hover {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms ease, border-color 220ms ease;
+  will-change: transform;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-raised), inset 0 1px 0 var(--hairline);
+  border-color: var(--line-strong);
+}
+
+/* Painel elevado (hero / destaque) — vidro um pouco mais denso e sombra maior. */
+.glass-raised {
+  background: var(--g-raised) !important;
+  box-shadow: var(--shadow-raised), inset 0 1px 0 var(--hairline) !important;
+}
+
+/* ── MÉTRICA HERO: hierarquia por TAMANHO + COR, peso permanece leve ──
+   Doutrina fina preservada (weight 300). O destaque vem do tamanho fluido
+   e do gradiente de accent, nunca do peso. */
+.metric-hero {
+  font-size: clamp(2.4rem, 5.5vw, 3.6rem);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.metric-accent {
+  background: linear-gradient(180deg, #FDBA74 0%, #F97316 62%, #EA580C 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Rótulo de seção — caixa alta discreta com tracking (padrão minimalista). */
+.section-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--txt3);
+}
+
+/* Glow de accent para elementos hero (halo quente sob o vidro). */
+.glow-brand {
+  box-shadow: 0 0 0 1px var(--glass-btn-border), 0 10px 40px -8px var(--brand-glow);
 }
 
 /* Botões/pílulas de vidro (sensíveis ao tema) */
