@@ -643,7 +643,9 @@ def coletar_posts():
         log("=== MODULO 1b - Coletando posts via Apify ===")
         try:
             input_data = {"username": perfis, "resultsLimit": MAX_POSTS_POR_PERFIL}
-            run_id = apify_iniciar_run(ACTOR_POSTS, input_data)
+            # 1024 MB: o instagram-post-scraper estoura 256 MB (OOM, exit 137).
+            # Runs a 256 MB usavam 244/256 e eram mortos; a 1024 MB rodam ate o fim.
+            run_id = apify_iniciar_run(ACTOR_POSTS, input_data, memory_mbytes=1024)
             if run_id:
                 dataset_id = apify_aguardar_run(run_id, timeout=300)
                 if dataset_id:
@@ -768,7 +770,8 @@ def coletar_comentarios(posts):
         try:
             urls_posts = [p["url"] for p in posts_com_coments]
             input_data = {"directUrls": urls_posts, "resultsLimit": MAX_COMENTARIOS_POR_POST}
-            run_id = apify_iniciar_run(ACTOR_COMMENTS, input_data)
+            # 512 MB: mesmo motivo do post-scraper — 256 MB e insuficiente e causa OOM.
+            run_id = apify_iniciar_run(ACTOR_COMMENTS, input_data, memory_mbytes=512)
             if run_id:
                 dataset_id = apify_aguardar_run(run_id, timeout=300)
                 if dataset_id:
