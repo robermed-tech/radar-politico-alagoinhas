@@ -10,6 +10,8 @@ const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ de
 const InfluencersPage = lazy(() => import("@/pages/InfluencersPage").then((m) => ({ default: m.InfluencersPage })));
 const NarrativesPage = lazy(() => import("@/pages/NarrativesPage").then((m) => ({ default: m.NarrativesPage })));
 const AlertasHistPage = lazy(() => import("@/pages/AlertasHistPage").then((m) => ({ default: m.AlertasHistPage })));
+const BairrosPage = lazy(() => import("@/pages/BairrosPage").then((m) => ({ default: m.BairrosPage })));
+const PedidosPage = lazy(() => import("@/pages/PedidosPage").then((m) => ({ default: m.PedidosPage })));
 import { fetchRadar, fetchPipelineHealth, filtrarPorPeriodo } from "@/lib/data";
 import { calcIAD } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
@@ -23,6 +25,8 @@ type Page =
   | "actions"
   | "feed"
   | "topics"
+  | "bairros"
+  | "pedidos"
   | "admin"
   // avançado
   | "approval"
@@ -56,6 +60,12 @@ function NIcoNetwork() {
 function NIcoFileText() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
 }
+function NIcoMapPin() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>;
+}
+function NIcoInbox() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>;
+}
 function NIcoAlertHist() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="12" y1="2" x2="12" y2="4"/></svg>;
 }
@@ -64,6 +74,8 @@ const NAV_MAIN: NavItem[] = [
   { id: "clima",       label: "Estação Meteorológica", icon: <NIcoDashboard /> },
   { id: "approval",    label: "Análise do Clima",      icon: <NIcoBarChart /> },
   { id: "feed",        label: "O que o povo diz",      icon: <NIcoMessage /> },
+  { id: "pedidos",     label: "Pedidos do Povo",       icon: <NIcoInbox /> },
+  { id: "bairros",     label: "Mapa da Cidade",        icon: <NIcoMapPin /> },
   { id: "topics",      label: "Previsões",             icon: <NIcoTrending /> },
   { id: "actions",     label: "Alertas & Ações",       icon: <NIcoBell /> },
   { id: "influencers", label: "Influenciadores",       icon: <NIcoNetwork /> },
@@ -271,7 +283,7 @@ export default function App() {
         </div>
         {dadosDesatualizados && (
           <div
-            className="flex items-center gap-2 border-b border-yellow-500/30 px-4 py-2 text-sm font-semibold"
+            className="flex flex-wrap items-center gap-2 border-b border-yellow-500/30 px-4 py-2 text-sm font-semibold"
             style={{ background: "#78350F22", color: "#FCD34D" }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -291,6 +303,8 @@ export default function App() {
             {page === "clima"    && <ClimaPage />}
             {page === "actions"  && <AlertasAcoesPage />}
             {page === "feed"     && <FeedPage />}
+            {page === "pedidos"  && <PedidosPage />}
+            {page === "bairros"  && <BairrosPage />}
             {page === "topics"   && <TemasPage />}
             {page === "admin"    && <RequireAdmin><AdminPage /></RequireAdmin>}
             {/* Avançado */}

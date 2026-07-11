@@ -4,8 +4,10 @@ import ReactECharts from "echarts-for-react";
 import {
   fetchDailyThemes,
   fetchTemasMonitorados,
+  fetchSubtemas,
   type DailyTheme,
   type TemaMonitorado,
+  type SubtemaStat,
 } from "@/lib/data";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
@@ -100,6 +102,84 @@ function PainelRecuperacaoIRT() {
                 pico em {fmtDiaBR(t.pico_em)} · volume {t.volume_pico}→{t.volume_atual} posts
                 {" · "}
                 <span className="font-semibold" style={{ color: td.cor }}>{td.label}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Drill-down de subtemas (comments.subtema) ────────────────────────────────
+const TEMA_LABEL: Record<string, string> = {
+  saude: "Saúde", educacao: "Educação", obras: "Obras", seguranca: "Segurança",
+  transporte: "Transporte", emprego: "Emprego", impostos: "Impostos",
+  saneamento: "Saneamento", cultura_eventos: "Cultura", comunicacao: "Comunicação",
+};
+function labelTemaSub(t: string): string {
+  return TEMA_LABEL[t] ?? (t ? t.charAt(0).toUpperCase() + t.slice(1) : "—");
+}
+function labelSub(s: string): string {
+  return s.replace(/_/g, " ");
+}
+
+/** Detalha cada tema nos seus subtemas mais falados (a partir dos comentários). */
+function PainelSubtemas() {
+  const { data = [] } = useQuery({
+    queryKey: ["subtemas"],
+    queryFn: fetchSubtemas,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const porTema = useMemo(() => {
+    const by: Record<string, SubtemaStat[]> = {};
+    for (const s of data) (by[s.tema] ??= []).push(s);
+    return Object.entries(by)
+      .map(([tema, subs]) => ({
+        tema,
+        total: subs.reduce((n, s) => n + s.total, 0),
+        subs: subs.sort((a, b) => b.total - a.total).slice(0, 5),
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 6);
+  }, [data]);
+
+  if (porTema.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-line bg-bg-1 p-4">
+      <div className="text-sm font-bold">Dentro de cada tema</div>
+      <p className="mb-3 text-[10px] text-txt-3">
+        O que exatamente o cidadão fala — subtemas mais citados nos comentários
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {porTema.map((t) => {
+          const max = t.subs[0]?.total || 1;
+          return (
+            <div key={t.tema} className="rounded-lg border border-line bg-bg-2 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-sm font-bold text-txt-1">{labelTemaSub(t.tema)}</span>
+                <span className="tnum text-[11px] text-txt-3">{t.total} menções</span>
+              </div>
+              <div className="space-y-1.5">
+                {t.subs.map((s) => (
+                  <div key={s.subtema}>
+                    <div className="flex items-center justify-between gap-2 text-[12px]">
+                      <span className="min-w-0 flex-1 truncate capitalize text-txt-2">{labelSub(s.subtema)}</span>
+                      <span className="tnum shrink-0 text-txt-3">{s.total}</span>
+                    </div>
+                    <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-bg-1">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.round((s.total / max) * 100)}%`,
+                          background: s.pctNeg >= 50 ? "#EF4444" : s.pctNeg >= 30 ? "#F97316" : "#3B82F6",
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           );
@@ -323,6 +403,9 @@ export function TemasPage() {
       {/* Laço IRT: recuperação de imagem pós-alerta (só aparece quando há tema monitorado) */}
       <PainelRecuperacaoIRT />
 
+      {/* Drill-down de subtemas (a partir dos comentários) */}
+      <PainelSubtemas />
+
       {/* Subindo + Caindo lado a lado */}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-line bg-bg-1 p-4">
@@ -343,11 +426,11 @@ export function TemasPage() {
             {subindo.slice(0, 5).map((s) => {
               const isOut = outrosTemasSet.has(s.tema);
               return (
-                <div key={s.tema} className="flex items-center justify-between text-sm">
-                  <span className="text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
+                <div key={s.tema} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="min-w-0 flex-1 truncate text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
                     {s.tema}
                   </span>
-                  <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#EF4444" }}>
+                  <span className="tnum shrink-0 font-bold" style={{ color: isOut ? COR_OUTROS : "#EF4444" }}>
                     +{s.s.toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
                   </span>
                 </div>
@@ -365,11 +448,11 @@ export function TemasPage() {
             {caindo.slice(0, 5).map((s) => {
               const isOut = outrosTemasSet.has(s.tema);
               return (
-                <div key={s.tema} className="flex items-center justify-between text-sm">
-                  <span className="text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
+                <div key={s.tema} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="min-w-0 flex-1 truncate text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
                     {s.tema}
                   </span>
-                  <span className="tnum font-bold" style={{ color: isOut ? COR_OUTROS : "#22C55E" }}>
+                  <span className="tnum shrink-0 font-bold" style={{ color: isOut ? COR_OUTROS : "#22C55E" }}>
                     {s.s.toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
                   </span>
                 </div>

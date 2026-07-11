@@ -36,6 +36,7 @@ export interface Post {
   comentarios_destaque_curtidas: number;
   comentarios_destaque_autor: string;
   resumo: string;
+  subtema: string;
   // Camada SCCT/Coombs (colunas de supabase/scct_posts_e_irt.sql)
   cluster_crise: string;
   responsabilidade_atribuida: number;
@@ -104,6 +105,7 @@ function normalizePost(r: Record<string, unknown>): Post {
     comentarios_destaque_curtidas: num(r.comentarios_destaque_curtidas),
     comentarios_destaque_autor: String(r.comentarios_destaque_autor ?? ""),
     resumo: String(r.resumo ?? ""),
+    subtema: String(r.subtema ?? ""),
     cluster_crise: String(r.cluster_crise ?? "").toLowerCase(),
     responsabilidade_atribuida: num(r.responsabilidade_atribuida),
     abordagem_recomendada: String(r.abordagem_recomendada ?? ""),
@@ -443,6 +445,14 @@ export interface Comment {
   curtidas: number;
   sentimento: string;
   data_comentario: string;
+  // Campos por-comentário (Haiku dedicado — Tarefa 5 / backfill)
+  tema?: string;
+  subtema?: string;
+  localidade?: string;
+  pedido?: string | null;
+  confianca_tema?: number;
+  data_comentario_ts?: string | null;
+  data_comentario_dia?: string | null;
 }
 
 /** Comentários (cidadão/político) para drill-down de Aprovação. */
@@ -456,6 +466,145 @@ export async function fetchComments(limit = 1000): Promise<Comment[]> {
   }).catch(() => null);
   if (!res || !res.ok) return [];
   return (await res.json()) as Comment[];
+}
+
+// ── Localidades / Bairros (agregação client-side de comments) ────────────────
+export interface BairroStats {
+  localidade: string;
+  total: number;
+  neg: number;
+  pos: number;
+  neu: number;
+  pctNeg: number;
+  pctPos: number;
+  curtidas: number;
+  temaTop: string;
+  pedidos: string[];
+}
+
+/**
+ * Comentários que citam um bairro/local (localidade != nao_identificado),
+ * agregados por localidade. PostgREST não agrupa sem view; fazemos client-side.
+ * O schema já está migrado, mas não podemos criar views (regra do projeto).
+ */
+export async function fetchBairros(): Promise<BairroStats[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
+    `&localidade=neq.nao_identificado&localidade=not.is.null` +
+    `&select=localidade,sentimento,tema,pedido,curtidas&limit=8000`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  const rows = (await res.json()) as Comment[];
+
+  const by: Record<string, BairroStats & { temas: Record<string, number> }> = {};
+  for (const c of rows) {
+    const loc = (c.localidade || "").trim();
+    if (!loc || loc === "nao_identificado") continue;
+    const b = (by[loc] ??= {
+      localidade: loc, total: 0, neg: 0, pos: 0, neu: 0,
+      pctNeg: 0, pctPos: 0, curtidas: 0, temaTop: "", pedidos: [],
+      temas: {},
+    });
+    b.total += 1;
+    b.curtidas += Number(c.curtidas ?? 0);
+    const s = (c.sentimento || "neutro").toLowerCase();
+    if (s === "negativo") b.neg += 1;
+    else if (s === "positivo") b.pos += 1;
+    else b.neu += 1;
+    const t = (c.tema || "").trim();
+    if (t && t !== "outro") b.temas[t] = (b.temas[t] ?? 0) + 1;
+    const ped = (c.pedido || "").trim();
+    if (ped && b.pedidos.length < 5 && !b.pedidos.includes(ped)) b.pedidos.push(ped);
+  }
+  return Object.values(by)
+    .map((b) => {
+      const temaTop = Object.entries(b.temas).sort((a, z) => z[1] - a[1])[0]?.[0] ?? "";
+      const { temas: _omit, ...rest } = b;
+      void _omit;
+      return {
+        ...rest,
+        temaTop,
+        pctNeg: b.total ? Math.round((b.neg / b.total) * 100) : 0,
+        pctPos: b.total ? Math.round((b.pos / b.total) * 100) : 0,
+      };
+    })
+    .sort((a, b) => b.total - a.total || b.pctNeg - a.pctNeg);
+}
+
+// ── Pedidos (demandas concretas do cidadão) ──────────────────────────────────
+export interface Pedido {
+  pedido: string;
+  tema: string;
+  subtema: string;
+  localidade: string;
+  curtidas: number;
+  texto: string;
+  confianca_tema: number;
+  sentimento: string;
+  data_comentario: string;
+}
+
+/** Comentários com demanda concreta (pedido != null), mais curtidos primeiro. */
+export async function fetchPedidos(limit = 2000): Promise<Pedido[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
+    `&pedido=not.is.null&select=pedido,tema,subtema,localidade,curtidas,texto,confianca_tema,sentimento,data_comentario` +
+    `&order=curtidas.desc&limit=${limit}`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  return ((await res.json()) as Record<string, unknown>[]).map((r) => ({
+    pedido: String(r.pedido ?? ""),
+    tema: String(r.tema ?? "outro"),
+    subtema: String(r.subtema ?? "outro"),
+    localidade: String(r.localidade ?? "nao_identificado"),
+    curtidas: Number(r.curtidas ?? 0),
+    texto: String(r.texto ?? ""),
+    confianca_tema: Number(r.confianca_tema ?? 0),
+    sentimento: String(r.sentimento ?? "neutro"),
+    data_comentario: String(r.data_comentario ?? ""),
+  }));
+}
+
+// ── Subtemas (drill-down de tema, agregação client-side) ─────────────────────
+export interface SubtemaStat {
+  tema: string;
+  subtema: string;
+  total: number;
+  neg: number;
+  pctNeg: number;
+}
+
+/** Distribuição de subtemas por tema, a partir de comments de cidadãos. */
+export async function fetchSubtemas(): Promise<SubtemaStat[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
+    `&tipo=eq.cidadao&subtema=neq.outro&subtema=not.is.null` +
+    `&select=tema,subtema,sentimento&limit=8000`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  const rows = (await res.json()) as Comment[];
+  const by: Record<string, SubtemaStat> = {};
+  for (const c of rows) {
+    const tema = (c.tema || "outro").trim();
+    const subtema = (c.subtema || "").trim();
+    if (!subtema || subtema === "outro") continue;
+    const k = `${tema}|${subtema}`;
+    const s = (by[k] ??= { tema, subtema, total: 0, neg: 0, pctNeg: 0 });
+    s.total += 1;
+    if ((c.sentimento || "").toLowerCase() === "negativo") s.neg += 1;
+  }
+  return Object.values(by)
+    .map((s) => ({ ...s, pctNeg: s.total ? Math.round((s.neg / s.total) * 100) : 0 }))
+    .sort((a, b) => b.total - a.total);
 }
 
 export interface PipelineHealth {
