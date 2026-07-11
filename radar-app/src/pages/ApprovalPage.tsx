@@ -404,7 +404,7 @@ export function ApprovalPage() {
       <AvisoAmostra ica={view.ica} posts={view.posts} />
 
       {/* Header com índice + KPIs */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* IAD — número grande sem gauge */}
         <div className="flex flex-col items-center justify-center rounded-xl border border-line bg-bg-1 p-4">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">Aprovação Digital</div>
@@ -479,14 +479,14 @@ export function ApprovalPage() {
       </div>
 
       {/* Histórico */}
-      <div className="rounded-xl border border-line bg-bg-1 p-4">
+      <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
         <div className="mb-1 text-sm font-bold">Histórico do IAD (últimos 30 dias)</div>
         <ReactECharts option={histOption} style={{ height: 220 }} notMerge />
       </div>
 
       {/* Drill-downs */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-line bg-bg-1 p-4">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-1 text-sm font-bold">Por categoria</div>
           <p className="mb-1 text-[10px] text-txt-3">Clique na barra para filtrar comentários ↓</p>
           <ChartVertical
@@ -503,7 +503,7 @@ export function ApprovalPage() {
           />
           <ChartLegend />
         </div>
-        <div className="rounded-xl border border-line bg-bg-1 p-4">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-1 text-sm font-bold">Por perfil</div>
           <p className="mb-1 text-[10px] text-txt-3">Sentimento dos comentários por conta. Clique para filtrar ↓</p>
           <ChartVertical
@@ -520,7 +520,7 @@ export function ApprovalPage() {
           />
           <ChartLegend />
         </div>
-        <div className="rounded-xl border border-line bg-bg-1 p-4">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="text-sm font-bold">Por tema <span className="text-[10px] font-normal text-txt-3">(+ crítico no topo)</span></div>
             {view.porTema[0] && view.porTema[0].pNeg >= 35 && (
@@ -551,7 +551,7 @@ export function ApprovalPage() {
         </div>
       )}
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-line bg-bg-1 p-4">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-3 flex items-center gap-1.5 text-sm font-bold text-risk-low">
             <IconTrendUp size={16} />
             Vozes que aprovam (top 5 mais curtidos)
@@ -567,7 +567,7 @@ export function ApprovalPage() {
             ))}
           </div>
         </div>
-        <div className="rounded-xl border border-line bg-bg-1 p-4">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-3 flex items-center gap-1.5 text-sm font-bold text-risk-crit">
             <IconTrendDown size={16} />
             Vozes que reprovam (top 5 mais curtidos)

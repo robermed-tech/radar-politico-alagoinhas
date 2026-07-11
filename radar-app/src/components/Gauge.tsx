@@ -30,8 +30,8 @@ export function Gauge({ value, label, color = "#2563EB", suffix = "" }: GaugePro
         anchor: { show: false },
         detail: {
           valueAnimation: true,
-          fontSize: 30,
-          fontWeight: 800,
+          fontSize: 34,
+          fontWeight: 300,
           fontFamily: "JetBrains Mono, monospace",
           color: ink.detail,
           offsetCenter: [0, "10%"],
@@ -39,10 +39,10 @@ export function Gauge({ value, label, color = "#2563EB", suffix = "" }: GaugePro
         },
         title: {
           show: true,
-          offsetCenter: [0, "55%"],
+          offsetCenter: [0, "56%"],
           color: ink.title,
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 500,
         },
         data: [{ value, name: label }],
       },

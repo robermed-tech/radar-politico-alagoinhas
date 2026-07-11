@@ -77,7 +77,7 @@ function PainelRecuperacaoIRT() {
   if (temas.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-line bg-bg-1 p-4">
+    <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
       <div className="text-sm font-bold">Recuperação pós-alerta</div>
       <p className="mb-3 text-[10px] text-txt-3">
         Temas que dispararam alerta ficam em acompanhamento — queda sustentada indica que a resposta funcionou
@@ -148,7 +148,7 @@ function PainelSubtemas() {
   if (porTema.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-line bg-bg-1 p-4">
+    <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
       <div className="text-sm font-bold">Dentro de cada tema</div>
       <p className="mb-3 text-[10px] text-txt-3">
         O que exatamente o cidadão fala — subtemas mais citados nos comentários
@@ -408,7 +408,7 @@ export function TemasPage() {
 
       {/* Subindo + Caindo lado a lado */}
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-line bg-bg-1 p-4">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="text-xs font-bold uppercase tracking-wide text-risk-crit">
               ▲ Subindo ({subindo.length})
@@ -440,7 +440,7 @@ export function TemasPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-line bg-bg-1 p-4">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-low">
             ▼ Caindo ({caindo.length})
           </div>
@@ -464,7 +464,7 @@ export function TemasPage() {
       </div>
 
       {/* Gráfico de variação divergente */}
-      <div className="rounded-xl border border-line bg-bg-1 p-4">
+      <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
             <div className="text-sm font-bold">

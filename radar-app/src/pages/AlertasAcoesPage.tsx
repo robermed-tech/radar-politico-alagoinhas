@@ -118,7 +118,7 @@ export function AlertasAcoesPage() {
       </div>
 
       {semBriefing ? (
-        <div className="rounded-xl border border-line bg-bg-1 p-6 text-txt-2">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 p-6 text-txt-2">
           Ainda não há recomendações geradas. Execute o fluxo ÁGORA para popular
           esta página.
         </div>
@@ -129,7 +129,7 @@ export function AlertasAcoesPage() {
 
           {/* Alertas da IA */}
           {(b!.alertas ?? []).length > 0 && (
-            <div className="rounded-xl border border-line bg-bg-1 p-5">
+            <div className="card-hover rounded-xl border border-line bg-bg-1 p-5">
               <div className="mb-3 flex items-center gap-2">
                 <IconWarningTriangle size={16} className="text-risk-crit" />
                 <h2 className="text-sm font-extrabold">Pontos de atenção</h2>
@@ -144,7 +144,7 @@ export function AlertasAcoesPage() {
                       className="flex items-center justify-between gap-2 rounded-lg border bg-bg-2 px-3 py-2"
                       style={{ borderColor: `${c}44` }}
                     >
-                      <span className="text-sm font-semibold text-txt-1">{a.tema}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-txt-1">{a.tema}</span>
                       <div className="flex shrink-0 items-center gap-2">
                         {jLabel && <span className="text-xs text-txt-3">{jLabel}</span>}
                         <Tag color={c}>{a.nivel}</Tag>
@@ -157,7 +157,7 @@ export function AlertasAcoesPage() {
           )}
 
           {(b!.oportunidades ?? []).length > 0 && (
-            <div className="rounded-xl border border-line bg-bg-1 p-4">
+            <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
               <div className="mb-3 flex items-center gap-2 text-sm font-bold text-risk-low">
                 <span>▲</span> Oportunidades para aproveitar
               </div>

@@ -54,8 +54,8 @@ function TabelaComentarios({ allPosts }: { allPosts: Post[] }) {
   const tdCls = "py-2.5 tnum";
 
   return (
-    <div className="rounded-[28px] border border-line bg-bg-1 p-6 space-y-6">
-      <div className="text-[12px] font-bold tracking-[0.04em] text-txt-3">
+    <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6 space-y-6">
+      <div className="section-label">
         Volume de comentários por período e tema
       </div>
 
@@ -248,19 +248,19 @@ function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number 
   const cor = NIVEL_COLOR[nivel];
   return (
     <div
-      className="rounded-[28px] border bg-bg-1 p-6"
+      className="card-hover rounded-[28px] border bg-bg-1 p-6"
       style={{ borderColor: `${cor}44` }}
     >
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-3 flex items-center gap-2">
         <span
-          className="rounded-full px-3 py-0.5 text-xs font-bold uppercase"
-          style={{ background: `${cor}22`, color: cor }}
+          className="rounded-full px-3 py-0.5 text-xs font-medium uppercase tracking-wide"
+          style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}3d` }}
         >
           {NIVEL_LABEL[nivel]}
         </span>
         <span className="text-xs text-txt-3">{periodoClima(dias)} · {briefing.dia}</span>
       </div>
-      <p className="text-[15px] font-semibold leading-relaxed text-txt-1">{briefing.diagnostico}</p>
+      <p className="text-[15px] leading-relaxed text-txt-1">{briefing.diagnostico}</p>
     </div>
   );
 }
@@ -268,8 +268,8 @@ function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number 
 function TemasEmCrise({ alertas }: { alertas: Briefing["alertas"] }) {
   if (!alertas?.length) return null;
   return (
-    <div className="rounded-[28px] border border-line bg-bg-1 p-6">
-      <div className="mb-3 text-[12px] font-bold tracking-[0.04em] text-txt-3">
+    <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6">
+      <div className="mb-3 section-label">
         Temas que merecem atenção
       </div>
       <div className="space-y-2">
@@ -337,8 +337,8 @@ function AcoesImediatas({ planos }: { planos: CrisisPlan[] }) {
 function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
   if (!frentes.length) return null;
   return (
-    <div className="rounded-[28px] border border-line bg-bg-1 p-6">
-      <div className="text-[12px] font-bold tracking-[0.04em] text-txt-3">
+    <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6">
+      <div className="section-label">
         Frentes de instabilidade
       </div>
       <div className="mt-3 space-y-1">
@@ -657,8 +657,8 @@ export function ClimaPage() {
       <AcoesImediatas planos={planos} />
 
       <div className="reveal reveal-4 grid gap-4 md:grid-cols-2">
-        <div className="rounded-[28px] border border-line bg-bg-1 p-6">
-          <div className="text-[12px] font-bold tracking-[0.04em] text-txt-3">
+        <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6">
+          <div className="section-label">
             Distribuição de sentimento
           </div>
 

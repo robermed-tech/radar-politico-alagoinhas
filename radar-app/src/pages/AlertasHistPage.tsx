@@ -48,7 +48,7 @@ function BadgeTipo({ tipo }: { tipo: string }) {
 
 function EmptyState() {
   return (
-    <div className="rounded-xl border border-line bg-bg-1 p-10 text-center">
+    <div className="card-hover rounded-xl border border-line bg-bg-1 p-10 text-center">
       <IconAlertBell size={28} className="mx-auto mb-2 text-txt-3" />
       <div className="font-semibold text-txt-1">Nenhum alerta registrado</div>
       <div className="mt-1 text-sm text-txt-3">
@@ -87,7 +87,7 @@ export function AlertasHistPage() {
           { label: "Via WhatsApp",     value: totalWhats, cor: "#22C55E" },
           { label: "Automáticos",      value: totalAuto,  cor: "#3B82F6" },
         ].map(({ label, value, cor }) => (
-          <div key={label} className="rounded-xl border border-line bg-bg-1 p-4">
+          <div key={label} className="card-hover rounded-xl border border-line bg-bg-1 p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-txt-3">{label}</div>
             <div className="mt-1 text-3xl font-extrabold tabular-nums" style={{ color: cor }}>
               {value}
@@ -100,7 +100,7 @@ export function AlertasHistPage() {
       {alertas.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="rounded-xl border border-line bg-bg-1 p-4">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-line text-[11px] uppercase tracking-wide text-txt-3">

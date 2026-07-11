@@ -112,14 +112,14 @@ export function InfluencersPage() {
 
       {/* Mapa de alinhamento */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-line bg-bg-1 px-4 py-3">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-wide text-risk-low">
             Aliados
           </div>
           <div className="tnum mt-1 text-[40px] font-extrabold leading-none text-risk-low">{aliados}</div>
           <div className="text-xs text-txt-3">perfis favoráveis</div>
         </div>
-        <div className="rounded-xl border border-line bg-bg-1 px-4 py-3">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#EAB308" }}>
             Neutros
           </div>
@@ -128,7 +128,7 @@ export function InfluencersPage() {
           </div>
           <div className="text-xs text-txt-3">imprensa/equilibrados</div>
         </div>
-        <div className="rounded-xl border border-line bg-bg-1 px-4 py-3">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-wide text-risk-crit">
             Opositores
           </div>
@@ -164,7 +164,7 @@ export function InfluencersPage() {
       </div>
 
       {/* Mapa de ranking — visão comparativa rápida */}
-      <div className="rounded-xl border border-line bg-bg-1 p-4">
+      <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
         <div className="mb-1 text-sm font-bold">
           Mapa de Influência
           <span className="ml-2 text-[10px] font-normal text-txt-3">

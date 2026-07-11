@@ -101,7 +101,7 @@ const INDICES: Indice[] = [
 
 function Card({ s }: { s: Secao }) {
   return (
-    <div className="rounded-2xl border border-line bg-bg-1 p-5">
+    <div className="card-hover rounded-2xl border border-line bg-bg-1 p-5">
       <div className="mb-2 flex items-center gap-2">
         <span className="grid h-9 w-9 place-items-center rounded-lg bg-bg-3 text-lg font-bold text-brand-2">
           {s.icon}
@@ -138,7 +138,7 @@ export function GlossaryPage() {
       </div>
 
       {/* Como ler a plataforma */}
-      <div className="rounded-2xl border border-line bg-bg-1 p-5">
+      <div className="card-hover rounded-2xl border border-line bg-bg-1 p-5">
         <h2 className="text-base font-extrabold text-txt-1">Como a plataforma funciona (em 1 minuto)</h2>
         <p className="mt-2 text-[14px] leading-relaxed text-txt-2">
           A cada poucas horas, um robô (o <b>AGORA</b>) coleta os posts e comentários das redes sobre o
@@ -167,7 +167,7 @@ export function GlossaryPage() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {INDICES.map((i) => (
-            <div key={i.sigla} className="rounded-2xl border border-line bg-bg-1 p-5">
+            <div key={i.sigla} className="card-hover rounded-2xl border border-line bg-bg-1 p-5">
               <div className="flex items-baseline gap-2">
                 <span className="text-xl font-extrabold" style={{ color: "#38BDF8" }}>{i.sigla}</span>
                 <span className="text-sm font-semibold text-txt-2">{i.nome}</span>
@@ -182,7 +182,7 @@ export function GlossaryPage() {
       </div>
 
       {/* Escala de clima */}
-      <div className="rounded-2xl border border-line bg-bg-1 p-5">
+      <div className="card-hover rounded-2xl border border-line bg-bg-1 p-5">
         <h2 className="text-base font-extrabold text-txt-1">A metáfora do clima</h2>
         <p className="mt-1 text-[13px] text-txt-2">
           A aprovação (IAD) vira uma condição de clima — fácil de entender num olhar:
