@@ -348,15 +348,12 @@ export function ApprovalPage() {
         axisLabel: { color: ink.axis },
       },
       // Cor por faixa: acima de 50% = azul (aprovação dominante),
-      // 50% ou menos = vermelho (zona de alerta). Segmentos mudam na travessia.
-      visualMap: {
-        show: false,
-        dimension: 1,
-        pieces: [
-          { gt: 50, color: "#2563EB" },
-          { lte: 50, color: "#EF4444" },
-        ],
-      },
+      // 50% ou menos = vermelho (zona de alerta). Cor definida por PONTO via
+      // lineStyle/itemStyle no proprio data item — NAO usar visualMap aqui:
+      // visualMap (piecewise ou continuous, qualquer config) quebra o render
+      // deste line chart no echarts 5.5.1 com "Cannot read properties of
+      // undefined (reading 'coord')". Confirmado via repro isolado antes de
+      // aplicar esta correcao — ver commit que introduz este comentario.
       series: [
         {
           name: "IAD",
@@ -364,8 +361,7 @@ export function ApprovalPage() {
           smooth: true,
           symbol: "circle",
           symbolSize: 5,
-          lineStyle: { width: 2.5 },
-          areaStyle: { opacity: 0.14 },
+          areaStyle: { color: withAlpha(ink.axis, 0.08) },
           markLine: {
             silent: true,
             symbol: "none",
@@ -373,7 +369,10 @@ export function ApprovalPage() {
             lineStyle: { color: ink.axis, type: "dashed", opacity: 0.45 },
             data: [{ yAxis: 50 }],
           },
-          data: serie.map((s) => s.iad),
+          data: serie.map((s) => {
+            const cor = s.iad > 50 ? "#2563EB" : "#EF4444";
+            return { value: s.iad, lineStyle: { color: cor, width: 2.5 }, itemStyle: { color: cor } };
+          }),
         },
       ],
     };
