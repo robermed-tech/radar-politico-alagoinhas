@@ -15,7 +15,7 @@ import { AlertaCrise } from "@/components/AlertaCrise";
 import { AvisoAmostra } from "@/components/AvisoAmostra";
 import { fmtInt, fmtDiaBR } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk, glassArea, glowLine, withAlpha, colorByIAD } from "@/lib/chartTheme";
+import { chartInk, withAlpha, colorByIAD } from "@/lib/chartTheme";
 import { IconInbox, IconTrendUp, IconTrendDown, IconHeart, IconWarningTriangle } from "@/components/icons";
 
 interface AprovBucket {
@@ -233,6 +233,8 @@ export function ApprovalPage() {
   const [temaIdx, setTemaIdx] = useState(0);
   // Drill-down: filtra as "Vozes da população" pelo perfil/categoria clicado.
   const [filtroVoz, setFiltroVoz] = useState<{ tipo: "perfil" | "categoria"; valor: string } | null>(null);
+  // Período das "Vozes da população" — independente do período dos índices.
+  const [diasVozes, setDiasVozes] = useState<1 | 7 | 30>(7);
   const periodoLabel = PERIODOS.find((p) => p.dias === dias)?.label ?? `${dias}d`;
   const ink = chartInk(useThemeStore((s) => s.theme));
 
@@ -261,7 +263,6 @@ export function ApprovalPage() {
     const ica = Math.round(calcICA(posts));
 
     // Drill-downs
-    const porCategoria = agrupar(posts, (p) => p.categoria, 6);
     const porPerfil    = agrupar(posts, (p) => `@${p.autor}`, 8);
     // porTema ordenado por negatividade ↓ — tema mais crítico aparece no topo
     const porTema      = agrupar(posts, (p) => p.tema, 8).sort((a, b) => b.pNeg - a.pNeg);
@@ -284,11 +285,12 @@ export function ApprovalPage() {
       vazio: false as const,
       iad, ica, posts: posts.length, coments: totalComents,
       pctPos, pctNeg, pctNeu,
-      porCategoria, porPerfil, porTema,
+      porPerfil, porTema,
     };
   }, [radar, dias]);
 
-  // Comentários cidadãos: top positivos e negativos, filtrados pelo drill-down
+  // Comentários cidadãos: top 5 mais curtidos que aprovam/reprovam,
+  // filtrados pelo drill-down e pelo período (dia/semana/mês).
   const cms = useMemo(() => {
     let lista = (coms ?? []).filter((c) => c.tipo === "cidadao");
     if (filtroVoz) {
@@ -300,10 +302,22 @@ export function ApprovalPage() {
         lista = lista.filter((c) => (c.categoria_post || "").toLowerCase() === alvo);
       }
     }
+    // Recorte temporal: usa data_comentario (YYYY-MM-DD). Comentário sem data
+    // válida só aparece na visão mensal (não some do produto por falta de data).
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - diasVozes);
+    cutoff.setHours(0, 0, 0, 0);
+    lista = lista.filter((c) => {
+      const d = c.data_comentario ? new Date(c.data_comentario) : null;
+      if (!d || Number.isNaN(d.getTime())) return diasVozes >= 30;
+      return d >= cutoff;
+    });
+    // fetchComments já vem ordenado por curtidas desc; reforça por segurança.
+    lista = [...lista].sort((a, b) => (b.curtidas || 0) - (a.curtidas || 0));
     const pos = lista.filter((c) => c.sentimento === "positivo").slice(0, 5);
     const neg = lista.filter((c) => c.sentimento === "negativo").slice(0, 5);
     return { pos, neg };
-  }, [coms, filtroVoz]);
+  }, [coms, filtroVoz, diasVozes]);
 
   // Reseta o carousel ao trocar de período
   useEffect(() => { setTemaIdx(0); }, [view]);
@@ -333,6 +347,16 @@ export function ApprovalPage() {
         splitLine: { lineStyle: { color: ink.grid } },
         axisLabel: { color: ink.axis },
       },
+      // Cor por faixa: acima de 50% = azul (aprovação dominante),
+      // 50% ou menos = vermelho (zona de alerta). Segmentos mudam na travessia.
+      visualMap: {
+        show: false,
+        dimension: 1,
+        pieces: [
+          { gt: 50, color: "#2563EB" },
+          { lte: 50, color: "#EF4444" },
+        ],
+      },
       series: [
         {
           name: "IAD",
@@ -340,8 +364,15 @@ export function ApprovalPage() {
           smooth: true,
           symbol: "circle",
           symbolSize: 5,
-          lineStyle: glowLine("#2563EB"),
-          areaStyle: glassArea("#2563EB"),
+          lineStyle: { width: 2.5 },
+          areaStyle: { opacity: 0.14 },
+          markLine: {
+            silent: true,
+            symbol: "none",
+            label: { show: false },
+            lineStyle: { color: ink.axis, type: "dashed", opacity: 0.45 },
+            data: [{ yAxis: 50 }],
+          },
           data: serie.map((s) => s.iad),
         },
       ],
@@ -485,24 +516,7 @@ export function ApprovalPage() {
       </div>
 
       {/* Drill-downs */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-1 text-sm font-bold">Por categoria</div>
-          <p className="mb-1 text-[10px] text-txt-3">Clique na barra para filtrar comentários ↓</p>
-          <ChartVertical
-            buckets={view.porCategoria}
-            ink={ink}
-            selRotulo={filtroVoz?.tipo === "categoria" ? filtroVoz.valor : undefined}
-            onSelect={(rotulo) =>
-              setFiltroVoz((cur) =>
-                cur?.tipo === "categoria" && cur.valor === rotulo
-                  ? null
-                  : { tipo: "categoria", valor: rotulo }
-              )
-            }
-          />
-          <ChartLegend />
-        </div>
+      <div className="grid gap-4 lg:grid-cols-2">
         <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-1 text-sm font-bold">Por perfil</div>
           <p className="mb-1 text-[10px] text-txt-3">Sentimento dos comentários por conta. Clique para filtrar ↓</p>
@@ -538,18 +552,44 @@ export function ApprovalPage() {
       </div>
 
       {/* Vozes da população */}
-      {filtroVoz && (
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-txt-3">Vozes filtradas por:</span>
-          <button
-            onClick={() => setFiltroVoz(null)}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-brand bg-brand/10 px-3 py-1 font-semibold text-txt-1 transition hover:bg-brand/20"
-          >
-            {filtroVoz.tipo === "perfil" ? filtroVoz.valor : `categoria: ${filtroVoz.valor}`}
-            <span aria-hidden>✕</span>
-          </button>
+          <span className="section-label">Vozes da população</span>
+          {filtroVoz && (
+            <button
+              onClick={() => setFiltroVoz(null)}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-brand bg-brand/10 px-3 py-1 font-semibold text-txt-1 transition hover:bg-brand/20"
+            >
+              {filtroVoz.tipo === "perfil" ? filtroVoz.valor : `categoria: ${filtroVoz.valor}`}
+              <span aria-hidden>✕</span>
+            </button>
+          )}
         </div>
-      )}
+        <div
+          className="inline-flex rounded-lg border border-line bg-bg-2 p-0.5"
+          role="group"
+          aria-label="Período das vozes"
+        >
+          {([
+            { d: 1, label: "Hoje" },
+            { d: 7, label: "Semana" },
+            { d: 30, label: "Mês" },
+          ] as { d: 1 | 7 | 30; label: string }[]).map((p) => (
+            <button
+              key={p.d}
+              onClick={() => setDiasVozes(p.d)}
+              aria-pressed={diasVozes === p.d}
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
+                diasVozes === p.d
+                  ? "bg-bg-1 text-txt-1 shadow-sm"
+                  : "text-txt-3 hover:text-txt-1"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-3 flex items-center gap-1.5 text-sm font-bold text-risk-low">

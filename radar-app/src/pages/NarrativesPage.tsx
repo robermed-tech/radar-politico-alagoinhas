@@ -94,9 +94,6 @@ export function NarrativesPage() {
     );
 
   const ativas = lista.filter((n) => n.status === "ativa");
-  const esfriando = lista.filter((n) => n.status === "esfriando");
-  const positivas = lista.filter((n) => n.sentimento === "positivo").length;
-  const negativas = lista.filter((n) => n.sentimento === "negativo").length;
 
   return (
     <div className="space-y-4 p-5">
@@ -109,34 +106,6 @@ export function NarrativesPage() {
 
       {/* Painel de campanhas coordenadas (detecção global) */}
       <CoordinationPanel grupos={grupos} />
-
-      {/* Resumo */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-risk-low">Ativas</div>
-          <div className="tnum mt-1 text-2xl font-extrabold text-risk-low">{ativas.length}</div>
-          <div className="text-[11px] text-txt-3">últimas 24h</div>
-        </div>
-        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#EAB308" }}>
-            Esfriando
-          </div>
-          <div className="tnum mt-1 text-2xl font-extrabold" style={{ color: "#EAB308" }}>
-            {esfriando.length}
-          </div>
-          <div className="text-[11px] text-txt-3">24-72h</div>
-        </div>
-        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-risk-low">Positivas</div>
-          <div className="tnum mt-1 text-2xl font-extrabold text-risk-low">{positivas}</div>
-          <div className="text-[11px] text-txt-3">elogio dominante</div>
-        </div>
-        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-risk-crit">Negativas</div>
-          <div className="tnum mt-1 text-2xl font-extrabold text-risk-crit">{negativas}</div>
-          <div className="text-[11px] text-txt-3">crítica dominante</div>
-        </div>
-      </div>
 
       {/* Filtros */}
       <div className="flex gap-2">

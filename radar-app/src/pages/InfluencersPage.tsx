@@ -1,21 +1,39 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
-import { fetchInfluencers } from "@/lib/data";
+import { fetchInfluencers, type Influencer } from "@/lib/data";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
 
 type Filtro = "todos" | "perfil_monitorado" | "cidadao";
 
-const ALIN_COR: Record<string, string> = {
-  aliado: "#22C55E",
-  opositor: "#EF4444",
-  neutro: "#EAB308",
-  cidadao: "#3B82F6",
-};
+// Cores DEFINITIVAS por lado político (decisão de produto, não inferência):
+//   Oposição = VERMELHO · Aliado/Governo = VERDE · Imprensa = AMARELO · Cidadão = AZUL
+// A categoria do perfil manda; o alinhamento inferido só desempata.
+// @jaldicenunes é oposição — sempre vermelho, independente do que a inferência disser.
+const COR_OPOSICAO = "#EF4444";
+const COR_ALIADO   = "#22C55E";
+const COR_IMPRENSA = "#EAB308";
+const COR_CIDADAO  = "#3B82F6";
+
+const OPOSICAO_FIXA = new Set(["jaldicenunes", "jadilcenunes"]);
+
+function corInfluencer(i: Influencer): string {
+  const handle = (i.handle || "").toLowerCase();
+  if (OPOSICAO_FIXA.has(handle)) return COR_OPOSICAO;
+  if (i.tipo === "cidadao") return COR_CIDADAO;
+  const cat = (i.categoria || "").toLowerCase();
+  if (cat.includes("oposi")) return COR_OPOSICAO;
+  if (cat.includes("imprensa")) return COR_IMPRENSA;
+  if (cat.includes("prefei") || cat.includes("governo")) return COR_ALIADO;
+  if (i.alinhamento === "opositor") return COR_OPOSICAO;
+  if (i.alinhamento === "aliado") return COR_ALIADO;
+  return COR_IMPRENSA;
+}
 
 export function InfluencersPage() {
-  const [filtro, setFiltro] = useState<Filtro>("todos");
+  // Abre sempre nos PERFIS monitorados — é o gráfico que interessa primeiro.
+  const [filtro, setFiltro] = useState<Filtro>("perfil_monitorado");
   const ink = chartInk(useThemeStore((s) => s.theme));
   const { data, isLoading } = useQuery({
     queryKey: ["influencers"],
@@ -68,7 +86,7 @@ export function InfluencersPage() {
           barMaxWidth: 18,
           data: top10.map((i) => ({
             value: Math.round(i.influencia_score),
-            itemStyle: glassBar(ALIN_COR[i.alinhamento] || "#9FB0CC", { horizontal: true, radius: [0, 4, 4, 0] }),
+            itemStyle: glassBar(corInfluencer(i), { horizontal: true, radius: [0, 4, 4, 0] }),
           })),
           label: {
             show: true,
@@ -97,9 +115,9 @@ export function InfluencersPage() {
     );
 
   const perfis = lista.filter((i) => i.tipo === "perfil_monitorado");
-  const aliados = perfis.filter((i) => i.alinhamento === "aliado").length;
-  const opositores = perfis.filter((i) => i.alinhamento === "opositor").length;
-  const neutros = perfis.filter((i) => i.alinhamento === "neutro").length;
+  const aliados = perfis.filter((i) => corInfluencer(i) === COR_ALIADO).length;
+  const opositores = perfis.filter((i) => corInfluencer(i) === COR_OPOSICAO).length;
+  const imprensa = perfis.filter((i) => corInfluencer(i) === COR_IMPRENSA).length;
 
   return (
     <div className="space-y-4 p-5">
@@ -110,31 +128,22 @@ export function InfluencersPage() {
         </p>
       </div>
 
-      {/* Mapa de alinhamento */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-risk-low">
-            Aliados
-          </div>
-          <div className="tnum mt-1 text-[40px] font-extrabold leading-none text-risk-low">{aliados}</div>
-          <div className="text-xs text-txt-3">perfis favoráveis</div>
+      {/* Mapa de ranking PRIMEIRO — abre nos perfis monitorados */}
+      <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
+        <div className="mb-1 text-sm font-bold">
+          Mapa de Influência
+          <span className="ml-2 text-[10px] font-normal text-txt-3">
+            top 10 por score · <span style={{ color: COR_ALIADO }}>verde=aliado</span> ·{" "}
+            <span style={{ color: COR_OPOSICAO }}>vermelho=oposição</span> ·{" "}
+            <span style={{ color: COR_IMPRENSA }}>amarelo=imprensa</span> ·{" "}
+            <span style={{ color: COR_CIDADAO }}>azul=cidadão</span>
+          </span>
         </div>
-        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#EAB308" }}>
-            Neutros
-          </div>
-          <div className="tnum mt-1 text-[40px] font-extrabold leading-none" style={{ color: "#EAB308" }}>
-            {neutros}
-          </div>
-          <div className="text-xs text-txt-3">imprensa/equilibrados</div>
-        </div>
-        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-risk-crit">
-            Opositores
-          </div>
-          <div className="tnum mt-1 text-[40px] font-extrabold leading-none text-risk-crit">{opositores}</div>
-          <div className="text-xs text-txt-3">perfis críticos</div>
-        </div>
+        <ReactECharts
+          option={rankingOption}
+          style={{ height: Math.max(160, Math.min(filtrada.length, 10) * 34 + 32) }}
+          notMerge
+        />
       </div>
 
       {/* Filtros */}
@@ -163,19 +172,31 @@ export function InfluencersPage() {
         ))}
       </div>
 
-      {/* Mapa de ranking — visão comparativa rápida */}
-      <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-        <div className="mb-1 text-sm font-bold">
-          Mapa de Influência
-          <span className="ml-2 text-[10px] font-normal text-txt-3">
-            top 10 por score · verde=aliado · vermelho=opositor · amarelo=neutro · azul=cidadão
-          </span>
+      {/* Mapa de alinhamento */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
+          <div className="section-label" style={{ color: COR_ALIADO }}>
+            Aliados
+          </div>
+          <div className="tnum mt-1 text-[40px] font-light leading-none" style={{ color: COR_ALIADO }}>{aliados}</div>
+          <div className="text-xs text-txt-3">perfis favoráveis</div>
         </div>
-        <ReactECharts
-          option={rankingOption}
-          style={{ height: Math.max(160, Math.min(filtrada.length, 10) * 34 + 32) }}
-          notMerge
-        />
+        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
+          <div className="section-label" style={{ color: COR_IMPRENSA }}>
+            Imprensa
+          </div>
+          <div className="tnum mt-1 text-[40px] font-light leading-none" style={{ color: COR_IMPRENSA }}>
+            {imprensa}
+          </div>
+          <div className="text-xs text-txt-3">veículos de mídia</div>
+        </div>
+        <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
+          <div className="section-label" style={{ color: COR_OPOSICAO }}>
+            Oposição
+          </div>
+          <div className="tnum mt-1 text-[40px] font-light leading-none" style={{ color: COR_OPOSICAO }}>{opositores}</div>
+          <div className="text-xs text-txt-3">perfis críticos</div>
+        </div>
       </div>
     </div>
   );
