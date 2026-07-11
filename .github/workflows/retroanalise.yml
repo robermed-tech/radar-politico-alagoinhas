@@ -29,5 +29,6 @@ jobs:
           GOOGLE_CREDENTIALS:   ${{ secrets.GOOGLE_SA_JSON }}
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          AUTOR_HASH_SALT:      ${{ secrets.AUTOR_HASH_SALT }}
           RADAR_TENANT:         alagoinhas
         run: python agora.py --retroanalise
