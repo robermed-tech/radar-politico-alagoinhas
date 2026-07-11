@@ -3851,6 +3851,124 @@ def reprocessar():
     print("[reprocessar] Concluído.")
 
 
+def backfill_comentarios(limite=None):
+    """Popula os campos NOVOS (tema/subtema/localidade/pedido/confianca_tema/
+    autor_hash) nos comentarios JA existentes no Supabase, sem coletar nada novo.
+
+    Os comentarios gravados antes do Haiku dedicado (Tarefa 5) tem esses campos
+    nos defaults ('outro'/'nao_identificado'/null). Este backfill le o texto que
+    ja esta la, roda o mesmo analisar_comentarios_haiku por post, aplica a mesma
+    normalizacao de analisar_com_agora e faz upsert por id. Nao toca em posts,
+    Sheets, alertas ou coleta. Idempotente: rodar de novo so re-classifica.
+
+    autor_hash e populado para TODOS os comentarios (LGPD); a classificacao
+    tematica (tema/subtema/localidade/pedido/confianca) so para tipo=cidadao —
+    politicos ficam nos defaults, igual ao fluxo normal.
+    """
+    log("+====================================================+")
+    log("|  BACKFILL COMENTARIOS — popula campos novos          |")
+    log("+====================================================+")
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log("ERRO: SUPABASE_URL/SUPABASE_SERVICE_KEY ausentes.")
+        return
+
+    mapa_bairros = carregar_bairros(abortar_em_falha=True)
+    log(f"  {len(mapa_bairros)} aliases de bairro carregados do Supabase.")
+
+    # Le TODOS os comentarios do tenant (paginado; limite Supabase = 1000/req)
+    todos, offset = [], 0
+    while True:
+        lote = _supabase_get(
+            "comments",
+            f"tenant=eq.{TENANT}&select=id,url_post,autor_post,categoria_post,"
+            f"username,tipo,texto,curtidas&order=curtidas.desc&limit=1000&offset={offset}",
+        )
+        if not lote:
+            break
+        todos.extend(lote)
+        if len(lote) < 1000:
+            break
+        offset += 1000
+    if limite:
+        todos = todos[:limite]
+    log(f"  {len(todos)} comentarios carregados.")
+    if not todos:
+        return
+
+    # Agrupa por post (o contexto do post — categoria — decide o LADO no prompt)
+    por_post = {}
+    for c in todos:
+        url = c.get("url_post", "")
+        por_post.setdefault(url, []).append(c)
+    log(f"  {len(por_post)} posts distintos.")
+
+    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    rows, classificados_tot, i_post = [], 0, 0
+    for url, coments in por_post.items():
+        i_post += 1
+        amostra = coments[0]
+        post_ctx = {
+            "url": url,
+            "autor": amostra.get("autor_post", ""),
+            "categoria": amostra.get("categoria_post", ""),
+        }
+        cidadaos = sorted(
+            [c for c in coments if (c.get("tipo") or "") == "cidadao"],
+            key=lambda x: int(x.get("curtidas", 0) or 0), reverse=True,
+        )
+        analise_por_i = analisar_comentarios_haiku(post_ctx, cidadaos, cliente) if cidadaos else {}
+
+        # Cidadaos: classificacao tematica + hash. Mesma logica de analisar_com_agora.
+        for idx, c in enumerate(cidadaos):
+            item = analise_por_i.get(idx)
+            if item:
+                tema_c = item.get("tema") or "outro"
+                try:
+                    conf = int(item.get("confianca_tema") or 0)
+                except (TypeError, ValueError):
+                    conf = 0
+                sent = item.get("sentimento")
+                row = {
+                    "id": str(c.get("id", "")),
+                    "tema": tema_c,
+                    "subtema": normalizar_subtema(tema_c, item.get("subtema")),
+                    "localidade": normalizar_localidade(item.get("localidade"), mapa_bairros),
+                    "pedido": item.get("pedido") or None,
+                    "confianca_tema": conf,
+                    "autor_hash": hash_autor(TENANT, c.get("username", "")),
+                }
+                if sent in ("positivo", "negativo", "neutro"):
+                    row["sentimento"] = sent
+                rows.append(row)
+                classificados_tot += 1
+            else:
+                rows.append({
+                    "id": str(c.get("id", "")),
+                    "tema": "outro", "subtema": "outro",
+                    "localidade": "nao_identificado", "pedido": None,
+                    "confianca_tema": 0,
+                    "autor_hash": hash_autor(TENANT, c.get("username", "")),
+                })
+
+        # Politicos: so autor_hash (LGPD), sem classificacao tematica.
+        for c in coments:
+            if (c.get("tipo") or "") != "cidadao":
+                rows.append({
+                    "id": str(c.get("id", "")),
+                    "autor_hash": hash_autor(TENANT, c.get("username", "")),
+                })
+
+        if i_post % 20 == 0:
+            log(f"  ... {i_post}/{len(por_post)} posts processados")
+
+    # Upsert em lotes de 500 (payload PostgREST)
+    n_grav = 0
+    for k in range(0, len(rows), 500):
+        n_grav += _supabase_upsert("comments", rows[k:k + 500], "id")
+    log(f"  Backfill concluido: {n_grav} comentarios atualizados "
+        f"({classificados_tot} cidadaos classificados pelo Haiku).")
+
+
 if __name__ == "__main__":
     import sys
     if "--multi-tenant" in sys.argv:
@@ -3859,6 +3977,13 @@ if __name__ == "__main__":
         teste_filtro()
     elif "--teste-localidade" in sys.argv:
         teste_localidade()
+    elif "--backfill-comentarios" in sys.argv:
+        # --backfill-comentarios [N]  → N opcional limita quantos comentarios (teste)
+        _lim = None
+        for _a in sys.argv:
+            if _a.isdigit():
+                _lim = int(_a)
+        backfill_comentarios(limite=_lim)
     elif "--reprocessar" in sys.argv:
         reprocessar()
     elif "--retroanalise" in sys.argv:
