@@ -109,7 +109,7 @@ export function PedidosPage() {
             {pedidos.map((p, i) => {
               const revisar = (p.confianca_tema ?? 0) < CONF_REVISAR;
               return (
-                <div key={i} className="rounded-xl border border-line bg-bg-1 p-4">
+                <div key={i} className="card-hover rounded-xl border border-line bg-bg-1 p-4">
                   <div className="flex items-start gap-2">
                     <p className="flex-1 text-sm font-semibold text-txt-1">{p.pedido}</p>
                     <span className="flex shrink-0 items-center gap-1 text-xs text-txt-3">

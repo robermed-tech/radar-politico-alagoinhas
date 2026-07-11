@@ -148,7 +148,7 @@ export function BairrosPage() {
 
           <div className="space-y-2">
             {bairros.map((b) => (
-              <div key={b.localidade} className="rounded-xl border border-line bg-bg-1 p-4">
+              <div key={b.localidade} className="card-hover rounded-xl border border-line bg-bg-1 p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-bold text-txt-1">{b.localidade}</span>
                   {b.temaTop && (

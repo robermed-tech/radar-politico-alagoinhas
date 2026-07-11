@@ -59,7 +59,7 @@ function PostCard({ p }: { p: Post }) {
   const borderColor = SENT_BORDER[p.sentimento_post ?? ""] ?? "#64748B";
   return (
     <div
-      className="rounded-xl border border-line bg-bg-1 p-4 transition-shadow hover:shadow-lg"
+      className="card-hover rounded-xl border border-line bg-bg-1 p-4"
       style={{ borderLeftColor: borderColor, borderLeftWidth: 3 }}
     >
       <div className="mb-2 flex items-center gap-2">
