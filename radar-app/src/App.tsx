@@ -19,6 +19,7 @@ import { useThemeStore } from "@/stores/theme";
 import { RequireAuth, RequireAdmin } from "@/components/ProtectedRoute";
 import { useAuth } from "@/components/AuthProvider";
 import { signOut } from "@/lib/auth";
+import { PipelineHealthBanner } from "@/components/PipelineHealthBanner";
 
 type Page =
   | "clima"
@@ -147,11 +148,6 @@ export default function App() {
     staleTime: 10 * 60 * 1000,
     retry: false,
   });
-  const dadosDesatualizados = (() => {
-    if (!pipelineHealth?.executado_em) return false;
-    const diff = Date.now() - new Date(pipelineHealth.executado_em).getTime();
-    return diff > 8 * 60 * 60 * 1000; // > 8h
-  })();
   const horaAtualizado = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
     : null;
@@ -282,23 +278,7 @@ export default function App() {
           <RefreshButton compact />
           <ThemeToggle compact />
         </div>
-        {dadosDesatualizados && (
-          <div
-            className="flex flex-wrap items-center gap-2 border-b border-yellow-500/30 px-4 py-2 text-sm font-semibold"
-            style={{ background: "#78350F22", color: "#FCD34D" }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            Dados desatualizados — pipeline rodou há mais de 8h.
-            {pipelineHealth?.executado_em && (
-              <span className="font-normal text-yellow-400/80">
-                {" "}Última execução:{" "}
-                {new Date(pipelineHealth.executado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-          </div>
-        )}
+        <PipelineHealthBanner health={pipelineHealth} />
         <main className="flex-1 overflow-y-auto">
           <Suspense fallback={<div className="p-8 text-txt-2">Carregando…</div>}>
             {page === "clima"    && <ClimaPage />}
