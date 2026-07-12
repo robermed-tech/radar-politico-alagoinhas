@@ -209,25 +209,30 @@ _PERFIS_FALLBACK = {
     "alagonews":            {"categoria": "Imprensa",    "filtro": "imprensa"},
 }
 
-def _carregar_perfis_do_banco():
-    """Carrega fontes ativas de monitored_sources. Fallback para _PERFIS_FALLBACK."""
-    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    key = os.environ.get("SUPABASE_SERVICE_KEY", "")
-    if not url or not key:
-        return _PERFIS_FALLBACK
+def _carregar_perfis_do_banco(tenant_id):
+    """Carrega fontes ativas de monitored_sources PARA UM TENANT. Fallback para
+    _PERFIS_FALLBACK (só faz sentido como fallback do tenant 'alagoinhas' —
+    para um tenant novo sem linhas em monitored_sources, o fallback ficaria
+    vazio na prática, o que é o comportamento correto: sem fonte configurada,
+    sem coleta, em vez de herdar os perfis de outro cliente).
+    Antes desta função filtrava só por platform+active, sem tenant_id — com
+    2+ tenants usando a mesma tabela monitored_sources isso misturaria
+    perfis de clientes diferentes num único dict."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return _PERFIS_FALLBACK if tenant_id == "alagoinhas" else {}
     try:
         r = requests.get(
-            f"{url}/rest/v1/monitored_sources",
-            params={"platform": "eq.instagram", "active": "eq.true",
+            f"{SUPABASE_URL}/rest/v1/monitored_sources",
+            params={"tenant_id": f"eq.{tenant_id}", "platform": "eq.instagram", "active": "eq.true",
                     "select": "handle,categoria,filtro"},
-            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
             timeout=10,
         )
         if r.status_code != 200:
-            return _PERFIS_FALLBACK
+            return _PERFIS_FALLBACK if tenant_id == "alagoinhas" else {}
         rows = r.json()
         if not rows:
-            return _PERFIS_FALLBACK
+            return _PERFIS_FALLBACK if tenant_id == "alagoinhas" else {}
         perfis = {}
         for row in rows:
             handle = row["handle"].lstrip("@").lower()
@@ -239,9 +244,12 @@ def _carregar_perfis_do_banco():
             }
         return perfis
     except Exception:
-        return _PERFIS_FALLBACK
+        return _PERFIS_FALLBACK if tenant_id == "alagoinhas" else {}
 
-PERFIS = _carregar_perfis_do_banco()
+# PERFIS é populado por _carregar_config_tenant(TENANT), chamada mais abaixo
+# depois que _carregar_keywords_do_banco/_carregar_tenant_settings existem —
+# um único ponto de carga em vez de espalhado (ver _carregar_config_tenant).
+PERFIS = {}
 
 # Palavras-chave de relevancia por filtro
 _KEYWORDS_FALLBACK_GOVERNO  = ["prefeitura", "prefeito", "gustavo", "gestao", "alagoinhas",
@@ -251,18 +259,20 @@ _KEYWORDS_FALLBACK_OPOSICAO = ["prefeitura", "prefeito", "gustavo carmo", "gesta
 _KEYWORDS_FALLBACK_IMPRENSA = ["prefeitura de alagoinhas", "gustavo carmo", "gestao municipal",
                                "prefeito de alagoinhas"]
 
-def _carregar_keywords_do_banco():
-    """Busca keywords ativas de relevance_keywords (lista única para todos os filtros).
-    Fallback por categoria se o banco estiver vazio ou inacessível."""
-    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    key = os.environ.get("SUPABASE_SERVICE_KEY", "")
-    if not url or not key:
+def _carregar_keywords_do_banco(tenant_id):
+    """Busca keywords ativas de relevance_keywords PARA UM TENANT (lista única
+    para todos os filtros). Fallback por categoria se o banco estiver vazio
+    ou inacessível.
+    Antes desta função filtrava sempre por tenant_id='alagoinhas' fixo no
+    código — um tenant novo veria as keywords de Alagoinhas em vez das
+    próprias (ou nenhuma, dependendo do que estivesse cadastrado)."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
         return None
     try:
         r = requests.get(
-            f"{url}/rest/v1/relevance_keywords",
-            params={"tenant_id": "eq.alagoinhas", "select": "keyword,active"},
-            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            f"{SUPABASE_URL}/rest/v1/relevance_keywords",
+            params={"tenant_id": f"eq.{tenant_id}", "select": "keyword,active"},
+            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
             timeout=10,
         )
         if r.status_code != 200 or not r.json():
@@ -271,18 +281,16 @@ def _carregar_keywords_do_banco():
     except Exception:
         return None
 
-def _carregar_tenant_settings():
-    """Busca tenant_settings do Supabase. Retorna dict vazio se indisponível."""
-    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    key = os.environ.get("SUPABASE_SERVICE_KEY", "")
-    if not url or not key:
+def _carregar_tenant_settings(tenant_id):
+    """Busca tenant_settings do Supabase para um tenant. Retorna dict vazio se indisponível."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
         return {}
     try:
         r = requests.get(
-            f"{url}/rest/v1/tenant_settings",
-            params={"tenant_id": f"eq.{os.environ.get('RADAR_TENANT', 'alagoinhas')}",
+            f"{SUPABASE_URL}/rest/v1/tenant_settings",
+            params={"tenant_id": f"eq.{tenant_id}",
                     "select": "score_weights,climate_thresholds,notification_config"},
-            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
             timeout=10,
         )
         if r.status_code != 200 or not r.json():
@@ -291,22 +299,6 @@ def _carregar_tenant_settings():
     except Exception:
         return {}
 
-_TENANT_SETTINGS = _carregar_tenant_settings()
-_ct = _TENANT_SETTINGS.get("climate_thresholds", {})
-_nc = _TENANT_SETTINGS.get("notification_config", {})
-
-_keywords_banco = _carregar_keywords_do_banco()
-# Se o banco retornou keywords, todas as categorias usam a mesma lista.
-# Caso contrário, cada categoria usa seu fallback específico.
-KEYWORDS_GOVERNO  = _keywords_banco or _KEYWORDS_FALLBACK_GOVERNO
-KEYWORDS_OPOSICAO = _keywords_banco or _KEYWORDS_FALLBACK_OPOSICAO
-KEYWORDS_IMPRENSA = _keywords_banco or _KEYWORDS_FALLBACK_IMPRENSA
-
-if _keywords_banco:
-    print(f"[keywords] Supabase: {len(_keywords_banco)} keywords carregadas → {_keywords_banco}")
-else:
-    print(f"[keywords] Fallback hardcoded — governo:{len(KEYWORDS_GOVERNO)} oposicao:{len(KEYWORDS_OPOSICAO)} imprensa:{len(KEYWORDS_IMPRENSA)}")
-
 # Score de alerta
 SCORE_IMAGEM_ALERTA = 30
 SCORE_RISCO_ALERTA  = 70
@@ -314,13 +306,46 @@ SCORE_RISCO_ALERTA  = 70
 # Override SCCT criterioso — alerta crises intencionais de alta responsabilidade
 # mesmo quando o score nao atinge 70 (posts de oposicao eficazes ficam em ~62).
 OVERRIDE_ALERTA_ATIVO         = True
-OVERRIDE_RESPONSABILIDADE_MIN = int(_ct.get("override_resp_min", 70))
 OVERRIDE_SCORE_MIN            = 55
 OVERRIDE_EXIGE_TRACAO         = True
 
-# Limiares do boletim climático (passados como parâmetro ao gerar_boletim).
-_LIMIAR_PREVISAO              = float(_ct.get("limiar_previsao", 8.0))
-_LIMIAR_TEMPESTADE_COM_ALERTA = float(_ct.get("limiar_tempestade_com_alerta", 60.0))
+def _carregar_config_tenant(tenant_id):
+    """Ponto único de carga de config por tenant: perfis monitorados, keywords
+    de relevância e tenant_settings (limiares de clima/notificação). Rebind
+    dos globais correspondentes via `global` — mesmo padrão já usado para
+    TENANT/PERFIS em main_multi_tenant(), agora estendido para tudo que era
+    lido só 1x na carga do módulo.
+    Chamada na carga do módulo (tenant único, via RADAR_TENANT) e de novo a
+    cada iteração de main_multi_tenant(): sem isso, o 2º+ tenant do loop
+    herdava silenciosamente as keywords/limiares carregados para o 1º —
+    bug nunca exercitado porque só existe 1 tenant em produção até hoje."""
+    global PERFIS, KEYWORDS_GOVERNO, KEYWORDS_OPOSICAO, KEYWORDS_IMPRENSA
+    global _TENANT_SETTINGS, _ct, _nc
+    global OVERRIDE_RESPONSABILIDADE_MIN, _LIMIAR_PREVISAO, _LIMIAR_TEMPESTADE_COM_ALERTA
+
+    PERFIS = _carregar_perfis_do_banco(tenant_id)
+
+    _TENANT_SETTINGS = _carregar_tenant_settings(tenant_id)
+    _ct = _TENANT_SETTINGS.get("climate_thresholds", {})
+    _nc = _TENANT_SETTINGS.get("notification_config", {})
+
+    _keywords_banco = _carregar_keywords_do_banco(tenant_id)
+    # Se o banco retornou keywords, todas as categorias usam a mesma lista.
+    # Caso contrário, cada categoria usa seu fallback específico.
+    KEYWORDS_GOVERNO  = _keywords_banco or _KEYWORDS_FALLBACK_GOVERNO
+    KEYWORDS_OPOSICAO = _keywords_banco or _KEYWORDS_FALLBACK_OPOSICAO
+    KEYWORDS_IMPRENSA = _keywords_banco or _KEYWORDS_FALLBACK_IMPRENSA
+    if _keywords_banco:
+        print(f"[config:{tenant_id}] {len(PERFIS)} perfis, {len(_keywords_banco)} keywords do Supabase")
+    else:
+        print(f"[config:{tenant_id}] {len(PERFIS)} perfis; keywords em fallback hardcoded "
+              f"(governo:{len(KEYWORDS_GOVERNO)} oposicao:{len(KEYWORDS_OPOSICAO)} imprensa:{len(KEYWORDS_IMPRENSA)})")
+
+    OVERRIDE_RESPONSABILIDADE_MIN = int(_ct.get("override_resp_min", 70))
+    _LIMIAR_PREVISAO              = float(_ct.get("limiar_previsao", 8.0))
+    _LIMIAR_TEMPESTADE_COM_ALERTA = float(_ct.get("limiar_tempestade_com_alerta", 60.0))
+
+_carregar_config_tenant(TENANT)
 
 # Limites de coleta
 MAX_POSTS_POR_PERFIL    = 10
@@ -3635,7 +3660,8 @@ def main_multi_tenant():
         return
 
     tenants_ativos = _supabase_get(
-        "tenants", "ativo=eq.true&select=tenant_id,municipio,estado,perfis_json"
+        "tenants",
+        "ativo=eq.true&select=tenant_id,municipio,estado,apify_token,whatsapp_destinatarios"
     )
 
     if not tenants_ativos:
@@ -3647,19 +3673,35 @@ def main_multi_tenant():
     log(f"|  AGORA Multi-Tenant: {len(tenants_ativos)} tenant(s) ativo(s)       |")
     log("+======================================================+")
 
-    global TENANT, PERFIS
+    global TENANT, APIFY_TOKEN, WHATSAPP_NUMBER
+    # Guarda os valores das secrets do ambiente (conta/numero "padrao") para
+    # usar como fallback nos tenants que ainda nao tem os proprios cadastrados
+    # em tenants.apify_token / tenants.whatsapp_destinatarios.
+    apify_token_padrao = APIFY_TOKEN
+    whatsapp_numero_padrao = WHATSAPP_NUMBER
     for t in tenants_ativos:
         tid = t.get("tenant_id", TENANT)
         municipio = t.get("municipio", tid)
-        perfis_json = t.get("perfis_json")
 
         TENANT = tid
-        if isinstance(perfis_json, dict) and perfis_json:
-            PERFIS.clear()
-            PERFIS.update(perfis_json)
-
         log(f"\n=== TENANT: {tid} ({municipio} / {t.get('estado', '')}) ===")
         try:
+            # Antes: perfis_json (coluna legada de tenants, nunca escrita
+            # pelo Admin) era a unica fonte de perfis no loop multi-tenant,
+            # e nenhuma outra config (keywords, limiares de clima/notificacao)
+            # era recarregada por tenant — o 2o+ tenant herdava silenciosamente
+            # a config carregada para o 1o na inicializacao do modulo.
+            # Agora: mesmo carregador usado no boot single-tenant, parametrizado.
+            # Dentro do try: um tenant com tenant_settings malformado (ex.:
+            # override_resp_min nao-numerico) nao pode derrubar o loop inteiro
+            # e impedir os demais tenants de rodar.
+            _carregar_config_tenant(tid)
+            APIFY_TOKEN = t.get("apify_token") or apify_token_padrao
+            destinatarios = t.get("whatsapp_destinatarios") or []
+            # So o primeiro destinatario e usado (Evolution API manda pra 1
+            # numero por chamada); a coluna e um array pensando em fan-out
+            # futuro, ainda nao implementado.
+            WHATSAPP_NUMBER = destinatarios[0] if destinatarios else whatsapp_numero_padrao
             main()
         except Exception as e:
             log(f"  ERRO no tenant {tid}: {e}")
