@@ -6,17 +6,25 @@
 :root,
 .theme-dark {
   color-scheme: dark;
-  /* Céu noturno de tempestade: azul-carvão profundo + brilho quente de accent
-     no topo (radial) que faz o vidro e o laranja "cantarem". */
-  --wx-bg:
-    radial-gradient(120% 80% at 15% -10%, rgba(249, 115, 22, 0.10) 0%, rgba(249, 115, 22, 0) 42%),
-    radial-gradient(90% 70% at 100% 0%, rgba(56, 89, 168, 0.16) 0%, rgba(56, 89, 168, 0) 55%),
-    linear-gradient(165deg, #070B14 0%, #0A1120 40%, #0C1424 68%, #0E1830 100%);
-  --g1: rgba(255, 255, 255, 0.065);
+
+  /* Fundo de página — mesh de blobs radiais (índigo/teal/ciano) sobre base
+     quase-preta. Fixo no nível do app shell (body), não por página.
+     --wx-bg é composto a partir destes tokens para não duplicar mecanismo:
+     LoginPage e print.css continuam consumindo --wx-bg sem alteração. */
+  --bg-page: #0A0A0A;
+  --mesh-1: radial-gradient(38% 45% at 15% 20%, rgba(99, 102, 241, 0.20) 0%, transparent 70%);
+  --mesh-2: radial-gradient(45% 50% at 85% 15%, rgba(20, 184, 166, 0.18) 0%, transparent 70%);
+  --mesh-3: radial-gradient(55% 60% at 50% 100%, rgba(56, 189, 248, 0.10) 0%, transparent 70%);
+  --wx-bg: var(--mesh-1), var(--mesh-2), var(--mesh-3), var(--bg-page);
+
+  /* Cards — vidro fosco flutuando sobre o mesh. */
+  --bg-card: rgba(23, 23, 23, 0.55);
+  --border-card: rgba(41, 41, 41, 0.6);
+  --g1: var(--bg-card);
   --g2: rgba(255, 255, 255, 0.04);
   --g3: rgba(255, 255, 255, 0.10);
-  --g-raised: rgba(255, 255, 255, 0.085);
-  --line: rgba(255, 255, 255, 0.11);
+  --g-raised: rgba(38, 38, 38, 0.72);
+  --line: var(--border-card);
   --line-strong: rgba(255, 255, 255, 0.22);
   --hairline: rgba(255, 255, 255, 0.14); /* highlight superior do vidro */
   --shadow-ambient: 0 18px 48px -18px rgba(0, 0, 0, 0.66), 0 2px 8px -2px rgba(0, 0, 0, 0.5);
@@ -27,7 +35,19 @@
   --glass-btn: rgba(255, 255, 255, 0.06);
   --glass-btn-border: rgba(255, 255, 255, 0.12);
   --glass-btn-hover: rgba(255, 255, 255, 0.12);
-  --brand-glow: rgba(249, 115, 22, 0.34);
+
+  /* Marca — laranja, reservado para interação/marca (nunca estado de alerta;
+     isso continua sendo trabalho de lib/weather.ts e chartTheme.ts). */
+  --brand: #FB923C;
+  --accent: var(--brand);
+  --brand-glow: rgba(251, 146, 60, 0.34);
+  --gradient-hero: linear-gradient(90deg, #FBBF24, #FB923C, #F87171);
+
+  /* Semânticas genéricas de UI (distintas do sistema de clima/risco). */
+  --success: #4ADE80;
+  --warning: #FDE047;
+  --danger: #F87171;
+
   /* Violeta acessível (substitui o lilás de baixo contraste) */
   --violet: #a78bfa;
   --violet-soft: rgba(167, 139, 250, 0.12);
@@ -37,15 +57,20 @@
 /* ── TEMA CLARO ── */
 .theme-light {
   color-scheme: light;
-  /* Céu diurno: branco luminoso → azul-claro, com leve calor de accent no topo. */
-  --wx-bg:
-    radial-gradient(110% 70% at 12% -8%, rgba(249, 115, 22, 0.06) 0%, rgba(249, 115, 22, 0) 40%),
-    linear-gradient(180deg, #FFFFFF 0%, #F6FAFF 36%, #E9F2FF 70%, #D8E9FF 100%);
-  --g1: rgba(255, 255, 255, 0.78);
+
+  --bg-page: #FAFAFA;
+  --mesh-1: radial-gradient(38% 45% at 15% 20%, rgba(99, 102, 241, 0.13) 0%, transparent 70%);
+  --mesh-2: radial-gradient(45% 50% at 85% 15%, rgba(20, 184, 166, 0.13) 0%, transparent 70%);
+  --mesh-3: radial-gradient(55% 60% at 50% 100%, rgba(56, 189, 248, 0.08) 0%, transparent 70%);
+  --wx-bg: var(--mesh-1), var(--mesh-2), var(--mesh-3), var(--bg-page);
+
+  --bg-card: rgba(255, 255, 255, 0.65);
+  --border-card: rgba(229, 229, 229, 0.8);
+  --g1: var(--bg-card);
   --g2: rgba(255, 255, 255, 0.55);
   --g3: rgba(15, 23, 42, 0.05);
-  --g-raised: rgba(255, 255, 255, 0.92);
-  --line: rgba(15, 23, 42, 0.10);
+  --g-raised: rgba(255, 255, 255, 0.88);
+  --line: var(--border-card);
   --line-strong: rgba(15, 23, 42, 0.20);
   --hairline: rgba(255, 255, 255, 0.9); /* highlight superior do vidro */
   --shadow-ambient: 0 14px 40px -18px rgba(20, 40, 80, 0.24), 0 2px 6px -2px rgba(20, 40, 80, 0.10);
@@ -56,11 +81,32 @@
   --glass-btn: rgba(255, 255, 255, 0.72);
   --glass-btn-border: rgba(15, 23, 42, 0.10);
   --glass-btn-hover: rgba(255, 255, 255, 0.95);
-  --brand-glow: rgba(249, 115, 22, 0.22);
+
+  --brand: #EA580C;
+  --accent: var(--brand);
+  --brand-glow: rgba(234, 88, 12, 0.22);
+  --gradient-hero: linear-gradient(90deg, #FBBF24, #F97316, #E11D48);
+
+  --success: #16A34A;
+  --warning: #CA8A04;
+  --danger: #DC2626;
+
   /* Violeta acessível no tema claro (violet-700 ~6:1) */
   --violet: #6d28d9;
   --violet-soft: rgba(109, 40, 217, 0.07);
   --violet-border: rgba(109, 40, 217, 0.28);
+}
+
+/* Fallback sólido para navegadores sem backdrop-filter (Firefox < 103):
+   cards perdem o blur mas mantêm um fundo opaco e legível. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .theme-dark,
+  :root {
+    --bg-card: #171717;
+  }
+  .theme-light {
+    --bg-card: #FFFFFF;
+  }
 }
 
 html,
@@ -122,6 +168,26 @@ button:disabled {
 .rounded-xl.bg-bg-2,
 .rounded-2xl.bg-bg-2 {
   box-shadow: var(--shadow-ambient), inset 0 1px 0 var(--hairline);
+}
+
+/* Vidro fosco avulso — para containers novos que ainda não usam bg-bg-1/2/3.
+   Usa os mesmos tokens (--bg-card/--border-card) do sistema de glass acima,
+   então responde ao toggle de tema e ao fallback @supports automaticamente. */
+.glass-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border-card);
+  border-radius: 14px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Texto com o gradiente âmbar→laranja→rosa — reservado para KPIs/destaques,
+   nunca para fundo de página. */
+.gradient-hero-text {
+  background: var(--gradient-hero);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 /* ── ELEVAÇÃO E HOVER-LIFT ──────────────────────────────

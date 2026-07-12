@@ -87,7 +87,7 @@ const NAV_MAIN: NavItem[] = [
 
 /** Botão ativo do menu: pílula laranja com degradê, glow quente e fio de luz. */
 const NAV_GLOW = {
-  background: "linear-gradient(180deg, #FB923C 0%, #F97316 100%)",
+  background: "linear-gradient(180deg, #FB923C 0%, var(--brand) 100%)",
   boxShadow:
     "0 8px 22px -6px var(--brand-glow), inset 0 1px 0 rgba(255,255,255,0.28)",
 } as const;
@@ -192,7 +192,7 @@ export default function App() {
         <div className="mb-6 flex items-center gap-2.5 px-2">
           <span
             className="grid h-8 w-8 shrink-0 place-items-center rounded-lg shadow-md"
-            style={{ background: "#F97316" }}
+            style={{ background: "var(--brand)" }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
               <circle cx="12" cy="12" r="2" fill="white"/>
