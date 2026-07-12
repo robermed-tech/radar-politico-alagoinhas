@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   fetchNarratives,
@@ -61,10 +60,7 @@ function CoordinationPanel({ grupos }: { grupos: CoordinationGroup[] }) {
   );
 }
 
-type Filtro = "ativa" | "todas";
-
 export function NarrativesPage() {
-  const [filtro, setFiltro] = useState<Filtro>("ativa");
   const { data, isLoading } = useQuery({
     queryKey: ["narratives"],
     queryFn: fetchNarratives,
@@ -93,8 +89,6 @@ export function NarrativesPage() {
       </div>
     );
 
-  const ativas = lista.filter((n) => n.status === "ativa");
-
   return (
     <div className="space-y-4 p-5">
       <div>
@@ -106,28 +100,6 @@ export function NarrativesPage() {
 
       {/* Painel de campanhas coordenadas (detecção global) */}
       <CoordinationPanel grupos={grupos} />
-
-      {/* Filtros */}
-      <div className="flex gap-2">
-        {(
-          [
-            { id: "ativa", label: `Ativas (${ativas.length})` },
-            { id: "todas", label: `Todas (${lista.length})` },
-          ] as { id: Filtro; label: string }[]
-        ).map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setFiltro(p.id)}
-            className={`rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
-              filtro === p.id
-                ? "border-brand bg-brand text-white"
-                : "border-line bg-bg-1 text-txt-2 hover:text-txt-1"
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
