@@ -515,10 +515,28 @@ export function ClimaPage() {
 
   if (view.vazio)
     return (
-      <div className="p-5">
-        <h1 className="text-2xl font-extrabold">{periodoTitulo(dias)}</h1>
-        <div className="mt-4 rounded-[28px] border border-line bg-bg-1 p-6 text-txt-2">
-          Sem dados no período. Rode o AGORA para popular.
+      <div className="space-y-4 p-5">
+        <div className="reveal reveal-1 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">{periodoTitulo(dias)}</h1>
+            <p className="text-base text-txt-2">Alagoinhas/BA · imagem do prefeito e da prefeitura</p>
+          </div>
+          <div className="flex rounded-full p-1 glass-btn">
+            {PERIODOS.map((p) => (
+              <button
+                key={p.dias}
+                onClick={() => setDias(p.dias)}
+                className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
+                  dias === p.dias ? "bg-white/25 text-txt-1 shadow-sm" : "text-txt-2 hover:text-txt-1"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-[28px] border border-line bg-bg-1 p-6 text-txt-2">
+          A {periodoClima(dias)} não é possível por falta de dados no período selecionado.
         </div>
       </div>
     );
