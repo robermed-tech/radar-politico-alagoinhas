@@ -1,0 +1,64 @@
+name: Deploy Dashboard — Cliente sob demanda
+
+# Deploy MANUAL, parametrizado por tenant — para onboarding de um cliente
+# novo (2o+) sem tocar no deploy automático de Alagoinhas (deploy.yml, que
+# continua disparando sozinho a cada push em radar-app/**).
+#
+# Uso: Actions → "Deploy Dashboard — Cliente sob demanda" → Run workflow →
+# preencher tenant_id (como cadastrado em `tenants`) e o subdomínio Surge
+# escolhido para esse cliente.
+on:
+  workflow_dispatch:
+    inputs:
+      tenant_id:
+        description: "tenant_id exato como cadastrado na tabela tenants (ex: alagoinhas, cidade-nova)"
+        required: true
+      surge_domain:
+        description: "Subdomínio Surge.sh completo do cliente (ex: radar-cidade-nova.surge.sh)"
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: radar-app/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+        working-directory: radar-app
+
+      - name: "Build para o tenant: ${{ github.event.inputs.tenant_id }}"
+        run: npm run build
+        working-directory: radar-app
+        env:
+          # Mesmo projeto Supabase de todos os tenants — chave publishable,
+          # é pública por design (isolamento real é via RLS + VITE_TENANT).
+          VITE_SUPABASE_URL: https://wtlhqyqxhuchzloodoyx.supabase.co
+          VITE_SUPABASE_KEY: sb_publishable_80AckjG9pwL3DB0_uTPCjg_IS2VxOAo
+          VITE_TENANT: ${{ github.event.inputs.tenant_id }}
+
+      - name: Copiar index.html → 200.html (SPA routing no Surge)
+        run: cp radar-app/dist/index.html radar-app/dist/200.html
+
+      - name: "Deploy para ${{ github.event.inputs.surge_domain }}"
+        run: npx surge --project radar-app/dist --domain "${{ github.event.inputs.surge_domain }}"
+        env:
+          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+
+      - name: Resumo
+        run: |
+          echo "## Deploy concluído" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tenant:** ${{ github.event.inputs.tenant_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** https://${{ github.event.inputs.surge_domain }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Confirme que o tenant já tem: linha em \`tenants\`, ao menos 1 usuário" >> $GITHUB_STEP_SUMMARY
+          echo "em \`profiles\` (para conseguir logar) e fontes em \`monitored_sources\`." >> $GITHUB_STEP_SUMMARY
