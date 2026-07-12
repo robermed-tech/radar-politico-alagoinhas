@@ -31,11 +31,59 @@ function somarComents(posts: Post[]): { neg: number; pos: number; neu: number } 
   return { neg, pos, neu: Math.max(0, total - neg - pos) };
 }
 
-function TabelaComentarios({ allPosts }: { allPosts: Post[] }) {
+const VOL_COR = { neg: "#EF4444", pos: "#22C55E", neu: "#8593AD" };
+
+/**
+ * Uma linha = um total grande (leitura imediata) + uma barra empilhada a
+ * 100% mostrando a PROPORÇÃO neg/pos/neu (composição), em vez de colunas
+ * numéricas lado a lado. Comparar proporções por comprimento de barra é
+ * mais rápido de interpretar do que ler 4 números por linha — e como cada
+ * linha normaliza para 100%, funciona igual bem para "Hoje" (dezenas) e
+ * "Este mês" (milhares).
+ */
+function LinhaVolume({
+  label,
+  sub,
+  neg,
+  pos,
+  neu,
+}: {
+  label: string;
+  sub?: string;
+  neg: number;
+  pos: number;
+  neu: number;
+}) {
+  const total = neg + pos + neu;
+  const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-[15px] font-bold text-txt-1">{label}</div>
+          {sub && <div className="text-[11px] text-txt-3">{sub}</div>}
+        </div>
+        <div className="tnum shrink-0 text-2xl font-light leading-none text-txt-1">{fmtInt(total)}</div>
+      </div>
+      <div className="flex h-3 w-full overflow-hidden rounded-full bg-bg-2">
+        {neg > 0 && <div style={{ width: `${pct(neg)}%`, background: VOL_COR.neg }} />}
+        {pos > 0 && <div style={{ width: `${pct(pos)}%`, background: VOL_COR.pos }} />}
+        {neu > 0 && <div style={{ width: `${pct(neu)}%`, background: VOL_COR.neu }} />}
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[12px]">
+        <span className="tnum font-semibold" style={{ color: VOL_COR.neg }}>{fmtInt(neg)} negativos</span>
+        <span className="tnum font-semibold" style={{ color: VOL_COR.pos }}>{fmtInt(pos)} positivos</span>
+        <span className="tnum text-txt-3">{fmtInt(neu)} neutros</span>
+      </div>
+    </div>
+  );
+}
+
+function VolumeComentarios({ allPosts }: { allPosts: Post[] }) {
   const periodos = [
-    { label: "Hoje (24h)", posts: filtrarPorPeriodo(allPosts, 1) },
-    { label: "Esta semana", posts: filtrarPorPeriodo(allPosts, 7) },
-    { label: "Este mês", posts: filtrarPorPeriodo(allPosts, 30) },
+    { label: "Hoje", sub: "últimas 24h", posts: filtrarPorPeriodo(allPosts, 1) },
+    { label: "Esta semana", sub: "últimos 7 dias", posts: filtrarPorPeriodo(allPosts, 7) },
+    { label: "Este mês", sub: "últimos 30 dias", posts: filtrarPorPeriodo(allPosts, 30) },
   ];
 
   const posts30 = filtrarPorPeriodo(allPosts, 30);
@@ -50,72 +98,46 @@ function TabelaComentarios({ allPosts }: { allPosts: Post[] }) {
     .filter((t) => t.neg + t.pos + t.neu > 0)
     .sort((a, b) => b.neg - a.neg);
 
-  const thCls = "pb-2 text-[10px] font-bold uppercase tracking-wide";
-  const tdCls = "py-2.5 tnum";
-
   return (
     <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6 space-y-6">
-      <div className="section-label">
-        Volume de comentários por período e tema
+      <div>
+        <div className="section-label">Volume de comentários por período e tema</div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-txt-3">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: VOL_COR.neg }} /> Negativos
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: VOL_COR.pos }} /> Positivos
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: VOL_COR.neu }} /> Neutros
+          </span>
+        </div>
       </div>
 
       <div>
-        <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-txt-3">Por período</div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-line">
-                <th className={`${thCls} text-left text-txt-3`}>Período</th>
-                <th className={`${thCls} text-right text-risk-crit`}>Negativos</th>
-                <th className={`${thCls} text-right`} style={{ color: "#84A800" }}>Positivos</th>
-                <th className={`${thCls} text-right text-txt-3`}>Neutros</th>
-                <th className={`${thCls} text-right text-txt-2`}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {periodos.map(({ label, posts }) => {
-                const { neg, pos, neu } = somarComents(posts);
-                return (
-                  <tr key={label} className="border-b border-line/30 last:border-0">
-                    <td className={`${tdCls} text-txt-1 font-medium`}>{label}</td>
-                    <td className={`${tdCls} text-right font-bold text-risk-crit`}>{fmtInt(neg)}</td>
-                    <td className={`${tdCls} text-right font-bold`} style={{ color: "#84A800" }}>{fmtInt(pos)}</td>
-                    <td className={`${tdCls} text-right text-txt-3`}>{fmtInt(neu)}</td>
-                    <td className={`${tdCls} text-right text-txt-2`}>{fmtInt(neg + pos + neu)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="mb-3 text-[10px] font-bold uppercase tracking-wide text-txt-3">Por período</div>
+        <div className="divide-y divide-line/30">
+          {periodos.map(({ label, sub, posts }) => {
+            const { neg, pos, neu } = somarComents(posts);
+            return (
+              <div key={label} className="py-3 first:pt-0 last:pb-0">
+                <LinhaVolume label={label} sub={sub} neg={neg} pos={pos} neu={neu} />
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {temas.length > 0 && (
         <div>
-          <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-txt-3">Por tema — últimos 30 dias</div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="border-b border-line">
-                  <th className={`${thCls} text-left text-txt-3`}>Tema</th>
-                  <th className={`${thCls} text-right text-risk-crit`}>Negativos</th>
-                  <th className={`${thCls} text-right`} style={{ color: "#84A800" }}>Positivos</th>
-                  <th className={`${thCls} text-right text-txt-3`}>Neutros</th>
-                  <th className={`${thCls} text-right text-txt-2`}>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {temas.map(({ tema, neg, pos, neu }) => (
-                  <tr key={tema} className="border-b border-line/30 last:border-0">
-                    <td className={`${tdCls} text-txt-1 font-medium`}>{TEMA_LABEL[tema]}</td>
-                    <td className={`${tdCls} text-right font-bold text-risk-crit`}>{fmtInt(neg)}</td>
-                    <td className={`${tdCls} text-right font-bold`} style={{ color: "#84A800" }}>{fmtInt(pos)}</td>
-                    <td className={`${tdCls} text-right text-txt-3`}>{fmtInt(neu)}</td>
-                    <td className={`${tdCls} text-right text-txt-2`}>{fmtInt(neg + pos + neu)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mb-3 text-[10px] font-bold uppercase tracking-wide text-txt-3">Por tema — últimos 30 dias</div>
+          <div className="divide-y divide-line/30">
+            {temas.map(({ tema, neg, pos, neu }) => (
+              <div key={tema} className="py-3 first:pt-0 last:pb-0">
+                <LinhaVolume label={TEMA_LABEL[tema]} neg={neg} pos={pos} neu={neu} />
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -697,7 +719,7 @@ export function ClimaPage() {
         )}
       </div>
 
-      <TabelaComentarios allPosts={data!.data} />
+      <VolumeComentarios allPosts={data!.data} />
     </div>
   );
 }
