@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadar, parseData, filtrarPorPeriodo, type Post } from "@/lib/data";
+import { fetchRadar, parseData, filtrarPorPeriodo, sentimentoReacao, type Post } from "@/lib/data";
 import { PostChips } from "@/components/PostChips";
 import { IconNewspaper, IconSwords, IconBuilding, IconPerson, IconDocument } from "@/components/icons";
 
@@ -56,7 +56,8 @@ function tempoRelativo(dataStr: string): string {
 
 function PostCard({ p }: { p: Post }) {
   const resumo = p.resumo || p.queixa_dominante || p.elogio_dominante || "";
-  const borderColor = SENT_BORDER[p.sentimento_post ?? ""] ?? "#64748B";
+  const reacao = sentimentoReacao(p);
+  const borderColor = SENT_BORDER[reacao] ?? "#64748B";
   return (
     <div
       className="card-hover rounded-xl border border-line bg-bg-1 p-4"
@@ -118,7 +119,7 @@ function PostCard({ p }: { p: Post }) {
         </div>
       )}
       <PostChips
-        sentimento={p.sentimento_post}
+        sentimento={reacao}
         tema={p.tema}
         urgencia={p.urgencia}
         risco_crise={p.risco_crise}
@@ -148,8 +149,8 @@ export function FeedPage() {
       const db = parseData(b.data_post)?.getTime() ?? 0;
       return db - da;
     });
-    if (filtro === "negativos") return all.filter((p) => p.sentimento_post === "negativo");
-    if (filtro === "positivos") return all.filter((p) => p.sentimento_post === "positivo");
+    if (filtro === "negativos") return all.filter((p) => sentimentoReacao(p) === "negativo");
+    if (filtro === "positivos") return all.filter((p) => sentimentoReacao(p) === "positivo");
     if (filtro === "urgentes") {
       const urg = new Set(["alta", "crítica", "critica"]);
       return all.filter((p) => urg.has(p.urgencia?.toLowerCase() ?? ""));

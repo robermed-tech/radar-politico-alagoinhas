@@ -162,6 +162,35 @@ export function parseData(str: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * Sentimento efetivo da REAÇÃO do público a um post — usado em "O que o povo
+ * diz" (Favoráveis/Críticos) e no badge de cada card.
+ *
+ * `sentimento_post` é gravado pelo agora.py, mas posts antigos (anteriores
+ * aos ajustes de prompt de jul/2026 — ver 7c08e2a) podem ter ficado com um
+ * valor stale que não reflete a reação real dos comentários. Em vez de
+ * confiar cegamente nesse campo, reaplicamos aqui a mesma regra de
+ * desempate que o backend já usa (agora.py, "Safety net" antes de gravar
+ * sentimento_post): os percentuais de comentários e o sentimento_comentarios
+ * têm precedência, porque medem a reação do POVO — o que este card mostra —
+ * e não o tom da legenda do post.
+ */
+export function sentimentoReacao(p: Post): "positivo" | "negativo" | "neutro" {
+  const pctNeg = p.comentarios_pct_neg || 0;
+  const pctPos = p.comentarios_pct_pos || 0;
+  const sentComentarios = (p.sentimento_comentarios || "").toLowerCase();
+  const ehOposicao = (p.categoria || "").toLowerCase().includes("oposi");
+
+  if (pctNeg > 50) return "negativo";
+  if (sentComentarios === "negativo") return "negativo";
+  if (sentComentarios === "misto" && pctNeg > pctPos) return "negativo";
+  if (pctPos > 60) return ehOposicao ? "negativo" : "positivo";
+  if (p.sentimento_post === "positivo" || p.sentimento_post === "negativo" || p.sentimento_post === "neutro") {
+    return p.sentimento_post;
+  }
+  return "neutro";
+}
+
 export interface DailyMetric {
   dia: string;
   iad: number;
@@ -300,7 +329,7 @@ export async function fetchBoletimByRole(isAdmin: boolean): Promise<Boletim | nu
 
 export interface Influencer {
   handle: string;
-  tipo: "perfil_monitorado" | "cidadao";
+  tipo: "perfil_monitorado";
   categoria: string;
   alcance: number;
   engajamento: number;
@@ -313,12 +342,19 @@ export interface Influencer {
   atualizado_em: string;
 }
 
-/** Ranking de influenciadores (perfis monitorados + cidadãos). */
+/**
+ * Ranking de influenciadores — apenas perfis monitorados (contas institucionais,
+ * imprensa, aliados/oposição). Cidadãos comuns NUNCA são incluídos aqui: expor
+ * um ranking nominal de perfis pessoais de cidadãos violaria a LGPD (dado
+ * pessoal de gente que não consentiu em ser rankeada publicamente). O filtro
+ * é aplicado na própria query para que handles de cidadãos nunca cheguem ao
+ * cliente.
+ */
 export async function fetchInfluencers(): Promise<Influencer[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
   const q =
     `${SUPABASE_URL}/rest/v1/influencers?tenant=eq.${TENANT}` +
-    `&select=*&order=influencia_score.desc&limit=100`;
+    `&tipo=eq.perfil_monitorado&select=*&order=influencia_score.desc&limit=100`;
   const res = await fetch(q, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   }).catch(() => null);

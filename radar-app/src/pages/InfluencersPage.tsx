@@ -1,27 +1,26 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import { fetchInfluencers, type Influencer } from "@/lib/data";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
 
-type Filtro = "todos" | "perfil_monitorado" | "cidadao";
-
 // Cores DEFINITIVAS por lado político (decisão de produto, não inferência):
-//   Oposição = VERMELHO · Aliado/Governo = VERDE · Imprensa = AMARELO · Cidadão = AZUL
+//   Oposição = VERMELHO · Aliado/Governo = VERDE · Imprensa = AMARELO
 // A categoria do perfil manda; o alinhamento inferido só desempata.
 // @jaldicenunes é oposição — sempre vermelho, independente do que a inferência disser.
+// Nota LGPD: este ranking mostra APENAS perfis monitorados (contas
+// institucionais, imprensa, aliados/oposição) — cidadãos comuns nunca
+// entram aqui (ver fetchInfluencers em lib/data.ts).
 const COR_OPOSICAO = "#EF4444";
 const COR_ALIADO   = "#22C55E";
 const COR_IMPRENSA = "#EAB308";
-const COR_CIDADAO  = "#3B82F6";
 
 const OPOSICAO_FIXA = new Set(["jaldicenunes", "jadilcenunes"]);
 
 function corInfluencer(i: Influencer): string {
   const handle = (i.handle || "").toLowerCase();
   if (OPOSICAO_FIXA.has(handle)) return COR_OPOSICAO;
-  if (i.tipo === "cidadao") return COR_CIDADAO;
   const cat = (i.categoria || "").toLowerCase();
   if (cat.includes("oposi")) return COR_OPOSICAO;
   if (cat.includes("imprensa")) return COR_IMPRENSA;
@@ -32,8 +31,6 @@ function corInfluencer(i: Influencer): string {
 }
 
 export function InfluencersPage() {
-  // Abre sempre nos PERFIS monitorados — é o gráfico que interessa primeiro.
-  const [filtro, setFiltro] = useState<Filtro>("perfil_monitorado");
   const ink = chartInk(useThemeStore((s) => s.theme));
   const { data, isLoading } = useQuery({
     queryKey: ["influencers"],
@@ -44,11 +41,10 @@ export function InfluencersPage() {
 
   // Todos os hooks ANTES de qualquer return condicional (Rules of Hooks)
   const lista = data ?? [];
-  const filtrada = filtro === "todos" ? lista : lista.filter((i) => i.tipo === filtro);
 
   // Gráfico horizontal de ranking — top 10 por score, colorido por alinhamento
   const rankingOption = useMemo(() => {
-    const top10 = [...filtrada]
+    const top10 = [...lista]
       .sort((a, b) => b.influencia_score - a.influencia_score)
       .slice(0, 10)
       .reverse(); // ECharts horizontal bar: último item aparece no topo
@@ -98,7 +94,7 @@ export function InfluencersPage() {
         },
       ],
     };
-  }, [filtrada, ink]);
+  }, [lista, ink]);
 
   // Early returns depois de todos os hooks
   if (isLoading) return <div className="p-8 text-txt-2">Carregando influenciadores…</div>;
@@ -114,62 +110,37 @@ export function InfluencersPage() {
       </div>
     );
 
-  const perfis = lista.filter((i) => i.tipo === "perfil_monitorado");
-  const aliados = perfis.filter((i) => corInfluencer(i) === COR_ALIADO).length;
-  const opositores = perfis.filter((i) => corInfluencer(i) === COR_OPOSICAO).length;
-  const imprensa = perfis.filter((i) => corInfluencer(i) === COR_IMPRENSA).length;
+  const aliados = lista.filter((i) => corInfluencer(i) === COR_ALIADO).length;
+  const opositores = lista.filter((i) => corInfluencer(i) === COR_OPOSICAO).length;
+  const imprensa = lista.filter((i) => corInfluencer(i) === COR_IMPRENSA).length;
 
   return (
     <div className="space-y-4 p-5">
       <div>
         <h1 className="text-2xl font-extrabold">Influenciadores</h1>
         <p className="text-sm text-txt-2">
-          Ranking por score composto (alcance · engajamento · frequência)
+          Ranking por score composto (alcance · engajamento · frequência) — perfis monitorados
         </p>
       </div>
 
-      {/* Mapa de ranking PRIMEIRO — abre nos perfis monitorados */}
       <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
         <div className="mb-1 text-sm font-bold">
           Mapa de Influência
           <span className="ml-2 text-[10px] font-normal text-txt-3">
             top 10 por score · <span style={{ color: COR_ALIADO }}>verde=aliado</span> ·{" "}
             <span style={{ color: COR_OPOSICAO }}>vermelho=oposição</span> ·{" "}
-            <span style={{ color: COR_IMPRENSA }}>amarelo=imprensa</span> ·{" "}
-            <span style={{ color: COR_CIDADAO }}>azul=cidadão</span>
+            <span style={{ color: COR_IMPRENSA }}>amarelo=imprensa</span>
           </span>
         </div>
+        <p className="mb-2 text-[11px] text-txt-3">
+          Apenas contas institucionais, imprensa e perfis políticos — cidadãos não são
+          rankeados nominalmente (LGPD).
+        </p>
         <ReactECharts
           option={rankingOption}
-          style={{ height: Math.max(160, Math.min(filtrada.length, 10) * 34 + 32) }}
+          style={{ height: Math.max(160, Math.min(lista.length, 10) * 34 + 32) }}
           notMerge
         />
-      </div>
-
-      {/* Filtros */}
-      <div className="flex gap-2">
-        {(
-          [
-            {
-              id: "perfil_monitorado",
-              label: `Perfis (${lista.filter((i) => i.tipo === "perfil_monitorado").length})`,
-            },
-            { id: "cidadao", label: `Cidadãos (${lista.filter((i) => i.tipo === "cidadao").length})` },
-            { id: "todos", label: `Todos (${lista.length})` },
-          ] as { id: Filtro; label: string }[]
-        ).map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setFiltro(p.id)}
-            className={`rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
-              filtro === p.id
-                ? "border-brand bg-brand text-white"
-                : "border-line bg-bg-1 text-txt-2 hover:text-txt-1"
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
       </div>
 
       {/* Mapa de alinhamento */}
