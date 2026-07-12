@@ -49,21 +49,39 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
+/**
+ * Uso de créditos Apify — sempre visível (antes só aparecia acima de 70% de
+ * uso, então na prática nunca era visto: no consumo normal de Alagoinhas
+ * fica em 0-5%/mês). Vira widget de acompanhamento contínuo, com o mesmo
+ * alerta visual de antes só quando o uso fica alto.
+ */
 function ApifyStatusBanner() {
-  const { data: status } = useQuery({
+  const { data: status, isLoading } = useQuery({
     queryKey: ["service-status-apify"],
     queryFn: () => fetchServiceStatus("apify"),
     staleTime: 10 * 60 * 1000,
     retry: false,
   });
 
-  if (!status || status.uso_pct < 70) return null;
+  if (isLoading) return null;
+
+  if (!status) {
+    return (
+      <div className="rounded-xl border border-line bg-bg-1 p-4">
+        <div className="text-sm font-bold text-txt-1">Créditos Apify</div>
+        <div className="mt-0.5 text-xs text-txt-3">
+          Sem leitura ainda — aparece aqui depois da próxima execução do ÁGORA.
+        </div>
+      </div>
+    );
+  }
 
   const pct = status.uso_pct;
   const critico = pct >= 90;
-  const cor  = critico ? "#EF4444" : "#F97316";
-  const bg   = critico ? "rgba(239,68,68,0.08)" : "rgba(249,115,22,0.08)";
-  const bord = critico ? "rgba(239,68,68,0.30)" : "rgba(249,115,22,0.30)";
+  const atencao = pct >= 70;
+  const cor  = critico ? "#EF4444" : atencao ? "#F97316" : "#22C55E";
+  const bg   = critico ? "rgba(239,68,68,0.08)" : atencao ? "rgba(249,115,22,0.08)" : "rgba(34,197,94,0.06)";
+  const bord = critico ? "rgba(239,68,68,0.30)" : atencao ? "rgba(249,115,22,0.30)" : "rgba(34,197,94,0.22)";
 
   const atualizado = (() => {
     try { return new Date(status.atualizado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
@@ -75,8 +93,8 @@ function ApifyStatusBanner() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-1.5 text-sm font-bold" style={{ color: cor }}>
-            <IconWarningTriangle size={16} />
-            {critico ? "Créditos Apify quase esgotados" : "Créditos Apify em atenção"}
+            {atencao && <IconWarningTriangle size={16} />}
+            {critico ? "Créditos Apify quase esgotados" : atencao ? "Créditos Apify em atenção" : "Créditos Apify"}
           </div>
           <div className="mt-0.5 text-xs text-txt-3">
             ${status.uso_usd.toFixed(2)} de ${status.teto_usd.toFixed(2)} consumidos · {pct.toFixed(0)}% do limite mensal
@@ -301,10 +319,10 @@ function SourcesSection() {
           className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
         >
           <option value="instagram">Instagram</option>
-          <option value="facebook">Facebook</option>
-          <option value="tiktok">TikTok</option>
-          <option value="youtube">YouTube</option>
-          <option value="x">X / Twitter</option>
+          <option value="facebook" disabled>Facebook (em breve)</option>
+          <option value="tiktok" disabled>TikTok (em breve)</option>
+          <option value="youtube" disabled>YouTube (em breve)</option>
+          <option value="x" disabled>X / Twitter (em breve)</option>
         </select>
         <input
           value={handle}
@@ -329,6 +347,11 @@ function SourcesSection() {
           ))}
         </select>
       </div>
+      <p className="mt-2 text-xs text-txt-3">
+        Hoje só o Instagram é coletado de fato. Um perfil salvo aqui entra na próxima
+        execução do ÁGORA automaticamente (o pipeline lê esta lista a cada rodada — não
+        precisa reconfigurar nada na Apify manualmente).
+      </p>
       <div className="mt-2 flex items-center gap-3">
         <button
           onClick={adicionar}
