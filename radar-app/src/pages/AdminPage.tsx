@@ -59,7 +59,10 @@ function ApifyStatusBanner() {
   const { data: status, isLoading } = useQuery({
     queryKey: ["service-status-apify"],
     queryFn: () => fetchServiceStatus("apify"),
-    staleTime: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    // apify-usage.yml atualiza o dado no banco a cada 30 min; refetch daqui
+    // a cada 5 min mantém a tela em sincronia sem precisar de F5 manual.
+    refetchInterval: 5 * 60 * 1000,
     retry: false,
   });
 
