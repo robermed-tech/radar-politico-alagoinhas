@@ -1,0 +1,39 @@
+name: Radar Politico — Heartbeat
+
+# Vigia independente do pipeline ÁGORA. Roda no seu próprio cron (não no do
+# agora.yml) para conseguir detectar o caso em que o AGENDAMENTO do agora.yml
+# parou de disparar — algo que nenhum código dentro do agora.py consegue
+# perceber, porque nesse caso o agora.py simplesmente nunca é executado.
+on:
+  schedule:
+    # A cada 4h — cobre com folga o ciclo de 3x/dia do agora.yml (~6-8h entre
+    # runs) sem gerar alerta a cada pequeno atraso normal do runner do GitHub.
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias minimas
+        run: pip install requests
+
+      - name: Checar saude do pipeline ÁGORA
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          RADAR_TENANT:         alagoinhas
+          EVOLUTION_API_URL:    ${{ secrets.EVOLUTION_API_URL }}
+          EVOLUTION_API_KEY:    ${{ secrets.EVOLUTION_API_KEY }}
+          EVOLUTION_INSTANCE:   ${{ secrets.EVOLUTION_INSTANCE }}
+          WHATSAPP_NUMBER:      ${{ secrets.EVOLUTION_GROUP_ID }}
+        run: python heartbeat_check.py

@@ -8,7 +8,7 @@ import {
   fetchUsers, inviteUser, setUserRole,
   type ScoreWeights, type ClimateThresholds, type NotificationConfig,
 } from "@/lib/admin";
-import { fetchServiceStatus, fetchPipelineHealth } from "@/lib/data";
+import { fetchServiceStatus } from "@/lib/data";
 import { type Role } from "@/lib/auth";
 import { IconWarningTriangle } from "@/components/icons";
 
@@ -95,48 +95,6 @@ function ApifyStatusBanner() {
   );
 }
 
-/**
- * Alerta de coleta vazia: a última execução do pipeline não trouxe posts.
- * Distinto do banner de créditos — pega falha do actor Apify / bloqueio do
- * Instagram (429) / token inválido, que não aparecem como uso de crédito.
- */
-function ColetaVaziaBanner() {
-  const { data: health } = useQuery({
-    queryKey: ["pipeline-health"],
-    queryFn: fetchPipelineHealth,
-    staleTime: 10 * 60 * 1000,
-    retry: false,
-  });
-
-  if (!health || (health.posts_coletados ?? 0) > 0) return null;
-
-  const quando = (() => {
-    try { return new Date(health.executado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
-    catch { return "—"; }
-  })();
-
-  return (
-    <div
-      className="rounded-xl border p-4"
-      style={{ background: "rgba(239,68,68,0.08)", borderColor: "rgba(239,68,68,0.30)" }}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-1.5 text-sm font-bold" style={{ color: "#EF4444" }}>
-            <IconWarningTriangle size={16} />
-            Última coleta não trouxe posts
-          </div>
-          <div className="mt-0.5 text-xs text-txt-3">
-            O pipeline rodou mas coletou 0 posts — possível falha do coletor (Apify),
-            bloqueio do Instagram ou token inválido. Verifique os créditos e o token do Apify.
-          </div>
-        </div>
-        <div className="text-[11px] text-txt-3">Última execução {quando}</div>
-      </div>
-    </div>
-  );
-}
-
 export function AdminPage() {
   const [tab, setTab] = useState<Tab>("score");
 
@@ -146,7 +104,6 @@ export function AdminPage() {
         <h1 className="text-2xl font-extrabold">Administração</h1>
         <p className="text-sm text-txt-2">Configuração do Radar Comando — acesso exclusivo de administradores</p>
       </div>
-      <ColetaVaziaBanner />
       <ApifyStatusBanner />
 
       <div className="flex flex-wrap gap-1 rounded-xl border border-line bg-bg-1 p-1">

@@ -3494,6 +3494,36 @@ def main():
     if not posts:
         log("  Nenhum post coletado. Pipeline encerrado.")
         _safe("creditos_apify", verificar_creditos_apify)  # registra status mesmo sem posts (ex: limite mensal atingido)
+        # Sem isto, um run com coleta vazia (Instagram bloqueando, token
+        # expirado etc.) saia sem tocar pipeline_health — o banner de "coleta
+        # vazia" no dashboard nunca via essa linha (so enxergava a saude do
+        # ULTIMO run com sucesso) e ninguem era avisado ate o painel ficar
+        # >8h desatualizado, em silencio. Grava a falha explicitamente e avisa
+        # na hora, com o mesmo canal usado para alerta de credito Apify.
+        duracao_vazio = (datetime.now() - inicio).seconds
+        _safe("pipeline_health_vazio", _supabase_upsert, "pipeline_health", [{
+            "tenant":           TENANT,
+            "executado_em":     datetime.now().isoformat(),
+            "duracao_s":        duracao_vazio,
+            "posts_coletados":  0,
+            "posts_analisados": 0,
+            "alertas_enviados": 0,
+            "status":           "coleta_vazia",
+        }], "tenant")
+        _run_id = os.environ.get("GITHUB_RUN_ID", "")
+        _msg_coleta_vazia = (
+            "🔴 *RADAR — coleta vazia*\n"
+            "O pipeline rodou e nao trouxe nenhum post do Instagram.\n"
+            "Causas comuns: bloqueio/rate-limit do Instagram, sessao/token "
+            "expirado, ou credito Apify esgotado.\n"
+            "O dashboard NAO tera dados novos ate a proxima execucao normalizar."
+        )
+        if _run_id:
+            _msg_coleta_vazia += (
+                f"\nRun: {os.environ.get('GITHUB_SERVER_URL','')}/"
+                f"{os.environ.get('GITHUB_REPOSITORY','')}/actions/runs/{_run_id}"
+            )
+        _safe("alerta_coleta_vazia", _enviar_whatsapp, _msg_coleta_vazia)
         return
 
     comentarios_por_post = coletar_comentarios(posts)
