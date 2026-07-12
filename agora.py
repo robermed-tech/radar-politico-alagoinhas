@@ -534,12 +534,16 @@ def _enviar_whatsapp(mensagem: str, tentativas: int = 2) -> bool:
 
 
 def verificar_creditos_apify():
-    """Verifica uso de créditos Apify e dispara alerta WhatsApp se > 80% consumido."""
+    """Verifica uso de créditos Apify e dispara alerta WhatsApp se > 80% consumido.
+    Usa /users/me/limits — /users/me não retorna mais 'monthlyUsage' (a API da
+    Apify mudou; o campo vem sempre ausente, e o .get(...,{}) mascarava isso
+    caindo silenciosamente em $0,00/0% em toda execução, sem nunca dar erro).
+    Descoberto comparando com o valor real do console da Apify (11/07/26)."""
     if not APIFY_TOKEN:
         return
     try:
         r = requests.get(
-            f"{APIFY_BASE}/users/me",
+            f"{APIFY_BASE}/users/me/limits",
             params={"token": APIFY_TOKEN},
             timeout=10,
         )
@@ -547,9 +551,8 @@ def verificar_creditos_apify():
             log(f"  Apify credits: HTTP {r.status_code} — ignorando")
             return
         data = r.json().get("data", {})
-        uso = data.get("monthlyUsage", {}).get("totalUsd", 0) or 0
-        teto = (data.get("plan", {}).get("maxMonthlyUsageUsd") or
-                data.get("plan", {}).get("monthlyUsageCycleCap") or 0)
+        uso = data.get("current", {}).get("monthlyUsageUsd", 0) or 0
+        teto = data.get("limits", {}).get("maxMonthlyUsageUsd", 0) or 0
         if not teto:
             log(f"  Apify credits: uso ${uso:.2f} (teto não identificado no plano)")
             return

@@ -38,7 +38,12 @@ def main() -> int:
         return 0
 
     try:
-        r = requests.get(f"{APIFY_BASE}/users/me", params={"token": APIFY_TOKEN}, timeout=10)
+        # /users/me nao retorna mais 'monthlyUsage' (API mudou) — o campo
+        # sempre vem ausente e um .get(...,{}) mascarava isso caindo
+        # silenciosamente em $0,00/0%, sem erro nenhum. /users/me/limits
+        # e o endpoint correto pro uso atual (confirmado contra o console
+        # real da Apify em 11/07/26).
+        r = requests.get(f"{APIFY_BASE}/users/me/limits", params={"token": APIFY_TOKEN}, timeout=10)
     except Exception as e:
         print(f"Erro ao consultar Apify: {e}")
         return 0
@@ -48,9 +53,8 @@ def main() -> int:
         return 0
 
     data = r.json().get("data", {})
-    uso = data.get("monthlyUsage", {}).get("totalUsd", 0) or 0
-    teto = (data.get("plan", {}).get("maxMonthlyUsageUsd") or
-            data.get("plan", {}).get("monthlyUsageCycleCap") or 0)
+    uso = data.get("current", {}).get("monthlyUsageUsd", 0) or 0
+    teto = data.get("limits", {}).get("maxMonthlyUsageUsd", 0) or 0
 
     if not teto:
         print(f"Uso ${uso:.2f} (teto nao identificado no plano) — nao atualizando (sem teto nao da pra calcular %).")
