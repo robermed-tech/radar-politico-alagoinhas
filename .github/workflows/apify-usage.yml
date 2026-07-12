@@ -1,0 +1,31 @@
+name: Radar Politico — Uso de Creditos Apify
+
+# Mantem o widget "Creditos Apify" do Admin sempre atualizado, sem depender
+# do agora.py rodar por inteiro (3x/dia). So consulta o status da conta
+# (GET /users/me) — nao dispara nenhum actor, nao consome credito.
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # a cada 30 min
+  workflow_dispatch:
+
+jobs:
+  uso-apify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias minimas
+        run: pip install requests
+
+      - name: Checar uso de creditos Apify
+        env:
+          APIFY_API_TOKEN:      ${{ secrets.APIFY_API_TOKEN }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          RADAR_TENANT:         alagoinhas
+        run: python apify_usage_check.py
