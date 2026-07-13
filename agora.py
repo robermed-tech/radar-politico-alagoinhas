@@ -2145,8 +2145,8 @@ def gravar_daily_metrics(posts_analisados):
 # ==============================================================
 
 PROMPT_BRIEFING = """Voce e o estrategista-chefe de comunicacao politica do prefeito
-Gustavo Carmo (Alagoinhas/BA). Recebe o retrato digital do dia e produz um briefing
-ACIONAVEL para o gabinete. Seja concreto, direto e pratico — nada de generico.
+Gustavo Carmo (Alagoinhas/BA). Recebe o retrato digital do periodo (dia, semana ou
+mes) e produz um briefing ACIONAVEL para o gabinete. Seja concreto, direto e pratico — nada de generico.
 Responda APENAS com JSON valido, sem markdown.
 
 REGRA DE NUMEROS (CRITICA): o campo "diagnostico" NUNCA pode conter valores
@@ -2167,33 +2167,40 @@ _PADRAO_NUMERO_DIAGNOSTICO = re.compile(
     re.IGNORECASE,
 )
 
-def gerar_briefing_estrategico(posts_analisados):
-    """Gera o briefing diario com Claude e grava em ai_briefings."""
-    if not SUPABASE_URL or not SUPABASE_KEY or not posts_analisados:
-        if not posts_analisados:
-            return
-        log("  Briefing IA: Supabase nao configurado - pulando")
-        return
-    log("=== MODULO 7 - Assistente Estrategico (IA) ===")
+_ROTULO_PERIODO = {"dia": "DIA", "semana": "SEMANA", "mes": "MES"}
+_FRASE_PERIODO = {"dia": "no dia", "semana": "na semana", "mes": "no mes"}
 
-    iad = calc_iad(posts_analisados)
-    ica = calc_ica(posts_analisados)
-    risco, nivel = calc_risco(posts_analisados, iad, ica)
-    tot = len(posts_analisados) or 1
-    pos = sum(1 for p in posts_analisados if _sent(p) == "positivo")
-    neg = sum(1 for p in posts_analisados if _sent(p) == "negativo")
+def _gerar_briefing(posts, periodo, dia):
+    """Nucleo generico do briefing estrategico: monta o contexto, chama Claude
+    e grava em ai_briefings (tenant, dia, periodo). `posts` pode ser tanto os
+    posts deste run (periodo='dia') quanto o historico buscado no Supabase
+    pra semana/mes (buscar_posts_periodo) — mesma forma, mesmos campos."""
+    if not SUPABASE_URL or not SUPABASE_KEY or not posts:
+        if not posts:
+            return
+        log(f"  Briefing IA [{periodo}]: Supabase nao configurado - pulando")
+        return
+    log(f"=== MODULO 7 - Assistente Estrategico (IA) [{periodo}] ===")
+
+    iad = calc_iad(posts)
+    ica = calc_ica(posts)
+    risco, nivel = calc_risco(posts, iad, ica)
+    tot = len(posts) or 1
+    pos = sum(1 for p in posts if _sent(p) == "positivo")
+    neg = sum(1 for p in posts if _sent(p) == "negativo")
 
     temas, queixas, elogios = {}, {}, {}
-    for p in posts_analisados:
+    for p in posts:
         if p.get("tema"): temas[p["tema"]] = temas.get(p["tema"], 0) + 1
         if p.get("queixa_dominante"): queixas[p["queixa_dominante"]] = queixas.get(p["queixa_dominante"], 0) + 1
         if p.get("elogio_dominante"): elogios[p["elogio_dominante"]] = elogios.get(p["elogio_dominante"], 0) + 1
     top_temas   = sorted(temas.items(),   key=lambda x: -x[1])[:5]
     top_queixas = sorted(queixas.items(), key=lambda x: -x[1])[:5]
     top_elogios = sorted(elogios.items(), key=lambda x: -x[1])[:3]
-    top_posts   = sorted(posts_analisados, key=lambda p: int(p.get("score_risco", 0) or 0), reverse=True)[:5]
+    top_posts   = sorted(posts, key=lambda p: int(p.get("score_risco", 0) or 0), reverse=True)[:5]
 
-    ctx  = f"INDICES DO DIA:\n"
+    rotulo = _ROTULO_PERIODO.get(periodo, "DIA")
+    ctx  = f"INDICES DO {rotulo}:\n"
     ctx += f"  Aprovacao Digital (IAD): {iad:.0f}/100\n"
     ctx += f"  Confianca da Amostra (ICA): {ica:.0f}/100\n"
     ctx += f"  Risco Politico: {risco:.0f}/100 (nivel: {nivel})\n"
@@ -2209,14 +2216,14 @@ def gerar_briefing_estrategico(posts_analisados):
         if p.get("comentarios_destaque"):
             ctx += f"     comentario: \"{p.get('comentarios_destaque','')[:160]}\"\n"
 
-    prompt = ctx + """
+    prompt = ctx + f"""
 Retorne APENAS este JSON:
-{
-  "diagnostico": "<2-3 frases QUALITATIVAS: como esta a imagem hoje e por que. PROIBIDO citar numeros (IAD, risco, %, contagens) — descreva tudo em palavras. Ex: 'A imagem esta em risco baixo, mas com saldo negativo relevante: a maioria dos comentarios do dia critica o Sao Joao — banda atrasada, contrato sob suspeita e infraestrutura precaria. Um perfil fiscal critico ja anunciou cobertura adversaria continua.'>",
-  "oportunidades": [{"titulo":"...","acao":"...","impacto":"alto|medio|baixo","esforco":"alto|medio|baixo"}],
-  "alertas": [{"nivel":"baixo|moderado|alto|critico","tema":"...","janela":"imediato|24h|esta semana"}],
-  "recomendacoes_comunicacao": [{"canal":"...","mensagem":"...","tom":"...","timing":"..."}]
-}
+{{
+  "diagnostico": "<2-3 frases QUALITATIVAS: como esta a imagem {_FRASE_PERIODO.get(periodo, 'no dia')} e por que. PROIBIDO citar numeros (IAD, risco, %, contagens) — descreva tudo em palavras. Ex: 'A imagem esta em risco baixo, mas com saldo negativo relevante: a maioria dos comentarios do periodo critica o Sao Joao — banda atrasada, contrato sob suspeita e infraestrutura precaria. Um perfil fiscal critico ja anunciou cobertura adversaria continua.'>",
+  "oportunidades": [{{"titulo":"...","acao":"...","impacto":"alto|medio|baixo","esforco":"alto|medio|baixo"}}],
+  "alertas": [{{"nivel":"baixo|moderado|alto|critico","tema":"...","janela":"imediato|24h|esta semana"}}],
+  "recomendacoes_comunicacao": [{{"canal":"...","mensagem":"...","tom":"...","timing":"..."}}]
+}}
 Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
 
     try:
@@ -2234,7 +2241,7 @@ Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
                 txt = txt[4:]
         data = json.loads(txt.strip())
     except Exception as e:
-        log(f"  Briefing IA: erro {e}")
+        log(f"  Briefing IA [{periodo}]: erro {e}")
         return
 
     # Salvaguarda: o diagnostico deve ser qualitativo. Se a IA cravou um numero-metrica
@@ -2242,12 +2249,11 @@ Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
     # mutilar a frase; o sinal serve para revisar/reforcar o prompt.
     _leak = _PADRAO_NUMERO_DIAGNOSTICO.search(data.get("diagnostico", "") or "")
     if _leak:
-        log(f"  ⚠ Briefing: diagnostico contem numero cravado ('{_leak.group(0).strip()}') "
+        log(f"  ⚠ Briefing [{periodo}]: diagnostico contem numero cravado ('{_leak.group(0).strip()}') "
             f"— deveria ser qualitativo. Texto mantido; revisar PROMPT_BRIEFING.")
 
-    hoje = datetime.now().strftime("%Y-%m-%d")
     row = [{
-        "tenant": TENANT, "dia": hoje,
+        "tenant": TENANT, "dia": dia, "periodo": periodo,
         "nivel_crise": nivel, "risco": round(risco, 1),
         "diagnostico": data.get("diagnostico", ""),
         "oportunidades": data.get("oportunidades", []),
@@ -2255,9 +2261,58 @@ Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
         "recomendacoes": data.get("recomendacoes_comunicacao", data.get("recomendacoes", [])),
         "gerado_em": datetime.now().isoformat(),
     }]
-    n = _supabase_upsert("ai_briefings", row, "tenant,dia")
-    log(f"  Briefing IA gravado: {n} (nivel {nivel}, {len(data.get('recomendacoes_comunicacao', []))} recomendacoes)")
+    n = _supabase_upsert("ai_briefings", row, "tenant,dia,periodo")
+    log(f"  Briefing IA [{periodo}] gravado: {n} (nivel {nivel}, {len(data.get('recomendacoes_comunicacao', []))} recomendacoes)")
     return {"nivel": nivel, "risco": round(risco, 1), "iad": round(iad, 1), "ica": round(ica, 1), **data}
+
+
+def gerar_briefing_estrategico(posts_analisados):
+    """Gera o briefing diario com Claude e grava em ai_briefings (periodo='dia')."""
+    hoje = datetime.now().strftime("%Y-%m-%d")
+    return _gerar_briefing(posts_analisados, "dia", hoje)
+
+
+def buscar_posts_periodo(dias):
+    """Busca o historico real de posts do tenant nos ultimos `dias`, direto do
+    Supabase — usado pro briefing semanal/mensal (janela de verdade, nao so os
+    posts coletados neste run). `data_post` e TEXT em formato "dd/mm/yyyy"
+    (nao um DATE de verdade), entao filtrar/ordenar isso no PostgREST
+    compararia strings (errado — "01/12" viria antes de "25/01" mesmo sendo
+    depois). Por isso busca sem filtro de data e filtra aqui via _dia_iso,
+    que ja sabe parsear esse formato."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return []
+    campos = ("tema,score_risco,sentimento_post,comentarios_destaque,"
+              "queixa_dominante,elogio_dominante,autor,categoria,"
+              "comentarios_total,comentarios_pct_pos,comentarios_pct_neg,"
+              "data_post,risco_crise")
+    posts = _supabase_get("posts", f"tenant=eq.{TENANT}&select={campos}&limit=5000") or []
+    cutoff = datetime.now() - timedelta(days=dias)
+
+    def _dentro_da_janela(p):
+        d = _dia_iso(p.get("data_post", ""))
+        if not d:
+            return False
+        try:
+            return datetime.strptime(d, "%Y-%m-%d") >= cutoff
+        except ValueError:
+            return False
+
+    return [p for p in posts if _dentro_da_janela(p)]
+
+
+def gerar_briefings_periodo():
+    """Gera o diagnostico + alertas de semana e mes a partir do historico real
+    (nao so os posts deste run). Chamado 1x/dia (guard de horario no main),
+    pra nao duplicar custo de IA a toa — semana/mes mudam pouco de manha pra
+    tarde no mesmo dia."""
+    hoje = datetime.now().strftime("%Y-%m-%d")
+    for periodo, dias in (("semana", 7), ("mes", 30)):
+        posts = buscar_posts_periodo(dias)
+        if not posts:
+            log(f"  Briefing IA [{periodo}]: sem historico suficiente ({dias}d) — pulando")
+            continue
+        _gerar_briefing(posts, periodo, hoje)
 
 
 # ==============================================================
@@ -3611,7 +3666,9 @@ def _origem_dominante(posts_analisados):
     return cat, round(n / total * 100)
 
 def gravar_boletim_climatico(posts_analisados):
-    """Monta o boletim do dia e grava na tabela boletins (tenant, dia)."""
+    """Monta o boletim em 3 janelas (dia/semana/mes) e grava em boletins
+    (tenant, dia, periodo). 100% determinístico (gerar_boletim), zero custo
+    de IA — só médias sobre o historico que ja buscamos em daily_metrics."""
     if not SUPABASE_URL or not SUPABASE_KEY:
         return
     log("=== MODULO BOLETIM - Boletim Climatico ===")
@@ -3628,8 +3685,15 @@ def gravar_boletim_climatico(posts_analisados):
 
     serie_7d = [float(r.get("risco", 0) or 0) for r in hist_asc[-7:]]
     risco_hoje = serie_7d[-1]
+    # Semana/mes usam a media do risco da janela (o "dia" continua sendo o
+    # risco pontual de hoje) -- serie_7d (contexto de tendencia) e as mesmas
+    # nas 3 variantes, pois representam a trajetoria recente, nao o alvo.
+    risco_semana = sum(serie_7d) / len(serie_7d)
+    riscos_mes = [float(r.get("risco", 0) or 0) for r in hist_asc]
+    risco_mes = sum(riscos_mes) / len(riscos_mes)
 
-    # Termometro: pct_neg hoje vs ontem + media 30d
+    # Termometro: pct_neg hoje vs ontem + media 30d (igual nas 3 variantes --
+    # e o retrato de "agora" que contextualiza qualquer janela)
     neg_hoje  = int(hist_asc[-1].get("pct_neg", 0) or 0)
     neg_ontem = int(hist_asc[-2].get("pct_neg", 0) or 0) if len(hist_asc) >= 2 else neg_hoje
     media_30d = round(sum(int(r.get("pct_neg", 0) or 0) for r in hist_asc) / len(hist_asc))
@@ -3653,27 +3717,33 @@ def gravar_boletim_climatico(posts_analisados):
         alerta_post["motivo_alerta"] = motivo_do_alerta(
             int(alerta_post.get("score_risco", 0) or 0), alerta_post)
 
-    boletim = gerar_boletim(
-        risco=risco_hoje,
-        serie_7d=serie_7d,
-        termometro=termometro,
-        rajadas=rajadas,
-        frentes=_frentes_por_tema(posts_analisados),
-        alerta_post=alerta_post,
-        override_resp_min=OVERRIDE_RESPONSABILIDADE_MIN,
-        limiar_previsao=_LIMIAR_PREVISAO,
-        limiar_tempestade_com_alerta=_LIMIAR_TEMPESTADE_COM_ALERTA,
-        faixas=_ct.get("faixas"),
-    )
-
+    # Frentes/alerta_ativo representam "o que esta acontecendo agora" -- nao
+    # fazem sentido diluidos por janela, entao sao os mesmos nas 3 variantes.
+    frentes = _frentes_por_tema(posts_analisados)
     dia = hist_asc[-1].get("dia") or datetime.now().strftime("%Y-%m-%d")
-    n = _supabase_upsert("boletins", [{
-        "tenant": TENANT,
-        "dia": dia,
-        "gerado_em": datetime.now().isoformat(),
-        "boletim": boletim,
-    }], "tenant,dia")
-    log(f"  Boletim gravado ({boletim['condicao']}, nivel={boletim['nivel_cor']}): {n} registro")
+    gerado_em = datetime.now().isoformat()
+
+    for periodo, risco in (("dia", risco_hoje), ("semana", risco_semana), ("mes", risco_mes)):
+        boletim = gerar_boletim(
+            risco=risco,
+            serie_7d=serie_7d,
+            termometro=termometro,
+            rajadas=rajadas,
+            frentes=frentes,
+            alerta_post=alerta_post,
+            override_resp_min=OVERRIDE_RESPONSABILIDADE_MIN,
+            limiar_previsao=_LIMIAR_PREVISAO,
+            limiar_tempestade_com_alerta=_LIMIAR_TEMPESTADE_COM_ALERTA,
+            faixas=_ct.get("faixas"),
+        )
+        n = _supabase_upsert("boletins", [{
+            "tenant": TENANT,
+            "dia": dia,
+            "periodo": periodo,
+            "gerado_em": gerado_em,
+            "boletim": boletim,
+        }], "tenant,dia,periodo")
+        log(f"  Boletim [{periodo}] gravado ({boletim['condicao']}, nivel={boletim['nivel_cor']}): {n} registro")
 
 
 
@@ -3793,6 +3863,11 @@ def main():
     hora_utc = datetime.utcnow().hour
     if briefing_ia and (hora_utc in (11, 12) or os.environ.get("BRIEFING_MATINAL", "").lower() == "true"):
         _safe("briefing_matinal", enviar_briefing_matinal, posts_analisados, briefing_ia)
+    # Briefings de semana/mes: so 1x/dia (mesmo guard do briefing matinal) —
+    # a janela muda pouco de manha pra tarde, gerar nos 2 runs so duplicaria
+    # custo de IA a toa.
+    if hora_utc in (11, 12) or os.environ.get("BRIEFING_MATINAL", "").lower() == "true":
+        _safe("briefings_periodo", gerar_briefings_periodo)
     _safe("cacador_crises", rodar_cacador_crises, posts_analisados, comentarios_por_post)  # agente caçador de crises (Fase B)
     _safe("influencers", gravar_influencers, posts_analisados, comentarios_por_post)       # ranking de influenciadores
     _safe("narratives", gravar_narratives, posts_analisados, comentarios_por_post)         # narrativas (tema + sentimento)
@@ -4328,6 +4403,11 @@ if __name__ == "__main__":
         # Dry-run: mostra o que o alerta de subtema dispararia (24h reais do
         # Supabase), sem enviar WhatsApp nem gravar historico.
         verificar_alerta_subtema(dry_run=True)
+    elif "--testar-briefings-periodo" in sys.argv:
+        # Gera so os briefings de semana/mes a partir do historico ja no
+        # Supabase — zero coleta, zero credito Apify. Usa o mesmo caminho do
+        # run normal (gerar_briefings_periodo), so sem o guard de horario.
+        gerar_briefings_periodo()
     elif "--backfill-comentarios" in sys.argv:
         # --backfill-comentarios [N]  → N opcional limita quantos comentarios (teste)
         _lim = None
