@@ -5,9 +5,11 @@ import {
   fetchDailyThemes,
   fetchTemasMonitorados,
   fetchSubtemas,
+  fetchComentariosPorTema,
   type DailyTheme,
   type TemaMonitorado,
   type SubtemaStat,
+  type ComentarioTema,
 } from "@/lib/data";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
@@ -125,6 +127,81 @@ function labelSub(s: string): string {
   return s.replace(/_/g, " ");
 }
 
+function normStr(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
+
+const SENT_COR: Record<string, string> = {
+  negativo: "#EF4444",
+  positivo: "#22C55E",
+  neutro: "#9FB0CC",
+};
+
+/** Lista os comentários crus (texto real) de um tema+subtema selecionado. */
+function ComentariosDrill({
+  sel,
+  comentarios,
+  onFechar,
+}: {
+  sel: { tema: string; subtema: string };
+  comentarios: ComentarioTema[];
+  onFechar: () => void;
+}) {
+  const lista = useMemo(() => {
+    const nt = normStr(sel.tema);
+    const ns = normStr(sel.subtema);
+    return comentarios
+      .filter((c) => normStr(c.tema) === nt && normStr(c.subtema) === ns && c.texto.length > 2)
+      .sort(
+        (a, b) =>
+          (a.sentimento === "negativo" ? 0 : 1) - (b.sentimento === "negativo" ? 0 : 1) ||
+          b.curtidas - a.curtidas
+      )
+      .slice(0, 15);
+  }, [sel, comentarios]);
+
+  return (
+    <div className="mt-3 rounded-lg border border-brand/40 bg-bg-2 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="text-sm font-bold text-txt-1">
+          {labelTemaSub(sel.tema)} · <span className="capitalize">{labelSub(sel.subtema)}</span>
+          <span className="ml-2 text-[11px] font-normal text-txt-3">
+            o que as pessoas realmente escreveram
+          </span>
+        </div>
+        <button
+          onClick={onFechar}
+          className="rounded px-2 py-0.5 text-[11px] text-txt-3 hover:text-txt-1"
+        >
+          ✕ fechar
+        </button>
+      </div>
+      {lista.length === 0 ? (
+        <p className="text-[12px] text-txt-3">
+          Nenhum comentário com texto classificado para este subtema ainda.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {lista.map((c, i) => (
+            <li key={i} className="rounded-md border border-line bg-bg-1 p-2.5">
+              <p className="text-[13px] leading-relaxed text-txt-1">{c.texto}</p>
+              <div className="mt-1 flex items-center gap-2 text-[11px] text-txt-3">
+                <span
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ background: SENT_COR[c.sentimento] ?? SENT_COR.neutro }}
+                />
+                <span className="capitalize">{c.sentimento}</span>
+                {c.autor && <span>· @{c.autor}</span>}
+                {c.curtidas > 0 && <span className="ml-auto tnum">♥ {c.curtidas}</span>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /** Detalha cada tema nos seus subtemas mais falados (a partir dos comentários). */
 function PainelSubtemas() {
   const { data = [] } = useQuery({
@@ -133,6 +210,14 @@ function PainelSubtemas() {
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+  const { data: comentarios = [] } = useQuery({
+    queryKey: ["comentarios-tema"],
+    queryFn: () => fetchComentariosPorTema(),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const [sel, setSel] = useState<{ tema: string; subtema: string } | null>(null);
+
   const porTema = useMemo(() => {
     const by: Record<string, SubtemaStat[]> = {};
     for (const s of data) (by[s.tema] ??= []).push(s);
@@ -152,7 +237,7 @@ function PainelSubtemas() {
     <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
       <div className="text-sm font-bold">Dentro de cada tema</div>
       <p className="mb-3 text-[10px] text-txt-3">
-        O que exatamente o cidadão fala — subtemas mais citados nos comentários
+        O que exatamente o cidadão fala — clique num subtema para ler os comentários
       </p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {porTema.map((t) => {
@@ -164,28 +249,43 @@ function PainelSubtemas() {
                 <span className="tnum text-[11px] text-txt-3">{t.total} menções</span>
               </div>
               <div className="space-y-1.5">
-                {t.subs.map((s) => (
-                  <div key={s.subtema}>
-                    <div className="flex items-center justify-between gap-2 text-[12px]">
-                      <span className="min-w-0 flex-1 truncate capitalize text-txt-2">{labelSub(s.subtema)}</span>
-                      <span className="tnum shrink-0 text-txt-3">{s.total}</span>
-                    </div>
-                    <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-bg-1">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${Math.round((s.total / max) * 100)}%`,
-                          background: s.pctNeg >= 50 ? "#EF4444" : s.pctNeg >= 30 ? "#F97316" : "#3B82F6",
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                {t.subs.map((s) => {
+                  const ativo = sel?.tema === t.tema && sel?.subtema === s.subtema;
+                  return (
+                    <button
+                      key={s.subtema}
+                      onClick={() =>
+                        setSel(ativo ? null : { tema: t.tema, subtema: s.subtema })
+                      }
+                      className={`w-full rounded px-1 py-0.5 text-left transition hover:bg-bg-1 ${
+                        ativo ? "bg-bg-1 ring-1 ring-brand/40" : ""
+                      }`}
+                      title="Ver comentários deste subtema"
+                    >
+                      <div className="flex items-center justify-between gap-2 text-[12px]">
+                        <span className="min-w-0 flex-1 truncate capitalize text-txt-2">{labelSub(s.subtema)}</span>
+                        <span className="tnum shrink-0 text-txt-3">{s.total}</span>
+                      </div>
+                      <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-bg-1">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.round((s.total / max) * 100)}%`,
+                            background: s.pctNeg >= 50 ? "#EF4444" : s.pctNeg >= 30 ? "#F97316" : "#3B82F6",
+                          }}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
         })}
       </div>
+      {sel && (
+        <ComentariosDrill sel={sel} comentarios={comentarios} onFechar={() => setSel(null)} />
+      )}
     </div>
   );
 }

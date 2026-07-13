@@ -1852,6 +1852,101 @@ def _supabase_delete(tabela, filtro):
         log(f"    Supabase DELETE {tabela}: erro {e}")
         return False
 
+
+def recalcular_sentimento_posts(dry_run=False):
+    """
+    Recalcula os agregados de sentimento POR POST (comentarios_pct_pos,
+    comentarios_pct_neg e sentimento_comentarios) a partir da tabela `comments`
+    — a fonte da verdade, classificada por comentario.
+
+    Corrige o dessync que zerava o "% criticaram" no dashboard: os posts ficaram
+    congelados (agregado no fallback 0/0/neutro) enquanto os comentarios seguem
+    sendo classificados. Aqui a gente reprojeta o agregado a partir dos
+    comentarios reais.
+
+    Custo ZERO de creditos: nao chama Apify nem Anthropic — so reagrega dados
+    que ja estao no Supabase. NAO toca em sentimento_post (classificacao
+    politica, com inversao para oposicao), so nos campos de comentario.
+
+    Percentuais sao sobre o TOTAL de comentarios do post (neutro entra na base,
+    como o resto do app assume: pos + neg + neutro = 100).
+    """
+    from urllib.parse import quote
+    from collections import defaultdict
+
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log("[recalc-sentimento] SUPABASE ausente — abortando.")
+        return
+
+    log(f"[recalc-sentimento] tenant={TENANT} dry_run={dry_run}")
+
+    # 1) Puxa todos os comentarios (paginando — PostgREST corta em 1000/req).
+    comments = []
+    page = 0
+    while True:
+        chunk = _supabase_get(
+            "comments",
+            f"tenant=eq.{TENANT}&select=url_post,sentimento&limit=1000&offset={page * 1000}",
+        )
+        if not chunk:
+            break
+        comments.extend(chunk)
+        if len(chunk) < 1000:
+            break
+        page += 1
+    log(f"[recalc-sentimento] {len(comments)} comentarios carregados")
+    if not comments:
+        log("[recalc-sentimento] nada a fazer.")
+        return
+
+    # 2) Agrega por url_post.
+    agg = defaultdict(lambda: {"pos": 0, "neg": 0, "neu": 0, "tot": 0})
+    for c in comments:
+        u = (c.get("url_post") or "").strip()
+        if not u:
+            continue
+        s = (c.get("sentimento") or "neutro").lower()
+        a = agg[u]
+        a["tot"] += 1
+        if s == "negativo":
+            a["neg"] += 1
+        elif s == "positivo":
+            a["pos"] += 1
+        else:
+            a["neu"] += 1
+
+    # 3) Para cada post, calcula pct + sentimento_comentarios e grava (PATCH).
+    n_atualizados = 0
+    for url, a in sorted(agg.items(), key=lambda kv: -kv[1]["tot"]):
+        tot = a["tot"] or 1
+        pct_pos = round(a["pos"] / tot * 100)
+        pct_neg = round(a["neg"] / tot * 100)
+        if a["neg"] == 0 and a["pos"] == 0:
+            sent = "neutro"
+        elif pct_neg >= pct_pos:
+            sent = "negativo" if pct_neg >= 50 else "misto"
+        else:
+            sent = "positivo" if pct_pos >= 60 else "misto"
+
+        payload = {
+            "comentarios_pct_pos": pct_pos,
+            "comentarios_pct_neg": pct_neg,
+            "sentimento_comentarios": sent,
+        }
+
+        if dry_run:
+            if pct_pos or pct_neg:
+                log(f"  …{url[-18:]}: {a['tot']:>3}c  +{pct_pos:>3}% / -{pct_neg:>3}%  [{sent}]")
+            continue
+
+        filtro = f"tenant=eq.{TENANT}&url=eq.{quote(url, safe='')}"
+        if _supabase_patch("posts", filtro, payload):
+            n_atualizados += 1
+
+    log(f"[recalc-sentimento] {'(dry-run) ' if dry_run else ''}"
+        f"posts com comentarios: {len(agg)}, atualizados: {n_atualizados}")
+
+
 def gravar_no_supabase(posts_analisados, comentarios_por_post):
     """Espelha os dados no Postgres do Supabase. Sheets continua como fonte da verdade."""
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -3689,6 +3784,7 @@ def main():
     # ALERTAS (saida mais critica, por ultimo) continuam.
     _safe("creditos_apify", verificar_creditos_apify)                               # alerta quando creditos > 80%
     _safe("supabase", gravar_no_supabase, posts_analisados, comentarios_por_post)  # dual-write -> dashboard
+    _safe("recalc_sentimento", recalcular_sentimento_posts)                        # reprojeta comments->posts p/ evitar o dessync do "0% criticas"
     _safe("daily_metrics", gravar_daily_metrics, posts_analisados)                 # historico de indices (Fase 3)
     _safe("boletim_climatico", gravar_boletim_climatico, posts_analisados)         # boletim climatico (Radar Comando)
     briefing_ia = _safe("briefing_estrategico", gerar_briefing_estrategico, posts_analisados)  # assistente IA (Fase 3d)
@@ -4239,6 +4335,11 @@ if __name__ == "__main__":
             if _a.isdigit():
                 _lim = int(_a)
         backfill_comentarios(limite=_lim)
+    elif "--recalcular-sentimento" in sys.argv:
+        # Reagrega comentarios_pct_pos/neg + sentimento_comentarios nos posts a
+        # partir da tabela `comments`. Custo zero de creditos. Use --dry-run
+        # para so imprimir o que mudaria, sem gravar.
+        recalcular_sentimento_posts(dry_run="--dry-run" in sys.argv)
     elif "--reprocessar" in sys.argv:
         reprocessar()
     elif "--retroanalise" in sys.argv:

@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { useQuery } from "@tanstack/react-query";
 import { findSecretario } from "@/config/secretarios";
 import { logMessageSend } from "@/lib/admin";
+import { fetchComentariosPorTema } from "@/lib/data";
 
 interface Props {
   tema: string;
@@ -10,14 +12,37 @@ interface Props {
   iad: number;
 }
 
+/** Resumo concreto do que os comentários dizem sobre o tema. */
+interface Evidencia {
+  total: number;
+  subtema: string;
+  citacao: string;
+}
+
+function norm(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
+
+function trunc(s: string, n: number): string {
+  const t = s.replace(/\s+/g, " ").trim();
+  return t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t;
+}
+
 function montarMensagem(
   tema: string,
   pNeg: number,
   posts: number,
   iad: number,
-  cargo: string
+  cargo: string,
+  ev: Evidencia | null
 ): string {
   const hoje = new Date().toLocaleDateString("pt-BR");
+  const bloco = ev
+    ? `🗣️ *O que a população está dizendo:*\n` +
+      (ev.subtema ? `As reclamações se concentram em *${ev.subtema.replace(/_/g, " ")}*. ` : "") +
+      `Há ${ev.total} comentário(s) negativo(s) sobre este tema. Exemplo real:\n` +
+      `"${ev.citacao}"\n\n`
+    : "";
   return (
     `🚨 ALERTA DE CRISE — Radar Político Alagoinhas\n\n` +
     `Prezado(a) ${cargo},\n\n` +
@@ -26,6 +51,7 @@ function montarMensagem(
     `📌 Posts analisados: ${posts}\n` +
     `📉 IAD (Aprovação Digital): ${iad}/100\n` +
     `📅 Data: ${hoje}\n\n` +
+    bloco +
     `A população está expressando insatisfação crescente nas redes sociais, o que pode escalar caso não haja resposta imediata.\n\n` +
     `⚡ *Ação urgente solicitada:* O setor deve avaliar a situação e comunicar medidas à população o quanto antes.\n\n` +
     `Enviado via Radar Político — Central de Inteligência Política de Alagoinhas/BA`
@@ -37,8 +63,45 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
   const sec = findSecretario(tema);
   const [canal, setCanal] = useState<"whatsapp" | "email">("whatsapp");
   const [contato, setContato] = useState(sec.whatsapp);
-  const [mensagem, setMensagem] = useState(() => montarMensagem(tema, pNeg, posts, iad, sec.cargo));
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  // Evidência concreta: os comentários negativos reais deste tema.
+  // Só busca quando o modal abre (não paga a query em cada card de alerta).
+  const { data: comentarios = [] } = useQuery({
+    queryKey: ["comentarios-tema"],
+    queryFn: () => fetchComentariosPorTema(),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+    enabled: aberto,
+  });
+
+  const evidencia = useMemo<Evidencia | null>(() => {
+    const alvo = norm(tema);
+    const negs = comentarios.filter(
+      (c) => norm(c.tema) === alvo && c.sentimento === "negativo" && c.texto.length > 4
+    );
+    if (negs.length === 0) return null;
+    const subCount: Record<string, number> = {};
+    for (const c of negs) {
+      if (c.subtema && c.subtema !== "outro") subCount[c.subtema] = (subCount[c.subtema] ?? 0) + 1;
+    }
+    const subtema = Object.entries(subCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+    // O comentário negativo mais curtido (comentarios já vem ordenado por curtidas).
+    return { total: negs.length, subtema, citacao: trunc(negs[0].texto, 180) };
+  }, [comentarios, tema]);
+
+  const baseMsg = useMemo(
+    () => montarMensagem(tema, pNeg, posts, iad, sec.cargo, evidencia),
+    [tema, pNeg, posts, iad, sec.cargo, evidencia]
+  );
+
+  const [mensagem, setMensagem] = useState(baseMsg);
+  const [editado, setEditado] = useState(false);
+  // Enquanto o usuário não editar à mão, a mensagem acompanha a evidência
+  // que chega da query (assíncrona) e as regenerações.
+  useEffect(() => {
+    if (!editado) setMensagem(baseMsg);
+  }, [baseMsg, editado]);
 
   function switchCanal(c: "whatsapp" | "email") {
     setCanal(c);
@@ -143,6 +206,26 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
               </div>
             </div>
 
+            {/* Evidência concreta — o que a população realmente diz sobre o tema */}
+            {evidencia && (
+              <div className="mt-3 rounded-xl border border-line bg-bg-2 p-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-txt-3">
+                  O que a população está dizendo
+                  {evidencia.subtema && (
+                    <span className="ml-1 normal-case text-txt-2">
+                      · foco em <b className="capitalize">{evidencia.subtema.replace(/_/g, " ")}</b>
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1.5 text-sm italic leading-relaxed text-txt-1">
+                  “{evidencia.citacao}”
+                </p>
+                <div className="mt-1 text-[11px] text-txt-3">
+                  {evidencia.total} comentário(s) negativo(s) sobre este tema
+                </div>
+              </div>
+            )}
+
             {/* Canal selector */}
             <div className="mt-4 flex gap-0.5 rounded-lg border border-line bg-bg-2 p-0.5 w-fit">
               {(["whatsapp", "email"] as const).map((c) => (
@@ -179,7 +262,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
                   Mensagem
                 </label>
                 <button
-                  onClick={() => setMensagem(montarMensagem(tema, pNeg, posts, iad, sec.cargo))}
+                  onClick={() => { setEditado(false); setMensagem(baseMsg); }}
                   className="text-[10px] font-semibold text-brand hover:underline"
                 >
                   ↺ Regenerar
@@ -187,7 +270,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
               </div>
               <textarea
                 value={mensagem}
-                onChange={(e) => setMensagem(e.target.value)}
+                onChange={(e) => { setEditado(true); setMensagem(e.target.value); }}
                 rows={6}
                 className="w-full resize-none rounded-lg border border-line bg-bg-2 px-3 py-2 text-xs leading-relaxed text-txt-1 outline-none transition focus:border-brand"
                 style={{ fontFamily: "JetBrains Mono, monospace" }}
