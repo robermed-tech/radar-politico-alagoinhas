@@ -1,12 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase, loadProfile, type Session, type Role, type Profile } from "@/lib/auth";
+import { detectAuthLanding, clearAuthLanding, ensureSessionFromEmailLink } from "@/lib/inviteFlow";
 
-// Capturado no carregamento do módulo — antes do supabase-js processar e
-// limpar o hash da URL (detectSessionInUrl). Convite (inviteUserByEmail)
-// redireciona com "type=invite" no hash; sem checar isso aqui, a janela de
-// oportunidade se perde e não dá mais pra saber que a sessão veio de um convite.
-const inviteLandingDetected =
-  typeof window !== "undefined" && /type=invite/.test(window.location.hash);
+// Detecta convite/recuperação em QUALQUER formato de link (hash implícito ou
+// query PKCE com token_hash), captado no carregamento do módulo — antes do
+// supabase-js limpar o hash. Ver lib/inviteFlow.ts.
+const inviteLandingDetected = detectAuthLanding() !== null;
 
 interface AuthState {
   session: Session | null;
@@ -45,7 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!cancelled) setLoading(false);
     }
 
-    supabase.auth.getSession().then(({ data }) => hydrate(data.session));
+    // Se o link veio no formato PKCE (token_hash na query), estabelece a sessão
+    // via verifyOtp ANTES de ler getSession — senão o novo usuário chega sem
+    // sessão e não consegue definir a senha. No-op no formato implícito.
+    ensureSessionFromEmailLink()
+      .then(() => supabase.auth.getSession())
+      .then(({ data }) => hydrate(data.session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
       // Não exibe spinner global nas trocas posteriores (ex.: refresh de token).
       hydrate(s);
@@ -65,7 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin: role === "admin",
     loading,
     isInviteLanding,
-    dismissInviteLanding: () => setIsInviteLanding(false),
+    dismissInviteLanding: () => {
+      clearAuthLanding();
+      setIsInviteLanding(false);
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

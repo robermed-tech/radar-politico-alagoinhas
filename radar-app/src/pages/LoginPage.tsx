@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { signInWithPassword } from "@/lib/auth";
+import { signInWithPassword, sendPasswordSetupEmail } from "@/lib/auth";
 
 const svgProps = {
   width: 22, height: 22, viewBox: "0 0 24 24", fill: "none",
@@ -40,17 +40,36 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [enviandoSenha, setEnviandoSenha] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim() || !password) return;
     setLoading(true);
     setError(null);
+    setAviso(null);
     const result = await signInWithPassword(email.trim(), password);
     setLoading(false);
     // Em caso de sucesso, o AuthProvider atualiza a sessão e a guarda
     // de rota troca para o dashboard automaticamente.
     if (result.error) setError(result.error);
+  }
+
+  // Primeiro acesso / senha esquecida: envia link para definir a senha.
+  async function handleDefinirSenha() {
+    setError(null);
+    setAviso(null);
+    if (!email.trim()) {
+      return setError("Digite seu e-mail acima para receber o link.");
+    }
+    setEnviandoSenha(true);
+    const { error } = await sendPasswordSetupEmail(email);
+    setEnviandoSenha(false);
+    if (error) return setError(error);
+    setAviso(
+      "Se este e-mail estiver cadastrado, enviamos um link para você definir a senha. Verifique sua caixa de entrada (e o spam)."
+    );
   }
 
   return (
@@ -169,6 +188,15 @@ export function LoginPage() {
                 </p>
               )}
 
+              {aviso && (
+                <p
+                  className="rounded-2xl px-4 py-2.5 text-xs text-risk-low"
+                  style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.3)" }}
+                >
+                  {aviso}
+                </p>
+              )}
+
               <button
                 type="submit"
                 disabled={loading || !email.trim() || !password}
@@ -180,7 +208,16 @@ export function LoginPage() {
               </button>
             </form>
 
-            <p className="mt-6 text-center text-xs text-txt-3">
+            <button
+              type="button"
+              onClick={handleDefinirSenha}
+              disabled={enviandoSenha}
+              className="mt-4 w-full text-center text-sm font-semibold text-brand transition hover:underline disabled:opacity-50"
+            >
+              {enviandoSenha ? "Enviando link…" : "Primeiro acesso ou esqueci a senha — definir senha"}
+            </button>
+
+            <p className="mt-4 text-center text-xs text-txt-3">
               Acesso restrito a usuários cadastrados pela prefeitura.
             </p>
           </div>
