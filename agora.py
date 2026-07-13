@@ -181,6 +181,11 @@ LIMIAR_TRIAGEM   = int(os.environ.get("LIMIAR_TRIAGEM", "45"))  # score_risco �
 CRISIS_MODEL     = os.environ.get("CRISIS_MODEL", MODELO_PROFUNDO)  # Caçador de Crises usa Sonnet por padrão
 MAX_CRISES_RUN   = 3   # teto de chamadas do Caçador por execução (controle de custo)
 
+# Vocabulario fixo de tema, usado em posts.tema/comments.tema e replicado no
+# tema_categoria dos alertas do briefing estrategico (ver _gerar_briefing).
+TEMAS_VALIDOS = {"saude", "educacao", "obras", "seguranca", "transporte",
+                 "emprego", "impostos", "saneamento", "cultura_eventos", "comunicacao"}
+
 APIFY_BASE = "https://api.apify.com/v2"
 
 # Actor IDs (nomes oficiais do Apify Store)
@@ -1530,9 +1535,7 @@ def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
         elif analise.get("sentimento_post") not in ("positivo", "negativo", "neutro"):
             analise["sentimento_post"] = "neutro"
         # Normaliza tema: valores fora do conjunto permitido → "comunicacao"
-        _tema_validos = {"saude", "educacao", "obras", "seguranca", "transporte",
-                         "emprego", "impostos", "saneamento", "cultura_eventos", "comunicacao"}
-        if (analise.get("tema") or "").lower().strip() not in _tema_validos:
+        if (analise.get("tema") or "").lower().strip() not in TEMAS_VALIDOS:
             analise["tema"] = "comunicacao"
 
         post_enriquecido = {**post, **analise}
@@ -2221,7 +2224,7 @@ Retorne APENAS este JSON:
 {{
   "diagnostico": "<2-3 frases QUALITATIVAS: como esta a imagem {_FRASE_PERIODO.get(periodo, 'no dia')} e por que. PROIBIDO citar numeros (IAD, risco, %, contagens) — descreva tudo em palavras. Ex: 'A imagem esta em risco baixo, mas com saldo negativo relevante: a maioria dos comentarios do periodo critica o Sao Joao — banda atrasada, contrato sob suspeita e infraestrutura precaria. Um perfil fiscal critico ja anunciou cobertura adversaria continua.'>",
   "oportunidades": [{{"titulo":"...","acao":"...","impacto":"alto|medio|baixo","esforco":"alto|medio|baixo"}}],
-  "alertas": [{{"nivel":"baixo|moderado|alto|critico","tema":"...","janela":"imediato|24h|esta semana"}}],
+  "alertas": [{{"nivel":"baixo|moderado|alto|critico","tema":"...","tema_categoria":"<saude|educacao|obras|seguranca|transporte|emprego|impostos|saneamento|cultura_eventos|comunicacao — a categoria fixa mais proxima do assunto do alerta, usada pra puxar os comentarios reais que embasam a conclusao>","janela":"imediato|24h|esta semana"}}],
   "recomendacoes_comunicacao": [{{"canal":"...","mensagem":"...","tom":"...","timing":"..."}}]
 }}
 Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
@@ -2251,6 +2254,15 @@ Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
     if _leak:
         log(f"  ⚠ Briefing [{periodo}]: diagnostico contem numero cravado ('{_leak.group(0).strip()}') "
             f"— deveria ser qualitativo. Texto mantido; revisar PROMPT_BRIEFING.")
+
+    # tema_categoria precisa bater com o vocabulario fixo de comments.tema —
+    # e o que o front usa pra buscar os comentarios que embasam o alerta
+    # ("Ver comentarios"). Fora do conjunto -> vazio (front so esconde o botao).
+    for a in data.get("alertas", []) or []:
+        if (a.get("tema_categoria") or "").lower().strip() not in TEMAS_VALIDOS:
+            a["tema_categoria"] = ""
+        else:
+            a["tema_categoria"] = a["tema_categoria"].lower().strip()
 
     row = [{
         "tenant": TENANT, "dia": dia, "periodo": periodo,
