@@ -4,6 +4,7 @@ import ReactECharts from "echarts-for-react";
 import { fetchInfluencers, type Influencer } from "@/lib/data";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
+import { fmtInt } from "@/lib/format";
 
 // Cores DEFINITIVAS por lado político (decisão de produto, não inferência):
 //   Oposição = VERMELHO · Aliado/Governo = VERDE · Imprensa = AMARELO
@@ -56,9 +57,22 @@ export function InfluencersPage() {
         backgroundColor: ink.tooltipBg,
         borderColor: ink.tooltipBorder,
         textStyle: { color: ink.tooltipText },
-        formatter: (params: { name: string; value: number }[]) => {
+        extraCssText: "max-width: 260px; white-space: normal; line-height: 1.5;",
+        formatter: (params: { dataIndex: number; value: number }[]) => {
           const p = params[0];
-          return `@${p.name}<br/><b>${p.value}</b> pts`;
+          const i = top10[p.dataIndex];
+          if (!i) return "";
+          return (
+            `<b>@${i.handle}</b> — <b>${p.value}</b> pts` +
+            `<div style="margin-top:4px; opacity:0.85;">` +
+            `Alcance: <b>${fmtInt(i.alcance)}</b> curtidas (peso 40%)<br/>` +
+            `Engajamento: <b>${i.engajamento.toFixed(1)}</b> coments/post (peso 40%)<br/>` +
+            `Frequência: <b>${i.frequencia}</b> posts (peso 20%)` +
+            `</div>` +
+            `<div style="margin-top:4px; font-size:10px; opacity:0.6;">` +
+            `Cada quesito é normalizado de 0–100 em relação ao perfil líder do período.` +
+            `</div>`
+          );
         },
       },
       xAxis: {
@@ -134,7 +148,7 @@ export function InfluencersPage() {
         </div>
         <p className="mb-2 text-[11px] text-txt-3">
           Apenas contas institucionais, imprensa e perfis políticos — cidadãos não são
-          rankeados nominalmente (LGPD).
+          rankeados nominalmente (LGPD). Passe o mouse numa barra para ver o que compõe o score.
         </p>
         <ReactECharts
           option={rankingOption}
