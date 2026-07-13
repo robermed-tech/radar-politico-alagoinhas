@@ -12,7 +12,7 @@ import {
   type ComentarioTema,
 } from "@/lib/data";
 import { useThemeStore } from "@/stores/theme";
-import { chartInk, glassBar } from "@/lib/chartTheme";
+import { chartInk, glassBar, glassArea } from "@/lib/chartTheme";
 import { AlertaCrise } from "@/components/AlertaCrise";
 import { AssuntosEmAlta } from "@/components/AssuntosEmAlta";
 import { IconTrendUp, IconTrendDown, IconCheckCircle, IconWarningTriangle } from "@/components/icons";
@@ -198,6 +198,126 @@ function ComentariosDrill({
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/**
+ * Linha do tempo do clima: % de críticas por dia, com pins anotando o TEMA que
+ * puxou cada virada da curva ("dia 28 caiu, 29 subiu — por causa de X"). O tema
+ * dominante do dia é o que mais pesa na negatividade (pct_neg × volume). Usa só
+ * daily_themes já carregado — sem query extra.
+ */
+function TimelineClima({ themes, janela }: { themes: DailyTheme[]; janela: number }) {
+  const ink = chartInk(useThemeStore((s) => s.theme));
+
+  const model = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - janela);
+    const cut = cutoff.toISOString().slice(0, 10);
+    const rows = themes.filter((r) => r.dia >= cut);
+    const dias = Array.from(new Set(rows.map((r) => r.dia))).sort();
+    if (dias.length < 2) return null;
+
+    const perDia = dias.map((dia) => {
+      const rs = rows.filter((r) => r.dia === dia);
+      let vol = 0, negW = 0, domTema = "", domScore = -1;
+      for (const r of rs) {
+        const v = r.volume_coments || r.volume_posts || 0;
+        vol += v;
+        negW += (r.pct_neg || 0) * v;
+        const score = ((r.pct_neg || 0) / 100) * v; // peso do tema na negatividade do dia
+        if (score > domScore && r.tema && r.tema.toLowerCase() !== "outros") {
+          domScore = score;
+          domTema = r.tema;
+        }
+      }
+      return { dia, pctNeg: vol ? Math.round(negW / vol) : 0, vol, domTema };
+    });
+
+    // Dias notáveis: maiores variações dia-a-dia + o pico global de críticas.
+    const deltas = perDia.map((d, i) => (i === 0 ? 0 : d.pctNeg - perDia[i - 1].pctNeg));
+    const topDelta = perDia
+      .map((_, i) => i)
+      .filter((i) => i > 0)
+      .sort((a, b) => Math.abs(deltas[b]) - Math.abs(deltas[a]))
+      .slice(0, 3);
+    const peak = perDia.reduce((mi, d, i, arr) => (d.pctNeg > arr[mi].pctNeg ? i : mi), 0);
+    // Piso de volume: não anota dias quase vazios (poucos comentários = ruído).
+    const marcados = Array.from(new Set([...topDelta, peak])).filter(
+      (i) => perDia[i].vol >= 10 && perDia[i].domTema && Math.abs(deltas[i]) >= 3
+    );
+    return { perDia, deltas, marcados };
+  }, [themes, janela]);
+
+  if (!model) return null;
+  const { perDia, deltas, marcados } = model;
+
+  const markData = marcados.map((i) => {
+    const d = perDia[i];
+    const subiu = deltas[i] >= 0;
+    return {
+      coord: [fmtDiaBR(d.dia), d.pctNeg],
+      value: labelTemaSub(d.domTema),
+      symbol: "pin",
+      symbolSize: 46,
+      itemStyle: { color: subiu ? "#EF4444" : "#22C55E" },
+      label: { show: true, formatter: "{c}", color: "#fff", fontSize: 9, fontWeight: 700 },
+    };
+  });
+
+  const option = {
+    grid: { left: 38, right: 16, top: 30, bottom: 34 },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: ink.tooltipBg,
+      borderColor: ink.tooltipBorder,
+      textStyle: { color: ink.tooltipText },
+      formatter: (ps: { dataIndex: number }[]) => {
+        const d = perDia[ps[0].dataIndex];
+        return (
+          `<b>${fmtDiaBR(d.dia)}</b><br/>${d.pctNeg}% críticas<br/>` +
+          (d.domTema ? `puxado por: <b>${labelTemaSub(d.domTema)}</b><br/>` : "") +
+          `${d.vol} comentários`
+        );
+      },
+    },
+    xAxis: {
+      type: "category",
+      data: perDia.map((d) => fmtDiaBR(d.dia)),
+      boundaryGap: false,
+      axisLine: { lineStyle: { color: ink.axisLine } },
+      axisLabel: { color: ink.axis, fontSize: 10 },
+    },
+    yAxis: {
+      type: "value",
+      min: 0,
+      max: 100,
+      splitLine: { lineStyle: { color: ink.grid } },
+      axisLabel: { color: ink.axis, fontSize: 10, formatter: (v: number) => `${v}%` },
+    },
+    series: [
+      {
+        type: "line",
+        smooth: true,
+        data: perDia.map((d) => d.pctNeg),
+        lineStyle: { color: "#EF4444", width: 2 },
+        itemStyle: { color: "#EF4444" },
+        areaStyle: glassArea("#EF4444"),
+        markPoint: { data: markData, silent: true },
+      },
+    ],
+  };
+
+  return (
+    <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
+      <div className="text-sm font-bold">Linha do tempo do clima</div>
+      <p className="mb-2 text-[10px] text-txt-3">
+        % de críticas por dia — os pins mostram o tema que puxou cada virada
+        (<span style={{ color: "#EF4444" }}>vermelho</span> = críticas subiram,{" "}
+        <span style={{ color: "#22C55E" }}>verde</span> = aliviaram)
+      </p>
+      <ReactECharts option={option} style={{ height: 240 }} notMerge lazyUpdate />
     </div>
   );
 }
@@ -500,6 +620,9 @@ export function TemasPage() {
           </div>
         </div>
       </div>
+
+      {/* Linha do tempo do clima — curva de críticas anotada com o tema que a moveu */}
+      <TimelineClima themes={themes} janela={janela} />
 
       {/* Assuntos que se repetem em 24h (gatilho por volume de subtema) */}
       <AssuntosEmAlta />
