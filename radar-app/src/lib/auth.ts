@@ -60,6 +60,23 @@ export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
 }
 
+/**
+ * Envia um link por e-mail para o usuário DEFINIR ou redefinir a senha.
+ * Serve de rede de segurança para o primeiro acesso: se o convite expirou ou
+ * o usuário não conseguiu concluir, ele pede o link aqui. O link (type=recovery)
+ * cai no mesmo fluxo de "definir senha" (ver lib/inviteFlow.ts).
+ */
+export async function sendPasswordSetupEmail(email: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo: window.location.origin,
+  });
+  if (!error) return { error: null };
+  if (/rate limit|too many/i.test(error.message)) {
+    return { error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
+  }
+  return { error: error.message };
+}
+
 /** Retorna o JWT da sessão ativa para uso em calls PostgREST autenticadas. */
 export async function getSessionToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();

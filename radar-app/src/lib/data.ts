@@ -117,6 +117,48 @@ const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY as string | undefined;
 const TENANT = (import.meta.env.VITE_TENANT as string | undefined) || "alagoinhas";
 
+/**
+ * Agregado de sentimento por post, derivado da tabela `comments` (a fonte da
+ * verdade, classificada por comentário). Espelha `agora.py
+ * --recalcular-sentimento`: percentuais sobre o total de comentários do post.
+ *
+ * Existe porque o agregado gravado em `posts.comentarios_pct_*` ficou congelado
+ * no fallback 0/0/neutro enquanto os comentários seguem sendo classificados —
+ * o que fazia o painel mostrar "0% críticas" com o banco cheio de comentários
+ * negativos. Enquanto o backend não reescreve `posts`, reprojetamos aqui.
+ */
+interface AggSent { pctPos: number; pctNeg: number; sent: string }
+async function fetchAgregadoComentarios(): Promise<Map<string, AggSent>> {
+  const { data, error } = await supabase
+    .from("comments")
+    .select("url_post,sentimento")
+    .eq("tenant", TENANT)
+    .limit(8000);
+  if (error || !data?.length) return new Map();
+  const agg: Record<string, { pos: number; neg: number; tot: number }> = {};
+  for (const r of data as { url_post: string; sentimento: string }[]) {
+    const u = (r.url_post || "").trim();
+    if (!u) continue;
+    const a = (agg[u] ??= { pos: 0, neg: 0, tot: 0 });
+    a.tot += 1;
+    const s = (r.sentimento || "neutro").toLowerCase();
+    if (s === "negativo") a.neg += 1;
+    else if (s === "positivo") a.pos += 1;
+  }
+  const map = new Map<string, AggSent>();
+  for (const [u, a] of Object.entries(agg)) {
+    const tot = a.tot || 1;
+    const pctPos = Math.round((a.pos / tot) * 100);
+    const pctNeg = Math.round((a.neg / tot) * 100);
+    let sent = "neutro";
+    if (a.neg === 0 && a.pos === 0) sent = "neutro";
+    else if (pctNeg >= pctPos) sent = pctNeg >= 50 ? "negativo" : "misto";
+    else sent = pctPos >= 60 ? "positivo" : "misto";
+    map.set(u, { pctPos, pctNeg, sent });
+  }
+  return map;
+}
+
 /** Lê do Postgres (Supabase) via PostgREST. Retorna [] se vazio/indisponível. */
 async function fetchFromSupabase(): Promise<Post[]> {
   const { data, error } = await supabase
@@ -126,7 +168,22 @@ async function fetchFromSupabase(): Promise<Post[]> {
     .order("data_post", { ascending: false })
     .limit(3000);
   if (error || !data?.length) return [];
-  return (data as Record<string, unknown>[]).map(normalizePost);
+  const posts = (data as Record<string, unknown>[]).map(normalizePost);
+
+  // Corrige o dessync post↔comentários: sobrescreve o agregado só quando há
+  // comentários classificados para o post; posts sem comentários ficam intactos.
+  const agg = await fetchAgregadoComentarios().catch(() => new Map<string, AggSent>());
+  if (agg.size) {
+    for (const p of posts) {
+      const a = agg.get((p.url || "").trim());
+      if (a) {
+        p.comentarios_pct_pos = a.pctPos;
+        p.comentarios_pct_neg = a.pctNeg;
+        p.sentimento_comentarios = a.sent;
+      }
+    }
+  }
+  return posts;
 }
 
 /** Lê do Apps Script (Sheets) — fonte original. */
@@ -641,6 +698,43 @@ export async function fetchSubtemas(): Promise<SubtemaStat[]> {
   return Object.values(by)
     .map((s) => ({ ...s, pctNeg: s.total ? Math.round((s.neg / s.total) * 100) : 0 }))
     .sort((a, b) => b.total - a.total);
+}
+
+// ── Comentários por tema (drill-down + evidência do alerta) ──────────────────
+export interface ComentarioTema {
+  texto: string;
+  autor: string;
+  curtidas: number;
+  sentimento: string;
+  tema: string;
+  subtema: string;
+}
+
+/**
+ * Comentários de cidadãos COM o texto real, para (a) o drill-down "o que
+ * exatamente as pessoas falam sobre X" e (b) a evidência concreta que vai
+ * dentro do alerta ao secretário. Ordenados por curtidas (os mais endossados
+ * primeiro). Uma única fonte alimenta os dois usos — cacheada pela query key.
+ */
+export async function fetchComentariosPorTema(limit = 4000): Promise<ComentarioTema[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
+    `&tipo=eq.cidadao&texto=not.is.null&tema=not.is.null&tema=neq.outro` +
+    `&select=texto,username,curtidas,sentimento,tema,subtema` +
+    `&order=curtidas.desc&limit=${limit}`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  return ((await res.json()) as Record<string, unknown>[]).map((r) => ({
+    texto: String(r.texto ?? "").trim(),
+    autor: String(r.username ?? "").trim(),
+    curtidas: Number(r.curtidas ?? 0),
+    sentimento: String(r.sentimento ?? "neutro").toLowerCase(),
+    tema: String(r.tema ?? "outro").trim(),
+    subtema: String(r.subtema ?? "").trim(),
+  }));
 }
 
 // ── Assuntos em alta (subtemas repetidos numa janela recente) ────────────────

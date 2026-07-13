@@ -15,6 +15,7 @@ const NarrativesPage = lazy(() => import("@/pages/NarrativesPage").then((m) => (
 const AlertasHistPage = lazy(() => import("@/pages/AlertasHistPage").then((m) => ({ default: m.AlertasHistPage })));
 const BairrosPage = lazy(() => import("@/pages/BairrosPage").then((m) => ({ default: m.BairrosPage })));
 const PedidosPage = lazy(() => import("@/pages/PedidosPage").then((m) => ({ default: m.PedidosPage })));
+const PerfilPage = lazy(() => import("@/pages/PerfilPage").then((m) => ({ default: m.PerfilPage })));
 import { fetchRadar, fetchPipelineHealth, filtrarPorPeriodo } from "@/lib/data";
 import { calcIAD } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
@@ -32,6 +33,7 @@ type Page =
   | "topics"
   | "bairros"
   | "pedidos"
+  | "perfil"
   | "admin"
   // avançado
   | "approval"
@@ -71,6 +73,9 @@ function NIcoMapPin() {
 function NIcoInbox() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>;
 }
+function NIcoUser() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+}
 function NIcoAlertHist() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="12" y1="2" x2="12" y2="4"/></svg>;
 }
@@ -81,6 +86,7 @@ const NAV_MAIN: NavItem[] = [
   { id: "feed",        label: "O que o povo diz",      icon: <NIcoMessage /> },
   { id: "pedidos",     label: "Pedidos do Povo",       icon: <NIcoInbox /> },
   { id: "bairros",     label: "Mapa da Cidade",        icon: <NIcoMapPin /> },
+  { id: "perfil",      label: "Análise por Perfil",    icon: <NIcoUser /> },
   { id: "topics",      label: "Previsões",             icon: <NIcoTrending /> },
   { id: "actions",     label: "Alertas & Ações",       icon: <NIcoBell /> },
   { id: "influencers", label: "Influenciadores",       icon: <NIcoNetwork /> },
@@ -305,6 +311,7 @@ export default function App() {
             {page === "feed"     && <FeedPage />}
             {page === "pedidos"  && <PedidosPage />}
             {page === "bairros"  && <BairrosPage />}
+            {page === "perfil"   && <PerfilPage />}
             {page === "topics"   && <TemasPage />}
             {page === "admin"    && <RequireAdmin><AdminPage /></RequireAdmin>}
             {/* Avançado */}
