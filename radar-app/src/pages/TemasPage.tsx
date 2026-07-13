@@ -12,6 +12,7 @@ import {
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
 import { AlertaCrise } from "@/components/AlertaCrise";
+import { AssuntosEmAlta } from "@/components/AssuntosEmAlta";
 import { IconTrendUp, IconTrendDown, IconCheckCircle, IconWarningTriangle } from "@/components/icons";
 import { fmtDiaBR } from "@/lib/format";
 
@@ -399,6 +400,9 @@ export function TemasPage() {
           </div>
         </div>
       </div>
+
+      {/* Assuntos que se repetem em 24h (gatilho por volume de subtema) */}
+      <AssuntosEmAlta />
 
       {/* Laço IRT: recuperação de imagem pós-alerta (só aparece quando há tema monitorado) */}
       <PainelRecuperacaoIRT />

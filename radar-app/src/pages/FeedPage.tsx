@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchRadar, parseData, filtrarPorPeriodo, sentimentoReacao, type Post } from "@/lib/data";
+import { resumoProsaPost } from "@/lib/resumo";
 import { PostChips } from "@/components/PostChips";
 import { IconNewspaper, IconSwords, IconBuilding, IconPerson, IconDocument } from "@/components/icons";
 
@@ -55,7 +56,7 @@ function tempoRelativo(dataStr: string): string {
 }
 
 function PostCard({ p }: { p: Post }) {
-  const resumo = p.resumo || p.queixa_dominante || p.elogio_dominante || "";
+  const resumo = resumoProsaPost(p) || p.queixa_dominante || p.elogio_dominante || "";
   const reacao = sentimentoReacao(p);
   const borderColor = SENT_BORDER[reacao] ?? "#64748B";
   return (

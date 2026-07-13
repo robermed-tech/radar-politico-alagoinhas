@@ -643,6 +643,62 @@ export async function fetchSubtemas(): Promise<SubtemaStat[]> {
     .sort((a, b) => b.total - a.total);
 }
 
+// ── Assuntos em alta (subtemas repetidos numa janela recente) ────────────────
+export interface SubtemaEmAlta {
+  tema: string;
+  subtema: string;
+  total: number;     // comentários de cidadãos no período
+  autores: number;   // contas distintas (mede espontaneidade vs. 1 pessoa insistindo)
+  neg: number;       // quantos negativos
+  pctNeg: number;
+  exemplo: string;   // comentário mais curtido do grupo
+}
+
+/**
+ * Conta comentários de cidadãos por subtema numa janela recente (default 24h).
+ * É o "3+ pessoas falaram de buraco" do áudio: mede quando uma mesma ideia se
+ * repete — sinal de sensação popular, não de comentário isolado. Filtra por
+ * `data_comentario_ts` no servidor; linhas sem timestamp ficam de fora (só
+ * comentários datados entram na janela).
+ */
+export async function fetchSubtemasRecentes(horas = 24): Promise<SubtemaEmAlta[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const desde = new Date(Date.now() - horas * 36e5).toISOString();
+  const q =
+    `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
+    `&tipo=eq.cidadao&subtema=neq.outro&subtema=not.is.null` +
+    `&data_comentario_ts=gte.${desde}` +
+    `&select=tema,subtema,sentimento,texto,username,curtidas&order=curtidas.desc&limit=8000`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  const rows = (await res.json()) as Comment[];
+
+  const by: Record<string, SubtemaEmAlta & { autoresSet: Set<string> }> = {};
+  for (const c of rows) {
+    const tema = (c.tema || "outro").trim();
+    const subtema = (c.subtema || "").trim();
+    if (!subtema || subtema === "outro") continue;
+    const k = `${tema}|${subtema}`;
+    const s = (by[k] ??= {
+      tema, subtema, total: 0, autores: 0, neg: 0, pctNeg: 0, exemplo: "",
+      autoresSet: new Set<string>(),
+    });
+    s.total += 1;
+    if (c.username) s.autoresSet.add(c.username.toLowerCase());
+    if ((c.sentimento || "").toLowerCase() === "negativo") s.neg += 1;
+    if (!s.exemplo && c.texto) s.exemplo = c.texto.trim(); // rows vêm por curtidas desc
+  }
+  return Object.values(by)
+    .map(({ autoresSet, ...s }) => ({
+      ...s,
+      autores: autoresSet.size,
+      pctNeg: s.total ? Math.round((s.neg / s.total) * 100) : 0,
+    }))
+    .sort((a, b) => b.total - a.total || b.pctNeg - a.pctNeg);
+}
+
 export interface PipelineHealth {
   tenant: string;
   executado_em: string;
