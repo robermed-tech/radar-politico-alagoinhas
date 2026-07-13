@@ -6,6 +6,9 @@ const AlertasAcoesPage = lazy(() => import("@/pages/AlertasAcoesPage").then((m) 
 const TemasPage = lazy(() => import("@/pages/TemasPage").then((m) => ({ default: m.TemasPage })));
 const FeedPage = lazy(() => import("@/pages/FeedPage").then((m) => ({ default: m.FeedPage })));
 const AdminPage = lazy(() => import("@/pages/AdminPage").then((m) => ({ default: m.AdminPage })));
+const AceitarConvitePage = lazy(() =>
+  import("@/pages/AceitarConvitePage").then((m) => ({ default: m.AceitarConvitePage }))
+);
 const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
 const InfluencersPage = lazy(() => import("@/pages/InfluencersPage").then((m) => ({ default: m.InfluencersPage })));
 const NarrativesPage = lazy(() => import("@/pages/NarrativesPage").then((m) => ({ default: m.NarrativesPage })));
@@ -123,7 +126,7 @@ function RefreshIcon({ spinning }: { spinning?: boolean }) {
 
 export default function App() {
   const [page, setPage] = useState<Page>("clima");
-  const { session, isAdmin } = useAuth();
+  const { session, isAdmin, isInviteLanding, dismissInviteLanding } = useAuth();
   const userEmail = session?.user?.email ?? null;
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
@@ -187,6 +190,16 @@ export default function App() {
       {!compact && <span>{fetching ? "Atualizando…" : "Atualizar dados"}</span>}
     </button>
   );
+
+  if (isInviteLanding) {
+    return (
+      <RequireAuth>
+        <Suspense fallback={<div className="p-8 text-txt-2">Carregando…</div>}>
+          <AceitarConvitePage onDone={dismissInviteLanding} />
+        </Suspense>
+      </RequireAuth>
+    );
+  }
 
   return (
     <RequireAuth>

@@ -5,7 +5,7 @@ import {
   fetchSettings, saveSettings,
   fetchKeywords, addKeyword, toggleKeyword, deleteKeyword,
   fetchSources, addSource, toggleSource, deleteSource,
-  fetchUsers, inviteUser, setUserRole,
+  fetchUsers, inviteUser, setUserRole, deleteUser,
   type ScoreWeights, type ClimateThresholds, type NotificationConfig,
 } from "@/lib/admin";
 import { fetchServiceStatus } from "@/lib/data";
@@ -410,27 +410,34 @@ function SourcesSection() {
 function UsersSection() {
   const qc = useQueryClient();
   const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: fetchUsers });
-  const [form, setForm] = useState({ email: "", full_name: "", password: "", role: "user" as Role });
+  const [form, setForm] = useState({ email: "", full_name: "", role: "user" as Role });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin-users"] });
 
   async function convidar() {
-    if (!form.email.trim() || form.password.length < 6) {
-      return setMsg({ ok: false, text: "E-mail e senha (mín. 6 caracteres) são obrigatórios." });
+    if (!form.email.trim()) {
+      return setMsg({ ok: false, text: "E-mail é obrigatório." });
     }
     setBusy(true);
     const err = await inviteUser(form);
     setBusy(false);
     if (err) return setMsg({ ok: false, text: err });
-    setMsg({ ok: true, text: "✔ Usuário convidado" });
-    setForm({ email: "", full_name: "", password: "", role: "user" });
+    setMsg({ ok: true, text: "✔ Convite enviado por e-mail" });
+    setForm({ email: "", full_name: "", role: "user" });
     refresh();
   }
 
   async function mudarPapel(id: string, role: Role) {
     const err = await setUserRole(id, role);
     setMsg(err ? { ok: false, text: err } : { ok: true, text: "✔ Papel atualizado" });
+    if (!err) refresh();
+  }
+
+  async function excluir(id: string, label: string) {
+    if (!window.confirm(`Excluir ${label}? Essa ação não pode ser desfeita.`)) return;
+    const err = await deleteUser(id);
+    setMsg(err ? { ok: false, text: err } : { ok: true, text: "✔ Usuário excluído" });
     if (!err) refresh();
   }
 
@@ -449,13 +456,6 @@ function UsersSection() {
             value={form.full_name}
             onChange={(e) => setForm({ ...form, full_name: e.target.value })}
             placeholder="Nome completo"
-            className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
-          />
-          <input
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            placeholder="Senha inicial (mín. 6)"
-            type="text"
             className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
           />
           <select
@@ -487,14 +487,22 @@ function UsersSection() {
                 <div className="truncate font-semibold text-txt-1">{u.full_name || u.email}</div>
                 <div className="truncate text-xs text-txt-3">{u.email}</div>
               </div>
-              <select
-                value={u.role}
-                onChange={(e) => mudarPapel(u.id, e.target.value as Role)}
-                className="rounded-lg border border-line bg-bg-1 px-2 py-1 text-xs font-semibold outline-none focus:border-brand"
-              >
-                <option value="user">Usuário</option>
-                <option value="admin">Admin</option>
-              </select>
+              <div className="flex shrink-0 items-center gap-3">
+                <select
+                  value={u.role}
+                  onChange={(e) => mudarPapel(u.id, e.target.value as Role)}
+                  className="rounded-lg border border-line bg-bg-1 px-2 py-1 text-xs font-semibold outline-none focus:border-brand"
+                >
+                  <option value="user">Usuário</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <button
+                  onClick={() => excluir(u.id, u.full_name || u.email || "")}
+                  className="text-xs font-semibold text-risk-crit hover:underline"
+                >
+                  Excluir
+                </button>
+              </div>
             </div>
           ))}
           {users?.length === 0 && <p className="text-sm text-txt-3">Nenhum usuário.</p>}

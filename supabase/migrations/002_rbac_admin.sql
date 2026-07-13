@@ -53,13 +53,17 @@ $$;
 
 -- Criação automática de profile ao registrar usuário no Auth.
 -- Lê role/tenant_id de user_metadata (preenchido pela Edge Function de convite).
+-- search_path de funções SECURITY DEFINER não herda o da sessão/role — sem
+-- qualificar o schema (ou fixar search_path), o INSERT falha com "relation
+-- profiles does not exist" mesmo a tabela existindo em public.
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO profiles (id, email, full_name, role, tenant_id)
+  INSERT INTO public.profiles (id, email, full_name, role, tenant_id)
   VALUES (
     NEW.id,
     NEW.email,
@@ -70,7 +74,7 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
 
   -- Mantém tenants_users em sincronia (compat com RLS do 001).
-  INSERT INTO tenants_users (user_id, tenant_id)
+  INSERT INTO public.tenants_users (user_id, tenant_id)
   VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data ->> 'tenant_id', 'alagoinhas'))
   ON CONFLICT (user_id, tenant_id) DO NOTHING;
 

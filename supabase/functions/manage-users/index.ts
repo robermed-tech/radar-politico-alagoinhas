@@ -1,12 +1,13 @@
 // Edge Function: manage-users
-// Convidar usuário (criar com senha) e alterar papel. Só admin pode chamar.
+// Convidar usuário (por e-mail), alterar papel e excluir. Só admin pode chamar.
 // Deploy: supabase functions deploy manage-users
 // Secrets necessários (já existem por padrão no projeto):
 //   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 //
 // Chamada (frontend usa supabase.functions.invoke('manage-users', { body })):
-//   { action: 'invite',   email, password, full_name?, role? }
+//   { action: 'invite',   email, full_name?, role?, redirectTo? }
 //   { action: 'set_role', user_id, role }
+//   { action: 'delete',   user_id }
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -63,18 +64,18 @@ Deno.serve(async (req) => {
 
   if (action === "invite") {
     const email = String(body.email ?? "").trim().toLowerCase();
-    const password = String(body.password ?? "");
     const full_name = String(body.full_name ?? "");
     const role = body.role === "admin" ? "admin" : "user";
-    if (!email || password.length < 6) {
-      return json({ error: "E-mail e senha (mín. 6 caracteres) são obrigatórios" }, 400);
+    const redirectTo = String(body.redirectTo ?? "") || undefined;
+    if (!email) {
+      return json({ error: "E-mail é obrigatório" }, 400);
     }
 
-    const { data, error } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { full_name, role, tenant_id: tenant },
+    // Envia e-mail de convite de verdade (link de ativação) em vez de criar
+    // a conta já com senha — o usuário define a própria senha ao aceitar.
+    const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+      data: { full_name, role, tenant_id: tenant },
+      redirectTo,
     });
     if (error) {
       const msg = /already.*registered|exists/i.test(error.message)
@@ -108,6 +109,28 @@ Deno.serve(async (req) => {
       .update({ role })
       .eq("id", user_id)
       .eq("tenant_id", tenant); // só mexe em usuários do próprio tenant
+    if (error) return json({ error: error.message }, 400);
+    return json({ ok: true });
+  }
+
+  if (action === "delete") {
+    const user_id = String(body.user_id ?? "");
+    if (!user_id) return json({ error: "user_id é obrigatório" }, 400);
+    if (user_id === caller.id) {
+      return json({ error: "Você não pode excluir a própria conta" }, 400);
+    }
+
+    // Confere que o alvo é do mesmo tenant antes de excluir.
+    const { data: target } = await admin
+      .from("profiles")
+      .select("tenant_id")
+      .eq("id", user_id)
+      .single();
+    if (!target || target.tenant_id !== tenant) {
+      return json({ error: "Usuário não encontrado" }, 404);
+    }
+
+    const { error } = await admin.auth.admin.deleteUser(user_id);
     if (error) return json({ error: error.message }, 400);
     return json({ ok: true });
   }

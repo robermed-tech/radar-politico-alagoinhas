@@ -4,7 +4,26 @@
  * aplica as regras: SELECT para o tenant, escrita só admin. Erros de RLS
  * voltam como mensagem "sem permissão".
  */
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase, type Role } from "@/lib/auth";
+
+/**
+ * supabase-js embrulha respostas não-2xx de Edge Functions num erro genérico
+ * ("Edge Function returned a non-2xx status code") — a mensagem real vem no
+ * corpo JSON da resposta, acessível só via error.context. Sem isso, o usuário
+ * nunca vê o motivo de fato (ex.: "e-mail já cadastrado", "sem permissão").
+ */
+async function extractFunctionError(error: unknown, fallback: string): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      if (body?.error) return body.error as string;
+    } catch {
+      // corpo não era JSON — cai no fallback abaixo
+    }
+  }
+  return (error as { message?: string })?.message ?? fallback;
+}
 
 const TENANT = (import.meta.env.VITE_TENANT as string | undefined) || "alagoinhas";
 
@@ -169,17 +188,16 @@ export async function fetchUsers(): Promise<UserRow[]> {
   return (data as UserRow[]) ?? [];
 }
 
-/** Convida um usuário via Edge Function (cria com senha + define papel). */
+/** Convida um usuário via Edge Function — envia e-mail de convite de verdade. */
 export async function inviteUser(input: {
   email: string;
-  password: string;
   full_name: string;
   role: Role;
 }): Promise<string | null> {
   const { data, error } = await supabase.functions.invoke("manage-users", {
-    body: { action: "invite", ...input },
+    body: { action: "invite", ...input, redirectTo: window.location.origin },
   });
-  if (error) return error.message ?? "Falha ao convidar usuário.";
+  if (error) return extractFunctionError(error, "Falha ao convidar usuário.");
   if (data?.error) return data.error as string;
   return null;
 }
@@ -189,7 +207,17 @@ export async function setUserRole(user_id: string, role: Role): Promise<string |
   const { data, error } = await supabase.functions.invoke("manage-users", {
     body: { action: "set_role", user_id, role },
   });
-  if (error) return error.message ?? "Falha ao alterar papel.";
+  if (error) return extractFunctionError(error, "Falha ao alterar papel.");
+  if (data?.error) return data.error as string;
+  return null;
+}
+
+/** Exclui definitivamente um usuário via Edge Function. */
+export async function deleteUser(user_id: string): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke("manage-users", {
+    body: { action: "delete", user_id },
+  });
+  if (error) return extractFunctionError(error, "Falha ao excluir usuário.");
   if (data?.error) return data.error as string;
   return null;
 }
