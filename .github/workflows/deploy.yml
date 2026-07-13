@@ -43,7 +43,7 @@ jobs:
         run: cp radar-app/dist/index.html radar-app/dist/200.html
 
       - name: Deploy para Surge.sh
-        run: npx surge --project radar-app/dist --domain radar-politico-alg.surge.sh
+        run: npx surge --project radar-app/dist --domain radar-comando.surge.sh
         env:
           SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
           SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
