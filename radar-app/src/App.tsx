@@ -20,6 +20,7 @@ import { RequireAuth, RequireAdmin } from "@/components/ProtectedRoute";
 import { useAuth } from "@/components/AuthProvider";
 import { signOut } from "@/lib/auth";
 import { PipelineHealthBanner } from "@/components/PipelineHealthBanner";
+import { useHydrateSettings } from "@/lib/settings";
 
 type Page =
   | "clima"
@@ -129,6 +130,11 @@ export default function App() {
   const qc = useQueryClient();
   const fetching = useIsFetching() > 0;
   const atualizar = () => qc.invalidateQueries();
+
+  // Hidrata os pesos do score (aba "Score" da Configuração) a partir de
+  // tenant_settings — sem isto os cálculos de IAD/Risco ignoram o que o admin
+  // salva no banco.
+  useHydrateSettings();
 
   // Itens de menu visíveis conforme o papel (Configuração só p/ admin).
   const navMain = NAV_MAIN.filter((n) => n.id !== "admin" || isAdmin);

@@ -3,8 +3,37 @@
  * IAD (Aprovação Digital), ICA (Confiança da Amostra), Risco Político.
  */
 import { type Post, parseData } from "./data";
+import type { ScoreWeights } from "./admin";
 
 export type NivelCrise = "baixo" | "moderado" | "alto" | "critico";
+
+/**
+ * Pesos do score composto. São a fonte da verdade dos cálculos exibidos no
+ * painel (IAD e Risco). Estes defaults espelham o seed de `tenant_settings`
+ * (migration 002) — se a leitura do Supabase falhar, o painel continua com os
+ * mesmos números de sempre. Quando o admin salva novos pesos na aba "Score",
+ * `setScoreWeights` reescreve este módulo e os cálculos passam a usá-los.
+ */
+export const DEFAULT_SCORE_WEIGHTS: ScoreWeights = {
+  risco_iad: 0.35,
+  risco_pct_alto: 0.25,
+  risco_velocidade: 0.2,
+  risco_amplificacao: 0.15,
+  risco_ica: 0.05,
+  iad_neutro: 0.5,
+};
+
+let activeWeights: ScoreWeights = { ...DEFAULT_SCORE_WEIGHTS };
+
+/** Aplica pesos vindos de `tenant_settings` (campos ausentes caem no default). */
+export function setScoreWeights(w: Partial<ScoreWeights> | null | undefined): void {
+  activeWeights = { ...DEFAULT_SCORE_WEIGHTS, ...(w ?? {}) };
+}
+
+/** Pesos em vigor — usado pela UI para exibir/depurar o que está ativo. */
+export function getScoreWeights(): ScoreWeights {
+  return activeWeights;
+}
 
 export interface Indices {
   iad: number; // 0-100 aprovação digital
@@ -43,7 +72,8 @@ export function calcIAD(posts: Post[]): number {
   }
   const tot = sPos + sNeg + sNeu;
   if (tot === 0) return 0;
-  return clamp(0, 100, (100 * (sPos + 0.5 * sNeu)) / tot);
+  // iad_neutro = quanto um comentário neutro vale na aprovação (default 0.5).
+  return clamp(0, 100, (100 * (sPos + activeWeights.iad_neutro * sNeu)) / tot);
 }
 
 /**
@@ -102,14 +132,15 @@ export function calcRisco(
   // Velocidade do negativo AMORTECIDA pela confiança (ICA): com amostra fraca,
   // um pico de % negativo num dia não dispara o risco (evita "Crítico" falso).
   const velTerm = Math.min(100, Math.max(0, negVelocity * 4)) * (ica / 100);
+  const w = activeWeights;
   const risco = clamp(
     0,
     100,
-    0.35 * (100 - iad) +
-      0.25 * pctRiscoAlto +
-      0.2 * velTerm +
-      0.15 * 0 + // amplificação negativa: Fase 2 (precisa de comentários granulares)
-      0.05 * (100 - ica)
+    w.risco_iad * (100 - iad) +
+      w.risco_pct_alto * pctRiscoAlto +
+      w.risco_velocidade * velTerm +
+      w.risco_amplificacao * 0 + // amplificação negativa: Fase 2 (precisa de comentários granulares)
+      w.risco_ica * (100 - ica)
   );
   let nivel: NivelCrise = "baixo";
   if (risco >= 80) nivel = "critico";

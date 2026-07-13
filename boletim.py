@@ -68,9 +68,26 @@ def _clamp(v: float) -> float:
     return max(0.0, min(100.0, float(v or 0)))
 
 
-def _classificar(risco: float) -> tuple[str, Optional[str]]:
+def _normalizar_faixas(faixas) -> list:
+    """Aceita faixas vindas de tenant_settings ([[min,max,label,cor],...]) e
+    devolve tuplas válidas. Qualquer estrutura malformada → FAIXAS_CONDICAO
+    (um limiar de clima com defeito não pode derrubar o boletim)."""
+    if not faixas:
+        return FAIXAS_CONDICAO
+    try:
+        norm = []
+        for f in faixas:
+            lo, hi, cond = float(f[0]), float(f[1]), str(f[2])
+            cor = f[3] if len(f) > 3 else None
+            norm.append((lo, hi, cond, cor))
+        return norm or FAIXAS_CONDICAO
+    except (TypeError, ValueError, IndexError):
+        return FAIXAS_CONDICAO
+
+
+def _classificar(risco: float, faixas=None) -> tuple[str, Optional[str]]:
     r = _clamp(risco)
-    for lo, hi, condicao, cor in FAIXAS_CONDICAO:
+    for lo, hi, condicao, cor in _normalizar_faixas(faixas):
         if lo <= r <= hi:
             return condicao, cor
     return "tempestade", "vermelho"  # r > 99.9 por arredondamento
@@ -114,6 +131,7 @@ def gerar_boletim(
     override_resp_min: int = 70,
     limiar_previsao: float = LIMIAR_PREVISAO,
     limiar_tempestade_com_alerta: float = LIMIAR_TEMPESTADE_COM_ALERTA,
+    faixas=None,
 ) -> dict:
     """Gera o bloco `boletim` (jsonb). Determinístico e auditável.
 
@@ -128,8 +146,10 @@ def gerar_boletim(
                  cluster_crise, responsabilidade_atribuida, motivo_alerta,
                  abordagem_recomendada, por_que_funciona, tema. Ou None.
         override_resp_min: espelha OVERRIDE_RESPONSABILIDADE_MIN do agora.py.
+        faixas: faixas de condição de tenant_settings.climate_thresholds
+                ([[min,max,label,cor],...]); None usa FAIXAS_CONDICAO padrão.
     """
-    condicao, nivel_cor = _classificar(risco)
+    condicao, nivel_cor = _classificar(risco, faixas)
 
     # Flag de auditoria: o critério de override SCCT (intencional + resp alta)
     # se verificou neste alerta? (registrado mesmo quando não muda a condição)

@@ -9,6 +9,7 @@ import {
   type ScoreWeights, type ClimateThresholds, type NotificationConfig,
 } from "@/lib/admin";
 import { fetchServiceStatus } from "@/lib/data";
+import { DEFAULT_NOTIFICATION } from "@/lib/settings";
 import { type Role } from "@/lib/auth";
 import { IconWarningTriangle } from "@/components/icons";
 
@@ -180,8 +181,10 @@ function ScoreSection() {
   return (
     <Card title="Pesos do score composto (risco)">
       <p className="mb-3 text-xs text-txt-3">
-        O pipeline (agora.py) passará a ler estes pesos de tenant_settings, com fallback para os
-        valores atuais. A soma dos pesos de risco idealmente fecha em 1.0.
+        Estes pesos alimentam, ao vivo, os cálculos de IAD e Risco exibidos no painel
+        (o dashboard lê tenant_settings ao abrir). A soma dos pesos de risco idealmente
+        fecha em 1.0. Obs.: o <span className="font-semibold">score_risco por post</span> vem do
+        modelo de IA e não é afetado por estes pesos — eles governam os índices agregados do painel.
       </p>
       <div className="space-y-2">
         {SCORE_FIELDS.map((f) => (
@@ -507,7 +510,10 @@ function NotificationsSection() {
   const { data } = useQuery({ queryKey: ["admin-settings"], queryFn: fetchSettings });
   const [draft, setDraft] = useState<NotificationConfig | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const cfg = draft ?? data?.notification_config ?? null;
+  // Merge com os defaults: configs salvas antes desta versão não têm as chaves
+  // subtema_* — sem o merge, o slider receberia undefined (NaN).
+  const cfg: NotificationConfig | null =
+    draft ?? (data ? { ...DEFAULT_NOTIFICATION, ...data.notification_config } : null);
 
   if (!cfg) return <div className="text-sm text-txt-2">Carregando…</div>;
   const set = (patch: Partial<NotificationConfig>) => setDraft({ ...cfg, ...patch });
@@ -542,6 +548,13 @@ function NotificationsSection() {
           limiar={cfg.tema_limiar} unidade="%" min={30} max={90} step={5}
           ativo={cfg.tema_ativo} cor="#8B5CF6"
           onChange={(l, a) => set({ tema_limiar: l, tema_ativo: a })}
+        />
+        <AlertaConfig
+          titulo="Assunto repetido (volume de subtema)"
+          descricao="Dispara quando um mesmo subtema aparece em N+ comentários em 24h — independente do risco de cada post. É a 'sensação popular' do áudio: 3 pessoas falando de buraco viram pauta."
+          limiar={cfg.subtema_limiar} unidade=" com." min={2} max={15} step={1}
+          ativo={cfg.subtema_ativo} cor="#F97316"
+          onChange={(l, a) => set({ subtema_limiar: l, subtema_ativo: a })}
         />
       </div>
 
@@ -591,6 +604,10 @@ function ClimateSection() {
 
   return (
     <Card title="Limiares e override do clima político">
+      <p className="mb-3 text-xs text-txt-3">
+        O pipeline (agora.py) lê estes limiares de tenant_settings a cada execução — mexer aqui
+        muda de fato como o boletim climático é gerado, inclusive as faixas de condição abaixo.
+      </p>
       <div className="space-y-2">
         {CLIMA_FIELDS.map((f) => (
           <label key={f.key} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">

@@ -322,6 +322,7 @@ def _carregar_config_tenant(tenant_id):
     global PERFIS, KEYWORDS_GOVERNO, KEYWORDS_OPOSICAO, KEYWORDS_IMPRENSA
     global _TENANT_SETTINGS, _ct, _nc
     global OVERRIDE_RESPONSABILIDADE_MIN, _LIMIAR_PREVISAO, _LIMIAR_TEMPESTADE_COM_ALERTA
+    global SUBTEMA_LIMIAR_ALERTA, SUBTEMA_ALERTA_ATIVO
 
     PERFIS = _carregar_perfis_do_banco(tenant_id)
 
@@ -344,6 +345,12 @@ def _carregar_config_tenant(tenant_id):
     OVERRIDE_RESPONSABILIDADE_MIN = int(_ct.get("override_resp_min", 70))
     _LIMIAR_PREVISAO              = float(_ct.get("limiar_previsao", 8.0))
     _LIMIAR_TEMPESTADE_COM_ALERTA = float(_ct.get("limiar_tempestade_com_alerta", 60.0))
+
+    # Alerta por volume de subtema (sensacao popular): N+ comentarios do mesmo
+    # subtema em 24h dispara, independente do score do post. Default DESLIGADO —
+    # e um canal de WhatsApp novo (acao externa), so liga pela aba Notificacoes.
+    SUBTEMA_LIMIAR_ALERTA = int(_nc.get("subtema_limiar", 3))
+    SUBTEMA_ALERTA_ATIVO  = bool(_nc.get("subtema_ativo", False))
 
 _carregar_config_tenant(TENANT)
 
@@ -2388,6 +2395,116 @@ def verificar_alertas(posts_analisados):
     return temas_alertados
 
 
+# Nomes legiveis dos subtemas para o texto do alerta (fallback: slug com espacos).
+_SUBTEMA_LABEL = {
+    "buracos": "buracos", "pavimentacao": "pavimentacao", "drenagem": "drenagem",
+    "iluminacao_publica": "iluminacao publica", "obra_parada": "obra parada",
+    "ubs_postos": "UBS/postos", "filas_agendamento": "filas e agendamento",
+    "medicamentos": "medicamentos", "abastecimento_agua": "falta d'agua",
+    "esgoto": "esgoto", "coleta_lixo": "coleta de lixo", "onibus": "onibus",
+    "transporte_escolar": "transporte escolar", "merenda": "merenda",
+    "professores": "professores", "iptu": "IPTU",
+}
+def _label_subtema(tema: str, subtema: str) -> str:
+    nome = _SUBTEMA_LABEL.get(subtema) or (subtema or "").replace("_", " ")
+    return f"{nome} ({tema})" if tema and tema != "outro" else nome
+
+
+def verificar_alerta_subtema(dry_run: bool = False):
+    """Alerta por VOLUME DE SUBTEMA (a 'sensacao popular' do brief de 03/07):
+    quando o mesmo subtema aparece em N+ comentarios de cidadaos numa janela de
+    24h, dispara — independente do score de risco de cada post individual.
+
+    Exige >=2 autores distintos para nao disparar por uma unica pessoa repetindo.
+    Default DESLIGADO (subtema_ativo=False na aba Notificacoes) por ser um canal
+    de WhatsApp novo. `dry_run=True` (CLI --teste-subtema) apenas imprime o que
+    dispararia, sem enviar nada nem gravar historico."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+    if not SUBTEMA_ALERTA_ATIVO and not dry_run:
+        return
+    if not dry_run and (not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER):
+        return
+
+    limiar = max(2, int(SUBTEMA_LIMIAR_ALERTA or 3))
+    desde = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+
+    # Throttle proprio (tipo distinto de 'auto' p/ nao colidir com verificar_alertas).
+    if not dry_run:
+        try:
+            limite_6h = (datetime.utcnow() - timedelta(hours=6)).isoformat()
+            recentes = _supabase_get(
+                "alerta_historico",
+                f"tenant_id=eq.{TENANT}&tipo=eq.auto_subtema&canal=eq.whatsapp"
+                f"&criado_em=gte.{limite_6h}&select=id&limit=1"
+            )
+            if recentes:
+                log("  alerta_subtema: ja enviado nas ultimas 6h — pulando")
+                return
+        except Exception:
+            pass
+
+    rows = _supabase_get(
+        "comments",
+        f"tenant=eq.{TENANT}&tipo=eq.cidadao&subtema=neq.outro&subtema=not.is.null"
+        f"&data_comentario_ts=gte.{desde}"
+        f"&select=tema,subtema,sentimento,username&limit=8000"
+    ) or []
+
+    grupos = {}
+    for c in rows:
+        sub = (c.get("subtema") or "").strip()
+        if not sub or sub == "outro":
+            continue
+        tema = (c.get("tema") or "outro").strip()
+        g = grupos.setdefault((tema, sub), {"total": 0, "neg": 0, "autores": set()})
+        g["total"] += 1
+        if (c.get("sentimento") or "").lower() == "negativo":
+            g["neg"] += 1
+        if c.get("username"):
+            g["autores"].add(c["username"].strip().lower())
+
+    disparos = []
+    for (tema, sub), g in grupos.items():
+        if g["total"] >= limiar and len(g["autores"]) >= 2:
+            pneg = round(g["neg"] / g["total"] * 100) if g["total"] else 0
+            disparos.append({"tema": tema, "subtema": sub, "total": g["total"],
+                             "autores": len(g["autores"]), "pneg": pneg})
+    disparos.sort(key=lambda d: (-d["total"], -d["pneg"]))
+
+    if not disparos:
+        log(f"  alerta_subtema: nenhum subtema com {limiar}+ comentarios (2+ autores) em 24h")
+        return
+
+    linhas = [
+        f"📌 *{_label_subtema(d['tema'], d['subtema'])}*: {d['total']} comentarios "
+        f"de {d['autores']} pessoas nas ultimas 24h ({d['pneg']}% negativos)"
+        for d in disparos[:5]
+    ]
+    data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
+    mensagem = (f"*📈 Radar Politico — Assuntos em alta ({data_hoje})*\n\n"
+                + "\n".join(linhas)
+                + f"\n\n_Assunto repetido por varias pessoas = pauta, nao voz isolada. "
+                  f"Limiar: {limiar} comentarios/24h._")
+
+    if dry_run:
+        log(f"  [DRY-RUN] alerta_subtema dispararia com {len(disparos)} subtema(s):")
+        for l in linhas:
+            log("    " + l.replace("*", ""))
+        return
+
+    if _enviar_whatsapp(mensagem):
+        log(f"  alerta_subtema: WhatsApp enviado ({len(disparos)} subtema(s))")
+        _supabase_upsert("alerta_historico", [{
+            "tenant_id": TENANT, "tipo": "auto_subtema",
+            "valor": disparos[0]["total"],
+            "mensagem": " | ".join(l.replace("*", "") for l in linhas),
+            "canal": "whatsapp", "criado_em": datetime.now().isoformat(),
+        }], "id")
+    else:
+        log("  alerta_subtema: WhatsApp falhou (ver log acima)")
+
+
 # ==============================================================
 # MODULO IRT - ACOMPANHAMENTO DE RECUPERACAO POS-ALERTA
 # ==============================================================
@@ -3451,6 +3568,7 @@ def gravar_boletim_climatico(posts_analisados):
         override_resp_min=OVERRIDE_RESPONSABILIDADE_MIN,
         limiar_previsao=_LIMIAR_PREVISAO,
         limiar_tempestade_com_alerta=_LIMIAR_TEMPESTADE_COM_ALERTA,
+        faixas=_ct.get("faixas"),
     )
 
     dia = hist_asc[-1].get("dia") or datetime.now().strftime("%Y-%m-%d")
@@ -3584,6 +3702,7 @@ def main():
     _safe("narratives", gravar_narratives, posts_analisados, comentarios_por_post)         # narrativas (tema + sentimento)
     _safe("daily_themes", gravar_daily_themes, posts_analisados)                           # tendencias por tema (Fase 3e)
     temas_alertados = _safe("alertas_limiar", verificar_alertas, posts_analisados) or []   # alertas por limiar (Sprint 2)
+    _safe("alerta_subtema", verificar_alerta_subtema)                                      # sensacao popular por subtema (24h)
     # Posts novos: nunca vistos antes → alerta completo se score disparar.
     # Posts existentes: só re-alerta se houver mudança real (comentários, risco ou queixa).
     # Se existentes_radar=None (falha de carregamento nas duas fontes), alertas sao
@@ -4109,6 +4228,10 @@ if __name__ == "__main__":
         teste_filtro()
     elif "--teste-localidade" in sys.argv:
         teste_localidade()
+    elif "--teste-subtema" in sys.argv:
+        # Dry-run: mostra o que o alerta de subtema dispararia (24h reais do
+        # Supabase), sem enviar WhatsApp nem gravar historico.
+        verificar_alerta_subtema(dry_run=True)
     elif "--backfill-comentarios" in sys.argv:
         # --backfill-comentarios [N]  → N opcional limita quantos comentarios (teste)
         _lim = None

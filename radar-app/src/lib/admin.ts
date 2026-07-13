@@ -41,6 +41,9 @@ export interface NotificationConfig {
   neg_ativo: boolean;
   tema_limiar: number;
   tema_ativo: boolean;
+  /** Nº mínimo de comentários do mesmo subtema em 24h para disparar alerta. */
+  subtema_limiar: number;
+  subtema_ativo: boolean;
   canal_whats: boolean;
   canal_email: boolean;
 }
