@@ -407,12 +407,49 @@ function SourcesSection() {
 }
 
 // ── Usuários ─────────────────────────────────────────────────
+// Caixa que exibe o link de convite gerado, com botão de copiar. Fica visível
+// até o próximo convite — o admin copia e envia ao usuário por fora.
+function InviteLinkBox({ email, link }: { email: string; link: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard bloqueado (contexto não-seguro): o usuário copia manualmente.
+    }
+  }
+  return (
+    <div className="mt-3 rounded-lg border border-brand/40 bg-brand/5 p-3">
+      <div className="mb-1 text-xs font-semibold text-txt-2">
+        Link de acesso para <span className="text-txt-1">{email}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          readOnly
+          value={link}
+          onFocus={(e) => e.currentTarget.select()}
+          className="min-w-0 flex-1 rounded-lg border border-line bg-bg-1 px-2 py-1.5 text-xs text-txt-2 outline-none"
+        />
+        <button
+          onClick={copiar}
+          className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white transition hover:opacity-90"
+        >
+          {copied ? "Copiado!" : "Copiar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function UsersSection() {
   const qc = useQueryClient();
   const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: fetchUsers });
   const [form, setForm] = useState({ email: "", full_name: "", role: "user" as Role });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [invite, setInvite] = useState<{ email: string; link: string } | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin-users"] });
 
   async function convidar() {
@@ -420,10 +457,23 @@ function UsersSection() {
       return setMsg({ ok: false, text: "E-mail é obrigatório." });
     }
     setBusy(true);
-    const err = await inviteUser(form);
+    setInvite(null);
+    const email = form.email.trim();
+    const res = await inviteUser(form);
     setBusy(false);
-    if (err) return setMsg({ ok: false, text: err });
-    setMsg({ ok: true, text: "✔ Convite enviado por e-mail" });
+    if (res.error) return setMsg({ ok: false, text: res.error });
+    if (res.link) {
+      setInvite({ email, link: res.link });
+      setMsg({
+        ok: true,
+        text: res.existing
+          ? "✔ Link de acesso gerado (usuário já existia)"
+          : "✔ Convite criado — copie o link abaixo e envie ao usuário",
+      });
+    } else {
+      // Fallback: função antiga (ainda mandando e-mail) no ar.
+      setMsg({ ok: true, text: "✔ Convite enviado por e-mail" });
+    }
     setForm({ email: "", full_name: "", role: "user" });
     refresh();
   }
@@ -473,10 +523,15 @@ function UsersSection() {
             disabled={busy}
             className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
           >
-            {busy ? "Convidando…" : "Convidar"}
+            {busy ? "Gerando link…" : "Convidar"}
           </button>
           <Feedback msg={msg} />
         </div>
+        <p className="mt-2 text-xs text-txt-3">
+          O link de acesso é gerado na hora — copie e envie ao usuário (WhatsApp, e-mail…).
+          Não depende do envio automático de e-mail do Supabase.
+        </p>
+        {invite && <InviteLinkBox email={invite.email} link={invite.link} />}
       </Card>
 
       <Card title="Usuários do tenant">

@@ -188,18 +188,31 @@ export async function fetchUsers(): Promise<UserRow[]> {
   return (data as UserRow[]) ?? [];
 }
 
-/** Convida um usuário via Edge Function — envia e-mail de convite de verdade. */
+export interface InviteResult {
+  /** Mensagem de erro, se falhou. */
+  error?: string;
+  /** Link de ativação/definição de senha para o admin copiar e entregar. */
+  link?: string | null;
+  /** true quando o e-mail já existia (link gerado é de recuperação). */
+  existing?: boolean;
+}
+
+/**
+ * Convida um usuário via Edge Function. A função GERA o link de ativação (não
+ * manda e-mail — o e-mail embutido do Supabase é limitado por hora), e o admin
+ * entrega o link ao usuário. Retorna o link em `link`.
+ */
 export async function inviteUser(input: {
   email: string;
   full_name: string;
   role: Role;
-}): Promise<string | null> {
+}): Promise<InviteResult> {
   const { data, error } = await supabase.functions.invoke("manage-users", {
     body: { action: "invite", ...input, redirectTo: window.location.origin },
   });
-  if (error) return extractFunctionError(error, "Falha ao convidar usuário.");
-  if (data?.error) return data.error as string;
-  return null;
+  if (error) return { error: await extractFunctionError(error, "Falha ao convidar usuário.") };
+  if (data?.error) return { error: data.error as string };
+  return { link: (data?.action_link as string | null) ?? null, existing: !!data?.existing };
 }
 
 /** Altera o papel de um usuário via Edge Function. */

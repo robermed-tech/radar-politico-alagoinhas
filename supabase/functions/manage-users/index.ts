@@ -71,20 +71,35 @@ Deno.serve(async (req) => {
       return json({ error: "E-mail é obrigatório" }, 400);
     }
 
-    // Envia e-mail de convite de verdade (link de ativação) em vez de criar
-    // a conta já com senha — o usuário define a própria senha ao aceitar.
-    const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-      data: { full_name, role, tenant_id: tenant },
-      redirectTo,
+    // GERA o link de convite em vez de MANDAR e-mail. O e-mail embutido do
+    // Supabase (GoTrue) é limitado a poucos envios/hora ("email rate limit
+    // exceeded"); generate_link NÃO passa pelo mailer, então não tem esse teto.
+    // O admin copia o action_link e entrega ao usuário (WhatsApp, e-mail próprio…).
+    // O link cai no mesmo fluxo de "definir senha" (lib/inviteFlow.ts).
+    let { data, error } = await admin.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: { data: { full_name, role, tenant_id: tenant }, redirectTo },
     });
-    if (error) {
-      const msg = /already.*registered|exists/i.test(error.message)
-        ? "Este e-mail já está cadastrado"
-        : error.message;
-      return json({ error: msg }, 400);
+
+    // Usuário já existe (ex.: convidado antes, mas ainda não definiu a senha):
+    // um link de convite falha, então geramos um de recuperação — que também
+    // leva à tela de definir senha. Assim dá pra "reenviar" o link a quem ficou
+    // preso sem depender do e-mail.
+    let existing = false;
+    if (error && /already|exists|registered/i.test(error.message)) {
+      existing = true;
+      ({ data, error } = await admin.auth.admin.generateLink({
+        type: "recovery",
+        email,
+        options: { redirectTo },
+      }));
     }
-    // O trigger handle_new_user cria o profile; garantimos papel/tenant aqui também.
-    if (data.user) {
+    if (error) return json({ error: error.message }, 400);
+
+    // O trigger handle_new_user cria o profile no convite novo; garantimos
+    // papel/tenant aqui também. Em usuário já existente não mexemos no papel.
+    if (data?.user && !existing) {
       await admin.from("profiles").upsert({
         id: data.user.id,
         email,
@@ -93,7 +108,12 @@ Deno.serve(async (req) => {
         tenant_id: tenant,
       });
     }
-    return json({ ok: true, user_id: data.user?.id });
+    return json({
+      ok: true,
+      user_id: data?.user?.id,
+      action_link: data?.properties?.action_link ?? null,
+      existing,
+    });
   }
 
   if (action === "set_role") {
