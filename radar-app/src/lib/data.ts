@@ -302,22 +302,33 @@ export async function fetchDailyMetrics(): Promise<DailyMetric[]> {
   return (await res.json()) as DailyMetric[];
 }
 
+/** Janela de análise: dia (24h), semana (7 dias) ou mês (30 dias). */
+export type Periodo = "dia" | "semana" | "mes";
+
 export interface Briefing {
   dia: string;
+  periodo: Periodo;
   nivel_crise: string;
   risco: number;
   diagnostico: string;
   oportunidades: { titulo: string; acao: string; impacto?: string; esforco?: string }[];
-  alertas: { nivel: string; tema: string; janela?: string }[];
+  /** tema_categoria (opcional): categoria fixa (ver TEMAS_VALIDOS no agora.py)
+   * usada pra buscar os comentários reais que embasam o alerta. Vazio quando
+   * a IA não conseguiu classificar — nesse caso o botão de evidência some. */
+  alertas: { nivel: string; tema: string; tema_categoria?: string; janela?: string }[];
   recomendacoes: { canal: string; mensagem: string; tom?: string; timing?: string }[];
   gerado_em: string;
 }
 
-/** Último briefing estratégico (Assistente IA). Null se indisponível/vazio. */
-export async function fetchBriefing(): Promise<Briefing | null> {
+/**
+ * Último briefing estratégico (Assistente IA) do período pedido. Null se
+ * indisponível/vazio — ex.: tenant novo sem histórico suficiente pra gerar
+ * a análise de semana/mês ainda (ver agora.py::gerar_briefings_periodo).
+ */
+export async function fetchBriefing(periodo: Periodo = "dia"): Promise<Briefing | null> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
   const q =
-    `${SUPABASE_URL}/rest/v1/ai_briefings?tenant=eq.${TENANT}` +
+    `${SUPABASE_URL}/rest/v1/ai_briefings?tenant=eq.${TENANT}&periodo=eq.${periodo}` +
     `&select=*&order=dia.desc&limit=1`;
   const res = await fetch(q, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
@@ -367,17 +378,18 @@ export interface Boletim {
 }
 
 /**
- * Último Boletim Climático, respeitando o papel:
+ * Último Boletim Climático do período pedido, respeitando o papel:
  *   • admin → tabela `boletins` (boletim completo, com score numérico);
  *   • usuário comum → view `dashboard_public` (boletim sem score).
  * Usa o cliente autenticado (JWT da sessão), então o RLS é aplicado de fato.
  */
-export async function fetchBoletimByRole(isAdmin: boolean): Promise<Boletim | null> {
+export async function fetchBoletimByRole(isAdmin: boolean, periodo: Periodo = "dia"): Promise<Boletim | null> {
   const from = isAdmin ? "boletins" : "dashboard_public";
   const { data, error } = await supabase
     .from(from)
     .select("boletim")
     .eq("tenant", TENANT)
+    .eq("periodo", periodo)
     .order("dia", { ascending: false })
     .limit(1);
   if (error || !data?.length) return null;
@@ -715,14 +727,25 @@ export interface ComentarioTema {
  * exatamente as pessoas falam sobre X" e (b) a evidência concreta que vai
  * dentro do alerta ao secretário. Ordenados por curtidas (os mais endossados
  * primeiro). Uma única fonte alimenta os dois usos — cacheada pela query key.
+ *
+ * `tema` (opcional) filtra por uma categoria fixa (a mesma de comments.tema —
+ * ver TEMAS_VALIDOS no agora.py), usado pela evidência de "Ver comentários"
+ * nos alertas do Clima. `desde` (opcional, ISO) restringe à mesma janela de
+ * período do alerta (data_comentario_ts >= desde), pra evidência bater com a
+ * janela que gerou a conclusão da IA.
  */
-export async function fetchComentariosPorTema(limit = 4000): Promise<ComentarioTema[]> {
+export async function fetchComentariosPorTema(
+  tema?: string,
+  desde?: string,
+  limit = 4000
+): Promise<ComentarioTema[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
-  const q =
+  let q =
     `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
-    `&tipo=eq.cidadao&texto=not.is.null&tema=not.is.null&tema=neq.outro` +
-    `&select=texto,username,curtidas,sentimento,tema,subtema` +
-    `&order=curtidas.desc&limit=${limit}`;
+    `&tipo=eq.cidadao&texto=not.is.null&tema=not.is.null&tema=neq.outro`;
+  if (tema) q += `&tema=eq.${encodeURIComponent(tema)}`;
+  if (desde) q += `&data_comentario_ts=gte.${encodeURIComponent(desde)}`;
+  q += `&select=texto,username,curtidas,sentimento,tema,subtema&order=curtidas.desc&limit=${limit}`;
   const res = await fetch(q, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   }).catch(() => null);

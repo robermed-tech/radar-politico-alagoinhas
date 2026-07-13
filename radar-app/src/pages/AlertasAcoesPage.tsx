@@ -90,7 +90,7 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
 export function AlertasAcoesPage() {
   const { data: b, isLoading: loadBriefing } = useQuery({
     queryKey: ["briefing"],
-    queryFn: fetchBriefing,
+    queryFn: () => fetchBriefing(),
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });

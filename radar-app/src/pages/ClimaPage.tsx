@@ -1,10 +1,11 @@
 ﻿import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchCrisisPlans, filtrarPorPeriodo, parseData, type Post, type Boletim, type BoletimFrente, type Briefing, type CrisisPlan } from "@/lib/data";
+import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchCrisisPlans, filtrarPorPeriodo, parseData, type Post, type Boletim, type BoletimFrente, type Briefing, type CrisisPlan, type Periodo } from "@/lib/data";
 import { calcIAD, distribuicao, NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
 import { getWeather, weatherFromCondicao } from "@/lib/weather";
 import { fmtInt } from "@/lib/format";
 import { useAuth } from "@/components/AuthProvider";
+import { EvidenciaComentariosModal } from "@/components/EvidenciaComentariosModal";
 
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde",
@@ -187,6 +188,24 @@ function periodoClima(dias: number): string {
   return "análise do clima do mês";
 }
 
+/** Mapeia a janela numérica (1/7/30) pro período usado nas queries de
+ * ai_briefings/boletins — dia/semana/mês são gerados e guardados separados
+ * no backend (ver agora.py::gerar_briefings_periodo). */
+function periodoParaChave(dias: number): Periodo {
+  if (dias <= 1) return "dia";
+  if (dias <= 7) return "semana";
+  return "mes";
+}
+
+/** Cutoff ISO (início da janela) — usado pra filtrar a evidência de
+ * comentários no mesmo período do alerta selecionado. */
+function periodoDesde(dias: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - dias);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
 // Frente de instabilidade → classe de clima usada pelo WeatherIcon.
 const FRENTE_TO_CLS: Record<string, string> = {
   sol: "sunny",
@@ -287,7 +306,8 @@ function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number 
   );
 }
 
-function TemasEmCrise({ alertas }: { alertas: Briefing["alertas"] }) {
+function TemasEmCrise({ alertas, desde }: { alertas: Briefing["alertas"]; desde: string }) {
+  const [aberto, setAberto] = useState<{ tema: string; categoria: string } | null>(null);
   if (!alertas?.length) return null;
   return (
     <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6">
@@ -310,11 +330,27 @@ function TemasEmCrise({ alertas }: { alertas: Briefing["alertas"] }) {
               >
                 {NIVEL_LABEL[(a.nivel as NivelCrise) ?? "baixo"]}
               </span>
-              <span className="font-semibold text-txt-1">{tema}</span>
+              <span className="min-w-0 flex-1 font-semibold text-txt-1">{tema}</span>
+              {a.tema_categoria && (
+                <button
+                  onClick={() => setAberto({ tema, categoria: a.tema_categoria! })}
+                  className="shrink-0 rounded-lg border border-line bg-bg-1 px-2.5 py-1 text-xs font-semibold text-txt-2 transition hover:border-brand hover:text-txt-1"
+                >
+                  Ver comentários
+                </button>
+              )}
             </div>
           );
         })}
       </div>
+      {aberto && (
+        <EvidenciaComentariosModal
+          tema={aberto.categoria}
+          tituloTema={aberto.tema}
+          desde={desde}
+          onClose={() => setAberto(null)}
+        />
+      )}
     </div>
   );
 }
@@ -467,19 +503,22 @@ function BarrasDistribuicao({ pctPos, pctNeu }: { pctPos: number; pctNeu: number
 export function ClimaPage() {
   const [dias, setDias] = useState(1);
   const { isAdmin } = useAuth();
+  const periodo = periodoParaChave(dias);
   const { data, isLoading } = useQuery({
     queryKey: ["radar"],
     queryFn: fetchRadar,
     staleTime: 5 * 60 * 1000,
   });
+  // periodo entra na queryKey — cada aba (dia/semana/mes) fica cacheada
+  // separada, então trocar de volta pra uma aba já visitada é instantâneo.
   const { data: boletim } = useQuery({
-    queryKey: ["boletim", isAdmin],
-    queryFn: () => fetchBoletimByRole(isAdmin),
+    queryKey: ["boletim", isAdmin, periodo],
+    queryFn: () => fetchBoletimByRole(isAdmin, periodo),
     staleTime: 5 * 60 * 1000,
   });
-  const { data: briefing } = useQuery({
-    queryKey: ["briefing"],
-    queryFn: fetchBriefing,
+  const { data: briefing, isLoading: loadingBriefing } = useQuery({
+    queryKey: ["briefing", periodo],
+    queryFn: () => fetchBriefing(periodo),
     staleTime: 5 * 60 * 1000,
   });
   const { data: planosData } = useQuery({
@@ -684,10 +723,23 @@ export function ClimaPage() {
         </div>
       </div>
 
-      {briefing && <DiagnosticoCard briefing={briefing} dias={dias} />}
+      {briefing ? (
+        <DiagnosticoCard briefing={briefing} dias={dias} />
+      ) : (
+        // Sem diagnóstico para semana/mês (histórico curto, tenant novo): diz
+        // isso explicitamente — nunca cai no diagnóstico de outro período
+        // disfarçado. Pro "dia", mantém o comportamento de sempre (some e
+        // cai no fallback de frentes) — o backend também gera na hora.
+        !loadingBriefing &&
+        periodo !== "dia" && (
+          <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6 text-sm text-txt-2">
+            Análise {periodo === "semana" ? "da semana" : "do mês"} ainda não disponível — dados insuficientes.
+          </div>
+        )
+      )}
 
       {briefing?.alertas?.length ? (
-        <TemasEmCrise alertas={briefing.alertas} />
+        <TemasEmCrise alertas={briefing.alertas} desde={periodoDesde(dias)} />
       ) : (
         boletim?.frentes && boletim.frentes.length > 0 && (
           <FrentesInstabilidade frentes={boletim.frentes} />

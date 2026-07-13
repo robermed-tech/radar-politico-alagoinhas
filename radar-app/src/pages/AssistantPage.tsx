@@ -23,7 +23,7 @@ const IMPACTO_COR: Record<string, string> = {
 export function AssistantPage() {
   const { data: b, isLoading } = useQuery({
     queryKey: ["briefing"],
-    queryFn: fetchBriefing,
+    queryFn: () => fetchBriefing(),
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });
