@@ -445,7 +445,7 @@ export function ApprovalPage() {
         </div>
         <KpiStat
           label="Confiança"
-          value={view.ica}
+          value={`${view.ica}%`}
           sub={
             view.ica < 40 ? (
               <span className="flex items-center gap-1">

@@ -142,8 +142,14 @@ export function FeedPage() {
 
   const posts = useMemo<Post[]>(() => {
     const periodPosts = filtrarPorPeriodo(data?.data ?? [], periodo);
+    // resumoProsaPost já monta um resumo só a partir dos percentuais de
+    // comentários (sem precisar de queixa/elogio/resumo brutos) — sem isso
+    // aqui, posts positivos (que raramente geram "queixa" ou "destaque", já
+    // que não há do que reclamar nem comentário polêmico) ficavam fora do
+    // feed inteiro, antes mesmo do filtro de sentimento rodar — fazendo
+    // "Favoráveis" parecer sempre vazio mesmo havendo posts positivos reais.
     const comConteudo = periodPosts.filter(
-      (p) => p.resumo || p.queixa_dominante || p.elogio_dominante || p.comentarios_destaque
+      (p) => resumoProsaPost(p) || p.queixa_dominante || p.elogio_dominante || p.comentarios_destaque
     );
     const all = [...comConteudo].sort((a, b) => {
       const da = parseData(a.data_post)?.getTime() ?? 0;

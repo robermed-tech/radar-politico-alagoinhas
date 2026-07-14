@@ -1,7 +1,7 @@
 ﻿import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchCrisisPlans, fetchComentariosPorTema, filtrarPorPeriodo, parseData, type Post, type Boletim, type BoletimFrente, type Briefing, type CrisisPlan, type Periodo } from "@/lib/data";
-import { calcIAD, distribuicao, NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
+import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchCrisisPlans, fetchComentariosPorTema, filtrarPorPeriodo, type Post, type Boletim, type BoletimFrente, type Briefing, type CrisisPlan, type Periodo } from "@/lib/data";
+import { calcIAD, NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
 import { getWeather, weatherFromCondicao } from "@/lib/weather";
 import { fmtInt } from "@/lib/format";
 import { useAuth } from "@/components/AuthProvider";
@@ -434,83 +434,6 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
   );
 }
 
-function buildSparkline(posts: Post[]): { dia: string; iad: number }[] {
-  const byDay: Record<string, Post[]> = {};
-  for (const p of posts) {
-    const d = parseData(p.data_post);
-    if (!d) continue;
-    const key = d.toISOString().slice(0, 10);
-    (byDay[key] ??= []).push(p);
-  }
-  return Object.entries(byDay)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([dia, ps]) => ({ dia, iad: Math.round(calcIAD(ps)) }));
-}
-
-function SparklineIAD({ pontos, media }: { pontos: { dia: string; iad: number }[]; media?: number }) {
-  if (pontos.length < 2) return <div className="text-xs text-txt-3">Dados insuficientes para tendência.</div>;
-  const W = 240, H = 52, PAD = 4;
-  const vals = pontos.map((p) => p.iad);
-  const lo = Math.max(0, Math.min(...vals) - 8);
-  const hi = Math.min(100, Math.max(...vals) + 8);
-  const rng = hi - lo || 1;
-  const xp = (i: number) => PAD + (i / (pontos.length - 1)) * (W - PAD * 2);
-  const yp = (v: number) => PAD + (1 - (v - lo) / rng) * (H - PAD * 2);
-  const pts = pontos.map((p, i) => ({ x: xp(i), y: yp(p.iad) }));
-  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-  const area = `${line} L${pts[pts.length - 1].x},${H} L${pts[0].x},${H} Z`;
-  const last = pontos[pontos.length - 1];
-  const ref = pontos.length >= 7 ? pontos[pontos.length - 7].iad : pontos[0].iad;
-  const delta = last.iad - ref;
-  const arrow = delta > 2 ? "↑" : delta < -2 ? "↓" : "→";
-  const arrowColor = delta > 2 ? "#22C55E" : delta < -2 ? "#EF4444" : "#64748B";
-  const headline = media ?? last.iad;
-  return (
-    <div className="space-y-2">
-      <div className="flex items-baseline justify-between">
-        <span className="tnum text-3xl font-extrabold text-txt-1">{headline}%</span>
-        <span className="text-sm font-bold" style={{ color: arrowColor }}>
-          {arrow} {Math.abs(delta)}pt vs 7d
-        </span>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ overflow: "visible" }}>
-        <defs>
-          <linearGradient id="iad-spk-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#F97316" stopOpacity="0.28" />
-            <stop offset="100%" stopColor="#F97316" stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        <path d={area} fill="url(#iad-spk-grad)" />
-        <path d={line} fill="none" stroke="#F97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="4" fill="#F97316" />
-      </svg>
-      <div className="text-[10px] text-txt-3">{pontos.length} dias com dados · últimos 30 dias</div>
-    </div>
-  );
-}
-
-function BarrasDistribuicao({ pctPos, pctNeu }: { pctPos: number; pctNeu: number }) {
-  const N = 34;
-  const limPos = pctPos / 100;
-  const limNeu = (pctPos + pctNeu) / 100;
-  return (
-    <div className="flex h-16 items-end gap-[3px]">
-      {Array.from({ length: N }).map((_, i) => {
-        const frac = i / N;
-        const cor = frac < limPos ? "#BEDB1D" : frac < limNeu ? "#64748B" : "#EF4444";
-        const h = 45 + Math.round(40 * Math.abs(Math.sin(i * 0.9)));
-        return (
-          <span
-            key={i}
-            className="flex-1 rounded-full"
-            style={{ height: `${h}%`, background: cor, opacity: cor === "#64748B" ? 0.35 : 0.95 }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
 export function ClimaPage() {
   const [dias, setDias] = useState(1);
   const { isAdmin } = useAuth();
@@ -552,19 +475,14 @@ export function ClimaPage() {
     const posts = filtrarPorPeriodo(data.data, dias);
     if (posts.length === 0) return { vazio: true } as const;
     const iad = Math.round(calcIAD(posts));
-    const dist = distribuicao(posts);
     const wx = getWeather(iad);
     const totalComents = posts.reduce((s, p) => s + (p.comentarios_total || 0), 0);
-    const posts30 = filtrarPorPeriodo(data.data, 30);
-    const sparkline = buildSparkline(posts30);
-    const iad30 = Math.round(calcIAD(posts30));
     return {
       vazio: false as const,
-      iad, iad30, ...dist,
+      iad,
       wx,
       posts: posts.length,
       comentarios: totalComents,
-      sparkline,
     };
   }, [data, dias]);
 
@@ -766,47 +684,6 @@ export function ClimaPage() {
       )}
 
       <AcoesImediatas planos={planos} />
-
-      <div className="reveal reveal-4 grid gap-4 md:grid-cols-2">
-        <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6">
-          <div className="section-label">
-            Distribuição de sentimento
-          </div>
-
-          <div className="mt-4">
-            <BarrasDistribuicao pctPos={view.pctPos} pctNeu={view.pctNeu} />
-          </div>
-
-          <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-4 text-center">
-            <div>
-              <div className="tnum text-2xl font-extrabold" style={{ color: "#84A800" }}>{view.pctPos}%</div>
-              <div className="text-xs text-txt-3">Favorável</div>
-            </div>
-            <div>
-              <div className="tnum text-2xl font-extrabold" style={{ color: "#64748B" }}>{view.pctNeu}%</div>
-              <div className="text-xs text-txt-3">Sem posição</div>
-            </div>
-            <div>
-              <div className="tnum text-2xl font-extrabold text-risk-crit">{view.pctNeg}%</div>
-              <div className="text-xs text-txt-3">Crítico</div>
-            </div>
-          </div>
-        </div>
-
-        {isAdmin && (
-          <div
-            className="rounded-[28px] border p-6"
-            style={{ borderColor: "rgba(249,115,22,0.35)", background: "rgba(249,115,22,0.05)" }}
-          >
-            <div className="text-[12px] font-bold tracking-[0.04em]" style={{ color: "#F97316" }}>
-              Aprovação digital — últimos 30 dias
-            </div>
-            <div className="mt-3">
-              <SparklineIAD pontos={view.sparkline} media={view.iad30} />
-            </div>
-          </div>
-        )}
-      </div>
 
       <VolumeComentarios allPosts={data!.data} />
     </div>
