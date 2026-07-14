@@ -30,9 +30,11 @@ EVOLUTION_KEY = os.environ.get("EVOLUTION_API_KEY", "")
 EVOLUTION_INSTANCE = os.environ.get("EVOLUTION_INSTANCE", "radar")
 WHATSAPP_NUMBER = os.environ.get("WHATSAPP_NUMBER", "")
 
-# Pipeline roda 3x/dia (a cada ~6-8h). Acima disso, ou faltou disparo do
-# cron, ou o run travou/falhou sem chegar a gravar pipeline_health.
-LIMIAR_HORAS = float(os.environ.get("HEARTBEAT_LIMIAR_HORAS", "9"))
+# Pipeline roda 3x/dia: 08h, 14h, 19h BRT (agora.yml). O maior intervalo é o
+# noturno, 19h -> 08h do dia seguinte = 13h, por desenho (nao roda de
+# madrugada). Limiar precisa ficar acima disso + folga para atraso normal do
+# runner do GitHub, senao dispara falso alarme toda madrugada.
+LIMIAR_HORAS = float(os.environ.get("HEARTBEAT_LIMIAR_HORAS", "15"))
 
 
 def enviar_whatsapp(mensagem: str) -> bool:

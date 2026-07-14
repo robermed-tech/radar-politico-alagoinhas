@@ -6,8 +6,9 @@ name: Radar Politico — Heartbeat
 # perceber, porque nesse caso o agora.py simplesmente nunca é executado.
 on:
   schedule:
-    # A cada 4h — cobre com folga o ciclo de 3x/dia do agora.yml (~6-8h entre
-    # runs) sem gerar alerta a cada pequeno atraso normal do runner do GitHub.
+    # A cada 4h — cobre com folga o ciclo de 3x/dia do agora.yml (08h/14h/19h
+    # BRT; maior intervalo é o noturno 19h->08h = 13h) sem gerar alerta a
+    # cada pequeno atraso normal do runner do GitHub.
     - cron: '0 */4 * * *'
   workflow_dispatch:
 

@@ -8,12 +8,13 @@ import { IconAlertBell, IconWarningTriangle } from "@/components/icons";
  * normal (mesmo padrão dos outros banners do produto) e some assim que a
  * próxima execução normalizar — não exige nenhuma ação para "descartar".
  *
- * Limiares espelham heartbeat_check.py (9h) e o antigo banner de App.tsx (8h)
- * — mantidos próximos de propósito para o texto do dashboard nunca contradizer
- * o alerta que já pode ter chegado por WhatsApp.
+ * Limiar espelha heartbeat_check.py: agora.yml roda 3x/dia (08h/14h/19h BRT),
+ * maior intervalo é o noturno 19h -> 08h do dia seguinte = 13h por desenho.
+ * Fica acima disso + folga de atraso normal do runner do GitHub, senão o
+ * banner acende sozinho toda madrugada mesmo com o pipeline saudável.
  */
 
-const LIMIAR_CRITICO_H = 9;
+const LIMIAR_CRITICO_H = 15;
 
 function horasDesde(iso: string): number {
   return (Date.now() - new Date(iso).getTime()) / 3_600_000;
