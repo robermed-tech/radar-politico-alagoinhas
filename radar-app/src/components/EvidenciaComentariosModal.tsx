@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchComentariosPorTema } from "@/lib/data";
@@ -8,9 +9,11 @@ interface Props {
   tema: string;
   /** Texto original do alerta, só pra exibir no título do modal. */
   tituloTema: string;
-  /** Cutoff ISO — mesma janela do período selecionado no ClimaPage, pra a
-   * evidência bater com a janela que gerou a conclusão da IA. */
-  desde: string;
+  /** URLs dos posts do período selecionado no ClimaPage — filtra os
+   * comentários por join (comments.url_post), não por data_comentario_ts
+   * (esse campo é de um backfill parcial, só ~8% das linhas têm; ver
+   * lib/data.ts::fetchComentariosPorTema). */
+  urlsNoPeriodo: Set<string>;
   onClose: () => void;
 }
 
@@ -26,13 +29,17 @@ const SENT_COR: Record<string, string> = {
  * conclusão da IA, filtrados pela mesma categoria e período do alerta.
  * Mesmo padrão de portal usado em components/AlertaCrise.tsx.
  */
-export function EvidenciaComentariosModal({ tema, tituloTema, desde, onClose }: Props) {
-  const { data: comentarios, isLoading } = useQuery({
-    queryKey: ["comentarios-tema", tema, desde],
-    queryFn: () => fetchComentariosPorTema(tema, desde),
+export function EvidenciaComentariosModal({ tema, tituloTema, urlsNoPeriodo, onClose }: Props) {
+  const { data: todosComentarios, isLoading } = useQuery({
+    queryKey: ["comentarios-tema", tema],
+    queryFn: () => fetchComentariosPorTema(tema),
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+  const comentarios = useMemo(
+    () => (todosComentarios ?? []).filter((c) => urlsNoPeriodo.has(c.urlPost)),
+    [todosComentarios, urlsNoPeriodo]
+  );
 
   return createPortal(
     <div

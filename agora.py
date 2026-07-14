@@ -2182,21 +2182,47 @@ MIN_COMENTARIOS_ALERTA = 3
 
 def contar_comentarios_por_tema(dias):
     """Conta comentarios de cidadaos por categoria fixa (tema) nos ultimos
-    `dias` dias — usado pra podar alertas do briefing sem volume real de
-    comentarios por tras (ver MIN_COMENTARIOS_ALERTA). `data_comentario_ts`
-    e timestamp de verdade (diferente de posts.data_post, que e texto),
-    entao aqui da pra filtrar por data direto no PostgREST."""
+    `dias` dias — usado pra podar alertas sem volume real (MIN_COMENTARIOS_ALERTA)
+    e pra listar o tema dominante de verdade no briefing.
+
+    NAO filtra por `comments.data_comentario_ts`: esse campo e de um backfill
+    parcial e so existe em ~8% das linhas (achado em produção — de 1296
+    comentarios com tema classificado, so 114 tem esse timestamp). Filtrar por
+    ele sub-representa violentamente qualquer janela, e foi a causa raiz de um
+    "tema dominante" que nao batia com o grafico do dashboard.
+
+    Em vez disso, usa `posts.data_post` (sempre preenchida) como proxy: busca
+    os posts da janela, pega o conjunto de URLs, e conta so os comentarios
+    cujo `url_post` esta nesse conjunto — mesmo join por URL que o frontend ja
+    usa em lib/data.ts::fetchAgregadoComentarios pra reprojetar sentimento."""
     if not SUPABASE_URL or not SUPABASE_KEY:
         return {}
-    desde = (datetime.now() - timedelta(days=dias)).isoformat()
-    rows = _supabase_get(
+
+    posts = _supabase_get("posts", f"tenant=eq.{TENANT}&select=url,data_post&limit=5000") or []
+    cutoff = datetime.now() - timedelta(days=dias)
+    urls_na_janela = set()
+    for p in posts:
+        d = _dia_iso(p.get("data_post", ""))
+        if not d:
+            continue
+        try:
+            if datetime.strptime(d, "%Y-%m-%d") >= cutoff:
+                urls_na_janela.add((p.get("url") or "").strip())
+        except ValueError:
+            continue
+    if not urls_na_janela:
+        return {}
+
+    comentarios = _supabase_get(
         "comments",
         f"tenant=eq.{TENANT}&tipo=eq.cidadao&tema=not.is.null&tema=neq.outro"
-        f"&data_comentario_ts=gte.{desde}&select=tema",
+        f"&select=url_post,tema&limit=8000",
     ) or []
     contagem = {}
-    for r in rows:
-        t = (r.get("tema") or "").strip().lower()
+    for c in comentarios:
+        if (c.get("url_post") or "").strip() not in urls_na_janela:
+            continue
+        t = (c.get("tema") or "").strip().lower()
         if t:
             contagem[t] = contagem.get(t, 0) + 1
     return contagem
@@ -2221,15 +2247,23 @@ def _gerar_briefing(posts, periodo, dia):
     pos = sum(1 for p in posts if _sent(p) == "positivo")
     neg = sum(1 for p in posts if _sent(p) == "negativo")
 
-    temas, queixas, elogios = {}, {}, {}
+    queixas, elogios = {}, {}
     for p in posts:
-        if p.get("tema"): temas[p["tema"]] = temas.get(p["tema"], 0) + 1
         if p.get("queixa_dominante"): queixas[p["queixa_dominante"]] = queixas.get(p["queixa_dominante"], 0) + 1
         if p.get("elogio_dominante"): elogios[p["elogio_dominante"]] = elogios.get(p["elogio_dominante"], 0) + 1
-    top_temas   = sorted(temas.items(),   key=lambda x: -x[1])[:5]
     top_queixas = sorted(queixas.items(), key=lambda x: -x[1])[:5]
     top_elogios = sorted(elogios.items(), key=lambda x: -x[1])[:3]
     top_posts   = sorted(posts, key=lambda p: int(p.get("score_risco", 0) or 0), reverse=True)[:5]
+
+    # Fonte UNICA do "tema dominante": contagem real por comentario de cidadao
+    # (contar_comentarios_por_tema), a MESMA usada no filtro de evidencia dos
+    # alertas e no grafico "Volume de comentarios por tema" do frontend. Antes
+    # este contexto usava contagem de POSTS (quantos posts tem cada tema),
+    # uma metrica diferente que podia divergir do que os cidadaos realmente
+    # comentam — achado real: "tema dominante" no diagnostico nao batia com
+    # o grafico do dashboard.
+    contagem_temas = contar_comentarios_por_tema(_DIAS_PERIODO.get(periodo, 1))
+    top_temas = sorted(contagem_temas.items(), key=lambda x: -x[1])[:5]
 
     rotulo = _ROTULO_PERIODO.get(periodo, "DIA")
     ctx  = f"INDICES DO {rotulo}:\n"
@@ -2237,7 +2271,11 @@ def _gerar_briefing(posts, periodo, dia):
     ctx += f"  Confianca da Amostra (ICA): {ica:.0f}/100\n"
     ctx += f"  Risco Politico: {risco:.0f}/100 (nivel: {nivel})\n"
     ctx += f"  Posts: {tot} | Positivos: {round(pos/tot*100)}% | Negativos: {round(neg/tot*100)}%\n\n"
-    ctx += "TEMAS DOMINANTES: " + ", ".join(f"{t} ({n})" for t, n in top_temas) + "\n"
+    if top_temas:
+        ctx += ("TEMAS DOMINANTES (por volume real de comentarios de cidadaos, nao por "
+                "contagem de posts): " + ", ".join(f"{t} ({n})" for t, n in top_temas) + "\n")
+    else:
+        ctx += "TEMAS DOMINANTES: nenhum comentario de cidadao classificado por tema ainda neste periodo.\n"
     if top_queixas:
         ctx += "PRINCIPAIS QUEIXAS: " + " | ".join(f"{q} ({n})" for q, n in top_queixas) + "\n"
     if top_elogios:
@@ -2248,13 +2286,6 @@ def _gerar_briefing(posts, periodo, dia):
         if p.get("comentarios_destaque"):
             ctx += f"     comentario: \"{p.get('comentarios_destaque','')[:160]}\"\n"
 
-    contagem_temas = contar_comentarios_por_tema(_DIAS_PERIODO.get(periodo, 1))
-    if contagem_temas:
-        ctx += "\nVOLUME REAL DE COMENTARIOS DE CIDADAOS POR CATEGORIA NO PERIODO:\n  "
-        ctx += ", ".join(f"{t} ({n})" for t, n in sorted(contagem_temas.items(), key=lambda x: -x[1])) + "\n"
-    else:
-        ctx += "\nVOLUME REAL DE COMENTARIOS DE CIDADAOS POR CATEGORIA NO PERIODO: nenhum comentario classificado ainda.\n"
-
     prompt = ctx + f"""
 Retorne APENAS este JSON:
 {{
@@ -2264,7 +2295,7 @@ Retorne APENAS este JSON:
   "recomendacoes_comunicacao": [{{"canal":"...","mensagem":"...","tom":"...","timing":"..."}}]
 }}
 IMPORTANTE sobre "alertas": só inclua um tema aqui se ele tiver volume real de
-comentários de cidadãos na categoria (ver VOLUME REAL acima) — no mínimo
+comentários de cidadãos na categoria (ver TEMAS DOMINANTES acima) — no mínimo
 {MIN_COMENTARIOS_ALERTA} comentários. Um post isolado de risco alto, sem eco
 na população em comentários, NÃO é "tema que merece atenção" — isso já é
 tratado à parte (Caçador de Crises). Prefira omitir a colocar um alerta sem

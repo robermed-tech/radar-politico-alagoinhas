@@ -1,6 +1,6 @@
 ﻿import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchCrisisPlans, filtrarPorPeriodo, parseData, type Post, type Boletim, type BoletimFrente, type Briefing, type CrisisPlan, type Periodo } from "@/lib/data";
+import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchCrisisPlans, fetchComentariosPorTema, filtrarPorPeriodo, parseData, type Post, type Boletim, type BoletimFrente, type Briefing, type CrisisPlan, type Periodo } from "@/lib/data";
 import { calcIAD, distribuicao, NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
 import { getWeather, weatherFromCondicao } from "@/lib/weather";
 import { fmtInt } from "@/lib/format";
@@ -88,16 +88,36 @@ function VolumeComentarios({ allPosts }: { allPosts: Post[] }) {
   ];
 
   const posts30 = filtrarPorPeriodo(allPosts, 30);
-  const byTema: Record<string, Post[]> = {};
-  for (const p of posts30) {
-    const tema = (p.tema || "").toLowerCase().trim();
-    if (!TEMA_LABEL[tema]) continue;
-    (byTema[tema] ??= []).push(p);
-  }
-  const temas = Object.entries(byTema)
-    .map(([tema, ps]) => ({ tema, ...somarComents(ps) }))
-    .filter((t) => t.neg + t.pos + t.neu > 0)
-    .sort((a, b) => b.neg - a.neg);
+  const urls30 = useMemo(() => new Set(posts30.map((p) => p.url)), [posts30]);
+
+  // Volume por tema vem do tema de CADA COMENTÁRIO (classificação individual
+  // do cidadão), não do tema do post — atribuir todos os comentários de um
+  // post ao tema único do post é uma estimativa grosseira (um post de
+  // "saúde" pode ter gente comentando sobre transporte, comunicação etc).
+  // Mesma fonte que o backend usa pro "tema dominante" do diagnóstico
+  // (agora.py::contar_comentarios_por_tema) — antes divergiam.
+  const { data: comentariosClassificados } = useQuery({
+    queryKey: ["comentarios-tema-todos"],
+    queryFn: () => fetchComentariosPorTema(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const temas = useMemo(() => {
+    const byTema: Record<string, { neg: number; pos: number; neu: number }> = {};
+    for (const c of comentariosClassificados ?? []) {
+      if (!urls30.has(c.urlPost)) continue;
+      const tema = c.tema.toLowerCase().trim();
+      if (!TEMA_LABEL[tema]) continue;
+      const b = (byTema[tema] ??= { neg: 0, pos: 0, neu: 0 });
+      if (c.sentimento === "negativo") b.neg += 1;
+      else if (c.sentimento === "positivo") b.pos += 1;
+      else b.neu += 1;
+    }
+    return Object.entries(byTema)
+      .map(([tema, v]) => ({ tema, ...v }))
+      .filter((t) => t.neg + t.pos + t.neu > 0)
+      .sort((a, b) => b.neg - a.neg);
+  }, [comentariosClassificados, urls30]);
 
   return (
     <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6 space-y-6">
@@ -195,15 +215,6 @@ function periodoParaChave(dias: number): Periodo {
   if (dias <= 1) return "dia";
   if (dias <= 7) return "semana";
   return "mes";
-}
-
-/** Cutoff ISO (início da janela) — usado pra filtrar a evidência de
- * comentários no mesmo período do alerta selecionado. */
-function periodoDesde(dias: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - dias);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
 }
 
 // Frente de instabilidade → classe de clima usada pelo WeatherIcon.
@@ -306,7 +317,7 @@ function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number 
   );
 }
 
-function TemasEmCrise({ alertas, desde }: { alertas: Briefing["alertas"]; desde: string }) {
+function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]; urlsNoPeriodo: Set<string> }) {
   const [aberto, setAberto] = useState<{ tema: string; categoria: string } | null>(null);
   if (!alertas?.length) return null;
   return (
@@ -347,7 +358,7 @@ function TemasEmCrise({ alertas, desde }: { alertas: Briefing["alertas"]; desde:
         <EvidenciaComentariosModal
           tema={aberto.categoria}
           tituloTema={aberto.tema}
-          desde={desde}
+          urlsNoPeriodo={urlsNoPeriodo}
           onClose={() => setAberto(null)}
         />
       )}
@@ -527,6 +538,14 @@ export function ClimaPage() {
     staleTime: 5 * 60 * 1000,
   });
   const planos = planosData ?? [];
+
+  // URLs dos posts do período ativo — usado pra filtrar a evidência de
+  // comentários (EvidenciaComentariosModal) pelo mesmo join que o backend
+  // usa (comments.url_post), já que data_comentario_ts não é confiável.
+  const urlsNoPeriodo = useMemo(
+    () => new Set(filtrarPorPeriodo(data?.data ?? [], dias).map((p) => p.url)),
+    [data, dias]
+  );
 
   const view = useMemo(() => {
     if (!data) return null;
@@ -739,7 +758,7 @@ export function ClimaPage() {
       )}
 
       {briefing?.alertas?.length ? (
-        <TemasEmCrise alertas={briefing.alertas} desde={periodoDesde(dias)} />
+        <TemasEmCrise alertas={briefing.alertas} urlsNoPeriodo={urlsNoPeriodo} />
       ) : (
         boletim?.frentes && boletim.frentes.length > 0 && (
           <FrentesInstabilidade frentes={boletim.frentes} />

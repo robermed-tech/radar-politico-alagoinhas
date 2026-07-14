@@ -720,32 +720,37 @@ export interface ComentarioTema {
   sentimento: string;
   tema: string;
   subtema: string;
+  /** URL do post onde o comentário está — usado pra filtrar por período via
+   * join com a data do POST (ver nota abaixo sobre data_comentario_ts). */
+  urlPost: string;
 }
 
 /**
  * Comentários de cidadãos COM o texto real, para (a) o drill-down "o que
- * exatamente as pessoas falam sobre X" e (b) a evidência concreta que vai
- * dentro do alerta ao secretário. Ordenados por curtidas (os mais endossados
- * primeiro). Uma única fonte alimenta os dois usos — cacheada pela query key.
+ * exatamente as pessoas falam sobre X", (b) a evidência concreta que vai
+ * dentro do alerta ao secretário, e (c) agregações reais de volume por tema
+ * (ver `VolumeComentarios` em ClimaPage.tsx). Ordenados por curtidas (os
+ * mais endossados primeiro). Uma única fonte alimenta os três usos —
+ * cacheada pela query key.
  *
  * `tema` (opcional) filtra por uma categoria fixa (a mesma de comments.tema —
  * ver TEMAS_VALIDOS no agora.py), usado pela evidência de "Ver comentários"
- * nos alertas do Clima. `desde` (opcional, ISO) restringe à mesma janela de
- * período do alerta (data_comentario_ts >= desde), pra evidência bater com a
- * janela que gerou a conclusão da IA.
+ * nos alertas do Clima.
+ *
+ * NÃO tem filtro de data aqui: `comments.data_comentario_ts` é de um backfill
+ * parcial e só existe em ~8% das linhas (achado em produção) — filtrar por
+ * ele sub-representa violentamente qualquer janela. Pra restringir por
+ * período, o chamador deve cruzar `urlPost` com o conjunto de posts do
+ * período (posts.data_post é sempre preenchida) — mesma abordagem usada em
+ * agora.py::contar_comentarios_por_tema.
  */
-export async function fetchComentariosPorTema(
-  tema?: string,
-  desde?: string,
-  limit = 4000
-): Promise<ComentarioTema[]> {
+export async function fetchComentariosPorTema(tema?: string, limit = 4000): Promise<ComentarioTema[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
   let q =
     `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
     `&tipo=eq.cidadao&texto=not.is.null&tema=not.is.null&tema=neq.outro`;
   if (tema) q += `&tema=eq.${encodeURIComponent(tema)}`;
-  if (desde) q += `&data_comentario_ts=gte.${encodeURIComponent(desde)}`;
-  q += `&select=texto,username,curtidas,sentimento,tema,subtema&order=curtidas.desc&limit=${limit}`;
+  q += `&select=texto,username,curtidas,sentimento,tema,subtema,url_post&order=curtidas.desc&limit=${limit}`;
   const res = await fetch(q, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   }).catch(() => null);
@@ -757,6 +762,7 @@ export async function fetchComentariosPorTema(
     sentimento: String(r.sentimento ?? "neutro").toLowerCase(),
     tema: String(r.tema ?? "outro").trim(),
     subtema: String(r.subtema ?? "").trim(),
+    urlPost: String(r.url_post ?? "").trim(),
   }));
 }
 
