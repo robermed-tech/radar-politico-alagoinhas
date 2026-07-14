@@ -403,6 +403,50 @@ function AcoesImediatas({ planos }: { planos: CrisisPlan[] }) {
   );
 }
 
+/**
+ * Versão retrospectiva de "O que fazer agora" pra semana/mês: os planos de
+ * contenção do Caçador de Crises só existem pro "agora" (post do dia) — não
+ * fazem sentido reaproveitados numa janela passada. Em vez disso, mostra as
+ * recomendações que a IA já gera POR PERÍODO (ai_briefings.recomendacoes,
+ * baseadas nos temas que mereceram atenção naquele período), enquadradas como
+ * "o que deveria ter sido feito" — decisão de agir (ou não) fica com a
+ * assessoria, não é uma ordem.
+ */
+function RecomendacoesPeriodo({
+  recomendacoes,
+  periodo,
+}: {
+  recomendacoes: Briefing["recomendacoes"];
+  periodo: Periodo;
+}) {
+  if (!recomendacoes?.length) return null;
+  const rotulo = periodo === "semana" ? "na semana" : "no mês";
+  return (
+    <div
+      className="rounded-[28px] border p-6"
+      style={{ borderColor: "rgba(249,115,22,0.4)", background: "rgba(249,115,22,0.04)" }}
+    >
+      <div className="mb-1 text-[12px] font-bold tracking-[0.04em]" style={{ color: "#F97316" }}>
+        O que deveria ter sido feito
+      </div>
+      <p className="mb-3 text-xs text-txt-3">
+        Baseado nos temas que mereceram atenção {rotulo} — fica a critério da assessoria
+        avaliar se ainda vale agir sobre isso agora.
+      </p>
+      <div className="space-y-3">
+        {recomendacoes.slice(0, 3).map((r, i) => (
+          <div key={i} className="rounded-lg border border-line bg-bg-1 p-4">
+            {r.canal && (
+              <div className="mb-1 text-sm font-extrabold capitalize text-txt-1">{r.canal}</div>
+            )}
+            <p className="text-sm text-txt-2">{r.mensagem}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
   if (!frentes.length) return null;
   return (
@@ -683,7 +727,11 @@ export function ClimaPage() {
         )
       )}
 
-      <AcoesImediatas planos={planos} />
+      {periodo === "dia" ? (
+        <AcoesImediatas planos={planos} />
+      ) : (
+        briefing && <RecomendacoesPeriodo recomendacoes={briefing.recomendacoes} periodo={periodo} />
+      )}
 
       <VolumeComentarios allPosts={data!.data} />
     </div>

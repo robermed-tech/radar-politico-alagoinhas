@@ -2,13 +2,7 @@ import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchBriefing, fetchCrisisPlans, type CrisisPlan } from "@/lib/data";
 import { NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
-import { IconAlertBell, IconCheckCircle, IconWarningTriangle } from "@/components/icons";
-
-const JANELA_LABEL: Record<string, string> = {
-  imediato: "Agir agora",
-  "24h": "Agir hoje",
-  "esta semana": "Esta semana",
-};
+import { IconAlertBell, IconCheckCircle } from "@/components/icons";
 
 const IMPACTO_COR: Record<string, string> = {
   alto: "#22C55E",
@@ -126,35 +120,6 @@ export function AlertasAcoesPage() {
         <>
           {/* Planos do Caçador de Crises */}
           <PlanosAcao planos={planos} />
-
-          {/* Alertas da IA */}
-          {(b!.alertas ?? []).length > 0 && (
-            <div className="card-hover rounded-xl border border-line bg-bg-1 p-5">
-              <div className="mb-3 flex items-center gap-2">
-                <IconWarningTriangle size={16} className="text-risk-crit" />
-                <h2 className="text-sm font-extrabold">Pontos de atenção</h2>
-              </div>
-              <div className="space-y-2">
-                {b!.alertas!.map((a, i) => {
-                  const c = NIVEL_COLOR[(a.nivel as NivelCrise) ?? "baixo"] ?? "#5F6E8C";
-                  const jLabel = JANELA_LABEL[a.janela ?? ""] ?? a.janela ?? "";
-                  return (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between gap-2 rounded-lg border bg-bg-2 px-3 py-2"
-                      style={{ borderColor: `${c}44` }}
-                    >
-                      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-txt-1">{a.tema}</span>
-                      <div className="flex shrink-0 items-center gap-2">
-                        {jLabel && <span className="text-xs text-txt-3">{jLabel}</span>}
-                        <Tag color={c}>{a.nivel}</Tag>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           {(b!.oportunidades ?? []).length > 0 && (
             <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">

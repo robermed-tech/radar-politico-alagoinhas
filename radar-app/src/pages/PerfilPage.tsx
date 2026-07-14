@@ -3,8 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchRadar, fetchComments, type Comment } from "@/lib/data";
 import { calcIndices, NIVEL_LABEL, NIVEL_COLOR } from "@/lib/indices";
 import { KpiStat } from "@/components/KpiStat";
-import { Gauge } from "@/components/Gauge";
-import { colorByIAD, COLOR_SENTIMENT } from "@/lib/chartTheme";
+import { COLOR_SENTIMENT } from "@/lib/chartTheme";
 import { fmtInt } from "@/lib/format";
 
 const TEMA_LABEL: Record<string, string> = {
@@ -96,7 +95,6 @@ export function PerfilPage() {
   if (!data) return <div className="p-8 text-txt-2">Carregando…</div>;
   if (perfis.length === 0) return <div className="p-8 text-txt-2">Sem perfis para analisar.</div>;
 
-  const iadCor = colorByIAD(idx.iad);
   const maxTema = temas[0]?.n || 1;
 
   return (
@@ -158,14 +156,16 @@ export function PerfilPage() {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="card-hover flex items-center justify-center rounded-2xl border border-line bg-bg-1 py-2">
-          <Gauge value={idx.iad} label="Aprovação Digital" color={iadCor} />
-        </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <KpiStat
           label="Críticas (comentários)"
-          value={`${sent.neg}%`}
-          sub={`${sent.pos}% favoráveis · ${sent.neu}% neutros`}
+          value={<span style={{ color: COLOR_SENTIMENT.neg, fontWeight: 700 }}>{sent.neg}%</span>}
+          sub={
+            <>
+              <b style={{ color: COLOR_SENTIMENT.pos }}>{sent.pos}%</b> favoráveis ·{" "}
+              <b style={{ color: COLOR_SENTIMENT.neu }}>{sent.neu}%</b> neutros
+            </>
+          }
         />
         <KpiStat label="Posts" value={fmtInt(idx.volumePosts)} sub="no período coletado" />
         <KpiStat label="Comentários" value={fmtInt(idx.volumeComents)} sub="analisados" />
