@@ -1,6 +1,6 @@
 ﻿import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchCrisisPlans, fetchComentariosPorTema, filtrarPorPeriodo, type Post, type Boletim, type BoletimFrente, type Briefing, type CrisisPlan, type Periodo } from "@/lib/data";
+import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchComentariosPorTema, filtrarPorPeriodo, type Post, type Boletim, type BoletimFrente, type Briefing, type Periodo } from "@/lib/data";
 import { calcIAD, NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
 import { getWeather, weatherFromCondicao } from "@/lib/weather";
 import { fmtInt } from "@/lib/format";
@@ -366,51 +366,15 @@ function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]
   );
 }
 
-function AcoesImediatas({ planos }: { planos: CrisisPlan[] }) {
-  const reais = planos.filter((p) => p.e_crise_real).slice(0, 2);
-  if (reais.length === 0) return null;
-  return (
-    <div
-      className="rounded-[28px] border p-6"
-      style={{ borderColor: "rgba(249,115,22,0.4)", background: "rgba(249,115,22,0.04)" }}
-    >
-      <div
-        className="mb-3 text-[12px] font-bold tracking-[0.04em]"
-        style={{ color: "#F97316" }}
-      >
-        O que fazer agora
-      </div>
-      <div className="space-y-3">
-        {reais.map((p) => (
-          <div key={p.post_url} className="rounded-lg border border-line bg-bg-1 p-4">
-            {p.tema && (
-              <div className="mb-1 text-sm font-extrabold capitalize text-txt-1">{p.tema}</div>
-            )}
-            <p className="text-sm text-txt-2">
-              <span className="font-semibold text-orange-400">O que disparou: </span>
-              {p.pavio}
-            </p>
-            {p.plano_contencao?.[0] && (
-              <p className="mt-1.5 text-sm text-txt-1">
-                <span className="font-semibold" style={{ color: "#22C55E" }}>→ </span>
-                {p.plano_contencao[0]}
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /**
- * Versão retrospectiva de "O que fazer agora" pra semana/mês: os planos de
- * contenção do Caçador de Crises só existem pro "agora" (post do dia) — não
- * fazem sentido reaproveitados numa janela passada. Em vez disso, mostra as
- * recomendações que a IA já gera POR PERÍODO (ai_briefings.recomendacoes,
- * baseadas nos temas que mereceram atenção naquele período), enquadradas como
- * "o que deveria ter sido feito" — decisão de agir (ou não) fica com a
- * assessoria, não é uma ordem.
+ * Ações sugeridas — sempre a partir de ai_briefings.recomendacoes do MESMO
+ * período mostrado em "Temas que merecem atenção" logo acima (mesma fonte,
+ * period-scoped). Antes o "O que fazer agora" do dia vinha dos planos de
+ * contenção do Caçador de Crises (análise de posts isolados de alto risco) —
+ * uma fonte totalmente diferente da lista de temas, então o card não tinha
+ * nenhuma relação com os temas exibidos acima dele. Unificado: dia é
+ * enquadrado como ação imediata; semana/mês como retrospectiva (o que
+ * deveria ter sido feito), já que a janela já passou.
  */
 function RecomendacoesPeriodo({
   recomendacoes,
@@ -420,18 +384,20 @@ function RecomendacoesPeriodo({
   periodo: Periodo;
 }) {
   if (!recomendacoes?.length) return null;
-  const rotulo = periodo === "semana" ? "na semana" : "no mês";
+  const ehDia = periodo === "dia";
+  const rotulo = periodo === "semana" ? "na semana" : periodo === "mes" ? "no mês" : "hoje";
   return (
     <div
       className="rounded-[28px] border p-6"
       style={{ borderColor: "rgba(249,115,22,0.4)", background: "rgba(249,115,22,0.04)" }}
     >
       <div className="mb-1 text-[12px] font-bold tracking-[0.04em]" style={{ color: "#F97316" }}>
-        O que deveria ter sido feito
+        {ehDia ? "O que fazer agora" : "O que deveria ter sido feito"}
       </div>
       <p className="mb-3 text-xs text-txt-3">
-        Baseado nos temas que mereceram atenção {rotulo} — fica a critério da assessoria
-        avaliar se ainda vale agir sobre isso agora.
+        {ehDia
+          ? `Ações sugeridas para os temas que merecem atenção ${rotulo}.`
+          : `Baseado nos temas que mereceram atenção ${rotulo} — fica a critério da assessoria avaliar se ainda vale agir sobre isso agora.`}
       </p>
       <div className="space-y-3">
         {recomendacoes.slice(0, 3).map((r, i) => (
@@ -499,13 +465,6 @@ export function ClimaPage() {
     queryFn: () => fetchBriefing(periodo),
     staleTime: 5 * 60 * 1000,
   });
-  const { data: planosData } = useQuery({
-    queryKey: ["crisis-plans"],
-    queryFn: fetchCrisisPlans,
-    staleTime: 5 * 60 * 1000,
-  });
-  const planos = planosData ?? [];
-
   // URLs dos posts do período ativo — usado pra filtrar a evidência de
   // comentários (EvidenciaComentariosModal) pelo mesmo join que o backend
   // usa (comments.url_post), já que data_comentario_ts não é confiável.
@@ -727,11 +686,7 @@ export function ClimaPage() {
         )
       )}
 
-      {periodo === "dia" ? (
-        <AcoesImediatas planos={planos} />
-      ) : (
-        briefing && <RecomendacoesPeriodo recomendacoes={briefing.recomendacoes} periodo={periodo} />
-      )}
+      {briefing && <RecomendacoesPeriodo recomendacoes={briefing.recomendacoes} periodo={periodo} />}
 
       <VolumeComentarios allPosts={data!.data} />
     </div>
