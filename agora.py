@@ -809,7 +809,17 @@ def coletar_comentarios(posts):
         log("=== MODULO 2b - Coletando comentários via Apify ===")
         try:
             urls_posts = [p["url"] for p in posts_com_coments]
-            input_data = {"directUrls": urls_posts, "resultsLimit": MAX_COMENTARIOS_POR_POST}
+            # includeNestedComments: sem isso, respostas dentro de threads ficam
+            # 100% de fora — achado em produção (13/07/26): um post com 227
+            # comentarios segundo o Instagram so trazia 19 linhas na tabela
+            # comments. Teste isolado (1 post, $0.25) confirmou: com essa flag,
+            # o mesmo post foi de 19 pra 110 itens (50 de primeiro nivel + 60
+            # respostas). So funciona em conta paga (Starter+) — a nossa e.
+            input_data = {
+                "directUrls": urls_posts,
+                "resultsLimit": MAX_COMENTARIOS_POR_POST,
+                "includeNestedComments": True,
+            }
             # 512 MB: mesmo motivo do post-scraper — 256 MB e insuficiente e causa OOM.
             run_id = apify_iniciar_run(ACTOR_COMMENTS, input_data, memory_mbytes=512)
             if run_id:
