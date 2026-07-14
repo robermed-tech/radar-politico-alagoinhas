@@ -237,7 +237,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => setPage(n.id)}
-                className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm tracking-wide transition-all duration-200 ${
+                className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-extrabold tracking-wide transition-all duration-200 ${
                   isCurrent
                     ? ""
                     : "text-txt-2 hover:bg-bg-2 hover:text-txt-1"

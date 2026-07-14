@@ -295,6 +295,25 @@ function IconVozes({ size = 16 }: { size?: number }) {
   );
 }
 
+/**
+ * Badge "com volume": preenchimento sólido em degradê + brilho colorido +
+ * friso de luz no topo — mesmo tratamento do botão ativo do menu lateral
+ * (NAV_GLOW em App.tsx), generalizado pra qualquer cor de nível. Substitui
+ * o preenchimento pálido/translúcido (`${cor}22` + borda fina) usado antes,
+ * que ficava fraco demais pra ler rápido.
+ *
+ * Texto sempre em preto quente: nas 4 cores de NIVEL_COLOR (verde, amarelo,
+ * laranja, vermelho), preto passa contraste AA/AAA em todas — branco falha
+ * ou fica no limite em todas (mesmo problema já corrigido no menu lateral).
+ */
+function nivelBadgeStyle(cor: string) {
+  return {
+    background: `linear-gradient(180deg, ${cor}E6 0%, ${cor} 100%)`,
+    color: "#1A0F02",
+    boxShadow: `0 3px 12px -3px ${cor}80, inset 0 1px 0 rgba(255,255,255,0.4)`,
+  };
+}
+
 function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number }) {
   const nivel = (briefing.nivel_crise as NivelCrise) ?? "baixo";
   const cor = NIVEL_COLOR[nivel];
@@ -305,14 +324,14 @@ function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number 
     >
       <div className="mb-3 flex items-center gap-2">
         <span
-          className="rounded-full px-3 py-0.5 text-xs font-medium uppercase tracking-wide"
-          style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}3d` }}
+          className="rounded-full px-3 py-0.5 text-xs font-extrabold uppercase tracking-wide"
+          style={nivelBadgeStyle(cor)}
         >
           {NIVEL_LABEL[nivel]}
         </span>
         <span className="text-xs text-txt-3">{periodoClima(dias)} · {briefing.dia}</span>
       </div>
-      <p className="text-[15px] leading-relaxed text-txt-1">{briefing.diagnostico}</p>
+      <p className="text-[15px] font-semibold leading-relaxed text-txt-1">{briefing.diagnostico}</p>
     </div>
   );
 }
@@ -336,8 +355,8 @@ function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]
               style={{ borderColor: `${cor}33` }}
             >
               <span
-                className="shrink-0 rounded px-2.5 py-0.5 text-xs font-bold uppercase"
-                style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}44` }}
+                className="shrink-0 rounded px-2.5 py-0.5 text-xs font-extrabold uppercase"
+                style={nivelBadgeStyle(cor)}
               >
                 {NIVEL_LABEL[(a.nivel as NivelCrise) ?? "baixo"]}
               </span>
@@ -431,8 +450,8 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
                 {f.tema}
               </span>
               <span
-                className="rounded px-2.5 py-0.5 text-xs font-bold uppercase"
-                style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}44` }}
+                className="rounded px-2.5 py-0.5 text-xs font-extrabold uppercase"
+                style={nivelBadgeStyle(cor)}
               >
                 {NIVEL_LABEL[nivel]}
               </span>
