@@ -2172,6 +2172,35 @@ _PADRAO_NUMERO_DIAGNOSTICO = re.compile(
 
 _ROTULO_PERIODO = {"dia": "DIA", "semana": "SEMANA", "mes": "MES"}
 _FRASE_PERIODO = {"dia": "no dia", "semana": "na semana", "mes": "no mes"}
+_DIAS_PERIODO = {"dia": 1, "semana": 7, "mes": 30}
+
+# Um alerta em "temas que merecem atencao" so e legitimo se tiver comentarios
+# REAIS de cidadaos por tras — um post isolado de score alto, sem eco na
+# populacao, nao e alerta (isso ja e tratado à parte pelo Cacador de Crises).
+# Calibrado como o `subtema_limiar` default (3) usado no alerta de volume.
+MIN_COMENTARIOS_ALERTA = 3
+
+def contar_comentarios_por_tema(dias):
+    """Conta comentarios de cidadaos por categoria fixa (tema) nos ultimos
+    `dias` dias — usado pra podar alertas do briefing sem volume real de
+    comentarios por tras (ver MIN_COMENTARIOS_ALERTA). `data_comentario_ts`
+    e timestamp de verdade (diferente de posts.data_post, que e texto),
+    entao aqui da pra filtrar por data direto no PostgREST."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return {}
+    desde = (datetime.now() - timedelta(days=dias)).isoformat()
+    rows = _supabase_get(
+        "comments",
+        f"tenant=eq.{TENANT}&tipo=eq.cidadao&tema=not.is.null&tema=neq.outro"
+        f"&data_comentario_ts=gte.{desde}&select=tema",
+    ) or []
+    contagem = {}
+    for r in rows:
+        t = (r.get("tema") or "").strip().lower()
+        if t:
+            contagem[t] = contagem.get(t, 0) + 1
+    return contagem
+
 
 def _gerar_briefing(posts, periodo, dia):
     """Nucleo generico do briefing estrategico: monta o contexto, chama Claude
@@ -2219,6 +2248,13 @@ def _gerar_briefing(posts, periodo, dia):
         if p.get("comentarios_destaque"):
             ctx += f"     comentario: \"{p.get('comentarios_destaque','')[:160]}\"\n"
 
+    contagem_temas = contar_comentarios_por_tema(_DIAS_PERIODO.get(periodo, 1))
+    if contagem_temas:
+        ctx += "\nVOLUME REAL DE COMENTARIOS DE CIDADAOS POR CATEGORIA NO PERIODO:\n  "
+        ctx += ", ".join(f"{t} ({n})" for t, n in sorted(contagem_temas.items(), key=lambda x: -x[1])) + "\n"
+    else:
+        ctx += "\nVOLUME REAL DE COMENTARIOS DE CIDADAOS POR CATEGORIA NO PERIODO: nenhum comentario classificado ainda.\n"
+
     prompt = ctx + f"""
 Retorne APENAS este JSON:
 {{
@@ -2227,6 +2263,12 @@ Retorne APENAS este JSON:
   "alertas": [{{"nivel":"baixo|moderado|alto|critico","tema":"...","tema_categoria":"<saude|educacao|obras|seguranca|transporte|emprego|impostos|saneamento|cultura_eventos|comunicacao — a categoria fixa mais proxima do assunto do alerta, usada pra puxar os comentarios reais que embasam a conclusao>","janela":"imediato|24h|esta semana"}}],
   "recomendacoes_comunicacao": [{{"canal":"...","mensagem":"...","tom":"...","timing":"..."}}]
 }}
+IMPORTANTE sobre "alertas": só inclua um tema aqui se ele tiver volume real de
+comentários de cidadãos na categoria (ver VOLUME REAL acima) — no mínimo
+{MIN_COMENTARIOS_ALERTA} comentários. Um post isolado de risco alto, sem eco
+na população em comentários, NÃO é "tema que merece atenção" — isso já é
+tratado à parte (Caçador de Crises). Prefira omitir a colocar um alerta sem
+essa base.
 Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
 
     try:
@@ -2263,6 +2305,22 @@ Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
             a["tema_categoria"] = ""
         else:
             a["tema_categoria"] = a["tema_categoria"].lower().strip()
+
+    # Rede de seguranca: NAO confia so na instrucao do prompt. Um alerta so
+    # sobrevive se tiver volume real de comentarios de cidadaos por tras —
+    # senao um post isolado de score alto (ja tratado pelo Cacador de Crises)
+    # aparece como "tema que merece atencao" sem sustentacao nenhuma na
+    # populacao (achado real: alerta "alto" com 1 unico comentario).
+    alertas_com_evidencia = []
+    for a in data.get("alertas", []) or []:
+        cat = a.get("tema_categoria") or ""
+        n = contagem_temas.get(cat, 0) if cat else 0
+        if n < MIN_COMENTARIOS_ALERTA:
+            log(f"  Alerta descartado (evidencia insuficiente, {n} comentario(s) — "
+                f"minimo {MIN_COMENTARIOS_ALERTA}): {str(a.get('tema',''))[:70]}")
+            continue
+        alertas_com_evidencia.append(a)
+    data["alertas"] = alertas_com_evidencia
 
     row = [{
         "tenant": TENANT, "dia": dia, "periodo": periodo,
