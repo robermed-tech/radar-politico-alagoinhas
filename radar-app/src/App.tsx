@@ -239,12 +239,12 @@ export default function App() {
                 onClick={() => setPage(n.id)}
                 className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm tracking-wide transition-all duration-200 ${
                   isCurrent
-                    ? "text-white"
+                    ? ""
                     : "text-txt-2 hover:bg-bg-2 hover:text-txt-1"
                 }`}
-                style={isCurrent ? NAV_GLOW : undefined}
+                style={isCurrent ? { ...NAV_GLOW, color: "#1A0F02" } : undefined}
               >
-                <span className="flex h-4 w-4 items-center justify-center shrink-0" style={{ color: isCurrent ? "#FFFFFF" : "var(--txt2)" }}>
+                <span className="flex h-4 w-4 items-center justify-center shrink-0" style={{ color: isCurrent ? "#1A0F02" : "var(--txt2)" }}>
                   {n.icon}
                 </span>
                 {n.label}
