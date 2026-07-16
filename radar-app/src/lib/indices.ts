@@ -198,3 +198,22 @@ export const NIVEL_COLOR: Record<NivelCrise, string> = {
   alto: "#EF8C00",
   critico: "#EF4444",
 };
+
+/**
+ * Badge "com volume": preenchimento sólido em degradê + brilho colorido +
+ * friso de luz no topo — mesmo tratamento do botão ativo do menu lateral
+ * (NAV_GLOW em App.tsx), generalizado pra qualquer cor de nível. Fonte
+ * única para o "box de análise do clima" (ClimaPage) e qualquer outra tela
+ * que precise do mesmo selo de nível de atenção (ex: Alertas & Ações).
+ *
+ * Texto sempre em preto quente: nas 4 cores de NIVEL_COLOR (verde, amarelo,
+ * laranja, vermelho), preto passa contraste AA/AAA em todas — branco falha
+ * ou fica no limite em todas.
+ */
+export function nivelBadgeStyle(cor: string) {
+  return {
+    background: `linear-gradient(180deg, ${cor}E6 0%, ${cor} 100%)`,
+    color: "#1A0F02",
+    boxShadow: `0 3px 12px -3px ${cor}80, inset 0 1px 0 rgba(255,255,255,0.4)`,
+  };
+}

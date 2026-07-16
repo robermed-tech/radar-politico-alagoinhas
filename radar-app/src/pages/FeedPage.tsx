@@ -77,9 +77,14 @@ function PostCard({ p }: { p: Post }) {
         <span className="ml-auto shrink-0 text-xs text-txt-3">{tempoRelativo(p.data_post)}</span>
       </div>
       {p.comentarios_destaque && (
-        <div className="mb-2.5 rounded-lg bg-bg-2 px-3 py-2">
+        <div className="quote-box mb-2.5 rounded-lg px-3 py-2">
           <div className="text-xs font-semibold text-txt-3">Comentário mais curtido</div>
-          <p className="mt-0.5 line-clamp-2 text-sm italic text-txt-1">"{p.comentarios_destaque}"</p>
+          <p
+            className="mt-0.5 line-clamp-2 text-sm italic text-txt-1"
+            style={{ fontWeight: 600 }}
+          >
+            "{p.comentarios_destaque}"
+          </p>
           {p.comentarios_destaque_autor && (
             <span className="text-xs text-txt-3">— @{p.comentarios_destaque_autor}</span>
           )}

@@ -52,6 +52,11 @@
   --violet: #a78bfa;
   --violet-soft: rgba(167, 139, 250, 0.12);
   --violet-border: rgba(167, 139, 250, 0.38);
+
+  /* Caixa de comentário em destaque (feed) — bem mais transparente que os
+     tokens de vidro padrão (g1/g2), pra não competir com o texto da citação. */
+  --quote-bg: rgba(255, 255, 255, 0.025);
+  --quote-border: rgba(255, 255, 255, 0.08);
 }
 
 /* ── TEMA CLARO ── */
@@ -101,6 +106,9 @@
   --violet: #6d28d9;
   --violet-soft: rgba(109, 40, 217, 0.07);
   --violet-border: rgba(109, 40, 217, 0.28);
+
+  --quote-bg: rgba(15, 23, 42, 0.03);
+  --quote-border: rgba(15, 23, 42, 0.08);
 }
 
 /* Fallback sólido para navegadores sem backdrop-filter (Firefox < 103):
@@ -174,6 +182,14 @@ button:disabled {
 .rounded-xl.bg-bg-2,
 .rounded-2xl.bg-bg-2 {
   box-shadow: var(--shadow-ambient), inset 0 1px 0 var(--hairline);
+}
+
+/* Caixa de citação (comentário em destaque nos cards do feed) — deliberadamente
+   mais transparente que o vidro padrão dos cards (bg-bg-1/2), pra não competir
+   visualmente com o texto; a legibilidade vem do peso da fonte, não da caixa. */
+.quote-box {
+  background: var(--quote-bg);
+  border: 1px solid var(--quote-border);
 }
 
 /* Vidro fosco avulso — para containers novos que ainda não usam bg-bg-1/2/3.
