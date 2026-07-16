@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchBriefing, fetchCrisisPlans, type CrisisPlan } from "@/lib/data";
-import { NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
+import { NIVEL_COLOR, NIVEL_LABEL, nivelBadgeStyle, type NivelCrise } from "@/lib/indices";
 import { IconAlertBell, IconCheckCircle } from "@/components/icons";
 
 const IMPACTO_COR: Record<string, string> = {
@@ -50,14 +50,23 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
         {reais.map((p) => {
           const cor = NIVEL_COLOR[(p.nivel as NivelCrise) ?? "alto"] ?? "#F97316";
           return (
-            <div key={p.post_url} className="rounded-lg border border-line bg-bg-2 p-4">
+            <div
+              key={p.post_url}
+              className="rounded-lg border p-4"
+              style={{ borderColor: `${cor}44`, background: `${cor}0D` }}
+            >
               <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="shrink-0 rounded px-2.5 py-0.5 text-xs font-extrabold uppercase"
+                  style={nivelBadgeStyle(cor)}
+                >
+                  {NIVEL_LABEL[(p.nivel as NivelCrise) ?? "alto"] ?? p.nivel}
+                </span>
                 {p.tema && (
                   <span className="text-sm font-extrabold capitalize text-txt-1">
                     {p.tema}
                   </span>
                 )}
-                <Tag color={cor}>{NIVEL_LABEL[(p.nivel as NivelCrise) ?? "alto"] ?? p.nivel}</Tag>
                 <span className="ml-auto text-xs text-txt-3">@{p.autor}</span>
               </div>
 

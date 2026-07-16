@@ -1,7 +1,7 @@
 ﻿import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchComentariosPorTema, filtrarPorPeriodo, type Post, type Boletim, type BoletimFrente, type Briefing, type Periodo } from "@/lib/data";
-import { calcIAD, NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
+import { calcIAD, NIVEL_COLOR, NIVEL_LABEL, nivelBadgeStyle, type NivelCrise } from "@/lib/indices";
 import { getWeather, weatherFromCondicao } from "@/lib/weather";
 import { fmtInt } from "@/lib/format";
 import { useAuth } from "@/components/AuthProvider";
@@ -293,25 +293,6 @@ function IconVozes({ size = 16 }: { size?: number }) {
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
-}
-
-/**
- * Badge "com volume": preenchimento sólido em degradê + brilho colorido +
- * friso de luz no topo — mesmo tratamento do botão ativo do menu lateral
- * (NAV_GLOW em App.tsx), generalizado pra qualquer cor de nível. Substitui
- * o preenchimento pálido/translúcido (`${cor}22` + borda fina) usado antes,
- * que ficava fraco demais pra ler rápido.
- *
- * Texto sempre em preto quente: nas 4 cores de NIVEL_COLOR (verde, amarelo,
- * laranja, vermelho), preto passa contraste AA/AAA em todas — branco falha
- * ou fica no limite em todas (mesmo problema já corrigido no menu lateral).
- */
-function nivelBadgeStyle(cor: string) {
-  return {
-    background: `linear-gradient(180deg, ${cor}E6 0%, ${cor} 100%)`,
-    color: "#1A0F02",
-    boxShadow: `0 3px 12px -3px ${cor}80, inset 0 1px 0 rgba(255,255,255,0.4)`,
-  };
 }
 
 function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number }) {

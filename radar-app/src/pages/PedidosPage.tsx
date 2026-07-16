@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPedidos, type Pedido } from "@/lib/data";
 import { IconHeart, IconInbox, IconWarningTriangle } from "@/components/icons";
+import { corTema } from "@/lib/temaColors";
 
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde", educacao: "Educação", obras: "Obras", seguranca: "Segurança",
@@ -92,24 +93,36 @@ export function PedidosPage() {
             >
               Todos ({data.length})
             </button>
-            {porTema.map(([tema, n]) => (
-              <button
-                key={tema}
-                onClick={() => setTemaSel(tema)}
-                className={`rounded-lg px-3 py-1 text-sm font-semibold transition ${
-                  temaSel === tema ? "bg-brand text-white" : "border border-line bg-bg-1 text-txt-2 hover:text-txt-1"
-                }`}
-              >
-                {labelTema(tema)} ({n})
-              </button>
-            ))}
+            {porTema.map(([tema, n]) => {
+              const cor = corTema(tema);
+              const ativo = temaSel === tema;
+              return (
+                <button
+                  key={tema}
+                  onClick={() => setTemaSel(tema)}
+                  className="rounded-lg px-3 py-1 text-sm font-semibold transition"
+                  style={
+                    ativo
+                      ? { background: cor, color: "#0B0B0B" }
+                      : { border: `1px solid ${cor}55`, background: `${cor}14`, color: cor }
+                  }
+                >
+                  {labelTema(tema)} ({n})
+                </button>
+              );
+            })}
           </div>
 
           <div className="space-y-2">
             {pedidos.map((p, i) => {
               const revisar = (p.confianca_tema ?? 0) < CONF_REVISAR;
+              const cor = corTema(p.tema);
               return (
-                <div key={i} className="card-hover rounded-xl border border-line bg-bg-1 p-4">
+                <div
+                  key={i}
+                  className="card-hover rounded-xl border border-line bg-bg-1 p-4"
+                  style={{ borderLeftColor: cor, borderLeftWidth: 3 }}
+                >
                   <div className="flex items-start gap-2">
                     <p className="flex-1 text-sm font-semibold text-txt-1">{p.pedido}</p>
                     <span className="flex shrink-0 items-center gap-1 text-xs text-txt-3">
@@ -118,7 +131,10 @@ export function PedidosPage() {
                     </span>
                   </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
-                    <span className="rounded bg-bg-2 px-1.5 py-0.5 font-semibold text-txt-2">
+                    <span
+                      className="rounded px-1.5 py-0.5 font-semibold"
+                      style={{ background: `${cor}24`, color: cor, border: `1px solid ${cor}3d` }}
+                    >
                       {labelTema(p.tema)}
                     </span>
                     {p.localidade && p.localidade !== "nao_identificado" && (

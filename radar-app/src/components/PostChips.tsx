@@ -1,3 +1,5 @@
+import { corTema } from "@/lib/temaColors";
+
 interface PostChipsProps {
   sentimento?: string;
   tema?: string;
@@ -36,7 +38,7 @@ export function PostChips({ sentimento, tema, urgencia, risco_crise }: PostChips
         </span>
       )}
       {tema && tema !== "—" && (
-        <span className={CHIP} style={chipStyle("#A78BFA")}>
+        <span className={CHIP} style={chipStyle(corTema(tema))}>
           {tema}
         </span>
       )}
