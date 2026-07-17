@@ -21,10 +21,17 @@ Fluxo:
 Modo dry_run: busca da Apify e loga a saída (inclui as chaves cruas, úteis p/
 ajustar o mapeamento depois de um teste real), mas NÃO grava nada.
 
-⚠ Os nomes dos campos dos atores streamers/* mudam entre versões. Todo o
-mapeamento está isolado em normalizar_video() / normalizar_comentario() e nos
-builders _input_videos() / _input_comentarios() — é aqui que se ajusta depois
-de inspecionar a saída real com dry_run.
+Mapeamento CALIBRADO em 2026-07-17 contra a saída real dos atores (canal
+@prefeitura.alagoinhas). Campos confirmados desta versão:
+  vídeo:      url, id, title, text (descrição), channelName, date (ISO),
+              likes, commentsCount
+  comentário: cid (id), comment (texto), author, voteCount (curtidas),
+              publishedTimeText (data relativa, ex.: "5 months ago"), videoId,
+              pageUrl
+O ator de comentários NÃO devolve a URL do vídeo — o casamento é por `videoId`
+(ver _coletar_fonte). Os nomes mudam entre versões; para recalibrar, rode
+`python coletor_youtube.py --canal <url>` (dry, não grava) e ajuste
+normalizar_video() / normalizar_comentario() / _input_*().
 
 Variáveis de ambiente (as mesmas do agora.py):
   APIFY_API_TOKEN        — token da Apify
@@ -58,7 +65,12 @@ DIAS_ATRAS               = 7     # ignora vídeos mais antigos que isto
 
 
 def _log(msg: str) -> None:
-    print(msg, flush=True)
+    # Resiliente ao encoding do console: no Actions (Linux/UTF-8) mantém os
+    # símbolos; num terminal Windows cp1252 degrada em vez de derrubar o run.
+    try:
+        print(msg, flush=True)
+    except UnicodeEncodeError:
+        print(msg.encode("ascii", "replace").decode("ascii"), flush=True)
 
 
 # ── Apify (helpers próprios — módulo standalone, sem import circular) ─────────
@@ -318,9 +330,11 @@ def _log_collection(source_id, data_type: str, items_count: int, status: str,
     }])
 
 
-def _coletar_fonte(fonte: dict, dry_run: bool) -> dict:
+def _coletar_fonte(fonte: dict, dry_run: bool, ignorar_periodo: bool = False) -> dict:
     """Coleta vídeos + comentários de UM canal e grava (ou loga, em dry_run).
-    Toda exceção é contida aqui: status='erro' no log e segue para a próxima."""
+    Toda exceção é contida aqui: status='erro' no log e segue para a próxima.
+    ignorar_periodo: só na calibração (--canal) — coleta os vídeos mesmo fora
+    da janela de N dias, para revelar o schema de comentários."""
     source_id = fonte.get("id")
     handle = fonte.get("handle", "")
     rotulo = fonte.get("label") or handle
@@ -335,11 +349,15 @@ def _coletar_fonte(fonte: dict, dry_run: bool) -> dict:
     dataset_id = _apify_aguardar_run(run_id)
     brutos_videos = _apify_buscar_resultados(dataset_id) if dataset_id else []
     _log(f"    {len(brutos_videos)} vídeos brutos")
+    if dry_run and brutos_videos:
+        _dr = _pega(brutos_videos[0], "date", "uploadDate", "publishedAt", "publishDate")
+        _log(f"    [DRY-RUN] campo 'date' cru do 1º vídeo: {_dr!r} → data_br={_data_br(_dr)!r}")
 
     posts_rows, video_urls = [], []
+    url_por_video_id: dict[str, str] = {}   # videoId → url do vídeo (p/ casar comentários)
     for item in brutos_videos:
         data_raw = _pega(item, "date", "uploadDate", "publishedAt", "publishDate")
-        if not _dentro_do_periodo(data_raw):
+        if not ignorar_periodo and not _dentro_do_periodo(data_raw):
             continue
         norm = normalizar_video(item)
         if not norm:
@@ -347,8 +365,14 @@ def _coletar_fonte(fonte: dict, dry_run: bool) -> dict:
         row, url = norm
         posts_rows.append(row)
         video_urls.append(url)
+        vid = _pega(item, "id", "videoId")
+        if vid:
+            url_por_video_id[str(vid)] = url
 
-    _log(f"    {len(posts_rows)} vídeos dentro do período ({DIAS_ATRAS}d)")
+    if ignorar_periodo:
+        _log(f"    {len(posts_rows)} vídeos (janela ignorada — calibração)")
+    else:
+        _log(f"    {len(posts_rows)} vídeos dentro do período ({DIAS_ATRAS}d)")
 
     # 2. Comentários -------------------------------------------------
     coment_rows = []
@@ -358,10 +382,14 @@ def _coletar_fonte(fonte: dict, dry_run: bool) -> dict:
             dataset_c = _apify_aguardar_run(run_id_c)
             brutos_coment = _apify_buscar_resultados(dataset_c, limit=2000) if dataset_c else []
             _log(f"    {len(brutos_coment)} comentários brutos")
+            if dry_run and brutos_coment:
+                _log(f"    [DRY-RUN] chaves do 1º comentário cru: {sorted(brutos_coment[0].keys())}")
             for item in brutos_coment:
-                url_post = _pega(item, "url", "videoUrl", "postUrl") or (video_urls[0] if video_urls else "")
-                # Casa o comentário com um vídeo coletado (o ator devolve a URL do vídeo).
-                url_post = next((u for u in video_urls if url_post and (u == url_post or u in url_post)), url_post)
+                # O ator de comentários NÃO devolve a URL do vídeo — só `videoId`
+                # e `pageUrl` (confirmado em calibração). Casa pelo videoId; cai
+                # para pageUrl se o id não bater.
+                vid = str(_pega(item, "videoId", padrao=""))
+                url_post = url_por_video_id.get(vid) or _pega(item, "pageUrl", "url", padrao="")
                 if url_post not in video_urls:
                     continue
                 c = normalizar_comentario(item, url_post)
@@ -375,7 +403,10 @@ def _coletar_fonte(fonte: dict, dry_run: bool) -> dict:
             _log(f"    [DRY-RUN] chaves do 1º vídeo cru: {sorted(brutos_videos[0].keys())}")
         if posts_rows:
             _amostra = {k: posts_rows[0][k] for k in ("url", "autor", "data_post", "curtidas", "comentarios_total")}
-            _log(f"    [DRY-RUN] amostra normalizada: {_amostra}")
+            _log(f"    [DRY-RUN] amostra vídeo normalizado: {_amostra}")
+        if coment_rows:
+            _ac = {k: coment_rows[0][k] for k in ("id", "username", "curtidas", "data_comentario", "texto")}
+            _log(f"    [DRY-RUN] amostra comentário normalizado: {_ac}")
         _log_collection(source_id, "videos", len(posts_rows), "ok" if posts_rows else "vazio", dry_run)
         _log_collection(source_id, "comments", len(coment_rows), "ok" if coment_rows else "vazio", dry_run)
         return {"videos": len(posts_rows), "comentarios": len(coment_rows), "status": "dry_run"}
@@ -389,16 +420,38 @@ def _coletar_fonte(fonte: dict, dry_run: bool) -> dict:
     return {"videos": n_posts, "comentarios": n_coments, "status": "ok"}
 
 
-def coletar_e_gravar(dry_run: bool = False) -> dict:
+def _handle_de_override(canal: str) -> str:
+    """Extrai o handle da URL/entrada de override (--canal). Aceita URL completa
+    (https://www.youtube.com/@x) ou já um handle (@x, channel/UC…)."""
+    c = canal.strip()
+    if "youtube.com/" in c:
+        c = c.split("youtube.com/", 1)[1]
+    return c.strip("/")
+
+
+def coletar_e_gravar(dry_run: bool = False, canal_override: str | None = None) -> dict:
     """Ponto de entrada chamado pelo agora.py.
 
     Lê as fontes YouTube ativas e coleta cada uma. Se não houver nenhuma fonte
     ativa, retorna imediatamente SEM chamar a Apify (sistema inerte).
     Retorna um resumo agregado da execução.
+
+    canal_override: SÓ para calibração do mapeamento (--canal). Ignora o banco
+    e coleta um único canal ad-hoc, sempre em dry_run (nunca grava em produção).
     """
     if not APIFY_TOKEN:
         _log("[youtube] APIFY_API_TOKEN ausente — coleta YouTube ignorada")
         return {"fontes": 0, "videos": 0, "comentarios": 0, "skipped": True}
+
+    if canal_override:
+        # Fonte sintética, sem tocar no banco. Força dry_run por segurança.
+        handle = _handle_de_override(canal_override)
+        _log(f"=== Coletor YouTube — CALIBRAÇÃO (canal ad-hoc: {handle}) [DRY-RUN] ===")
+        res = _coletar_fonte({"id": None, "handle": handle, "label": "calibracao"},
+                             dry_run=True, ignorar_periodo=True)
+        _log(f"[youtube] Calibração: {res['videos']} vídeos, {res['comentarios']} comentários")
+        return {"fontes": 1, "videos": res["videos"], "comentarios": res["comentarios"],
+                "skipped": False, "calibracao": True}
 
     fontes = _fontes_ativas()
     if not fontes:
@@ -429,5 +482,25 @@ def coletar_e_gravar(dry_run: bool = False) -> dict:
 
 if __name__ == "__main__":
     import sys
+    # Carrega .env se disponível (execução standalone, fora do agora.py).
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except Exception:
+        pass
     _dry = "--dry-run" in sys.argv or "--dry" in sys.argv
-    coletar_e_gravar(dry_run=_dry)
+    # --canal <url|handle>: calibração contra um canal ad-hoc (sempre dry).
+    _canal = None
+    if "--canal" in sys.argv:
+        _i = sys.argv.index("--canal")
+        if _i + 1 < len(sys.argv):
+            _canal = sys.argv[_i + 1]
+    # Reavalia credenciais após load_dotenv (constantes de módulo já leram
+    # os.environ no import; se o .env só existir agora, atualiza aqui).
+    APIFY_TOKEN = os.environ.get("APIFY_API_TOKEN", "")  # noqa: F811
+    SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")  # noqa: F811
+    SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")  # noqa: F811
+    globals()["APIFY_TOKEN"] = APIFY_TOKEN
+    globals()["SUPABASE_URL"] = SUPABASE_URL
+    globals()["SUPABASE_KEY"] = SUPABASE_KEY
+    coletar_e_gravar(dry_run=_dry or bool(_canal), canal_override=_canal)
