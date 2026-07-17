@@ -12,6 +12,7 @@ import { fetchServiceStatus } from "@/lib/data";
 import { DEFAULT_NOTIFICATION } from "@/lib/settings";
 import { type Role } from "@/lib/auth";
 import { IconWarningTriangle } from "@/components/icons";
+import { useOnlineUserIds } from "@/lib/presence";
 
 type Tab = "score" | "relevancia" | "fontes" | "usuarios" | "notificacoes" | "clima";
 
@@ -450,6 +451,7 @@ function UsersSection() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [invite, setInvite] = useState<{ email: string; link: string } | null>(null);
+  const onlineIds = useOnlineUserIds();
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin-users"] });
 
   async function convidar() {
@@ -534,32 +536,53 @@ function UsersSection() {
         {invite && <InviteLinkBox email={invite.email} link={invite.link} />}
       </Card>
 
-      <Card title="Usuários do tenant">
+      <Card
+        title={
+          onlineIds.size > 0
+            ? `Usuários do tenant · ${onlineIds.size} online agora`
+            : "Usuários do tenant"
+        }
+      >
         <div className="space-y-1.5">
-          {(users ?? []).map((u) => (
-            <div key={u.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
-              <div className="min-w-0">
-                <div className="truncate font-semibold text-txt-1">{u.full_name || u.email}</div>
-                <div className="truncate text-xs text-txt-3">{u.email}</div>
+          {(users ?? []).map((u) => {
+            const online = onlineIds.has(u.id);
+            return (
+              <div key={u.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 truncate font-semibold text-txt-1">
+                    <span
+                      className="inline-block h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: online ? "#22C55E" : "var(--line)" }}
+                      title={online ? "Com o dashboard aberto agora" : "Offline"}
+                    />
+                    <span className="truncate">{u.full_name || u.email}</span>
+                    {online && (
+                      <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: "rgba(34,197,94,0.12)", color: "#16A34A" }}>
+                        Online
+                      </span>
+                    )}
+                  </div>
+                  <div className="truncate text-xs text-txt-3">{u.email}</div>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <select
+                    value={u.role}
+                    onChange={(e) => mudarPapel(u.id, e.target.value as Role)}
+                    className="rounded-lg border border-line bg-bg-1 px-2 py-1 text-xs font-semibold outline-none focus:border-brand"
+                  >
+                    <option value="user">Usuário</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  <button
+                    onClick={() => excluir(u.id, u.full_name || u.email || "")}
+                    className="text-xs font-semibold text-risk-crit hover:underline"
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <select
-                  value={u.role}
-                  onChange={(e) => mudarPapel(u.id, e.target.value as Role)}
-                  className="rounded-lg border border-line bg-bg-1 px-2 py-1 text-xs font-semibold outline-none focus:border-brand"
-                >
-                  <option value="user">Usuário</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <button
-                  onClick={() => excluir(u.id, u.full_name || u.email || "")}
-                  className="text-xs font-semibold text-risk-crit hover:underline"
-                >
-                  Excluir
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {users?.length === 0 && <p className="text-sm text-txt-3">Nenhum usuário.</p>}
         </div>
       </Card>
