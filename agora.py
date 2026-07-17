@@ -1874,6 +1874,24 @@ def _supabase_delete(tabela, filtro):
         return False
 
 
+def _registrar_coleta(platform, data_type, items_count, status="ok", source_id=None):
+    """Registra o resumo de uma etapa de coleta em collection_logs, p/ a aba
+    Monitor de Coleta do Radar Comando. Best-effort: nunca derruba o pipeline.
+    source_id fica None no Instagram (as fontes vivem em monitored_sources, não
+    na tabela `sources` do subsistema novo — a coluna aceita null)."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+    url = f"{SUPABASE_URL}/rest/v1/collection_logs"
+    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}",
+               "Content-Type": "application/json", "Prefer": "return=minimal"}
+    payload = [{"source_id": source_id, "platform": platform, "data_type": data_type,
+                "items_count": int(items_count or 0), "status": status}]
+    try:
+        requests.post(url, headers=headers, json=payload, timeout=15)
+    except Exception as e:
+        log(f"    collection_logs: erro {e}")
+
+
 def recalcular_sentimento_posts(dry_run=False):
     """
     Recalcula os agregados de sentimento POR POST (comentarios_pct_pos,
@@ -3930,6 +3948,7 @@ def main():
     posts = coletar_posts()
     if not posts:
         log("  Nenhum post coletado. Pipeline encerrado.")
+        _safe("log_coleta_ig_vazia", _registrar_coleta, "instagram", "posts", 0, "vazio")
         _safe("creditos_apify", verificar_creditos_apify)  # registra status mesmo sem posts (ex: limite mensal atingido)
         # Sem isto, um run com coleta vazia (Instagram bloqueando, token
         # expirado etc.) saia sem tocar pipeline_health — o banner de "coleta
@@ -3963,7 +3982,13 @@ def main():
         _safe("alerta_coleta_vazia", _enviar_whatsapp, _msg_coleta_vazia)
         return
 
+    _safe("log_coleta_ig_posts", _registrar_coleta, "instagram", "posts", len(posts), "ok")
+
     comentarios_por_post = coletar_comentarios(posts)
+    _total_coments_ig = sum(len(v) for v in comentarios_por_post.values())
+    _safe("log_coleta_ig_coments", _registrar_coleta, "instagram", "comments",
+          _total_coments_ig, "ok" if _total_coments_ig else "vazio")
+
     memoria = carregar_memoria(planilha)
     # Falha em carregar bairros aborta o run (RuntimeError) — nao gravamos
     # localidade='nao_identificado' em massa por indisponibilidade do Supabase.
