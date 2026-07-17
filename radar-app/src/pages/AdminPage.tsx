@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import ReactECharts from "echarts-for-react";
 import { AlertaConfig } from "@/components/AlertaConfig";
 import {
   fetchSettings, saveSettings,
@@ -8,18 +9,33 @@ import {
   fetchUsers, inviteUser, setUserRole, deleteUser,
   type ScoreWeights, type ClimateThresholds, type NotificationConfig,
 } from "@/lib/admin";
+import {
+  fetchSources as fetchColetaSources, addSource as addColetaSource,
+  toggleSource as toggleColetaSource, deleteSource as deleteColetaSource,
+  normalizeHandle, type Platform, type Source as ColetaSource,
+} from "@/lib/sources";
+import {
+  fetchCollectionLogsHoje, fetchSourcesLite,
+  calcKpis, resumoPorRede, volumePorHora,
+} from "@/lib/collection";
 import { fetchServiceStatus } from "@/lib/data";
 import { DEFAULT_NOTIFICATION } from "@/lib/settings";
 import { type Role } from "@/lib/auth";
+import { useThemeStore } from "@/stores/theme";
+import { chartInk, glassBar } from "@/lib/chartTheme";
 import { IconWarningTriangle } from "@/components/icons";
 import { useOnlineUserIds } from "@/lib/presence";
 
-type Tab = "score" | "relevancia" | "fontes" | "usuarios" | "notificacoes" | "clima";
+type Tab =
+  | "score" | "relevancia" | "fontes" | "fontes-coleta" | "monitor"
+  | "usuarios" | "notificacoes" | "clima";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "score", label: "Score" },
   { id: "relevancia", label: "Relevância" },
   { id: "fontes", label: "Fontes" },
+  { id: "fontes-coleta", label: "Fontes (coleta)" },
+  { id: "monitor", label: "Monitor de coleta" },
   { id: "usuarios", label: "Usuários" },
   { id: "notificacoes", label: "Notificações" },
   { id: "clima", label: "Clima" },
@@ -146,6 +162,8 @@ export function AdminPage() {
       {tab === "score" && <ScoreSection />}
       {tab === "relevancia" && <KeywordsSection />}
       {tab === "fontes" && <SourcesSection />}
+      {tab === "fontes-coleta" && <FontesColetaSection />}
+      {tab === "monitor" && <ColetaMonitorSection />}
       {tab === "usuarios" && <UsersSection />}
       {tab === "notificacoes" && <NotificationsSection />}
       {tab === "clima" && <ClimateSection />}
@@ -404,6 +422,335 @@ function SourcesSection() {
         {sources?.length === 0 && <p className="text-sm text-txt-3">Nenhuma fonte cadastrada.</p>}
       </div>
     </Card>
+  );
+}
+
+// ── Fontes (coleta) ──────────────────────────────────────────
+// Subsistema NOVO multi-plataforma (tabela `sources`): Instagram + YouTube.
+// Separado da aba "Fontes" acima (monitored_sources), que alimenta o pipeline
+// Instagram atual. Toda fonte cadastrada aqui nasce PAUSADA — nada é coletado
+// até o admin ativar.
+const COLETA_PLATFORMS: { value: Platform; label: string; placeholder: string }[] = [
+  { value: "instagram", label: "Instagram", placeholder: "@perfil ou link do perfil" },
+  { value: "youtube", label: "YouTube", placeholder: "@canal ou URL do canal" },
+];
+
+function FontesColetaSection() {
+  const qc = useQueryClient();
+  const { data: sources } = useQuery({ queryKey: ["coleta-sources"], queryFn: fetchColetaSources });
+  const [platform, setPlatform] = useState<Platform>("instagram");
+  const [handle, setHandle] = useState("");
+  const [label, setLabel] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const refresh = () => qc.invalidateQueries({ queryKey: ["coleta-sources"] });
+
+  const placeholder = COLETA_PLATFORMS.find((p) => p.value === platform)!.placeholder;
+  // Prévia da normalização — mostra ao admin como o handle será salvo.
+  const previa = handle.trim() ? normalizeHandle(platform, handle) : null;
+
+  async function run(fn: () => Promise<string | null>, sucesso: string) {
+    const err = await fn();
+    setMsg(err ? { ok: false, text: err } : { ok: true, text: sucesso });
+    if (!err) refresh();
+  }
+
+  function adicionar() {
+    if (!handle.trim()) return;
+    run(() => addColetaSource(platform, handle, label).then((err) => {
+      if (!err) { setHandle(""); setLabel(""); }
+      return err;
+    }), "✔ Fonte cadastrada (pausada — ative para começar a coletar)");
+  }
+
+  return (
+    <Card title="Fontes de coleta (Instagram + YouTube)">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <select
+          value={platform}
+          onChange={(e) => setPlatform(e.target.value as Platform)}
+          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
+        >
+          {COLETA_PLATFORMS.map((p) => (
+            <option key={p.value} value={p.value}>{p.label}</option>
+          ))}
+        </select>
+        <input
+          value={handle}
+          onChange={(e) => setHandle(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && adicionar()}
+          placeholder={placeholder}
+          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
+        />
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && adicionar()}
+          placeholder="Nome de exibição (opcional)"
+          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand sm:col-span-2"
+        />
+      </div>
+
+      {previa && (
+        <p className="mt-2 text-xs text-txt-3">
+          {previa.error
+            ? <span className="text-risk-crit">{previa.error}</span>
+            : <>Será salva como <code className="rounded bg-bg-2 px-1 py-0.5 text-txt-2">{platform}/{previa.handle}</code></>}
+        </p>
+      )}
+      <p className="mt-2 text-xs text-txt-3">
+        Toda fonte nasce <strong>pausada</strong>. Nenhuma coleta roda até você ativá-la aqui.
+      </p>
+
+      <div className="mt-2 flex items-center gap-3">
+        <button
+          onClick={adicionar}
+          disabled={!!previa?.error || !handle.trim()}
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Adicionar
+        </button>
+        <Feedback msg={msg} />
+      </div>
+
+      <div className="mt-3 space-y-1.5">
+        {(sources ?? []).map((s: ColetaSource) => (
+          <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
+            <div className="min-w-0 flex items-center gap-2">
+              <span
+                className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                style={{
+                  background: s.platform === "youtube" ? "rgba(239,68,68,0.12)" : "rgba(168,85,247,0.12)",
+                  color: s.platform === "youtube" ? "#EF4444" : "#A855F7",
+                }}
+              >
+                {s.platform}
+              </span>
+              <span className={s.active ? "text-txt-1" : "text-txt-3"}>
+                <span className="font-semibold">{s.handle}</span>
+                {s.label && <span className="ml-1 text-txt-3">· {s.label}</span>}
+                {!s.active && <span className="ml-2 text-[10px] uppercase tracking-wide text-txt-3">pausada</span>}
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <button
+                onClick={() => run(() => toggleColetaSource(s.id, !s.active), s.active ? "✔ Pausada" : "✔ Ativada")}
+                className="text-xs font-semibold text-txt-3 hover:text-txt-1"
+              >
+                {s.active ? "Pausar" : "Ativar"}
+              </button>
+              <button
+                onClick={() => run(() => deleteColetaSource(s.id), "✔ Removida")}
+                className="text-xs font-semibold text-risk-crit hover:underline"
+              >
+                Remover
+              </button>
+            </div>
+          </div>
+        ))}
+        {sources?.length === 0 && (
+          <p className="text-sm text-txt-3">Nenhuma fonte de coleta cadastrada ainda.</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+// ── Monitor de coleta ────────────────────────────────────────
+// Lê collection_logs (join sources) e mostra o estado da coleta do dia.
+// No começo não há nenhum registro — e isso é o esperado (estados vazios
+// tratados como normal, não como erro).
+const REDE_META: Record<string, { label: string; cor: string }> = {
+  instagram: { label: "Instagram", cor: "#A855F7" },
+  youtube: { label: "YouTube", cor: "#EF4444" },
+};
+
+function KpiBox({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-xl border border-line bg-bg-2 p-3">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-txt-3">{label}</div>
+      <div className="mt-1 text-2xl font-extrabold text-txt-1">{value}</div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { bg: string; fg: string; txt: string }> = {
+    ok: { bg: "rgba(34,197,94,0.12)", fg: "#22C55E", txt: "ok" },
+    erro: { bg: "rgba(239,68,68,0.12)", fg: "#EF4444", txt: "erro" },
+    vazio: { bg: "rgba(148,163,184,0.14)", fg: "#94A3B8", txt: "vazio" },
+  };
+  const s = map[status] ?? map.vazio;
+  return (
+    <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: s.bg, color: s.fg }}>
+      {s.txt}
+    </span>
+  );
+}
+
+function ColetaMonitorSection() {
+  const ink = chartInk(useThemeStore((s) => s.theme));
+  const { data: logs, isLoading: loadingLogs } = useQuery({
+    queryKey: ["coleta-logs-hoje"], queryFn: fetchCollectionLogsHoje,
+  });
+  const { data: sources, isLoading: loadingSources } = useQuery({
+    queryKey: ["coleta-sources-lite"], queryFn: fetchSourcesLite,
+  });
+  const [filtroRede, setFiltroRede] = useState<"todas" | "instagram" | "youtube">("todas");
+
+  const carregando = loadingLogs || loadingSources;
+  const L = logs ?? [];
+  const S = sources ?? [];
+  const kpis = calcKpis(L, S);
+  const redes = resumoPorRede(L, S);
+  const volume = volumePorHora(L);
+
+  const logsFiltrados = filtroRede === "todas" ? L : L.filter((l) => l.platform === filtroRede);
+
+  const semNada = !carregando && S.length === 0 && L.length === 0;
+
+  const chartOption = {
+    grid: { top: 16, right: 12, bottom: 28, left: 36 },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: ink.tooltipBg, borderColor: ink.tooltipBorder,
+      textStyle: { color: ink.tooltipText },
+    },
+    xAxis: {
+      type: "category",
+      data: Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}h`),
+      axisLabel: { color: ink.axis, fontSize: 10, interval: 2 },
+      axisLine: { lineStyle: { color: ink.axisLine } },
+    },
+    yAxis: {
+      type: "value", minInterval: 1,
+      axisLabel: { color: ink.axis, fontSize: 10 },
+      splitLine: { lineStyle: { color: ink.grid } },
+    },
+    series: [{
+      type: "bar", data: volume, barMaxWidth: 18,
+      itemStyle: glassBar("#F97316"),
+    }],
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* KPIs do dia */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiBox label="Itens coletados hoje" value={kpis.itensColetados} />
+        <KpiBox label="Execuções" value={kpis.execucoes} />
+        <KpiBox label="Fontes ativas" value={kpis.fontesAtivas} />
+        <KpiBox label="Taxa de sucesso" value={`${kpis.taxaSucesso}%`} />
+      </div>
+
+      {semNada && (
+        <Card title="Coleta">
+          <p className="text-sm text-txt-2">
+            Nenhuma coleta ainda. Cadastre e ative uma fonte na aba{" "}
+            <strong>Fontes (coleta)</strong> — os resultados aparecem aqui após a próxima execução do pipeline.
+          </p>
+        </Card>
+      )}
+
+      {/* Cards por rede */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {redes.map((r) => {
+          const meta = REDE_META[r.platform] ?? { label: r.platform, cor: "#94A3B8" };
+          const aguardando = r.fontesAtivas === 0;
+          const ultima = r.ultimaColeta
+            ? new Date(r.ultimaColeta).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+            : null;
+          return (
+            <div key={r.platform} className="rounded-xl border border-line bg-bg-1 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold" style={{ color: meta.cor }}>{meta.label}</span>
+                {aguardando && (
+                  <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: "rgba(148,163,184,0.14)", color: "#94A3B8" }}>
+                    aguardando configuração
+                  </span>
+                )}
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-lg font-extrabold text-txt-1">{r.fontesConfiguradas}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-txt-3">fontes ({r.fontesAtivas} ativas)</div>
+                </div>
+                <div>
+                  <div className="text-lg font-extrabold text-txt-1">{r.itensHoje}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-txt-3">itens hoje</div>
+                </div>
+                <div>
+                  <div className="text-lg font-extrabold text-txt-1">{ultima ?? "—"}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-txt-3">última coleta</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Volume ao longo do dia */}
+      <Card title="Volume coletado ao longo do dia">
+        {kpis.itensColetados === 0 ? (
+          <p className="text-sm text-txt-3">Sem coletas hoje ainda.</p>
+        ) : (
+          <ReactECharts option={chartOption} style={{ height: 220 }} notMerge lazyUpdate />
+        )}
+      </Card>
+
+      {/* Tabela de log */}
+      <Card title="Registro de coletas (hoje)">
+        <div className="mb-3 flex gap-1">
+          {(["todas", "instagram", "youtube"] as const).map((r) => (
+            <button
+              key={r}
+              onClick={() => setFiltroRede(r)}
+              className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
+                filtroRede === r ? "bg-brand text-white" : "text-txt-2 hover:bg-bg-2 hover:text-txt-1"
+              }`}
+            >
+              {r === "todas" ? "Todas" : REDE_META[r]?.label ?? r}
+            </button>
+          ))}
+        </div>
+
+        {carregando ? (
+          <p className="text-sm text-txt-3">Carregando…</p>
+        ) : logsFiltrados.length === 0 ? (
+          <p className="text-sm text-txt-3">Nenhum registro de coleta {filtroRede !== "todas" ? "para esta rede " : ""}hoje.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wide text-txt-3">
+                  <th className="py-1.5 pr-3 font-semibold">Hora</th>
+                  <th className="py-1.5 pr-3 font-semibold">Rede</th>
+                  <th className="py-1.5 pr-3 font-semibold">Fonte</th>
+                  <th className="py-1.5 pr-3 font-semibold">Tipo</th>
+                  <th className="py-1.5 pr-3 font-semibold text-right">Qtd.</th>
+                  <th className="py-1.5 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logsFiltrados.map((l) => (
+                  <tr key={l.id} className="border-t border-line">
+                    <td className="py-1.5 pr-3 text-txt-2">
+                      {new Date(l.collected_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </td>
+                    <td className="py-1.5 pr-3 text-txt-2">{REDE_META[l.platform]?.label ?? l.platform}</td>
+                    <td className="py-1.5 pr-3 text-txt-1">
+                      {l.source ? (l.source.label || l.source.handle) : <span className="text-txt-3">—</span>}
+                    </td>
+                    <td className="py-1.5 pr-3 text-txt-2">{l.data_type}</td>
+                    <td className="py-1.5 pr-3 text-right font-semibold text-txt-1">{l.items_count}</td>
+                    <td className="py-1.5"><StatusBadge status={l.status} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
   );
 }
 

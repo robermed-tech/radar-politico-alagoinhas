@@ -29,6 +29,14 @@ try:
     _INSTAGRAPI_OK = _ig.disponivel()
 except Exception:
     _INSTAGRAPI_OK = False
+
+# Coletor YouTube (subsistema novo multi-plataforma). Fica inerte enquanto não
+# houver fonte YouTube ativa na tabela `sources` — ver coletor_youtube.py.
+try:
+    import coletor_youtube as _yt
+    _YOUTUBE_OK = True
+except Exception:
+    _YOUTUBE_OK = False
 from dotenv import load_dotenv
 load_dotenv()
 # ── Taxonomia de subtemas (editavel) ──────────────────────────────
@@ -3912,6 +3920,13 @@ def main():
         except Exception as e:
             log(f"  Sheets tambem falhou ({e}) — alertas suspensos neste run para evitar spam")
 
+    # Coleta YouTube (subsistema novo). Roda ANTES da coleta Instagram porque
+    # esta pode encerrar o run cedo (coleta vazia). É inerte por si: sem fonte
+    # YouTube ativa em `sources`, retorna sem tocar na Apify. _safe garante que
+    # uma falha aqui nunca derruba o pipeline Instagram.
+    if _YOUTUBE_OK:
+        _safe("coletor_youtube", _yt.coletar_e_gravar)
+
     posts = coletar_posts()
     if not posts:
         log("  Nenhum post coletado. Pipeline encerrado.")
@@ -4535,5 +4550,14 @@ if __name__ == "__main__":
         reprocessar()
     elif "--retroanalise" in sys.argv:
         main_retroanalise()
+    elif "--youtube-dry-run" in sys.argv or "--youtube" in sys.argv:
+        # Coleta YouTube isolada. --youtube-dry-run busca da Apify e loga a
+        # saida (inclui as chaves cruas p/ ajustar o mapeamento), sem gravar
+        # nada. --youtube grava de verdade. Le so as fontes YouTube ativas de
+        # `sources`; sem fonte ativa, retorna sem tocar na Apify.
+        if not _YOUTUBE_OK:
+            log("coletor_youtube indisponivel (falha de import).")
+        else:
+            _yt.coletar_e_gravar(dry_run="--youtube-dry-run" in sys.argv)
     else:
         main()
