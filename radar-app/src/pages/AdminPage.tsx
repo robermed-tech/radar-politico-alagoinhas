@@ -15,7 +15,7 @@ import {
   normalizeHandle, type Platform, type Source as ColetaSource,
 } from "@/lib/sources";
 import {
-  fetchCollectionLogsHoje, fetchSourcesLite,
+  fetchCollectionLogsHoje, fetchFontesUnificadas,
   calcKpis, resumoPorRede, volumePorHora,
 } from "@/lib/collection";
 import { fetchServiceStatus } from "@/lib/data";
@@ -564,6 +564,48 @@ const REDE_META: Record<string, { label: string; cor: string }> = {
   youtube: { label: "YouTube", cor: "#EF4444" },
 };
 
+/**
+ * Radar de varredura — identidade visual do produto ("Radar"). Anéis
+ * concêntricos + linha girando (varredura) + blips pulsando, simulando a busca
+ * ativa. Verde quando há fontes ativas; âmbar quando ocioso. Respeita
+ * prefers-reduced-motion (para a rotação, mantém o desenho).
+ */
+function RadarSweep({ ativo, size = 116 }: { ativo: boolean; size?: number }) {
+  const cor = ativo ? "#22C55E" : "#F59E0B";
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }} aria-hidden>
+      <style>{`
+        @keyframes radar-spin { to { transform: rotate(360deg); } }
+        @keyframes radar-blip { 0%,70%,100% { opacity: 0; transform: scale(.6); } 82% { opacity: 1; transform: scale(1); } }
+        .radar-sweep { animation: radar-spin 3.4s linear infinite; }
+        .radar-blip { animation: radar-blip 3.4s ease-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .radar-sweep { animation: none; }
+          .radar-blip { animation: none; opacity: .85; transform: none; }
+        }
+      `}</style>
+      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" style={{ color: cor }}>
+        <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeOpacity="0.28" strokeWidth="1" />
+        <circle cx="50" cy="50" r="31" fill="none" stroke="currentColor" strokeOpacity="0.22" strokeWidth="1" />
+        <circle cx="50" cy="50" r="16" fill="none" stroke="currentColor" strokeOpacity="0.22" strokeWidth="1" />
+        <line x1="4" y1="50" x2="96" y2="50" stroke="currentColor" strokeOpacity="0.16" strokeWidth="1" />
+        <line x1="50" y1="4" x2="50" y2="96" stroke="currentColor" strokeOpacity="0.16" strokeWidth="1" />
+      </svg>
+      <div
+        className="radar-sweep absolute inset-0 rounded-full"
+        style={{
+          background: `conic-gradient(from 0deg, ${cor}00 0deg, ${cor}00 296deg, ${cor}40 350deg, ${cor}99 360deg)`,
+          WebkitMaskImage: "radial-gradient(circle, #000 62%, transparent 63%)",
+          maskImage: "radial-gradient(circle, #000 62%, transparent 63%)",
+        }}
+      />
+      <span className="radar-blip absolute h-1.5 w-1.5 rounded-full" style={{ background: cor, boxShadow: `0 0 8px ${cor}`, top: "30%", left: "64%", animationDelay: "0.4s" }} />
+      <span className="radar-blip absolute h-1.5 w-1.5 rounded-full" style={{ background: cor, boxShadow: `0 0 8px ${cor}`, top: "62%", left: "38%", animationDelay: "1.9s" }} />
+      <span className="absolute rounded-full" style={{ width: 6, height: 6, background: cor, boxShadow: `0 0 10px ${cor}`, top: "calc(50% - 3px)", left: "calc(50% - 3px)" }} />
+    </div>
+  );
+}
+
 function KpiBox({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-xl border border-line bg-bg-2 p-3">
@@ -593,7 +635,7 @@ function ColetaMonitorSection() {
     queryKey: ["coleta-logs-hoje"], queryFn: fetchCollectionLogsHoje,
   });
   const { data: sources, isLoading: loadingSources } = useQuery({
-    queryKey: ["coleta-sources-lite"], queryFn: fetchSourcesLite,
+    queryKey: ["coleta-fontes-unificadas"], queryFn: fetchFontesUnificadas,
   });
   const [filtroRede, setFiltroRede] = useState<"todas" | "instagram" | "youtube">("todas");
 
@@ -632,8 +674,26 @@ function ColetaMonitorSection() {
     }],
   };
 
+  const varredura = kpis.fontesAtivas > 0;
+
   return (
     <div className="space-y-4">
+      {/* Radar de varredura — identidade do produto, simula a busca ativa */}
+      <div className="flex items-center gap-4 rounded-xl border border-line bg-bg-1 p-4">
+        <RadarSweep ativo={varredura} />
+        <div className="min-w-0">
+          <div className="text-xs font-bold uppercase tracking-wider text-txt-3">Radar de coleta</div>
+          <div className="mt-1 text-lg font-extrabold text-txt-1">
+            {carregando ? "Sincronizando…" : varredura ? "Varredura ativa" : "Radar ocioso"}
+          </div>
+          <div className="mt-0.5 text-sm text-txt-2">
+            {varredura
+              ? `Monitorando ${kpis.fontesAtivas} fonte${kpis.fontesAtivas > 1 ? "s" : ""} · a coleta roda a cada execução do pipeline.`
+              : "Nenhuma fonte ativa. Ative uma fonte para o radar começar a varrer."}
+          </div>
+        </div>
+      </div>
+
       {/* KPIs do dia */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiBox label="Itens coletados hoje" value={kpis.itensColetados} />

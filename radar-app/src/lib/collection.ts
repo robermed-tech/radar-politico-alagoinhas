@@ -48,12 +48,38 @@ export async function fetchCollectionLogsHoje(): Promise<CollectionLog[]> {
   return (data as unknown as CollectionLog[]) ?? [];
 }
 
-/** Todas as fontes (para contar configuradas/ativas por rede). */
-export async function fetchSourcesLite(): Promise<SourceLite[]> {
-  const { data } = await supabase
-    .from("sources")
-    .select("id, platform, handle, label, active");
-  return (data as SourceLite[]) ?? [];
+const TENANT = (import.meta.env.VITE_TENANT as string | undefined) || "alagoinhas";
+
+/**
+ * Fontes UNIFICADAS para o monitor: mescla o subsistema novo (`sources`,
+ * multi-plataforma) com o legado do Instagram (`monitored_sources`, que ainda
+ * alimenta o pipeline atual). Sem isto o Instagram apareceria como "0 fontes /
+ * aguardando configuração" mesmo estando ativamente monitorado pelo caminho
+ * antigo. Dedup por platform+handle (caso o mesmo handle exista nas duas).
+ */
+export async function fetchFontesUnificadas(): Promise<SourceLite[]> {
+  const [novas, legadoIg] = await Promise.all([
+    supabase.from("sources").select("id, platform, handle, label, active"),
+    supabase
+      .from("monitored_sources")
+      .select("id, platform, handle, active")
+      .eq("tenant_id", TENANT)
+      .eq("platform", "instagram"),
+  ]);
+
+  const unificadas: SourceLite[] = [...((novas.data as SourceLite[]) ?? [])];
+  const vistos = new Set(unificadas.map((s) => `${s.platform}/${s.handle}`));
+
+  for (const m of (legadoIg.data as { id: number; platform: string; handle: string; active: boolean }[]) ?? []) {
+    const chave = `${m.platform}/${m.handle}`;
+    if (vistos.has(chave)) continue;
+    vistos.add(chave);
+    unificadas.push({
+      id: `ms-${m.id}`, platform: m.platform, handle: m.handle,
+      label: null, active: m.active,
+    });
+  }
+  return unificadas;
 }
 
 // ── Agregações derivadas ─────────────────────────────────────
