@@ -165,6 +165,12 @@ async function fetchFromSupabase(): Promise<Post[]> {
     .from("posts")
     .select("*")
     .eq("tenant", TENANT)
+    // Só Instagram: o feed e todos os índices são construídos sobre a análise
+    // (sentimento, score, tema) que hoje só existe para o Instagram. Vídeos do
+    // YouTube coletados entram em `posts` como dado cru (platform='youtube') e
+    // apareceriam aqui sem análise, poluindo o feed — por isso são filtrados.
+    // Registros antigos herdam platform='instagram' (default da migration 005).
+    .eq("platform", "instagram")
     .order("data_post", { ascending: false })
     .limit(3000);
   if (error || !data?.length) return [];
