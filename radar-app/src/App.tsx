@@ -25,6 +25,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { signOut } from "@/lib/auth";
 import { PipelineHealthBanner } from "@/components/PipelineHealthBanner";
 import { useHydrateSettings } from "@/lib/settings";
+import { useTrackPresence } from "@/lib/presence";
 
 type Page =
   | "clima"
@@ -144,6 +145,10 @@ export default function App() {
   // tenant_settings — sem isto os cálculos de IAD/Risco ignoram o que o admin
   // salva no banco.
   useHydrateSettings();
+
+  // Anuncia presença ("dashboard aberto agora") para o indicador da aba
+  // Usuários — ver src/lib/presence.ts.
+  useTrackPresence(session?.user?.id);
 
   // Itens de menu visíveis conforme o papel (Configuração só p/ admin).
   const navMain = NAV_MAIN.filter((n) => n.id !== "admin" || isAdmin);

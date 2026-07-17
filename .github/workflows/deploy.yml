@@ -42,8 +42,22 @@ jobs:
       - name: Copiar index.html → 200.html (SPA routing no Surge)
         run: cp radar-app/dist/index.html radar-app/dist/200.html
 
-      - name: Deploy para Surge.sh
+      - name: Deploy para Surge.sh (radar-politico-alg.surge.sh)
         run: npx surge --project radar-app/dist --domain radar-politico-alg.surge.sh
+        env:
+          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+
+      # radar-comando.surge.sh é o domínio documentado no CLAUDE.md como
+      # "Frontend admin" oficial, mas até aqui só era atualizado manualmente
+      # via deploy.bat na máquina do Robério — o que deixava esse domínio
+      # desatualizado sempre que alguém esquecia de rodar o script depois de
+      # um merge. Publicando os dois a partir do MESMO build garante que
+      # qualquer usuário, em qualquer um dos dois domínios, sempre veja a
+      # versão mais recente do main. deploy.bat continua funcionando como
+      # fallback manual, mas deixa de ser necessário no fluxo normal.
+      - name: Deploy para Surge.sh (radar-comando.surge.sh)
+        run: npx surge --project radar-app/dist --domain radar-comando.surge.sh
         env:
           SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
           SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}

@@ -1,7 +1,10 @@
 @echo off
 echo.
 echo ==========================================
-echo  RADAR COMANDO (app novo) — Deploy
+echo  RADAR COMANDO (app novo) — Deploy MANUAL
+echo  (fallback — o CI ja publica isto sozinho
+echo   a cada push em main que toque radar-app/**,
+echo   ver .github/workflows/deploy.yml)
 echo ==========================================
 echo.
 
