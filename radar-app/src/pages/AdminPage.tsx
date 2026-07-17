@@ -8,18 +8,26 @@ import {
   fetchUsers, inviteUser, setUserRole, deleteUser,
   type ScoreWeights, type ClimateThresholds, type NotificationConfig,
 } from "@/lib/admin";
+import {
+  fetchSources as fetchColetaSources, addSource as addColetaSource,
+  toggleSource as toggleColetaSource, deleteSource as deleteColetaSource,
+  normalizeHandle, type Platform, type Source as ColetaSource,
+} from "@/lib/sources";
 import { fetchServiceStatus } from "@/lib/data";
 import { DEFAULT_NOTIFICATION } from "@/lib/settings";
 import { type Role } from "@/lib/auth";
 import { IconWarningTriangle } from "@/components/icons";
 import { useOnlineUserIds } from "@/lib/presence";
 
-type Tab = "score" | "relevancia" | "fontes" | "usuarios" | "notificacoes" | "clima";
+type Tab =
+  | "score" | "relevancia" | "fontes" | "fontes-coleta"
+  | "usuarios" | "notificacoes" | "clima";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "score", label: "Score" },
   { id: "relevancia", label: "Relevância" },
   { id: "fontes", label: "Fontes" },
+  { id: "fontes-coleta", label: "Fontes (coleta)" },
   { id: "usuarios", label: "Usuários" },
   { id: "notificacoes", label: "Notificações" },
   { id: "clima", label: "Clima" },
@@ -146,6 +154,7 @@ export function AdminPage() {
       {tab === "score" && <ScoreSection />}
       {tab === "relevancia" && <KeywordsSection />}
       {tab === "fontes" && <SourcesSection />}
+      {tab === "fontes-coleta" && <FontesColetaSection />}
       {tab === "usuarios" && <UsersSection />}
       {tab === "notificacoes" && <NotificationsSection />}
       {tab === "clima" && <ClimateSection />}
@@ -402,6 +411,136 @@ function SourcesSection() {
           </div>
         ))}
         {sources?.length === 0 && <p className="text-sm text-txt-3">Nenhuma fonte cadastrada.</p>}
+      </div>
+    </Card>
+  );
+}
+
+// ── Fontes (coleta) ──────────────────────────────────────────
+// Subsistema NOVO multi-plataforma (tabela `sources`): Instagram + YouTube.
+// Separado da aba "Fontes" acima (monitored_sources), que alimenta o pipeline
+// Instagram atual. Toda fonte cadastrada aqui nasce PAUSADA — nada é coletado
+// até o admin ativar.
+const COLETA_PLATFORMS: { value: Platform; label: string; placeholder: string }[] = [
+  { value: "instagram", label: "Instagram", placeholder: "@perfil ou link do perfil" },
+  { value: "youtube", label: "YouTube", placeholder: "@canal ou URL do canal" },
+];
+
+function FontesColetaSection() {
+  const qc = useQueryClient();
+  const { data: sources } = useQuery({ queryKey: ["coleta-sources"], queryFn: fetchColetaSources });
+  const [platform, setPlatform] = useState<Platform>("instagram");
+  const [handle, setHandle] = useState("");
+  const [label, setLabel] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const refresh = () => qc.invalidateQueries({ queryKey: ["coleta-sources"] });
+
+  const placeholder = COLETA_PLATFORMS.find((p) => p.value === platform)!.placeholder;
+  // Prévia da normalização — mostra ao admin como o handle será salvo.
+  const previa = handle.trim() ? normalizeHandle(platform, handle) : null;
+
+  async function run(fn: () => Promise<string | null>, sucesso: string) {
+    const err = await fn();
+    setMsg(err ? { ok: false, text: err } : { ok: true, text: sucesso });
+    if (!err) refresh();
+  }
+
+  function adicionar() {
+    if (!handle.trim()) return;
+    run(() => addColetaSource(platform, handle, label).then((err) => {
+      if (!err) { setHandle(""); setLabel(""); }
+      return err;
+    }), "✔ Fonte cadastrada (pausada — ative para começar a coletar)");
+  }
+
+  return (
+    <Card title="Fontes de coleta (Instagram + YouTube)">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <select
+          value={platform}
+          onChange={(e) => setPlatform(e.target.value as Platform)}
+          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
+        >
+          {COLETA_PLATFORMS.map((p) => (
+            <option key={p.value} value={p.value}>{p.label}</option>
+          ))}
+        </select>
+        <input
+          value={handle}
+          onChange={(e) => setHandle(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && adicionar()}
+          placeholder={placeholder}
+          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
+        />
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && adicionar()}
+          placeholder="Nome de exibição (opcional)"
+          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand sm:col-span-2"
+        />
+      </div>
+
+      {previa && (
+        <p className="mt-2 text-xs text-txt-3">
+          {previa.error
+            ? <span className="text-risk-crit">{previa.error}</span>
+            : <>Será salva como <code className="rounded bg-bg-2 px-1 py-0.5 text-txt-2">{platform}/{previa.handle}</code></>}
+        </p>
+      )}
+      <p className="mt-2 text-xs text-txt-3">
+        Toda fonte nasce <strong>pausada</strong>. Nenhuma coleta roda até você ativá-la aqui.
+      </p>
+
+      <div className="mt-2 flex items-center gap-3">
+        <button
+          onClick={adicionar}
+          disabled={!!previa?.error || !handle.trim()}
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Adicionar
+        </button>
+        <Feedback msg={msg} />
+      </div>
+
+      <div className="mt-3 space-y-1.5">
+        {(sources ?? []).map((s: ColetaSource) => (
+          <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
+            <div className="min-w-0 flex items-center gap-2">
+              <span
+                className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                style={{
+                  background: s.platform === "youtube" ? "rgba(239,68,68,0.12)" : "rgba(168,85,247,0.12)",
+                  color: s.platform === "youtube" ? "#EF4444" : "#A855F7",
+                }}
+              >
+                {s.platform}
+              </span>
+              <span className={s.active ? "text-txt-1" : "text-txt-3"}>
+                <span className="font-semibold">{s.handle}</span>
+                {s.label && <span className="ml-1 text-txt-3">· {s.label}</span>}
+                {!s.active && <span className="ml-2 text-[10px] uppercase tracking-wide text-txt-3">pausada</span>}
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <button
+                onClick={() => run(() => toggleColetaSource(s.id, !s.active), s.active ? "✔ Pausada" : "✔ Ativada")}
+                className="text-xs font-semibold text-txt-3 hover:text-txt-1"
+              >
+                {s.active ? "Pausar" : "Ativar"}
+              </button>
+              <button
+                onClick={() => run(() => deleteColetaSource(s.id), "✔ Removida")}
+                className="text-xs font-semibold text-risk-crit hover:underline"
+              >
+                Remover
+              </button>
+            </div>
+          </div>
+        ))}
+        {sources?.length === 0 && (
+          <p className="text-sm text-txt-3">Nenhuma fonte de coleta cadastrada ainda.</p>
+        )}
       </div>
     </Card>
   );
