@@ -11,14 +11,31 @@ Este arquivo é lido automaticamente pelo Claude Code no início de cada sessão
 - Frontend admin: `radar-comando.surge.sh` e `radar-politico-alg.surge.sh` (mesmo bundle, publicados juntos pelo CI). Supabase: projeto `radar-politico` (ref `wtlhqyqxhuchzloodoyx`), tenant `alagoinhas`.
 - `agora.py` já lê `tenant_settings` do Supabase a cada execução (keywords, fontes, `climate_thresholds`, `notification_config`). Pendência real de configuração: os `score_weights` afetam só os índices calculados no frontend, não o score por post do modelo.
 
-## Decisões de produto vigentes (reunião de 24/07/2026)
+## Decisões de produto vigentes (revisões de 24 e 25/07/2026)
+
+Vieram das reuniões com o cliente (PRs #37, #40 e #41). Valem como estado atual — não desfazer sem pedido explícito.
+
+### Comportamento
 
 - **Alertas são só manuais.** O disparo automático de WhatsApp pelo agente está desligado por padrão (`agora.py::_auto_dispatch_ativo`; religa via `tenant_settings.notification_config.auto_dispatch_whatsapp = true`). A detecção e o laço IRT continuam rodando; o envio ao secretário é feito pelo card "Alertar Secretário" do dashboard e fica registrado em `message_log` (colunas `tema`/`mensagem`/`sent_by_nome`, migration 006), que alimenta a página "Histórico de Alertas".
-- **Nunca usar travessão (—) em texto gerado ou exibido.** Os prompts do `agora.py` proíbem na origem; `limparTravessoes()` (radar-app/src/lib/format.ts) limpa textos antigos na exibição. Vale também para textos novos de UI.
-- **Vocabulário**: "comentários analisados" (não "vozes ouvidas"); "estabilizar/estabilizado" (não "recuperar/recuperado").
-- **Paleta**: enquanto não há identidade visual fechada, tudo sem cor semântica definida usa chumbo/grafite com texto branco — nada de verde/vermelho decorativo.
 - No admin, o cadastro de fontes é unificado na aba **Fontes** (Instagram → `monitored_sources`, pipeline atual; YouTube → `sources`, nasce pausada). Não recriar as abas "Fontes (coleta)" e "Notificações" — foram removidas de propósito.
+- A seção **Narrativas** foi removida da UI (sidebar + página). O backend continua gerando os dados; não reintroduzir a tela sem pedido.
+- **Influenciadores** não é mais item de menu — o conteúdo vive dentro de "Análise por Perfil".
 - Rádio escuta (IA transcrevendo programa de rádio) é V2 — fora de escopo por ora.
+
+### Texto
+
+- **Nunca usar travessão (—) em texto gerado ou exibido.** Os prompts do `agora.py` proíbem na origem; `limparTravessoes()` (radar-app/src/lib/format.ts) limpa textos antigos na exibição. Vale também para textos novos de UI.
+- **Vocabulário**: "comentários analisados" (não "vozes ouvidas"); "estabilizar/estabilizado" (não "recuperar/recuperado"); "Sugestões genéricas a serem avaliadas por especialista" (nunca "o que deveria ter sido feito" — a plataforma sugere, não prescreve).
+
+### Visual
+
+- **Tipografia**: o dashboard é lido em telão/TV, então o piso é maior que o default do Tailwind — `text-xs`=13px e `text-sm`=15px (override em `tailwind.config.ts`), `.section-label`=13px, labels de gráficos ECharts=12px. Ao criar tela nova, seguir esse piso; nunca reduzir para "caber".
+- **Paleta**: sem identidade visual fechada, tudo que não tem cor semântica usa chumbo/grafite (`#334155` / `#1E293B`) com texto branco — nada de verde/vermelho decorativo. Verde e vermelho ficam reservados para sentimento (positivo/negativo).
+- **Velocímetro por tema** (`components/GaugeTema.tsx`) — versão final: arco segmentado com escala **fixa e sempre visível, verde à esquerda (0%) em degradê até vermelho à direita (100%)**; o ponteiro aponta a **% de comentários NEGATIVOS** entre os que tomam partido (neutros fora da conta). Atenção: as rodadas anteriores oscilaram entre medir positivos e negativos — o que vale é negativos.
+- **Estação Meteorológica** (landing): número do clima em destaque grande (90px, 126px no desktop); o card principal não leva chips de contagem; o box laranja de engajamento tem número + selo de qualidade da amostra + ação "Ver publicações"; a barra do radar de coleta fica no topo da página.
+- **Previsões**: a linha do tempo não usa balões/pins (o tema do dia vive no tooltip); o status "Estabilizado" é **amarelo**, não verde.
+- O modal de publicações mostra uma **introdução da legenda** de cada post (`posts.caption`, com fallback em `resumo`) para localizar a publicação sem abrir o Instagram.
 
 ## Protocolo de depuração autônoma
 
