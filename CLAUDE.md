@@ -7,9 +7,18 @@ Este arquivo é lido automaticamente pelo Claude Code no início de cada sessão
 - Sistema de monitoramento político via Instagram para a SECOM de Alagoinhas/BA (prefeito Gustavo Carmo).
 - Pipeline ativo: Apify (scraping) → `agora.py` (Python) → Claude Haiku API → Google Sheets (abas Radar/Perfis) + Supabase (dual-write) → dashboard HTML + Radar Comando (Vite/React).
 - **`agora.py` é o agente ativo.** `radar_agente.py` está descontinuado — nunca editar esse arquivo.
-- GitHub Actions (`radar.yml`) roda o pipeline 2x/dia (06h e 17h BRT) para poupar créditos Apify.
-- Frontend admin: `radar-comando.surge.sh` (Supabase, projeto `radar-politico`, tenant `alagoinhas`).
-- **Pendência conhecida**: pesos de score e limiares de clima estão hardcoded em `agora.py`. A UI do admin só terá efeito real quando o backend passar a ler de `tenant_settings` no Supabase.
+- GitHub Actions: o workflow ativo é o **`agora.yml`** (3x/dia: 08h, 14h e 19h BRT; cron em UTC). `radar.yml` está desabilitado desde ~jun/2026 — não confundir os dois.
+- Frontend admin: `radar-comando.surge.sh` e `radar-politico-alg.surge.sh` (mesmo bundle, publicados juntos pelo CI). Supabase: projeto `radar-politico` (ref `wtlhqyqxhuchzloodoyx`), tenant `alagoinhas`.
+- `agora.py` já lê `tenant_settings` do Supabase a cada execução (keywords, fontes, `climate_thresholds`, `notification_config`). Pendência real de configuração: os `score_weights` afetam só os índices calculados no frontend, não o score por post do modelo.
+
+## Decisões de produto vigentes (reunião de 24/07/2026)
+
+- **Alertas são só manuais.** O disparo automático de WhatsApp pelo agente está desligado por padrão (`agora.py::_auto_dispatch_ativo`; religa via `tenant_settings.notification_config.auto_dispatch_whatsapp = true`). A detecção e o laço IRT continuam rodando; o envio ao secretário é feito pelo card "Alertar Secretário" do dashboard e fica registrado em `message_log` (colunas `tema`/`mensagem`/`sent_by_nome`, migration 006), que alimenta a página "Histórico de Alertas".
+- **Nunca usar travessão (—) em texto gerado ou exibido.** Os prompts do `agora.py` proíbem na origem; `limparTravessoes()` (radar-app/src/lib/format.ts) limpa textos antigos na exibição. Vale também para textos novos de UI.
+- **Vocabulário**: "comentários analisados" (não "vozes ouvidas"); "estabilizar/estabilizado" (não "recuperar/recuperado").
+- **Paleta**: enquanto não há identidade visual fechada, tudo sem cor semântica definida usa chumbo/grafite com texto branco — nada de verde/vermelho decorativo.
+- No admin, o cadastro de fontes é unificado na aba **Fontes** (Instagram → `monitored_sources`, pipeline atual; YouTube → `sources`, nasce pausada). Não recriar as abas "Fontes (coleta)" e "Notificações" — foram removidas de propósito.
+- Rádio escuta (IA transcrevendo programa de rádio) é V2 — fora de escopo por ora.
 
 ## Protocolo de depuração autônoma
 
@@ -30,6 +39,13 @@ Só pare e pergunte quando:
 - O teste isolado já confirma o fix, mas rodar contra produção vai consumir créditos Apify de forma não trivial — aí sim, confirme antes de rodar contra produção real.
 
 Fora isso, resolva e implemente diretamente, sem pausar para aprovação passo a passo.
+
+## Migrations no Supabase
+
+- SQL remoto (incluindo DDL) roda direto pelo CLI já logado nesta máquina, sem senha do banco:
+  `supabase db query --linked --file supabase/migrations/00X_arquivo.sql`
+  (projeto linkado com `supabase link --project-ref wtlhqyqxhuchzloodoyx --yes`; o link cria `supabase/.temp/`, que não deve ser commitado).
+- Migrations aplicadas até 006 (histórico de envios manuais em `message_log`). Após DDL, o cache do PostgREST atualiza sozinho — validar com um insert/select de teste via REST.
 
 ## Referências
 
