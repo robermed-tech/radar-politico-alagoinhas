@@ -19,6 +19,14 @@ function fmtData(dataStr: string): string {
   return d ? d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "";
 }
 
+/** Introdução curta da legenda do post — identifica a publicação de bater o
+ * olho (revisão de 25/07). Cai no resumo da IA quando o post não tem legenda. */
+function introLegenda(p: Post): string {
+  const base = (p.caption || p.resumo || "").replace(/\s+/g, " ").trim();
+  if (!base) return "";
+  return base.length > 110 ? base.slice(0, 109).trimEnd() + "…" : base;
+}
+
 /**
  * Lista das publicações analisadas no período, com link direto para cada post
  * no Instagram (decisão da reunião de 24/07: o box de engajamento é clicável e
@@ -74,6 +82,11 @@ export function PublicacoesModal({ posts, periodoLabel, onClose }: Props) {
                 )}
                 <span className="ml-auto shrink-0 text-[13px] text-txt-3">{fmtData(p.data_post)}</span>
               </div>
+              {introLegenda(p) && (
+                <p className="mt-1 line-clamp-2 text-[13px] font-normal leading-snug text-txt-2">
+                  {introLegenda(p)}
+                </p>
+              )}
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-txt-3">
                 <span className="tnum">{fmtInt(p.comentarios_total || 0)} comentário{(p.comentarios_total || 0) === 1 ? "" : "s"}</span>
                 <span className="tnum">{fmtInt(p.curtidas || 0)} curtida{(p.curtidas || 0) === 1 ? "" : "s"}</span>
