@@ -6,14 +6,15 @@ import { limparTravessoes } from "@/lib/format";
 import { PostChips } from "@/components/PostChips";
 import { IconNewspaper, IconSwords, IconBuilding, IconPerson, IconDocument } from "@/components/icons";
 
-type Filtro = "todos" | "negativos" | "positivos" | "urgentes";
+// A aba "Urgentes" saiu junto com o chip de urgência (revisão de 25/07):
+// sem a marcação no post, o filtro ficava sem explicação visível.
+type Filtro = "todos" | "negativos" | "positivos";
 type Periodo = 1 | 7 | 30;
 
 const FILTRO_LABELS: Record<Filtro, string> = {
   todos: "Todos",
   negativos: "Críticos",
   positivos: "Favoráveis",
-  urgentes: "Urgentes",
 };
 
 const PERIODOS: { dias: Periodo; label: string }[] = [
@@ -128,10 +129,6 @@ export function FeedPage() {
     });
     if (filtro === "negativos") return all.filter((p) => sentimentoReacao(p) === "negativo");
     if (filtro === "positivos") return all.filter((p) => sentimentoReacao(p) === "positivo");
-    if (filtro === "urgentes") {
-      const urg = new Set(["alta", "crítica", "critica"]);
-      return all.filter((p) => urg.has(p.urgencia?.toLowerCase() ?? ""));
-    }
     return all;
   }, [data, filtro, periodo]);
 
