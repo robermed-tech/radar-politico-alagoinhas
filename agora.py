@@ -441,6 +441,28 @@ _TOKENS_GENERICOS = {
 }
 
 
+# Confianca minima para um comentario contar como critica ou elogio no clima.
+# O classificador devolve `confianca_tema` 0-100 e recebe instrucao explicita de
+# usar < 50 quando nao consegue decidir a polaridade (ironia, giria, texto curto
+# demais). Abaixo disso o comentario entra na conta como INDETERMINADO: soma no
+# total, nao soma em nenhum dos lados. Medido em 25/07: 464 dos 1302 comentarios
+# classificados como positivo/negativo tinham confianca < 70, e 79 tinham < 50.
+# O espelho deste valor no frontend fica em radar-app/src/lib/sentimento.ts.
+CONFIANCA_MIN_SENTIMENTO = 50
+
+
+def _sentimento_confiavel(comentario) -> bool:
+    """True se a classificacao de sentimento deste comentario pode contar como
+    critica/elogio. `confianca_tema` ausente ou 0 vem de comentario antigo,
+    anterior ao campo — nesses a confianca nao foi medida, entao mantemos o
+    valor (nao da para reprovar retroativamente o que nunca foi avaliado)."""
+    try:
+        conf = int(comentario.get("confianca_tema") or 0)
+    except (TypeError, ValueError):
+        return True
+    return conf == 0 or conf >= CONFIANCA_MIN_SENTIMENTO
+
+
 def _contem_termo(texto: str, termo: str) -> bool:
     """Casa o termo por SUBSTRING (nao por palavra inteira), so normalizando
     acentos e caixa. Substring e proposital: no Instagram a mencao ao perfil
@@ -1178,9 +1200,17 @@ CLASSIFIQUE COMO NEGATIVO quando identificar qualquer um destes
 marcadores no texto do comentario:
 
 SINAIS DE IRONIA/SARCASMO EM PORTUGUES:
+  0. PRE-REQUISITO: risada sozinha (😂 🤣 😆 kkkk) NAO e prova de ironia.
+     Ela aparece tambem em concordancia, piada e no riso de quem DEFENDE
+     a gestao. Para marcar ironia, o texto precisa trazer a contradicao
+     junto — um fato que desmente o elogio, aspas ironicas, exagero
+     absurdo. Sem essa evidencia no texto, leia o comentario pelo que
+     ele diz literalmente.
+     Risada dirigida a QUEM CRITICA a gestao ("quem ta reclamando fica
+     em casa 😂") e DEFESA da gestao, nao ataque.
   1. Emojis de risada (😂 🤣 😆 😅) combinados com "elogio" ou referencia
-     a uma "conquista" da gestao = o cidadao esta RINDO DA gestao, nao
-     aplaudindo. Emojis de risada em comentarios politicos = critica.
+     a uma "conquista" da gestao E um fato citado que desmente o elogio
+     = o cidadao esta RINDO DA gestao, nao aplaudindo.
   2. Aspas em palavras positivas: "obra", "conquista", "melhoria",
      "transparencia" = o cidadao NAO acredita naquilo que cita.
   3. "passa pano" ou "passa panismo" = acusacao de defender a gestao
@@ -1216,7 +1246,8 @@ REGRA DE OURO PARA IRONIA:
   Se o comentario usa 😂/🤣 + palavras aparentemente positivas + critica
   implicita (no mesmo comentario ou num contexto de escandalo/promessa
   nao cumprida), classifique como NEGATIVO, nunca como positivo.
-  O emoji 😂 em contexto politico e QUASE SEMPRE sarcasmo, nao alegria.
+  Mas exija os TRES elementos. So o emoji nao basta: sem a critica junto,
+  classifique pelo sentido literal e baixe a confianca.
 ═══════════════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════════════
@@ -1227,14 +1258,19 @@ E o IMPACTO LIQUIDO na imagem do prefeito, medido pela reacao do povo.
 O post e apenas o gatilho — o que importa e O QUE O POVO RESPONDEU.
 
 REGRA:
-  Se cidadaos criticaram, ironizaram, reclamaram ou apoiaram opositores
-  nos comentarios -> sentimento_post = "negativo"
+  Se cidadaos criticaram, ironizaram ou reclamaram da GESTAO nos
+  comentarios -> sentimento_post = "negativo"
   Se cidadaos elogiaram, defenderam ou apoiaram a gestao -> "positivo"
   Reacao mista sem clara maioria -> "neutro"
 
-REFERENCIA QUANTITATIVA (guia, nao regra absoluta):
+  Apoio a um opositor, sozinho, NAO conta como reacao negativa: so conta
+  o que o cidadao disse sobre a GESTAO. Ver a regra 1 do classificador de
+  comentarios — a polaridade nao e deduzida de quem o cidadao apoia.
+
+REFERENCIA QUANTITATIVA (guia, nao regra absoluta) — os dois lados usam o
+MESMO limiar, para o painel nao pender para nenhuma direcao:
   comentarios_pct_neg > 50% -> sentimento_post = "negativo"
-  comentarios_pct_pos > 60% -> sentimento_post = "positivo"
+  comentarios_pct_pos > 50% -> sentimento_post = "positivo"
   caso contrario            -> "neutro"
 
 ARMADILHA — NAO COMETA ESTE ERRO:
@@ -1273,10 +1309,11 @@ ARMADILHA — NAO COMETA ESTE ERRO:
 VERIFICACAO FINAL OBRIGATORIA — execute antes de escrever sentimento_post:
   1. Qual e o sentimento_comentarios que voce ja calculou?
   2. Qual e o comentarios_pct_neg que voce ja calculou?
-  Regras de derivacao:
+  Regras de derivacao (simetricas — critica e elogio pesam igual):
     sentimento_comentarios = "negativo"            -> sentimento_post = "negativo"
     sentimento_comentarios = "misto" e pct_neg > pct_pos -> sentimento_post = "negativo"
-    sentimento_comentarios = "misto" e pct_pos > pct_neg -> sentimento_post = "neutro"
+    sentimento_comentarios = "misto" e pct_pos > pct_neg -> sentimento_post = "positivo"
+    sentimento_comentarios = "misto" e empate      -> sentimento_post = "neutro"
     sentimento_comentarios = "positivo"            -> sentimento_post = "positivo"
     sentimento_comentarios = "neutro"              -> sentimento_post = "neutro"
   Esta derivacao e OBRIGATORIA. Supera qualquer outro raciocinio sobre
@@ -1314,11 +1351,16 @@ def montar_prompt(post, comentarios, memoria):
             coments_txt += f'  @{c["username"]}: "{c["texto"]}"\n'
 
     # Contexto politico explicito do autor (ajuda o Claude a aplicar a regra de polaridade)
+    # O lado do perfil e contexto de leitura, nunca atalho de polaridade: o que
+    # vale e o que o cidadao escreveu sobre a GESTAO (ver PROMPT_COMENTARIOS,
+    # regra 1). Antes esta linha mandava tratar apoio ao opositor como negativo.
     cat_lower = (post.get("categoria") or "").lower()
     if cat_lower == "oposicao":
-        lado = "OPOSITOR de Gustavo Carmo — apoio a esse perfil = NEGATIVO p/ Gustavo"
+        lado = ("OPOSITOR da gestao — contexto, nao polaridade: apoio a esse perfil "
+                "sozinho e NEUTRO; so conta como negativo o que criticar a gestao")
     elif cat_lower in ("prefeito", "prefeitura", "governo"):
-        lado = "ALIADO/GESTAO de Gustavo Carmo — apoio a esse perfil = POSITIVO p/ Gustavo"
+        lado = ("ALIADO/GESTAO — conta oficial da gestao: elogio ao que foi entregue "
+                "e POSITIVO, cobranca com reprovacao e NEGATIVO")
     elif cat_lower == "imprensa":
         lado = "IMPRENSA — analise o conteudo do comentario, nao o perfil"
     else:
@@ -1376,67 +1418,83 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
 LOTE_COMENTARIOS = 40  # teto por chamada — evita estourar max_tokens em post viral
 
 PROMPT_COMENTARIOS = (
-    "Classificador de comentarios de cidadaos em posts politicos. "
-    "REGRA CRITICA DE OTICA: todo sentimento e medido pelo impacto na imagem do "
-    "prefeito Gustavo Carmo de Alagoinhas/BA — NAO pelo tom do comentario isolado.\n\n"
-    "PORTAO OBRIGATORIO (aplique ANTES de decidir positivo ou negativo): para ser "
-    "POSITIVO ou NEGATIVO, o comentario precisa citar ou implicar DIRETAMENTE o "
-    "prefeito Gustavo, a prefeitura, a gestao municipal, uma secretaria, uma obra "
-    "ou programa municipal, ou a qualidade de um servico publico — OU apoiar/atacar "
-    "um dos opositores locais conhecidos (Luciano Almeida, Joaquim Neto, Jaldice "
-    "Nunes, Paulo Cezar, etc.). Se NENHUMA dessas coisas for citada, o comentario "
-    "e SEMPRE NEUTRO — mesmo que seja um elogio entusiasmado, orgulho generico pela "
-    "cidade, elogio a um artista/evento/canal de midia/pessoa publica, ou apoio a "
-    "QUALQUER outro politico (estadual, federal, de outro municipio) sem ligacao "
-    "explicita com a gestao de Gustavo Carmo. Politicos de fora de Alagoinhas "
-    "(ex.: prefeitos de outras cidades, governador, deputados) NAO contam como "
-    "opositor local, mesmo que o nome seja familiar — sem ligacao explicita com "
-    "a gestao municipal, mencao a eles e NEUTRA.\n"
-    "Pergunta decisiva antes de marcar positivo ou negativo: 'este comentario avalia "
-    "a GESTAO MUNICIPAL de Alagoinhas, ou esta reagindo a outra coisa (a cidade em "
-    "geral, um artista, um evento, outro politico, um veiculo de midia)?' Se for "
-    "'outra coisa', e NEUTRO.\n"
-    "COBRANCA CONTA COMO CRITICA IMPLICITA: se o post for do proprio prefeito ou da "
-    "prefeitura (perfil ALIADO/GOVERNO) e o comentario for uma cobranca ou reclamacao "
-    "dirigida ao que foi ou nao foi feito/postado ('cade X', 'onde esta X', 'por que "
-    "nao', pedido nao atendido, ainda que sem citar a palavra 'prefeitura'), isso "
-    "PASSA no portao — a cobranca dirigida a quem publicou o post JA E, por si so, "
-    "uma forma de cobrar a gestao. Classifique como NEGATIVO.\n\n"
-    "POSITIVO = comentario favorece o prefeito Gustavo (elogio a gestao, defesa do prefeito, "
-    "critica a opositores LOCAIS). "
-    "NEGATIVO = comentario prejudica o prefeito Gustavo (critica a gestao, apoio a opositor "
-    "local, queixa sobre servico publico, sarcasmo/ironia sobre a prefeitura). "
-    "REGRA PARA PERFIL OPOSITOR: comentarios apoiando/elogiando o opositor = NEGATIVO. "
-    "Comentarios concordando com criticas ao prefeito = NEGATIVO. "
-    "Apenas comentarios DEFENDENDO o prefeito ou ATACANDO o opositor = POSITIVO. "
-    "REGRA PARA PERFIL ALIADO/GOVERNO: comentarios elogiando a gestao = POSITIVO. "
-    "REGRA DO NEUTRO: comentario que nao menciona nem implica julgamento sobre a gestao "
-    "municipal = NEUTRO — inclui orgulho civico generico pela cidade ('bela cidade', "
-    "'parabens Alagoinhas', 'honra falar da nossa historia'), elogio a artista/banda/"
-    "evento/canal de midia sem mencionar a gestao, e apoio ou elogio a politico de FORA "
-    "de Alagoinhas.\n\n"
+    "Classificador de comentarios de cidadaos em posts politicos de Alagoinhas/BA.\n\n"
+    "O QUE VOCE ESTA MEDINDO: o sentimento que o CIDADAO EXPRESSOU sobre a atual "
+    "gestao municipal (prefeito Gustavo Carmo, prefeitura, secretarias, obras, "
+    "programas e servicos publicos do municipio). Voce esta lendo a opiniao real de "
+    "quem escreveu, nao deduzindo o que ela significaria politicamente. Se o "
+    "cidadao nao avaliou a gestao, o dado correto e NEUTRO — nunca invente um "
+    "sentimento que a pessoa nao manifestou, em nenhuma direcao.\n\n"
+    "═══ PASSO 1 — PORTAO (decida isto ANTES de qualquer outra regra) ═══\n"
+    "Pergunta unica: 'este comentario avalia a GESTAO MUNICIPAL DE ALAGOINHAS?'\n"
+    "So passa no portao o comentario que cita ou implica diretamente o prefeito "
+    "Gustavo, a prefeitura, a gestao municipal, uma secretaria, uma obra, um "
+    "programa municipal ou a qualidade de um servico publico do municipio.\n"
+    "Se NAO passar, o comentario e NEUTRO e o PASSO 2 nem chega a ser aplicado. "
+    "Nenhuma regra abaixo (ironia, risada, apoio a politico, tom agressivo) "
+    "sobrepoe o portao. Sao SEMPRE NEUTROS:\n"
+    "  - orgulho civico generico pela cidade ('bela cidade', 'parabens Alagoinhas')\n"
+    "  - elogio a artista, banda, evento, canal de midia ou pessoa publica\n"
+    "  - politica estadual, federal ou partidaria sem ligar ao municipio\n"
+    "  - apoio ou ataque a politico de FORA de Alagoinhas (prefeito de outra cidade, "
+    "governador, deputado, presidente), mesmo com nome familiar\n"
+    "  - conversa entre pessoas, marcacao de amigo, recado sem juizo sobre a gestao\n\n"
+    "═══ PASSO 2 — POLARIDADE (so para o que passou no portao) ═══\n"
+    "POSITIVO = o cidadao aprovou algo da gestao (elogia obra, servico, programa ou "
+    "o prefeito; defende a gestao de uma critica; contesta quem esta criticando).\n"
+    "NEGATIVO = o cidadao reprovou algo da gestao (critica, denuncia, reclama de "
+    "servico, ironiza a gestao, ou endossa a critica que o post faz a gestao).\n"
+    "NEUTRO = passou no portao mas nao tem juizo de valor (pergunta factual, "
+    "informacao, comentario descritivo).\n\n"
+    "═══ REGRAS QUE JA CAUSARAM ERRO — LEIA COM ATENCAO ═══\n\n"
+    "1) APOIO A OPOSITOR NAO E, POR SI SO, CRITICA A GESTAO.\n"
+    "   Elogiar um vereador ou politico local de oposicao ('parabens vereador', "
+    "'voce tem meu respeito', 'e o proximo prefeito') e sentimento sobre AQUELA "
+    "PESSOA. O cidadao nao disse nada sobre a gestao: classifique NEUTRO.\n"
+    "   So vira NEGATIVO se o proprio comentario tambem reprovar a gestao — "
+    "explicitamente ('esse sim trabalha, diferente do atual') ou endossando a "
+    "denuncia do post ('e verdade, aqui e assim mesmo', 'concordo, abandonaram').\n"
+    "   Simetricamente: atacar um opositor so e POSITIVO se defender a gestao junto.\n\n"
+    "2) RISADA NAO E PROVA DE IRONIA.\n"
+    "   😂🤣😆 e 'kkkk' aparecem em deboche, mas tambem em concordancia, piada "
+    "interna e riso de quem DEFENDE a gestao. Para marcar ironia voce precisa de "
+    "evidencia NO TEXTO: contradicao entre o elogio e um fato citado ('parabens "
+    "pela obra que ta abandonada ha 2 anos'), exagero absurdo, ou aspas ironicas.\n"
+    "   Risada dirigida a QUEM CRITICA a gestao e defesa da gestao, nao ataque: "
+    "'quem ta reclamando das bandas fica em casa 😂, a alvorada ta maravilhosa' "
+    "-> POSITIVO.\n"
+    "   Na duvida entre ironia e elogio sincero, use NEUTRO e confianca_tema < 50.\n\n"
+    "3) COBRANCA SO E NEGATIVA QUANDO HA REPROVACAO.\n"
+    "   Pedido ou pergunta sem reclamacao ('envia esse video pra CDL', 'vai ter "
+    "inscricao pra que idade?') e NEUTRO — a demanda ja e registrada no campo "
+    "'pedido', nao precisa virar critica.\n"
+    "   E NEGATIVO quando a cobranca carrega insatisfacao: promessa nao cumprida, "
+    "abandono, demora, algo que deveria existir e nao existe ('cade o asfalto que "
+    "prometeram?', 'ha 2 meses sem luz e ninguem vem').\n\n"
+    "4) POST DE OUTRO MUNICIPIO NAO GERA SENTIMENTO SOBRE ALAGOINHAS.\n"
+    "   Se a publicacao trata da gestao de outra cidade, todo comentario sobre "
+    "aquele prefeito ou aquela obra e NEUTRO aqui, inclusive elogio ('meu prefeito "
+    "e top') e deboche ('parabens prefeito kkkk').\n\n"
     "EXEMPLOS — OBRIGATORIO ACERTAR:\n"
-    "  'ACM Neto, eleito no primeiro turno 🔥' -> NEUTRO (politico de outro municipio, "
-    "sem relacao com a gestao de Gustavo Carmo)\n"
+    "  'ACM Neto, eleito no primeiro turno 🔥' -> NEUTRO (politico de fora)\n"
     "  '@fulano faz qualquer um se apaixonar por Alagoinhas, amo o canal dela' -> "
-    "NEUTRO (elogio a pessoa/canal de midia, nao a gestao)\n"
-    "  'Uma honra poder contar as historias e riquezas dessa bela cidade' -> NEUTRO "
-    "(orgulho civico generico, nao cita a gestao)\n"
-    "  'Parabens Alagoinhas ba' -> NEUTRO (elogio a cidade, nao ao prefeito/gestao)\n"
-    "  'Com Dale ou sem Dale, queremos ACM Neto' -> NEUTRO (apoio a politico de fora, "
-    "sem ligacao com a gestao local)\n"
-    "  'SUS de Alagoinhas da certo, parabens equipe!' -> POSITIVO (elogio explicito "
-    "a um servico da gestao)\n"
-    "  'Prefeitura abandonou minha rua, ha 2 meses sem luz' -> NEGATIVO (critica "
-    "direta a gestao)\n"
-    "  'Luciano e incompetente, prefiro Gustavo' -> POSITIVO (ataca opositor local, "
-    "defende o prefeito)\n"
-    "  'Cade a programacao de Sao Joao? Vai postar dia 20?' (em post da prefeitura) "
-    "-> NEGATIVO (cobranca dirigida a prefeitura, mesmo sem citar a palavra)\n"
-    "  'Cade os projetos para X?' (em post do prefeito/prefeitura) -> NEGATIVO "
-    "(cobranca = critica implicita a gestao)\n\n"
-    "IRONIA: emoji de risada (😂🤣😆) combinado com 'elogio' a gestao e quase sempre sarcasmo — "
-    "classifique como NEGATIVO e baixe confianca_tema para no maximo 60.\n\n"
+    "NEUTRO (elogio a canal de midia, nao a gestao)\n"
+    "  'Uma honra poder contar as historias dessa bela cidade' -> NEUTRO (orgulho civico)\n"
+    "  'Parabens Alagoinhas ba' -> NEUTRO (elogio a cidade, nao a gestao)\n"
+    "  'Nao suporto esse povo do PT 😂😂' -> NEUTRO (partido, nao a gestao municipal)\n"
+    "  'Brabos, tem o meu respeito 🙌' (em post de vereador opositor) -> NEUTRO "
+    "(elogio ao vereador, nada dito sobre a gestao)\n"
+    "  'Luciano, voce e cotado pra ser prefeito 👏' -> NEUTRO (apoio ao opositor, "
+    "sem reprovar a gestao atual)\n"
+    "  'Concordo plenamente, quando e alguem do sistema eles atendem rapidinho' -> "
+    "NEGATIVO (endossa a denuncia sobre o servico publico)\n"
+    "  'Se nao faz Sao Joao o povo reclama, se faz critica, dificil ufa' -> POSITIVO "
+    "(defende a gestao dos criticos)\n"
+    "  'Envia esse video pra CDL' -> NEUTRO (recado, sem juizo sobre a gestao)\n"
+    "  'SUS de Alagoinhas da certo, parabens equipe!' -> POSITIVO\n"
+    "  'Prefeitura abandonou minha rua, ha 2 meses sem luz' -> NEGATIVO\n"
+    "  'Cade o asfalto que prometeram na campanha?' -> NEGATIVO (cobranca com reprovacao)\n"
+    "  'Luciano e incompetente, prefiro Gustavo' -> POSITIVO (defende a gestao)\n\n"
     "TEMA: e o tema DO COMENTARIO, nao do post — um cidadao pode reclamar da UPA debaixo "
     "de um post sobre pavimentacao. Se o comentario for NEUTRO (nao passou no portao "
     "obrigatorio acima), use tema='outro'.\n"
@@ -1450,7 +1508,9 @@ PROMPT_COMENTARIOS = (
     "ofensa, sem pedido concreto.\n"
     "CONFIANCA_TEMA: inteiro 0-100, confianca na classificacao de tema + sentimento deste "
     "comentario. Abaixo de 70 quando houver ironia, sarcasmo, giria ambigua, ou texto curto "
-    "demais para decidir.\n\n"
+    "demais para decidir. ABAIXO DE 50 quando voce honestamente nao conseguiu decidir a "
+    "polaridade — comentarios assim ficam FORA da conta do clima, entao e melhor admitir a "
+    "duvida do que chutar positivo ou negativo e enviesar o painel.\n\n"
     "Retorne APENAS JSON valido, sem markdown, sem texto extra."
 )
 
@@ -1461,15 +1521,24 @@ def montar_prompt_comentarios(post, lote, offset):
     lado = ("OPOSITOR" if cat == "oposicao"
             else "ALIADO" if cat in ("prefeito", "prefeitura", "governo")
             else "IMPRENSA")
+    # O LADO do perfil e contexto de leitura, NAO um atalho de polaridade: quem
+    # decide e o que o cidadao escreveu. Antes esta nota mandava marcar como
+    # NEGATIVO todo elogio a um perfil opositor, o que fabricava critica a gestao
+    # a partir de comentarios que nao falavam da gestao (400 comentarios na base
+    # de 25/07). Ver PROMPT_COMENTARIOS, regra 1.
     nota_lado = (
-        "ATENCAO: este e um perfil OPOSITOR. Comentarios apoiando/elogiando este perfil "
-        "= NEGATIVO para o prefeito. So e POSITIVO se o comentario defende Gustavo ou "
-        "ataca o opositor diretamente."
+        "CONTEXTO: a publicacao e de um perfil OPOSITOR a gestao. Isso ajuda a "
+        "entender o assunto, mas NAO define a polaridade. Elogiar o opositor sem "
+        "reprovar a gestao e NEUTRO; so e NEGATIVO se o comentario tambem critica a "
+        "gestao ou endossa a denuncia feita no post."
         if lado == "OPOSITOR" else
-        "ATENCAO: este e um perfil ALIADO/GOVERNO. Comentarios elogiando a gestao = "
-        "POSITIVO. Criticas = NEGATIVO."
+        "CONTEXTO: a publicacao e de um perfil ALIADO/GOVERNO (conta oficial da "
+        "gestao). Elogio ao que foi entregue = POSITIVO; reclamacao ou cobranca com "
+        "reprovacao dirigida a gestao = NEGATIVO; recado e pergunta sem juizo = NEUTRO."
         if lado == "ALIADO" else
-        "Analise o conteudo de cada comentario para determinar o impacto na imagem do prefeito."
+        "CONTEXTO: a publicacao e de imprensa. Leia cada comentario pelo que ele diz "
+        "sobre a gestao municipal; se a materia for sobre outra cidade ou sobre "
+        "politica nacional, os comentarios sao NEUTROS."
     )
     linhas = "".join(
         f'  [{offset + idx}] {c.get("curtidas", 0)}❤ @{c.get("username", "")}: "{c.get("texto", "")[:300]}"\n'
@@ -1629,23 +1698,35 @@ def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
         analise.setdefault("score_risco", score_tri)
 
         # Safety net: corrige sentimento_post com base nos percentuais e no
-        # sentimento_comentarios. Captura casos onde o modelo classifica como
-        # "negativo" mas pct_neg < 50%, ou "misto" com negativo dominante.
+        # sentimento_comentarios.
+        #
+        # Simetrico de proposito (revisao de 25/07). Antes exigia pct_neg > 50
+        # para negativo mas pct_pos > 60 para positivo, e "misto" so descia para
+        # negativo — reacao favoravel dominante virava "neutro". Isso e um dedo
+        # na balanca: o painel media mais critica do que a populacao expressou.
+        #
+        # Tambem caiu aqui a inversao por oposicao (pct_pos > 60 e oposicao ->
+        # negativo). Os comentarios ja chegam classificados pelo impacto na
+        # gestao, entao pct_pos JA significa "favoravel a gestao"; inverter de
+        # novo transformava aprovacao em critica. Nao chegou a aparecer na base
+        # (nenhum post de oposicao passou de 60% favoravel ate 25/07), mas
+        # dispararia justamente no caso que o cliente mais quer enxergar.
         pct_neg = float(analise.get("comentarios_pct_neg", 0) or 0)
         pct_pos = float(analise.get("comentarios_pct_pos", 0) or 0)
         sent_coments = (analise.get("sentimento_comentarios") or "").lower()
         if pct_neg > 50:
             analise["sentimento_post"] = "negativo"
+        elif pct_pos > 50:
+            analise["sentimento_post"] = "positivo"
         elif sent_coments == "negativo" and analise_profunda:
             # Sonnet classificou explicitamente como negativo — prevalece mesmo com pct_neg < 50
             analise["sentimento_post"] = "negativo"
-        elif sent_coments == "misto" and pct_neg > pct_pos:
-            # Misto mas negativo-dominante: critica supera elogio em volume
-            analise["sentimento_post"] = "negativo"
-        elif pct_pos > 60 and not eh_oposicao:
+        elif sent_coments == "positivo" and analise_profunda:
             analise["sentimento_post"] = "positivo"
-        elif pct_pos > 60 and eh_oposicao:
+        elif sent_coments == "misto" and pct_neg > pct_pos:
             analise["sentimento_post"] = "negativo"
+        elif sent_coments == "misto" and pct_pos > pct_neg:
+            analise["sentimento_post"] = "positivo"
         elif analise.get("sentimento_post") not in ("positivo", "negativo", "neutro"):
             analise["sentimento_post"] = "neutro"
         # Normaliza tema: valores fora do conjunto permitido → "comunicacao"
@@ -1702,14 +1783,19 @@ def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
                 c["pedido"] = None
                 c["confianca_tema"] = 0
 
-        # Perfis politicos (nao classificados pelo Haiku de comentarios): herdam
-        # o sentimento agregado do post.
-        fallback = analise.get("sentimento_comentarios", "neutro")
-        if fallback == "misto":
-            fallback = "neutro"
+        # Perfis politicos nao passam pelo classificador de comentarios (so
+        # cidadaos passam) e por isso ficam SEM sentimento — 'neutro' aqui quer
+        # dizer "nao medido", nao "achou morno".
+        #
+        # Antes eles herdavam o sentimento agregado do post. Isso fabricava
+        # opiniao: um perfil politico que so escreveu "👏👏" era gravado como
+        # negativo porque a media do post era negativa, e esse valor herdado
+        # voltava para dentro da media na reagregacao — a media alimentando a
+        # si mesma. O clima mede a populacao, e assessoria e vereador nao sao a
+        # populacao: ficam de fora da conta (ver recalcular_sentimento_posts).
         for c in comentarios:
             if c["tipo"] != "cidadao" and not c.get("sentimento"):
-                c["sentimento"] = fallback
+                c["sentimento"] = "neutro"
 
         modo = "PROFUNDO" if analise_profunda else "rapido"
         log(f"    img={analise.get('score_imagem',50)} risco={_sc} [{modo}] "
@@ -2000,11 +2086,23 @@ def recalcular_sentimento_posts(dry_run=False):
     comentarios reais.
 
     Custo ZERO de creditos: nao chama Apify nem Anthropic — so reagrega dados
-    que ja estao no Supabase. NAO toca em sentimento_post (classificacao
-    politica, com inversao para oposicao), so nos campos de comentario.
+    que ja estao no Supabase. NAO toca em sentimento_post, so nos campos de
+    comentario.
 
-    Percentuais sao sobre o TOTAL de comentarios do post (neutro entra na base,
-    como o resto do app assume: pos + neg + neutro = 100).
+    Percentuais sao sobre o TOTAL de comentarios de CIDADAOS do post (neutro
+    entra na base, como o resto do app assume: pos + neg + neutro = 100).
+
+    Duas correcoes de 25/07, para o numero refletir a populacao de verdade:
+
+    1. So entram comentarios de CIDADAO. Perfis politicos (assessoria, vereador,
+       outro portal) nao passam pelo classificador e antes herdavam o sentimento
+       medio do post — a media alimentando a si mesma. Alem disso, o painel diz
+       "comentarios analisados" da POPULACAO: politico nao e populacao.
+
+    2. Comentario que o proprio classificador marcou com confianca < 50 nao
+       conta como critica nem como elogio. O modelo declarou que nao conseguiu
+       decidir (ironia, giria, texto curto); somar isso como certeza inflava o
+       lado mais numeroso. Ele continua no total, como indeterminado.
     """
     from urllib.parse import quote
     from collections import defaultdict
@@ -2021,7 +2119,8 @@ def recalcular_sentimento_posts(dry_run=False):
     while True:
         chunk = _supabase_get(
             "comments",
-            f"tenant=eq.{TENANT}&select=url_post,sentimento&limit=1000&offset={page * 1000}",
+            f"tenant=eq.{TENANT}&tipo=eq.cidadao"
+            f"&select=url_post,sentimento,confianca_tema&limit=1000&offset={page * 1000}",
         )
         if not chunk:
             break
@@ -2035,7 +2134,7 @@ def recalcular_sentimento_posts(dry_run=False):
         return
 
     # 2) Agrega por url_post.
-    agg = defaultdict(lambda: {"pos": 0, "neg": 0, "neu": 0, "tot": 0})
+    agg = defaultdict(lambda: {"pos": 0, "neg": 0, "neu": 0, "tot": 0, "incerto": 0})
     for c in comments:
         u = (c.get("url_post") or "").strip()
         if not u:
@@ -2043,7 +2142,12 @@ def recalcular_sentimento_posts(dry_run=False):
         s = (c.get("sentimento") or "neutro").lower()
         a = agg[u]
         a["tot"] += 1
-        if s == "negativo":
+        if not _sentimento_confiavel(c):
+            # Classificacao que o proprio modelo marcou como incerta: entra no
+            # total como indeterminado, nunca como critica nem como elogio.
+            a["neu"] += 1
+            a["incerto"] += 1
+        elif s == "negativo":
             a["neg"] += 1
         elif s == "positivo":
             a["pos"] += 1
@@ -2056,12 +2160,16 @@ def recalcular_sentimento_posts(dry_run=False):
         tot = a["tot"] or 1
         pct_pos = round(a["pos"] / tot * 100)
         pct_neg = round(a["neg"] / tot * 100)
+        # Limiar unico para os dois lados (antes: 50 p/ negativo, 60 p/ positivo,
+        # e empate caia no lado negativo). Assimetria aqui virava vies no clima.
         if a["neg"] == 0 and a["pos"] == 0:
             sent = "neutro"
-        elif pct_neg >= pct_pos:
+        elif pct_neg > pct_pos:
             sent = "negativo" if pct_neg >= 50 else "misto"
+        elif pct_pos > pct_neg:
+            sent = "positivo" if pct_pos >= 50 else "misto"
         else:
-            sent = "positivo" if pct_pos >= 60 else "misto"
+            sent = "misto"
 
         payload = {
             "comentarios_pct_pos": pct_pos,
@@ -4376,6 +4484,91 @@ def main_multi_tenant():
             log(f"  ERRO no tenant {tid}: {e}")
 
 
+def teste_sentimento(max_posts=8, so_divergencias=True):
+    """Reclassifica uma amostra REAL de comentarios com os criterios atuais e
+    compara com o que esta gravado no Supabase. NAO grava nada.
+
+    Existe para medir o efeito de qualquer mexida nos criterios de sentimento
+    antes de mandar pra producao — o equivalente do --teste-filtro para o lado
+    da classificacao. Custo: so Anthropic (Haiku), nenhum credito Apify.
+
+    `--teste-sentimento [N]`      → amostra dos N posts com mais comentarios
+    `--teste-sentimento N --tudo` → lista tambem os que nao mudaram
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("[teste-sentimento] SUPABASE ausente.")
+        return
+    if not ANTHROPIC_KEY:
+        print("[teste-sentimento] ANTHROPIC_API_KEY ausente.")
+        return
+
+    posts = _supabase_get(
+        "posts",
+        f"tenant=eq.{TENANT}&select=url,autor,categoria,caption"
+        f"&order=comentarios_total.desc&limit={max_posts}",
+    )
+    if not posts:
+        print("[teste-sentimento] Nenhum post encontrado.")
+        return
+
+    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    from urllib.parse import quote
+
+    mudou, igual = [], 0
+    placar_antes, placar_depois = {}, {}
+    for p in posts:
+        coments = _supabase_get(
+            "comments",
+            f"tenant=eq.{TENANT}&tipo=eq.cidadao"
+            f"&url_post=eq.{quote(p['url'], safe='')}"
+            f"&select=id,username,texto,curtidas,sentimento,confianca_tema"
+            f"&order=curtidas.desc&limit=100",
+        )
+        coments = [c for c in coments if (c.get("texto") or "").strip()]
+        if not coments:
+            continue
+
+        print(f"  @{p['autor']} ({p.get('categoria','')}) — {len(coments)} comentarios…")
+        novo = analisar_comentarios_haiku(p, coments, cliente)
+        for idx, c in enumerate(coments):
+            item = novo.get(idx)
+            if not item:
+                continue
+            antes = (c.get("sentimento") or "neutro").lower()
+            depois = (item.get("sentimento") or "neutro").lower()
+            if depois not in ("positivo", "negativo", "neutro"):
+                depois = "neutro"
+            try:
+                conf = int(item.get("confianca_tema") or 0)
+            except (TypeError, ValueError):
+                conf = 0
+            # Aplica a mesma politica do painel: confianca baixa nao vira lado.
+            if not _sentimento_confiavel({"confianca_tema": conf}):
+                depois = "neutro"
+            placar_antes[antes] = placar_antes.get(antes, 0) + 1
+            placar_depois[depois] = placar_depois.get(depois, 0) + 1
+            if antes != depois:
+                mudou.append((p.get("categoria", ""), antes, depois, conf, c.get("texto", "")))
+            else:
+                igual += 1
+
+    total = igual + len(mudou)
+    if not total:
+        print("[teste-sentimento] Nenhum comentario reclassificado.")
+        return
+
+    print(f"\n[teste-sentimento] {total} comentarios reclassificados · "
+          f"{len(mudou)} mudaram ({round(len(mudou) / total * 100)}%)\n")
+    print("  ANTES  :", " ".join(f"{k}={v}" for k, v in sorted(placar_antes.items())))
+    print("  DEPOIS :", " ".join(f"{k}={v}" for k, v in sorted(placar_depois.items())))
+
+    if so_divergencias and mudou:
+        print("\n[mudancas]")
+        for cat, antes, depois, conf, texto in mudou:
+            t = " ".join((texto or "").split())[:110]
+            print(f"  {antes:>8} -> {depois:<8} [conf {conf:>3}] ({cat}) {t!r}")
+
+
 def teste_filtro(limite=5, detalhar=True):
     """Roda o filtro de relevância contra a base real do Supabase.
 
@@ -4799,6 +4992,11 @@ if __name__ == "__main__":
     import sys
     if "--multi-tenant" in sys.argv:
         main_multi_tenant()
+    elif "--teste-sentimento" in sys.argv:
+        # Reclassifica uma amostra real e compara com o gravado, sem escrever.
+        # --teste-sentimento [N posts] [--tudo]
+        _n = next((int(a) for a in sys.argv if a.isdigit()), 8)
+        teste_sentimento(max_posts=_n)
     elif "--seguidores" in sys.argv:
         # Snapshot avulso dos contadores de seguidores (ranking da tela
         # "Analise por Perfil"), sem rodar o pipeline inteiro. Gratis por

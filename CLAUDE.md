@@ -35,6 +35,20 @@ Vieram das reuniões com o cliente (PRs #37, #40 e #41). Valem como estado atual
 - O match é por **substring** de propósito: `@prefeituraalagoinhas` e `@gustavoascarmo` vêm colados na menção e são o sinal mais forte de que o post é local. Trocar por match de palavra inteira já quebrou isso uma vez.
 - Antes de mexer nesse filtro, medir contra a base real com `python agora.py --teste-filtro` (mostra a classificação das keywords e o motivo de cada decisão). No Windows, rodar com `PYTHONIOENCODING=utf-8`.
 
+### Critério de sentimento (revisão de 25/07 — não reintroduzir os atalhos)
+
+O clima mede **o sentimento que o cidadão expressou sobre a gestão municipal**. Nunca deduzir polaridade por proxy: se a pessoa não avaliou a gestão, o dado certo é neutro. Cinco atalhos foram removidos por fabricarem sentimento que ninguém manifestou:
+
+- **Apoio a opositor não é crítica à gestão.** "Parabéns vereador", "você é o próximo prefeito" = NEUTRO. Só vira negativo se o próprio comentário reprovar a gestão ou endossar a denúncia do post. A regra antiga marcava como negativo todo elogio a perfil opositor: 400 comentários (38% de todos os negativos) na base de 25/07. O lado do perfil (`OPOSITOR`/`ALIADO`) é **contexto de leitura, nunca atalho de polaridade** — vale para `PROMPT_COMENTARIOS`, `montar_prompt_comentarios::nota_lado` e `montar_prompt::lado`.
+- **Risada não é prova de ironia.** 😂/kkkk aparece em deboche, mas também em concordância e no riso de quem defende a gestão. Ironia exige a contradição no texto. Risada dirigida a quem critica é defesa, não ataque.
+- **Cobrança só é negativa quando há reprovação.** Pergunta ou recado sem reclamação é neutro; a demanda já é capturada no campo `pedido`.
+- **Limiares simétricos.** Antes: 50% para negativo, 60% para positivo, e "misto" só descia para negativo (empate ia para o lado negativo). Isso é dedo na balança. Hoje os dois lados usam o mesmo limiar, em `agora.py` (safety net e `recalcular_sentimento_posts`) e em `data.ts` (`sentimentoReacao` e `fetchAgregadoComentarios`) — se mexer num, mexer nos quatro.
+- **Sem inversão dupla por oposição.** `comentarios_pct_pos` já é medido como "favorável à gestão" na classificação de cada comentário; inverter de novo no agregado transformava aprovação em crítica.
+
+Quem entra na conta do clima: **só comentário de cidadão** (perfil político não é população e não passa pelo classificador — antes herdava a média do próprio post, a média alimentando a si mesma) e **só com `confianca_tema >= 50`** (`CONFIANCA_MIN_SENTIMENTO` no agora.py, espelhado em `radar-app/src/lib/sentimento.ts`). Abaixo disso o comentário conta no total como indeterminado, nunca como crítica ou elogio.
+
+Antes de mexer em qualquer critério de sentimento, medir com `python agora.py --teste-sentimento [N]`: reclassifica uma amostra real com os critérios atuais e compara com o gravado, **sem escrever nada**. Custo: só Anthropic, zero crédito Apify.
+
 ### Texto
 
 - **Nunca usar travessão (—) em texto gerado ou exibido.** Os prompts do `agora.py` proíbem na origem; `limparTravessoes()` (radar-app/src/lib/format.ts) limpa textos antigos na exibição. Vale também para textos novos de UI.
