@@ -7,6 +7,7 @@
  */
 
 import { supabase } from "@/lib/auth";
+import { sentimentoConfiavel, comSentimentoConfiavel } from "@/lib/sentimento";
 
 export interface Post {
   url: string;
@@ -134,16 +135,22 @@ interface AggSent { pctPos: number; pctNeg: number; sent: string }
 async function fetchAgregadoComentarios(): Promise<Map<string, AggSent>> {
   const { data, error } = await supabase
     .from("comments")
-    .select("url_post,sentimento")
+    .select("url_post,sentimento,confianca_tema")
     .eq("tenant", TENANT)
+    // Só cidadão: o clima mede a população. Perfil político nunca passa pelo
+    // classificador e, antes da revisão de 25/07, herdava a média do próprio
+    // post — o agregado alimentando a si mesmo (ver agora.py).
+    .eq("tipo", "cidadao")
     .limit(8000);
   if (error || !data?.length) return new Map();
   const agg: Record<string, { pos: number; neg: number; tot: number }> = {};
-  for (const r of data as { url_post: string; sentimento: string }[]) {
+  for (const r of data as { url_post: string; sentimento: string; confianca_tema?: number }[]) {
     const u = (r.url_post || "").trim();
     if (!u) continue;
     const a = (agg[u] ??= { pos: 0, neg: 0, tot: 0 });
     a.tot += 1;
+    // Confiança baixa entra no total como indeterminado, nunca como um dos lados.
+    if (!sentimentoConfiavel(r)) continue;
     const s = (r.sentimento || "neutro").toLowerCase();
     if (s === "negativo") a.neg += 1;
     else if (s === "positivo") a.pos += 1;
@@ -153,10 +160,13 @@ async function fetchAgregadoComentarios(): Promise<Map<string, AggSent>> {
     const tot = a.tot || 1;
     const pctPos = Math.round((a.pos / tot) * 100);
     const pctNeg = Math.round((a.neg / tot) * 100);
+    // Mesmo limiar para os dois lados (antes: 50 p/ negativo, 60 p/ positivo,
+    // e empate caía no lado negativo).
     let sent = "neutro";
     if (a.neg === 0 && a.pos === 0) sent = "neutro";
-    else if (pctNeg >= pctPos) sent = pctNeg >= 50 ? "negativo" : "misto";
-    else sent = pctPos >= 60 ? "positivo" : "misto";
+    else if (pctNeg > pctPos) sent = pctNeg >= 50 ? "negativo" : "misto";
+    else if (pctPos > pctNeg) sent = pctPos >= 50 ? "positivo" : "misto";
+    else sent = "misto";
     map.set(u, { pctPos, pctNeg, sent });
   }
   return map;
@@ -238,19 +248,33 @@ export function parseData(str: string): Date | null {
  * confiar cegamente nesse campo, reaplicamos aqui a mesma regra de
  * desempate que o backend já usa (agora.py, "Safety net" antes de gravar
  * sentimento_post): os percentuais de comentários e o sentimento_comentarios
- * têm precedência, porque medem a reação do POVO — o que este card mostra —
+ * têm precedência, porque medem a reação do POVO, o que este card mostra,
  * e não o tom da legenda do post.
+ *
+ * Revisão de 25/07, para o badge dizer o que a população disse:
+ *
+ *   • Limiar igual para os dois lados. Antes bastava 50% de crítica para o
+ *     post ser negativo, mas eram precisos 60% de elogio para ser positivo,
+ *     e "misto" só descia para negativo. Reação favorável dominante aparecia
+ *     como neutra.
+ *   • Sem inversão por oposição. `pctPos` já é medido como "favorável à
+ *     gestão" na classificação de cada comentário; a linha antiga
+ *     (`pctPos > 60 → oposição ? negativo : positivo`) invertia um valor já
+ *     invertido e transformava aprovação em crítica justamente no caso que o
+ *     cliente mais quer ver: público reagindo a favor da gestão sob um post
+ *     de opositor.
  */
 export function sentimentoReacao(p: Post): "positivo" | "negativo" | "neutro" {
   const pctNeg = p.comentarios_pct_neg || 0;
   const pctPos = p.comentarios_pct_pos || 0;
   const sentComentarios = (p.sentimento_comentarios || "").toLowerCase();
-  const ehOposicao = (p.categoria || "").toLowerCase().includes("oposi");
 
   if (pctNeg > 50) return "negativo";
+  if (pctPos > 50) return "positivo";
   if (sentComentarios === "negativo") return "negativo";
+  if (sentComentarios === "positivo") return "positivo";
   if (sentComentarios === "misto" && pctNeg > pctPos) return "negativo";
-  if (pctPos > 60) return ehOposicao ? "negativo" : "positivo";
+  if (sentComentarios === "misto" && pctPos > pctNeg) return "positivo";
   if (p.sentimento_post === "positivo" || p.sentimento_post === "negativo" || p.sentimento_post === "neutro") {
     return p.sentimento_post;
   }
@@ -620,7 +644,7 @@ export async function fetchComments(limit = 1000): Promise<Comment[]> {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   }).catch(() => null);
   if (!res || !res.ok) return [];
-  return (await res.json()) as Comment[];
+  return ((await res.json()) as Comment[]).map(comSentimentoConfiavel);
 }
 
 // ── Localidades / Bairros (agregação client-side de comments) ────────────────
@@ -647,12 +671,13 @@ export async function fetchBairros(): Promise<BairroStats[]> {
   const q =
     `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
     `&localidade=neq.nao_identificado&localidade=not.is.null` +
-    `&select=localidade,sentimento,tema,pedido,curtidas&limit=8000`;
+    `&tipo=eq.cidadao` +
+    `&select=localidade,sentimento,tema,pedido,curtidas,confianca_tema&limit=8000`;
   const res = await fetch(q, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   }).catch(() => null);
   if (!res || !res.ok) return [];
-  const rows = (await res.json()) as Comment[];
+  const rows = ((await res.json()) as Comment[]).map(comSentimentoConfiavel);
 
   const by: Record<string, BairroStats & { temas: Record<string, number> }> = {};
   for (const c of rows) {
@@ -741,12 +766,12 @@ export async function fetchSubtemas(): Promise<SubtemaStat[]> {
   const q =
     `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
     `&tipo=eq.cidadao&subtema=neq.outro&subtema=not.is.null` +
-    `&select=tema,subtema,sentimento&limit=8000`;
+    `&select=tema,subtema,sentimento,confianca_tema&limit=8000`;
   const res = await fetch(q, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   }).catch(() => null);
   if (!res || !res.ok) return [];
-  const rows = (await res.json()) as Comment[];
+  const rows = ((await res.json()) as Comment[]).map(comSentimentoConfiavel);
   const by: Record<string, SubtemaStat> = {};
   for (const c of rows) {
     const tema = (c.tema || "outro").trim();
@@ -800,7 +825,8 @@ export async function fetchComentariosPorTema(tema?: string, limit = 4000): Prom
     `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
     `&tipo=eq.cidadao&texto=not.is.null&tema=not.is.null&tema=neq.outro`;
   if (tema) q += `&tema=eq.${encodeURIComponent(tema)}`;
-  q += `&select=texto,username,curtidas,sentimento,tema,subtema,url_post&order=curtidas.desc&limit=${limit}`;
+  q += `&select=texto,username,curtidas,sentimento,tema,subtema,url_post,confianca_tema` +
+       `&order=curtidas.desc&limit=${limit}`;
   const res = await fetch(q, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   }).catch(() => null);
@@ -809,7 +835,9 @@ export async function fetchComentariosPorTema(tema?: string, limit = 4000): Prom
     texto: String(r.texto ?? "").trim(),
     autor: String(r.username ?? "").trim(),
     curtidas: Number(r.curtidas ?? 0),
-    sentimento: String(r.sentimento ?? "neutro").toLowerCase(),
+    sentimento: sentimentoConfiavel(r as { confianca_tema?: number })
+      ? String(r.sentimento ?? "neutro").toLowerCase()
+      : "neutro",
     tema: String(r.tema ?? "outro").trim(),
     subtema: String(r.subtema ?? "").trim(),
     urlPost: String(r.url_post ?? "").trim(),
@@ -841,12 +869,12 @@ export async function fetchSubtemasRecentes(horas = 24): Promise<SubtemaEmAlta[]
     `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
     `&tipo=eq.cidadao&subtema=neq.outro&subtema=not.is.null` +
     `&data_comentario_ts=gte.${desde}` +
-    `&select=tema,subtema,sentimento,texto,username,curtidas&order=curtidas.desc&limit=8000`;
+    `&select=tema,subtema,sentimento,texto,username,curtidas,confianca_tema&order=curtidas.desc&limit=8000`;
   const res = await fetch(q, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   }).catch(() => null);
   if (!res || !res.ok) return [];
-  const rows = (await res.json()) as Comment[];
+  const rows = ((await res.json()) as Comment[]).map(comSentimentoConfiavel);
 
   const by: Record<string, SubtemaEmAlta & { autoresSet: Set<string> }> = {};
   for (const c of rows) {
