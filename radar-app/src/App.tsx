@@ -10,6 +10,8 @@ const AceitarConvitePage = lazy(() =>
   import("@/pages/AceitarConvitePage").then((m) => ({ default: m.AceitarConvitePage }))
 );
 const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
+const RelevanciaPage = lazy(() => import("@/pages/RelevanciaPage").then((m) => ({ default: m.RelevanciaPage })));
+const FontesPage = lazy(() => import("@/pages/FontesPage").then((m) => ({ default: m.FontesPage })));
 const AlertasHistPage = lazy(() => import("@/pages/AlertasHistPage").then((m) => ({ default: m.AlertasHistPage })));
 const BairrosPage = lazy(() => import("@/pages/BairrosPage").then((m) => ({ default: m.BairrosPage })));
 const PedidosPage = lazy(() => import("@/pages/PedidosPage").then((m) => ({ default: m.PedidosPage })));
@@ -33,6 +35,8 @@ type Page =
   | "bairros"
   | "pedidos"
   | "perfil"
+  | "relevancia"
+  | "fontes"
   | "admin"
   // avançado
   | "approval"
@@ -54,6 +58,12 @@ function NIcoMessage() {
 }
 function NIcoTrending() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
+}
+function NIcoKey() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2"/><path d="m17 6 3 3"/><path d="m14 9 3 3"/></svg>;
+}
+function NIcoAntenna() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4.9 19.1A10 10 0 0 1 4.9 4.9"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4"/><path d="M19.1 4.9a10 10 0 0 1 0 14.2"/></svg>;
 }
 function NIcoSliders() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="5" x2="7" y2="5"/><circle cx="9" cy="5" r="2"/><line x1="11" y1="5" x2="20" y2="5"/><line x1="4" y1="12" x2="13" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="17" y1="12" x2="20" y2="12"/><line x1="4" y1="19" x2="7" y2="19"/><circle cx="9" cy="19" r="2"/><line x1="11" y1="19" x2="20" y2="19"/></svg>;
@@ -81,6 +91,11 @@ const NAV_MAIN: NavItem[] = [
   { id: "topics",      label: "Previsões",             icon: <NIcoTrending /> },
   { id: "actions",     label: "Alertas & Ações",       icon: <NIcoBell /> },
   { id: "alerts-hist", label: "Histórico Alertas",     icon: <NIcoAlertHist /> },
+  // Relevância e Fontes saíram da Configuração (admin-only) na revisão de
+  // 25/07: qualquer usuário do tenant cadastra palavras-chave e perfis
+  // monitorados. A permissão de escrita foi liberada na migration 007.
+  { id: "relevancia",  label: "Relevância",            icon: <NIcoKey /> },
+  { id: "fontes",      label: "Fontes",                icon: <NIcoAntenna /> },
   { id: "admin",       label: "Configuração",          icon: <NIcoSliders /> },
 ];
 
@@ -305,6 +320,8 @@ export default function App() {
             {page === "pedidos"  && <PedidosPage />}
             {page === "bairros"  && <BairrosPage />}
             {page === "perfil"   && <PerfilPage />}
+            {page === "relevancia" && <RelevanciaPage />}
+            {page === "fontes"     && <FontesPage />}
             {page === "topics"   && <TemasPage />}
             {page === "admin"    && <RequireAdmin><AdminPage /></RequireAdmin>}
             {/* Avançado */}
