@@ -65,7 +65,7 @@ function LinhaEnvio({ e }: { e: EnvioManual }) {
         <span className="tnum text-xs text-txt-3">{fmtDt(e.created_at)}</span>
         <BadgeCanal canal={e.channel} />
         {e.tema && (
-          <span className="rounded bg-bg-1 px-2 py-0.5 text-[13px] font-bold capitalize text-txt-1">
+          <span className="rounded bg-bg-1 px-2 py-0.5 text-[13px] font-bold frase-cap text-txt-1">
             {e.tema}
           </span>
         )}

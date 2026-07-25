@@ -106,7 +106,7 @@ function TemasRisco({ temas }: { temas: { tema: string; pNeg: number }[] }) {
         const label = t.pNeg >= 50 ? "CRÍTICO" : t.pNeg >= 35 ? "ALTO" : "ATENÇÃO";
         return (
           <div key={t.tema} className="flex flex-col items-center gap-1.5 text-center">
-            <span className="text-3xl font-extrabold capitalize text-txt-1">{t.tema}</span>
+            <span className="text-3xl font-extrabold frase-cap text-txt-1">{t.tema}</span>
             <span
               className="rounded px-2.5 py-0.5 text-[13px] font-bold uppercase tracking-widest"
               style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}44` }}

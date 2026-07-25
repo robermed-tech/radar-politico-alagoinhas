@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchComentariosPorTema, filtrarPorPeriodo, type Post, type Boletim, type BoletimFrente, type Briefing, type Periodo } from "@/lib/data";
 import { calcIAD, NIVEL_COLOR, NIVEL_LABEL, nivelBadgeStyle, type NivelCrise } from "@/lib/indices";
 import { getWeather, weatherFromCondicao } from "@/lib/weather";
-import { fmtInt, limparTravessoes } from "@/lib/format";
+import { fmtInt, fraseCapitalizada, limparTravessoes } from "@/lib/format";
 import { useAuth } from "@/components/AuthProvider";
 import { EvidenciaComentariosModal } from "@/components/EvidenciaComentariosModal";
 import { PublicacoesModal } from "@/components/PublicacoesModal";
@@ -347,7 +347,7 @@ function RecomendacoesPeriodo({
         {recomendacoes.slice(0, 3).map((r, i) => (
           <div key={i} className="rounded-lg border border-line bg-bg-2 p-4">
             {r.canal && (
-              <div className="mb-1 text-sm font-extrabold capitalize text-txt-1">{r.canal}</div>
+              <div className="mb-1 text-sm font-extrabold text-txt-1">{fraseCapitalizada(r.canal)}</div>
             )}
             <p className="text-sm text-txt-2">{limparTravessoes(r.mensagem)}</p>
           </div>

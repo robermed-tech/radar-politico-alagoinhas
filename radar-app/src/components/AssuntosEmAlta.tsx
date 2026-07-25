@@ -34,7 +34,7 @@ function LinhaAlta({ s, limiar }: { s: SubtemaEmAlta; limiar: number }) {
       style={{ borderColor: `${cor}44`, borderLeftColor: cor, borderLeftWidth: 3 }}
     >
       <div className="flex items-center gap-2">
-        <span className="text-sm font-bold text-txt-1 capitalize">{labelSub(s.subtema)}</span>
+        <span className="text-sm font-bold text-txt-1 frase-cap">{labelSub(s.subtema)}</span>
         <span className="text-[13px] text-txt-3">{labelTema(s.tema)}</span>
         <span
           className="ml-auto tnum shrink-0 rounded-md px-2 py-0.5 text-[13px] font-bold"
@@ -121,7 +121,7 @@ export function AssuntosEmAlta() {
                 key={`${s.tema}|${s.subtema}`}
                 className="rounded-md border border-line bg-bg-2 px-2 py-1 text-[13px] text-txt-2"
               >
-                <span className="capitalize">{labelSub(s.subtema)}</span>
+                <span className="frase-cap">{labelSub(s.subtema)}</span>
                 <span className="tnum ml-1.5 text-txt-3">{s.total}/{limiar}</span>
               </span>
             ))}

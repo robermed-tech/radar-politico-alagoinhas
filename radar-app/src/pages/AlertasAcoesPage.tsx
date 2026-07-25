@@ -63,7 +63,7 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
                   {NIVEL_LABEL[(p.nivel as NivelCrise) ?? "alto"] ?? p.nivel}
                 </span>
                 {p.tema && (
-                  <span className="text-sm font-extrabold capitalize text-txt-1">
+                  <span className="text-sm font-extrabold frase-cap text-txt-1">
                     {p.tema}
                   </span>
                 )}

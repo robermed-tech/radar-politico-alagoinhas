@@ -96,7 +96,7 @@ function PainelRecuperacaoIRT() {
           return (
             <div key={t.tema} className="rounded-lg border border-line bg-bg-2 px-3 py-2.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-bold capitalize text-txt-1">{t.tema}</span>
+                <span className="text-sm font-bold frase-cap text-txt-1">{t.tema}</span>
                 <span
                   className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[12px] font-bold uppercase"
                   style={{ background: `${st.cor}1A`, color: st.cor }}
@@ -168,7 +168,7 @@ function ComentariosDrill({
     <div className="mt-3 rounded-lg border border-brand/40 bg-bg-2 p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="text-sm font-bold text-txt-1">
-          {labelTemaSub(sel.tema)} · <span className="capitalize">{labelSub(sel.subtema)}</span>
+          {labelTemaSub(sel.tema)} · <span className="frase-cap">{labelSub(sel.subtema)}</span>
           <span className="ml-2 text-[13px] font-normal text-txt-3">
             o que as pessoas realmente escreveram
           </span>
@@ -194,7 +194,7 @@ function ComentariosDrill({
                   className="inline-block h-2 w-2 rounded-full"
                   style={{ background: SENT_COR[c.sentimento] ?? SENT_COR.neutro }}
                 />
-                <span className="capitalize">{c.sentimento}</span>
+                <span className="frase-cap">{c.sentimento}</span>
                 {c.autor && <span>· @{c.autor}</span>}
                 {c.curtidas > 0 && <span className="ml-auto tnum">♥ {c.curtidas}</span>}
               </div>
@@ -373,7 +373,7 @@ function PainelSubtemas() {
                       title="Ver comentários deste subtema"
                     >
                       <div className="flex items-center justify-between gap-2 text-[13px]">
-                        <span className="min-w-0 flex-1 truncate capitalize text-txt-2">{labelSub(s.subtema)}</span>
+                        <span className="min-w-0 flex-1 truncate frase-cap text-txt-2">{labelSub(s.subtema)}</span>
                         <span className="tnum shrink-0 text-txt-3">{s.total}</span>
                       </div>
                       <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-bg-1">

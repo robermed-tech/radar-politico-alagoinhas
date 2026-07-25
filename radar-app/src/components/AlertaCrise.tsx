@@ -196,7 +196,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
               <div className="text-[12px] font-bold uppercase tracking-widest" style={{ color: "#DC2626" }}>
                 Tema crítico detectado
               </div>
-              <div className="mt-1 text-base font-extrabold capitalize text-txt-1">{tema}</div>
+              <div className="mt-1 text-base font-extrabold frase-cap text-txt-1">{tema}</div>
               <div className="mt-1.5 flex flex-wrap gap-3 text-sm">
                 <span className="font-bold" style={{ color: "#DC2626" }}>
                   {pNeg}% negatividade
@@ -213,7 +213,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
                   O que a população está dizendo
                   {evidencia.subtema && (
                     <span className="ml-1 normal-case text-txt-2">
-                      · foco em <b className="capitalize">{evidencia.subtema.replace(/_/g, " ")}</b>
+                      · foco em <b className="frase-cap">{evidencia.subtema.replace(/_/g, " ")}</b>
                     </span>
                   )}
                 </div>

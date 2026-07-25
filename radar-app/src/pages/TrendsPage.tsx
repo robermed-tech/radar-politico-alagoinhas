@@ -121,7 +121,7 @@ function KeywordCloud({ posts }: { posts: Post[] }) {
             </div>
             {top5neg.map(k => (
               <div key={k.palavra} className="flex justify-between text-xs py-0.5">
-                <span className="text-txt-1 capitalize">{k.palavra}</span>
+                <span className="text-txt-1 frase-cap">{k.palavra}</span>
                 <span className="tabular-nums text-txt-3">{k.count}×</span>
               </div>
             ))}
@@ -132,7 +132,7 @@ function KeywordCloud({ posts }: { posts: Post[] }) {
             </div>
             {top5pos.map(k => (
               <div key={k.palavra} className="flex justify-between text-xs py-0.5">
-                <span className="text-txt-1 capitalize">{k.palavra}</span>
+                <span className="text-txt-1 frase-cap">{k.palavra}</span>
                 <span className="tabular-nums text-txt-3">{k.count}×</span>
               </div>
             ))}
