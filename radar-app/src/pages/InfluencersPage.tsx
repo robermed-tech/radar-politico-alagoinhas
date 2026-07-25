@@ -31,7 +31,12 @@ function corInfluencer(i: Influencer): string {
   return COR_IMPRENSA;
 }
 
-export function InfluencersPage() {
+/**
+ * Seção de influenciadores — antes era uma página própria na sidebar; a
+ * reunião de 24/07 decidiu enxugar o menu e encaixar este conteúdo dentro de
+ * "Análise por Perfil" (ver PerfilPage).
+ */
+export function InfluencersSection() {
   const ink = chartInk(useThemeStore((s) => s.theme));
   const { data, isLoading } = useQuery({
     queryKey: ["influencers"],
@@ -111,28 +116,19 @@ export function InfluencersPage() {
   }, [lista, ink]);
 
   // Early returns depois de todos os hooks
-  if (isLoading) return <div className="p-8 text-txt-2">Carregando influenciadores…</div>;
+  if (isLoading) return <div className="text-sm text-txt-3">Carregando influenciadores…</div>;
 
-  if (lista.length === 0)
-    return (
-      <div className="p-5">
-        <h1 className="text-2xl font-extrabold">Influenciadores</h1>
-        <div className="mt-4 rounded-xl border border-line bg-bg-1 p-6 text-txt-2">
-          Ranking ainda não populado. Crie a tabela <code>influencers</code> no
-          Supabase (<code>supabase/influencers.sql</code>) e rode o AGORA.
-        </div>
-      </div>
-    );
+  if (lista.length === 0) return null;
 
   const aliados = lista.filter((i) => corInfluencer(i) === COR_ALIADO).length;
   const opositores = lista.filter((i) => corInfluencer(i) === COR_OPOSICAO).length;
   const imprensa = lista.filter((i) => corInfluencer(i) === COR_IMPRENSA).length;
 
   return (
-    <div className="space-y-4 p-5">
+    <div className="space-y-3">
       <div>
-        <h1 className="text-2xl font-extrabold">Influenciadores</h1>
-        <p className="text-sm text-txt-2">
+        <div className="section-label">Influenciadores</div>
+        <p className="text-sm text-txt-3">
           Ranking por score composto (alcance · engajamento · frequência) — perfis monitorados
         </p>
       </div>

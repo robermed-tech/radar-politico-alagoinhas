@@ -1196,6 +1196,7 @@ Regras de analise:
 4. Detecte padroes: mesma queixa em posts diferentes = pressao organizada
 5. Seja preciso e direto - o assessor precisa de acao, nao de analise generica
 
+NUNCA use travessao (— ou –) nos textos gerados; use virgula, dois-pontos ou parenteses.
 Responda APENAS com JSON valido, sem markdown, sem texto antes ou depois."""
 
 def montar_prompt(post, comentarios, memoria):
@@ -2196,7 +2197,10 @@ comentarios critica", "leve saldo negativo", "elogios isolados"). Os numeros apa
 nos paineis do dashboard; sua funcao e INTERPRETA-LOS em palavras, nunca repeti-los.
 Exemplos do que NAO escrever: "IAD 52", "risco 21", "43% negativos", "29% positivos",
 "13 posts". Exemplos do que escrever: "imagem em risco baixo", "saldo negativo
-relevante", "a maioria dos comentarios do dia foi critica"."""
+relevante", "a maioria dos comentarios do dia foi critica".
+
+REGRA DE ESTILO: NUNCA use travessao (o caractere — ou –) em nenhum texto gerado.
+Separe ideias com virgula, dois-pontos ou parenteses."""
 
 # Salvaguarda: detecta numeros-metrica cravados no diagnostico (IAD, risco, %,
 # contagens de posts/comentarios) que deveriam viver so nos cards do dashboard.
@@ -2464,6 +2468,7 @@ Sua missao NAO e alarmar — e separar ruido de crise verdadeira e dar um plano 
 Considere o historico de risco: risco subindo + comentarios organizados = crise real.
 Reclamacao isolada, mesmo agressiva, raramente e crise.
 
+NUNCA use travessao (— ou –) nos textos gerados; use virgula, dois-pontos ou parenteses.
 Responda APENAS com JSON valido, sem markdown."""
 
 def _registrar_agente(agente, modelo, gatilho, input_ref, tokens_in, tokens_out):
@@ -2581,6 +2586,16 @@ def rodar_cacador_crises(posts_analisados, comentarios_por_post):
 # MODULO 7B - ALERTAS POR LIMIAR
 # ==============================================================
 
+def _auto_dispatch_ativo():
+    """Kill-switch do disparo AUTOMATICO de alertas WhatsApp (reuniao de 24/07:
+    o envio ao secretario passa a ser SO manual, pelo card "Alertar Secretario"
+    do dashboard — menos superficie para alucinacao). A deteccao continua
+    rodando (temas alertados alimentam o laco IRT e os paineis); apenas o
+    envio externo e suprimido. Religavel por tenant via
+    tenant_settings.notification_config.auto_dispatch_whatsapp = true."""
+    return bool(_nc.get("auto_dispatch_whatsapp", False))
+
+
 def verificar_alertas(posts_analisados):
     """Lê config de alertas do Supabase (ou usa defaults de env) e dispara WhatsApp.
     Retorna a lista de temas que dispararam alerta temático (p/ o laço IRT)."""
@@ -2663,6 +2678,11 @@ def verificar_alertas(posts_analisados):
     if not alertas:
         return temas_alertados
 
+    if not _auto_dispatch_ativo():
+        log(f"  verificar_alertas: {len(alertas)} gatilho(s) detectado(s), mas o disparo "
+            "automatico esta desativado — envio so manual pelo dashboard")
+        return temas_alertados
+
     log(f"=== ALERTAS: {len(alertas)} disparo(s) ===")
     data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
     mensagem  = f"*🚨 Radar Político — Alerta Automático ({data_hoje})*\n\n"
@@ -2709,6 +2729,9 @@ def verificar_alerta_subtema(dry_run: bool = False):
     if not SUPABASE_URL or not SUPABASE_KEY:
         return
     if not SUBTEMA_ALERTA_ATIVO and not dry_run:
+        return
+    if not dry_run and not _auto_dispatch_ativo():
+        log("  alerta_subtema: disparo automatico desativado — envio so manual pelo dashboard")
         return
     if not dry_run and (not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER):
         return
@@ -3572,6 +3595,9 @@ def disparar_alertas(posts_analisados):
     Envia no máximo MAX_ALERTAS_POR_RUN posts detalhados; os excedentes são listados
     com handle + score no rodapé da mensagem."""
     log("=== MODULO 6 - Verificando alertas ===")
+    if not _auto_dispatch_ativo():
+        log("  Disparo automatico desativado (reuniao 24/07) — alertas so manuais pelo dashboard")
+        return 0
     if not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER:
         log("  Evolution API nao configurada - alertas desativados")
         return 0
@@ -3639,6 +3665,9 @@ def disparar_alertas(posts_analisados):
 
 def enviar_update_coments(post, motivo_update):
     """Alerta de mudança relevante em post de alto risco já analisado."""
+    if not _auto_dispatch_ativo():
+        log(f"  Update detectado (@{post.get('autor','')}) mas disparo automatico desativado")
+        return
     log(f"  Update: @{post.get('autor','')} — {motivo_update}")
     queixa   = (post.get("queixa_dominante", "") or "—").strip()
     destaque = (post.get("comentarios_destaque", "") or "").strip()

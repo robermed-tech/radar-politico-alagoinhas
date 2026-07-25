@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchRadar, parseData, filtrarPorPeriodo, sentimentoReacao, type Post } from "@/lib/data";
 import { resumoProsaPost } from "@/lib/resumo";
+import { limparTravessoes } from "@/lib/format";
 import { PostChips } from "@/components/PostChips";
 import { IconNewspaper, IconSwords, IconBuilding, IconPerson, IconDocument } from "@/components/icons";
 
@@ -91,7 +92,7 @@ function PostCard({ p }: { p: Post }) {
         </div>
       )}
       {resumo && (
-        <p className="mb-2.5 line-clamp-2 text-sm text-txt-2">{resumo}</p>
+        <p className="mb-2.5 line-clamp-2 text-sm text-txt-2">{limparTravessoes(resumo)}</p>
       )}
       {/* Camada SCCT/Coombs — só quando o post configura crise */}
       {SCCT_CLUSTER[p.cluster_crise] && (
@@ -119,7 +120,7 @@ function PostCard({ p }: { p: Post }) {
           {p.abordagem_recomendada && (
             <p className="mt-1 text-xs text-txt-2" title={p.por_que_funciona}>
               <span className="font-semibold text-txt-1">Resposta recomendada: </span>
-              {p.abordagem_recomendada}
+              {limparTravessoes(p.abordagem_recomendada)}
             </p>
           )}
         </div>

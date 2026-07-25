@@ -10,7 +10,6 @@ const AceitarConvitePage = lazy(() =>
   import("@/pages/AceitarConvitePage").then((m) => ({ default: m.AceitarConvitePage }))
 );
 const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
-const InfluencersPage = lazy(() => import("@/pages/InfluencersPage").then((m) => ({ default: m.InfluencersPage })));
 const NarrativesPage = lazy(() => import("@/pages/NarrativesPage").then((m) => ({ default: m.NarrativesPage })));
 const AlertasHistPage = lazy(() => import("@/pages/AlertasHistPage").then((m) => ({ default: m.AlertasHistPage })));
 const BairrosPage = lazy(() => import("@/pages/BairrosPage").then((m) => ({ default: m.BairrosPage })));
@@ -38,7 +37,6 @@ type Page =
   | "admin"
   // avançado
   | "approval"
-  | "influencers"
   | "narratives"
   | "alerts-hist";
 
@@ -61,9 +59,6 @@ function NIcoTrending() {
 }
 function NIcoSliders() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="5" x2="7" y2="5"/><circle cx="9" cy="5" r="2"/><line x1="11" y1="5" x2="20" y2="5"/><line x1="4" y1="12" x2="13" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="17" y1="12" x2="20" y2="12"/><line x1="4" y1="19" x2="7" y2="19"/><circle cx="9" cy="19" r="2"/><line x1="11" y1="19" x2="20" y2="19"/></svg>;
-}
-function NIcoNetwork() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>;
 }
 function NIcoFileText() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
@@ -90,7 +85,6 @@ const NAV_MAIN: NavItem[] = [
   { id: "perfil",      label: "Análise por Perfil",    icon: <NIcoUser /> },
   { id: "topics",      label: "Previsões",             icon: <NIcoTrending /> },
   { id: "actions",     label: "Alertas & Ações",       icon: <NIcoBell /> },
-  { id: "influencers", label: "Influenciadores",       icon: <NIcoNetwork /> },
   { id: "narratives",  label: "Narrativas",            icon: <NIcoFileText /> },
   { id: "alerts-hist", label: "Histórico Alertas",     icon: <NIcoAlertHist /> },
   { id: "admin",       label: "Configuração",          icon: <NIcoSliders /> },
@@ -311,7 +305,7 @@ export default function App() {
         <PipelineHealthBanner health={pipelineHealth} />
         <main className="flex-1 overflow-y-auto">
           <Suspense fallback={<div className="p-8 text-txt-2">Carregando…</div>}>
-            {page === "clima"    && <ClimaPage />}
+            {page === "clima"    && <ClimaPage onVerFeed={() => setPage("feed")} />}
             {page === "actions"  && <AlertasAcoesPage />}
             {page === "feed"     && <FeedPage />}
             {page === "pedidos"  && <PedidosPage />}
@@ -321,7 +315,6 @@ export default function App() {
             {page === "admin"    && <RequireAdmin><AdminPage /></RequireAdmin>}
             {/* Avançado */}
             {page === "approval"     && <ApprovalPage />}
-            {page === "influencers"  && <InfluencersPage />}
             {page === "narratives"   && <NarrativesPage />}
             {page === "alerts-hist"  && <AlertasHistPage />}
           </Suspense>

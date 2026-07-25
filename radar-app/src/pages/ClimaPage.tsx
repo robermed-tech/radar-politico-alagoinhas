@@ -1,11 +1,24 @@
-﻿import { useMemo, useState } from "react";
+﻿import { Suspense, lazy, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchComentariosPorTema, filtrarPorPeriodo, type Post, type Boletim, type BoletimFrente, type Briefing, type Periodo } from "@/lib/data";
 import { calcIAD, NIVEL_COLOR, NIVEL_LABEL, nivelBadgeStyle, type NivelCrise } from "@/lib/indices";
 import { getWeather, weatherFromCondicao } from "@/lib/weather";
-import { fmtInt } from "@/lib/format";
+import { fmtInt, limparTravessoes } from "@/lib/format";
 import { useAuth } from "@/components/AuthProvider";
 import { EvidenciaComentariosModal } from "@/components/EvidenciaComentariosModal";
+import { PublicacoesModal } from "@/components/PublicacoesModal";
+import { RadarStatusBar } from "@/components/RadarStatusBar";
+// Lazy: o gauge puxa o chunk do ECharts (~1 MB) — a ClimaPage é a landing e
+// continua pintando sem esperar por ele (o termômetro fica abaixo da dobra).
+const GaugeTema = lazy(() =>
+  import("@/components/GaugeTema").then((m) => ({ default: m.GaugeTema }))
+);
+
+// Paleta neutra "chumbo e branco" da reunião de 24/07: enquanto o produto não
+// tem identidade visual fechada, tudo que não tem cor semântica definida usa
+// grafite com texto branco.
+const CHUMBO = "#334155";
+const CHUMBO_ESCURO = "#1E293B";
 
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde",
@@ -20,75 +33,15 @@ const TEMA_LABEL: Record<string, string> = {
   comunicacao: "Comunicação e Transparência",
 };
 
-function somarComents(posts: Post[]): { neg: number; pos: number; neu: number } {
-  let neg = 0, pos = 0;
-  let total = 0;
-  for (const p of posts) {
-    const tot = p.comentarios_total || 0;
-    total += tot;
-    neg += Math.round(((p.comentarios_pct_neg || 0) / 100) * tot);
-    pos += Math.round(((p.comentarios_pct_pos || 0) / 100) * tot);
-  }
-  return { neg, pos, neu: Math.max(0, total - neg - pos) };
-}
-
-const VOL_COR = { neg: "#EF4444", pos: "#22C55E", neu: "#8593AD" };
-
 /**
- * Uma linha = um total grande (leitura imediata) + uma barra empilhada a
- * 100% mostrando a PROPORÇÃO neg/pos/neu (composição), em vez de colunas
- * numéricas lado a lado. Comparar proporções por comprimento de barra é
- * mais rápido de interpretar do que ler 4 números por linha — e como cada
- * linha normaliza para 100%, funciona igual bem para "Hoje" (dezenas) e
- * "Este mês" (milhares).
+ * Velocímetros por tema — decisão da reunião de 24/07: as barras empilhadas e
+ * o recorte "essa semana / esse mês" saem (conflitavam com o filtro global de
+ * período); fica um gauge animado por tema, medindo a % de negativos sobre
+ * (positivos + negativos) — o neutro fica fora do ponteiro.
  */
-function LinhaVolume({
-  label,
-  sub,
-  neg,
-  pos,
-  neu,
-}: {
-  label: string;
-  sub?: string;
-  neg: number;
-  pos: number;
-  neu: number;
-}) {
-  const total = neg + pos + neu;
-  const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
-  return (
-    <div>
-      <div className="mb-1.5 flex items-baseline justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate text-[15px] font-bold text-txt-1">{label}</div>
-          {sub && <div className="text-[11px] text-txt-3">{sub}</div>}
-        </div>
-        <div className="tnum shrink-0 text-2xl font-light leading-none text-txt-1">{fmtInt(total)}</div>
-      </div>
-      <div className="flex h-3 w-full overflow-hidden rounded-full bg-bg-2">
-        {neg > 0 && <div style={{ width: `${pct(neg)}%`, background: VOL_COR.neg }} />}
-        {pos > 0 && <div style={{ width: `${pct(pos)}%`, background: VOL_COR.pos }} />}
-        {neu > 0 && <div style={{ width: `${pct(neu)}%`, background: VOL_COR.neu }} />}
-      </div>
-      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[12px]">
-        <span className="tnum font-semibold" style={{ color: VOL_COR.neg }}>{fmtInt(neg)} negativos</span>
-        <span className="tnum font-semibold" style={{ color: VOL_COR.pos }}>{fmtInt(pos)} positivos</span>
-        <span className="tnum text-txt-3">{fmtInt(neu)} neutros</span>
-      </div>
-    </div>
-  );
-}
-
-function VolumeComentarios({ allPosts }: { allPosts: Post[] }) {
-  const periodos = [
-    { label: "Hoje", sub: "últimas 24h", posts: filtrarPorPeriodo(allPosts, 1) },
-    { label: "Esta semana", sub: "últimos 7 dias", posts: filtrarPorPeriodo(allPosts, 7) },
-    { label: "Este mês", sub: "últimos 30 dias", posts: filtrarPorPeriodo(allPosts, 30) },
-  ];
-
-  const posts30 = filtrarPorPeriodo(allPosts, 30);
-  const urls30 = useMemo(() => new Set(posts30.map((p) => p.url)), [posts30]);
+function TermometroTemas({ allPosts, dias }: { allPosts: Post[]; dias: number }) {
+  const postsPeriodo = filtrarPorPeriodo(allPosts, dias);
+  const urlsPeriodo = useMemo(() => new Set(postsPeriodo.map((p) => p.url)), [postsPeriodo]);
 
   // Volume por tema vem do tema de CADA COMENTÁRIO (classificação individual
   // do cidadão), não do tema do post — atribuir todos os comentários de um
@@ -105,7 +58,7 @@ function VolumeComentarios({ allPosts }: { allPosts: Post[] }) {
   const temas = useMemo(() => {
     const byTema: Record<string, { neg: number; pos: number; neu: number }> = {};
     for (const c of comentariosClassificados ?? []) {
-      if (!urls30.has(c.urlPost)) continue;
+      if (!urlsPeriodo.has(c.urlPost)) continue;
       const tema = c.tema.toLowerCase().trim();
       if (!TEMA_LABEL[tema]) continue;
       const b = (byTema[tema] ??= { neg: 0, pos: 0, neu: 0 });
@@ -115,53 +68,31 @@ function VolumeComentarios({ allPosts }: { allPosts: Post[] }) {
     }
     return Object.entries(byTema)
       .map(([tema, v]) => ({ tema, ...v }))
-      .filter((t) => t.neg + t.pos + t.neu > 0)
-      .sort((a, b) => b.neg - a.neg);
-  }, [comentariosClassificados, urls30]);
+      .filter((t) => t.neg + t.pos > 0)
+      .sort((a, b) => {
+        const pa = a.neg / (a.neg + a.pos);
+        const pb = b.neg / (b.neg + b.pos);
+        return pb - pa || b.neg - a.neg;
+      });
+  }, [comentariosClassificados, urlsPeriodo]);
+
+  if (temas.length === 0) return null;
 
   return (
-    <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6 space-y-6">
-      <div>
-        <div className="section-label">Volume de comentários por período e tema</div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-txt-3">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full" style={{ background: VOL_COR.neg }} /> Negativos
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full" style={{ background: VOL_COR.pos }} /> Positivos
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full" style={{ background: VOL_COR.neu }} /> Neutros
-          </span>
+    <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="section-label">Termômetro por tema</div>
+        <div className="text-[11px] text-txt-3">
+          % de comentários negativos entre os que tomam partido (neutros fora do ponteiro)
         </div>
       </div>
-
-      <div>
-        <div className="mb-3 text-[10px] font-bold uppercase tracking-wide text-txt-3">Por período</div>
-        <div className="divide-y divide-line/30">
-          {periodos.map(({ label, sub, posts }) => {
-            const { neg, pos, neu } = somarComents(posts);
-            return (
-              <div key={label} className="py-3 first:pt-0 last:pb-0">
-                <LinhaVolume label={label} sub={sub} neg={neg} pos={pos} neu={neu} />
-              </div>
-            );
-          })}
+      <Suspense fallback={<div className="mt-4 text-sm text-txt-3">Carregando termômetro…</div>}>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {temas.map(({ tema, neg, pos }) => (
+            <GaugeTema key={tema} label={TEMA_LABEL[tema]} neg={neg} pos={pos} />
+          ))}
         </div>
-      </div>
-
-      {temas.length > 0 && (
-        <div>
-          <div className="mb-3 text-[10px] font-bold uppercase tracking-wide text-txt-3">Por tema — últimos 30 dias</div>
-          <div className="divide-y divide-line/30">
-            {temas.map(({ tema, neg, pos, neu }) => (
-              <div key={tema} className="py-3 first:pt-0 last:pb-0">
-                <LinhaVolume label={TEMA_LABEL[tema]} neg={neg} pos={pos} neu={neu} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      </Suspense>
     </div>
   );
 }
@@ -295,30 +226,53 @@ function IconVozes({ size = 16 }: { size?: number }) {
   );
 }
 
+/**
+ * Resumo principal do porquê do clima. Decisão da reunião de 24/07: a etiqueta
+ * de nível ("BAIXO") sai — dava a impressão de bug por não mudar — e o título
+ * "Análise do clima" entra para dentro do box, em chumbo e branco (cor neutra,
+ * sem verde/vermelho que sugerisse julgamento).
+ */
 function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number }) {
-  const nivel = (briefing.nivel_crise as NivelCrise) ?? "baixo";
-  const cor = NIVEL_COLOR[nivel];
   return (
-    <div
-      className="card-hover rounded-[28px] border bg-bg-1 p-6"
-      style={{ borderColor: `${cor}44` }}
-    >
-      <div className="mb-3 flex items-center gap-2">
+    <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <span
-          className="rounded-full px-3 py-0.5 text-xs font-extrabold uppercase tracking-wide"
-          style={nivelBadgeStyle(cor)}
+          className="section-label rounded-full px-3 py-1"
+          style={{ background: CHUMBO, color: "#FFFFFF" }}
         >
-          {NIVEL_LABEL[nivel]}
+          {periodoClima(dias)}
         </span>
-        <span className="text-xs text-txt-3">{periodoClima(dias)} · {briefing.dia}</span>
+        <span className="text-xs text-txt-3">{briefing.dia}</span>
       </div>
-      <p className="text-[15px] font-semibold leading-relaxed text-txt-1">{briefing.diagnostico}</p>
+      <p className="text-[15px] font-semibold leading-relaxed text-txt-1">
+        {limparTravessoes(briefing.diagnostico)}
+      </p>
     </div>
   );
 }
 
 function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]; urlsNoPeriodo: Set<string> }) {
   const [aberto, setAberto] = useState<{ tema: string; categoria: string } | null>(null);
+  // Contadores rápidos por tema (pedido da reunião de 24/07: "numerozinho"
+  // verde/vermelho pro leitor bater o olho sem abrir o modal). Mesma fonte e
+  // cache do termômetro por tema.
+  const { data: comentariosClassificados } = useQuery({
+    queryKey: ["comentarios-tema-todos"],
+    queryFn: () => fetchComentariosPorTema(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const contagem = useMemo(() => {
+    const by: Record<string, { neg: number; pos: number }> = {};
+    for (const c of comentariosClassificados ?? []) {
+      if (!urlsNoPeriodo.has(c.urlPost)) continue;
+      const t = c.tema.toLowerCase().trim();
+      const b = (by[t] ??= { neg: 0, pos: 0 });
+      if (c.sentimento === "negativo") b.neg += 1;
+      else if (c.sentimento === "positivo") b.pos += 1;
+    }
+    return by;
+  }, [comentariosClassificados, urlsNoPeriodo]);
+
   if (!alertas?.length) return null;
   return (
     <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6">
@@ -329,6 +283,7 @@ function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]
         {alertas.slice(0, 5).map((a, i) => {
           const cor = NIVEL_COLOR[(a.nivel as NivelCrise) ?? "baixo"];
           const tema = a.tema ? a.tema.charAt(0).toUpperCase() + a.tema.slice(1).toLowerCase() : "";
+          const cont = a.tema_categoria ? contagem[a.tema_categoria.toLowerCase()] : undefined;
           return (
             <div
               key={i}
@@ -342,10 +297,17 @@ function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]
                 {NIVEL_LABEL[(a.nivel as NivelCrise) ?? "baixo"]}
               </span>
               <span className="min-w-0 flex-1 font-semibold text-txt-1">{tema}</span>
+              {cont && (cont.neg > 0 || cont.pos > 0) && (
+                <span className="tnum flex shrink-0 items-center gap-2 text-[11px] font-bold">
+                  <span style={{ color: "#EF4444" }}>{cont.neg} neg</span>
+                  <span style={{ color: "#22C55E" }}>{cont.pos} pos</span>
+                </span>
+              )}
               {a.tema_categoria && (
                 <button
                   onClick={() => setAberto({ tema, categoria: a.tema_categoria! })}
-                  className="shrink-0 rounded-lg border border-line bg-bg-1 px-2.5 py-1 text-xs font-semibold text-txt-2 transition hover:border-brand hover:text-txt-1"
+                  className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition hover:opacity-90"
+                  style={{ background: CHUMBO }}
                 >
                   Ver comentários
                 </button>
@@ -384,28 +346,25 @@ function RecomendacoesPeriodo({
   periodo: Periodo;
 }) {
   if (!recomendacoes?.length) return null;
-  const ehDia = periodo === "dia";
   const rotulo = periodo === "semana" ? "na semana" : periodo === "mes" ? "no mês" : "hoje";
+  // Título único definido na reunião de 24/07 — a plataforma não prescreve o
+  // que "deveria" ser feito; oferece sugestões genéricas que um humano avalia.
   return (
-    <div
-      className="rounded-[28px] border p-6"
-      style={{ borderColor: "rgba(249,115,22,0.4)", background: "rgba(249,115,22,0.04)" }}
-    >
-      <div className="mb-1 text-[12px] font-bold tracking-[0.04em]" style={{ color: "#F97316" }}>
-        {ehDia ? "O que fazer agora" : "O que deveria ter sido feito"}
+    <div className="rounded-[28px] border border-line bg-bg-1 p-6">
+      <div className="mb-1 section-label">
+        Sugestões genéricas a serem avaliadas por especialista
       </div>
       <p className="mb-3 text-xs text-txt-3">
-        {ehDia
-          ? `Ações sugeridas para os temas que merecem atenção ${rotulo}.`
-          : `Baseado nos temas que mereceram atenção ${rotulo} — fica a critério da assessoria avaliar se ainda vale agir sobre isso agora.`}
+        Baseadas em protocolos de gestão de crise de imagem e nos temas que merecem atenção {rotulo}.
+        Cabe à assessoria avaliar se (e como) aplicá-las.
       </p>
       <div className="space-y-3">
         {recomendacoes.slice(0, 3).map((r, i) => (
-          <div key={i} className="rounded-lg border border-line bg-bg-1 p-4">
+          <div key={i} className="rounded-lg border border-line bg-bg-2 p-4">
             {r.canal && (
               <div className="mb-1 text-sm font-extrabold capitalize text-txt-1">{r.canal}</div>
             )}
-            <p className="text-sm text-txt-2">{r.mensagem}</p>
+            <p className="text-sm text-txt-2">{limparTravessoes(r.mensagem)}</p>
           </div>
         ))}
       </div>
@@ -444,8 +403,9 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
   );
 }
 
-export function ClimaPage() {
+export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
   const [dias, setDias] = useState(1);
+  const [publicacoesAbertas, setPublicacoesAbertas] = useState(false);
   const { isAdmin } = useAuth();
   const periodo = periodoParaChave(dias);
   const { data, isLoading } = useQuery({
@@ -514,6 +474,9 @@ export function ClimaPage() {
             ))}
           </div>
         </div>
+        <div className="reveal reveal-1">
+          <RadarStatusBar />
+        </div>
         <div className="rounded-[28px] border border-line bg-bg-1 p-6 text-txt-2">
           A {periodoClima(dias)} não é possível por falta de dados no período selecionado.
         </div>
@@ -550,10 +513,21 @@ export function ClimaPage() {
         </div>
       </div>
 
+      <div className="reveal reveal-1">
+        <RadarStatusBar />
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-5">
+        {/* Card do clima inteiro clicável: leva direto à curadoria de
+            comentários que explica o clima ("O que o povo diz"). */}
         <div
-          className="reveal reveal-2 relative overflow-hidden rounded-[28px] p-7 lg:col-span-3"
+          role="button"
+          tabIndex={0}
+          onClick={() => onVerFeed?.()}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onVerFeed?.(); }}
+          className="reveal reveal-2 group relative cursor-pointer overflow-hidden rounded-[28px] p-7 transition-transform duration-200 hover:-translate-y-0.5 lg:col-span-3"
           style={{ background: heroBg, minHeight: 320 }}
+          aria-label="Ver os comentários que explicam este clima"
         >
           {(wx.cls === "rain" || wx.cls === "storm" || wx.cls === "severe") && (
             <div className="rain-layer">
@@ -572,8 +546,19 @@ export function ClimaPage() {
           )}
 
           <div className="relative z-10 flex h-full flex-col">
-            <div className="text-[13px] font-bold tracking-[0.08em]" style={{ color: txt2 }}>
-              Como a população vê a gestão
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[13px] font-bold tracking-[0.08em]" style={{ color: txt2 }}>
+                Como a população vê a gestão
+              </div>
+              <span
+                className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold opacity-80 transition group-hover:opacity-100"
+                style={{ background: "rgba(255,255,255,0.16)", color: "#FFFFFF", backdropFilter: "blur(6px)" }}
+              >
+                Ver o que o povo diz
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </span>
             </div>
 
             <div className="mt-5 flex items-center gap-6">
@@ -611,35 +596,54 @@ export function ClimaPage() {
                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold"
                 style={{ background: "rgba(255,255,255,0.16)", color: "#FFFFFF", backdropFilter: "blur(6px)" }}
               >
-                <IconVozes /> {fmtInt(view.comentarios)} vozes ouvidas
+                <IconVozes /> {fmtInt(view.comentarios)} comentários analisados
               </span>
             </div>
           </div>
         </div>
 
+        {/* Box de engajamento — clicável: abre a lista das publicações
+            analisadas no período, com link direto para cada post. Texto em
+            preto sobre o laranja (decisão de contraste da reunião de 24/07). */}
         <div
-          className="reveal reveal-3 relative overflow-hidden rounded-[28px] p-7 lg:col-span-2"
+          role="button"
+          tabIndex={0}
+          onClick={() => setPublicacoesAbertas(true)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setPublicacoesAbertas(true); }}
+          className="reveal reveal-3 group relative cursor-pointer overflow-hidden rounded-[28px] p-7 transition-transform duration-200 hover:-translate-y-0.5 lg:col-span-2"
           style={{
             background: "linear-gradient(150deg, #FB923C 0%, #EA580C 100%)",
             minHeight: 320,
             boxShadow: "0 18px 40px -14px rgba(234,88,12,0.5)",
           }}
+          aria-label="Ver as publicações analisadas no período"
         >
           <div
             className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full"
             style={{ background: "rgba(255,255,255,0.12)" }}
           />
-          <div className="relative z-10 flex h-full flex-col">
-            <div className="text-[13px] font-bold tracking-[0.08em] text-white/80">
-              Engajamento no período
+          <div className="relative z-10 flex h-full flex-col" style={{ color: "#1A0F02" }}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[13px] font-bold tracking-[0.08em]" style={{ color: "rgba(26,15,2,0.75)" }}>
+                Engajamento no período
+              </div>
+              <span
+                className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold text-white opacity-90 transition group-hover:opacity-100"
+                style={{ background: CHUMBO_ESCURO }}
+              >
+                Ver publicações
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </span>
             </div>
-            <p className="mt-2 max-w-[22ch] text-base font-medium leading-snug text-white/90">
-              Quanto mais vozes ouvidas, mais confiável é a leitura do clima.
+            <p className="mt-2 max-w-[24ch] text-base font-semibold leading-snug" style={{ color: "rgba(26,15,2,0.85)" }}>
+              Quanto mais comentários analisados, mais confiável é a leitura do clima.
             </p>
 
             <div
-              className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold"
-              style={{ background: "#BEDB1D", color: "#1A2400" }}
+              className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold text-white"
+              style={{ background: CHUMBO }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
                 <line x1="6" y1="20" x2="6" y2="15" />
@@ -651,12 +655,12 @@ export function ClimaPage() {
 
             <div className="mt-auto pt-6">
               <div className="flex items-end gap-1">
-                <span className="tnum text-[68px] leading-[0.85] tracking-tight text-white" style={{ fontWeight: 200 }}>
+                <span className="tnum text-[68px] leading-[0.85] tracking-tight" style={{ fontWeight: 300, color: "#1A0F02" }}>
                   {fmtInt(view.comentarios)}
                 </span>
               </div>
-              <div className="mt-1 text-base font-semibold text-white/85">
-                vozes ouvidas · {fmtInt(view.posts)} publicações
+              <div className="mt-1 text-base font-bold" style={{ color: "rgba(26,15,2,0.85)" }}>
+                comentários analisados · {fmtInt(view.posts)} publicações
               </div>
             </div>
           </div>
@@ -688,7 +692,15 @@ export function ClimaPage() {
 
       {briefing && <RecomendacoesPeriodo recomendacoes={briefing.recomendacoes} periodo={periodo} />}
 
-      <VolumeComentarios allPosts={data!.data} />
+      <TermometroTemas allPosts={data!.data} dias={dias} />
+
+      {publicacoesAbertas && (
+        <PublicacoesModal
+          posts={filtrarPorPeriodo(data!.data, dias)}
+          periodoLabel={dias === 1 ? "últimas 24h" : `últimos ${dias} dias`}
+          onClose={() => setPublicacoesAbertas(false)}
+        />
+      )}
     </div>
   );
 }
