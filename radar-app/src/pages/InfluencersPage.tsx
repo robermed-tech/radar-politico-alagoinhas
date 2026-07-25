@@ -82,7 +82,7 @@ export function InfluencersSection() {
       },
       xAxis: {
         type: "value",
-        axisLabel: { color: ink.axis, fontSize: 10 },
+        axisLabel: { color: ink.axis, fontSize: 12 },
         splitLine: { lineStyle: { color: ink.grid } },
       },
       yAxis: {
@@ -90,7 +90,7 @@ export function InfluencersSection() {
         data: top10.map((i) => i.handle),
         axisLabel: {
           color: ink.axis,
-          fontSize: 11,
+          fontSize: 12,
           formatter: (v: string) => `@${v}`,
         },
         axisLine: { lineStyle: { color: ink.axisLine } },
@@ -107,7 +107,7 @@ export function InfluencersSection() {
             show: true,
             position: "right",
             color: ink.axis,
-            fontSize: 11,
+            fontSize: 12,
             formatter: "{c}",
           },
         },
@@ -136,13 +136,13 @@ export function InfluencersSection() {
       <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
         <div className="mb-1 text-sm font-bold">
           Mapa de Influência
-          <span className="ml-2 text-[10px] font-normal text-txt-3">
+          <span className="ml-2 text-[12px] font-normal text-txt-3">
             top 10 por score · <span style={{ color: COR_ALIADO }}>verde=aliado</span> ·{" "}
             <span style={{ color: COR_OPOSICAO }}>vermelho=oposição</span> ·{" "}
             <span style={{ color: COR_IMPRENSA }}>amarelo=imprensa</span>
           </span>
         </div>
-        <p className="mb-2 text-[11px] text-txt-3">
+        <p className="mb-2 text-[13px] text-txt-3">
           Apenas contas institucionais, imprensa e perfis políticos — cidadãos não são
           rankeados nominalmente (LGPD). Passe o mouse numa barra para ver o que compõe o score.
         </p>

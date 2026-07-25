@@ -198,7 +198,7 @@ export function PerfilPage() {
                 const pctNeg = t.n ? Math.round((t.neg / t.n) * 100) : 0;
                 return (
                   <div key={t.tema}>
-                    <div className="flex items-center justify-between gap-2 text-[12px]">
+                    <div className="flex items-center justify-between gap-2 text-[13px]">
                       <span className="min-w-0 flex-1 truncate text-txt-2">{labelTema(t.tema)}</span>
                       <span className="tnum shrink-0 text-txt-3">{t.n} posts</span>
                     </div>
@@ -230,8 +230,8 @@ export function PerfilPage() {
           <ul className="space-y-2">
             {negComments.map((c, i) => (
               <li key={i} className="rounded-md border border-line bg-bg-2 p-2.5">
-                <p className="text-[13px] leading-relaxed text-txt-1">{c.texto}</p>
-                <div className="mt-1 flex items-center gap-2 text-[11px] text-txt-3">
+                <p className="text-[14px] leading-relaxed text-txt-1">{c.texto}</p>
+                <div className="mt-1 flex items-center gap-2 text-[13px] text-txt-3">
                   <span className="inline-block h-2 w-2 rounded-full" style={{ background: COLOR_SENTIMENT.neg }} />
                   {c.username && <span>@{c.username}</span>}
                   {(c.curtidas || 0) > 0 && <span className="ml-auto tnum">♥ {c.curtidas}</span>}

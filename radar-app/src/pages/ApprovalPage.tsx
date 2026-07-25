@@ -111,7 +111,7 @@ function ChartVertical({
       }),
       axisLabel: {
         color: ink.axis,
-        fontSize: 10,
+        fontSize: 12,
         interval: 0,
         rotate: buckets.length > 4 ? -38 : 0,
       },
@@ -123,7 +123,7 @@ function ChartVertical({
       min: 0,
       max: 100,
       interval: 25,
-      axisLabel: { color: ink.axis, fontSize: 9, formatter: "{value}" },
+      axisLabel: { color: ink.axis, fontSize: 11, formatter: "{value}" },
       splitLine: { lineStyle: { color: ink.grid } },
     },
     series: [
@@ -173,7 +173,7 @@ function ChartVertical({
 
 function ChartLegend() {
   return (
-    <div className="mt-2 flex items-center justify-center gap-5 text-[10px] text-txt-3">
+    <div className="mt-2 flex items-center justify-center gap-5 text-[12px] text-txt-3">
       <span className="flex items-center gap-1.5">
         <span className="inline-block h-2 w-4 rounded-sm bg-risk-crit" />
         Críticas
@@ -189,11 +189,11 @@ function ChartLegend() {
 function ComentarioRow({ c, color }: { c: Comment; color: string }) {
   return (
     <div
-      className="rounded-lg border bg-bg-2 p-3 text-[13px] text-txt-1"
+      className="rounded-lg border bg-bg-2 p-3 text-[14px] text-txt-1"
       style={{ borderColor: `${color}55` }}
     >
       <p className="italic">"{c.texto.slice(0, 220)}{c.texto.length > 220 ? "…" : ""}"</p>
-      <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
+      <div className="mt-2 flex items-center justify-between gap-2 text-[13px]">
         <span className="text-txt-3">
           @{c.username} · em @{c.autor_post}
           {c.url_post && (
@@ -437,11 +437,11 @@ export function ApprovalPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* IAD — número grande sem gauge */}
         <div className="flex flex-col items-center justify-center rounded-xl border border-line bg-bg-1 p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">Aprovação Digital</div>
+          <div className="text-[12px] font-semibold uppercase tracking-wider text-txt-3">Aprovação Digital</div>
           <div className="mt-1 text-6xl font-extrabold leading-none" style={{ color: colorByIAD(view.iad) }}>
             {view.iad}%
           </div>
-          <div className="mt-1 text-[10px] text-txt-3">IAD</div>
+          <div className="mt-1 text-[12px] text-txt-3">IAD</div>
         </div>
         <KpiStat
           label="Confiança"
@@ -465,7 +465,7 @@ export function ApprovalPage() {
           const cor = nivel === "CRÍTICO" ? "#EF4444" : nivel === "ATENÇÃO" ? "#EAB308" : "#6B7280";
           return (
             <div className="flex flex-col rounded-xl border border-line bg-bg-1 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">
+              <div className="text-[12px] font-semibold uppercase tracking-wider text-txt-3">
                 Temas em Atenção
               </div>
               {!tema ? (
@@ -479,12 +479,12 @@ export function ApprovalPage() {
                     {tema.rotulo}
                   </div>
                   <span
-                    className="rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                    className="rounded px-2 py-0.5 text-[12px] font-bold uppercase tracking-wider"
                     style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}44` }}
                   >
                     {nivel}
                   </span>
-                  <div className="text-[10px] text-txt-3">{tema.pNeg}% negativo</div>
+                  <div className="text-[12px] text-txt-3">{tema.pNeg}% negativo</div>
                   {temas.length > 1 && (
                     <div className="mt-1 flex items-center gap-1">
                       {temas.map((_, i) => (
@@ -518,7 +518,7 @@ export function ApprovalPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-1 text-sm font-bold">Por perfil</div>
-          <p className="mb-1 text-[10px] text-txt-3">Sentimento dos comentários por conta. Clique para filtrar ↓</p>
+          <p className="mb-1 text-[12px] text-txt-3">Sentimento dos comentários por conta. Clique para filtrar ↓</p>
           <ChartVertical
             buckets={view.porPerfil}
             ink={ink}
@@ -535,7 +535,7 @@ export function ApprovalPage() {
         </div>
         <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="text-sm font-bold">Por tema <span className="text-[10px] font-normal text-txt-3">(+ crítico no topo)</span></div>
+            <div className="text-sm font-bold">Por tema <span className="text-[12px] font-normal text-txt-3">(+ crítico no topo)</span></div>
             {view.porTema[0] && view.porTema[0].pNeg >= 35 && (
               <AlertaCrise
                 tema={view.porTema[0].rotulo}

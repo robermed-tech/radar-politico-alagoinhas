@@ -123,7 +123,7 @@ function ApifyStatusBanner() {
             {critico && " — coleta pode ser bloqueada a qualquer momento"}
           </div>
         </div>
-        <div className="text-[11px] text-txt-3">Atualizado {atualizado}</div>
+        <div className="text-[13px] text-txt-3">Atualizado {atualizado}</div>
       </div>
       <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-bg-2">
         <div
@@ -422,7 +422,7 @@ function SourcesSection() {
           <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
             <div className="min-w-0 flex items-center gap-2">
               <span
-                className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                className="shrink-0 rounded px-1.5 py-0.5 text-[12px] font-bold uppercase"
                 style={{ background: FILTRO_BADGE[s.filtro] ?? "rgba(100,100,100,0.1)", color: FILTRO_COLOR[s.filtro] ?? "#888" }}
               >
                 {FILTRO_OPTS.find(o => o.value === s.filtro)?.label ?? s.filtro}
@@ -454,7 +454,7 @@ function SourcesSection() {
           <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
             <div className="min-w-0 flex items-center gap-2">
               <span
-                className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                className="shrink-0 rounded px-1.5 py-0.5 text-[12px] font-bold uppercase"
                 style={{ background: "rgba(239,68,68,0.12)", color: "#EF4444" }}
               >
                 {s.platform}
@@ -462,7 +462,7 @@ function SourcesSection() {
               <span className={s.active ? "text-txt-1" : "text-txt-3"}>
                 <span className="font-semibold">{s.handle}</span>
                 {s.label && <span className="ml-1 text-txt-3">· {s.label}</span>}
-                {!s.active && <span className="ml-2 text-[10px] uppercase tracking-wide text-txt-3">pausada</span>}
+                {!s.active && <span className="ml-2 text-[12px] uppercase tracking-wide text-txt-3">pausada</span>}
               </span>
             </div>
             <div className="flex shrink-0 items-center gap-3">
@@ -543,7 +543,7 @@ function RadarSweep({ ativo, size = 116 }: { ativo: boolean; size?: number }) {
 function KpiBox({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-xl border border-line bg-bg-2 p-3">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-txt-3">{label}</div>
+      <div className="text-[13px] font-semibold uppercase tracking-wide text-txt-3">{label}</div>
       <div className="mt-1 text-2xl font-extrabold text-txt-1">{value}</div>
     </div>
   );
@@ -557,7 +557,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   const s = map[status] ?? map.vazio;
   return (
-    <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: s.bg, color: s.fg }}>
+    <span className="rounded px-1.5 py-0.5 text-[12px] font-bold uppercase" style={{ background: s.bg, color: s.fg }}>
       {s.txt}
     </span>
   );
@@ -594,12 +594,12 @@ function ColetaMonitorSection() {
     xAxis: {
       type: "category",
       data: Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}h`),
-      axisLabel: { color: ink.axis, fontSize: 10, interval: 2 },
+      axisLabel: { color: ink.axis, fontSize: 12, interval: 2 },
       axisLine: { lineStyle: { color: ink.axisLine } },
     },
     yAxis: {
       type: "value", minInterval: 1,
-      axisLabel: { color: ink.axis, fontSize: 10 },
+      axisLabel: { color: ink.axis, fontSize: 12 },
       splitLine: { lineStyle: { color: ink.grid } },
     },
     series: [{
@@ -658,7 +658,7 @@ function ColetaMonitorSection() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold" style={{ color: meta.cor }}>{meta.label}</span>
                 {aguardando && (
-                  <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: "rgba(148,163,184,0.14)", color: "#94A3B8" }}>
+                  <span className="rounded px-1.5 py-0.5 text-[12px] font-bold uppercase" style={{ background: "rgba(148,163,184,0.14)", color: "#94A3B8" }}>
                     aguardando configuração
                   </span>
                 )}
@@ -666,15 +666,15 @@ function ColetaMonitorSection() {
               <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                 <div>
                   <div className="text-lg font-extrabold text-txt-1">{r.fontesConfiguradas}</div>
-                  <div className="text-[10px] uppercase tracking-wide text-txt-3">fontes ({r.fontesAtivas} ativas)</div>
+                  <div className="text-[12px] uppercase tracking-wide text-txt-3">fontes ({r.fontesAtivas} ativas)</div>
                 </div>
                 <div>
                   <div className="text-lg font-extrabold text-txt-1">{r.itensHoje}</div>
-                  <div className="text-[10px] uppercase tracking-wide text-txt-3">itens hoje</div>
+                  <div className="text-[12px] uppercase tracking-wide text-txt-3">itens hoje</div>
                 </div>
                 <div>
                   <div className="text-lg font-extrabold text-txt-1">{ultima ?? "—"}</div>
-                  <div className="text-[10px] uppercase tracking-wide text-txt-3">última coleta</div>
+                  <div className="text-[12px] uppercase tracking-wide text-txt-3">última coleta</div>
                 </div>
               </div>
             </div>
@@ -715,7 +715,7 @@ function ColetaMonitorSection() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="text-[11px] uppercase tracking-wide text-txt-3">
+                <tr className="text-[13px] uppercase tracking-wide text-txt-3">
                   <th className="py-1.5 pr-3 font-semibold">Hora</th>
                   <th className="py-1.5 pr-3 font-semibold">Rede</th>
                   <th className="py-1.5 pr-3 font-semibold">Fonte</th>
@@ -898,7 +898,7 @@ function UsersSection() {
                     />
                     <span className="truncate">{u.full_name || u.email}</span>
                     {online && (
-                      <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: "rgba(34,197,94,0.12)", color: "#16A34A" }}>
+                      <span className="shrink-0 rounded px-1.5 py-0.5 text-[12px] font-bold uppercase" style={{ background: "rgba(34,197,94,0.12)", color: "#16A34A" }}>
                         Online
                       </span>
                     )}
@@ -976,7 +976,7 @@ function ClimateSection() {
       </div>
 
       <div className="mt-4 rounded-lg border border-line bg-bg-2 p-3">
-        <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-txt-3">Faixas de condição</div>
+        <div className="mb-2 text-[13px] font-bold uppercase tracking-wider text-txt-3">Faixas de condição</div>
         <div className="space-y-1 text-xs text-txt-2">
           {thr.faixas.map((fx, i) => (
             <div key={i} className="flex justify-between">

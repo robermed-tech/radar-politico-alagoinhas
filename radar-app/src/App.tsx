@@ -10,7 +10,6 @@ const AceitarConvitePage = lazy(() =>
   import("@/pages/AceitarConvitePage").then((m) => ({ default: m.AceitarConvitePage }))
 );
 const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
-const NarrativesPage = lazy(() => import("@/pages/NarrativesPage").then((m) => ({ default: m.NarrativesPage })));
 const AlertasHistPage = lazy(() => import("@/pages/AlertasHistPage").then((m) => ({ default: m.AlertasHistPage })));
 const BairrosPage = lazy(() => import("@/pages/BairrosPage").then((m) => ({ default: m.BairrosPage })));
 const PedidosPage = lazy(() => import("@/pages/PedidosPage").then((m) => ({ default: m.PedidosPage })));
@@ -37,7 +36,6 @@ type Page =
   | "admin"
   // avançado
   | "approval"
-  | "narratives"
   | "alerts-hist";
 
 interface NavItem { id: Page; label: string; icon: JSX.Element }
@@ -59,9 +57,6 @@ function NIcoTrending() {
 }
 function NIcoSliders() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="5" x2="7" y2="5"/><circle cx="9" cy="5" r="2"/><line x1="11" y1="5" x2="20" y2="5"/><line x1="4" y1="12" x2="13" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="17" y1="12" x2="20" y2="12"/><line x1="4" y1="19" x2="7" y2="19"/><circle cx="9" cy="19" r="2"/><line x1="11" y1="19" x2="20" y2="19"/></svg>;
-}
-function NIcoFileText() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
 }
 function NIcoMapPin() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>;
@@ -85,7 +80,6 @@ const NAV_MAIN: NavItem[] = [
   { id: "perfil",      label: "Análise por Perfil",    icon: <NIcoUser /> },
   { id: "topics",      label: "Previsões",             icon: <NIcoTrending /> },
   { id: "actions",     label: "Alertas & Ações",       icon: <NIcoBell /> },
-  { id: "narratives",  label: "Narrativas",            icon: <NIcoFileText /> },
   { id: "alerts-hist", label: "Histórico Alertas",     icon: <NIcoAlertHist /> },
   { id: "admin",       label: "Configuração",          icon: <NIcoSliders /> },
 ];
@@ -224,8 +218,8 @@ export default function App() {
             </svg>
           </span>
           <div className="leading-tight">
-            <div className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-txt-1">Radar</div>
-            <div className="text-[10px] font-medium tracking-widest text-txt-3">Político</div>
+            <div className="text-[14px] font-extrabold uppercase tracking-[0.06em] text-txt-1">Radar</div>
+            <div className="text-[12px] font-medium tracking-widest text-txt-3">Político</div>
           </div>
         </div>
 
@@ -268,13 +262,13 @@ export default function App() {
             </button>
           )}
           <div className="px-2">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-txt-2">
+            <div className="flex items-center gap-1.5 text-[13px] font-semibold text-txt-2">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="8" r="3.2" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
               </svg>
               {userEmail ? userEmail.split("@")[0] : wx.label}
             </div>
-            <div className="mt-0.5 text-[10px] tracking-wide text-txt-3">
+            <div className="mt-0.5 text-[12px] tracking-wide text-txt-3">
               {fetching ? "atualizando…" : horaAtualizado ? `Atualizado às ${horaAtualizado}` : "Conectado ao Postgres"}
             </div>
           </div>
@@ -315,7 +309,6 @@ export default function App() {
             {page === "admin"    && <RequireAdmin><AdminPage /></RequireAdmin>}
             {/* Avançado */}
             {page === "approval"     && <ApprovalPage />}
-            {page === "narratives"   && <NarrativesPage />}
             {page === "alerts-hist"  && <AlertasHistPage />}
           </Suspense>
         </main>

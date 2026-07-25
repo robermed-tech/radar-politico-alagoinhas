@@ -39,22 +39,22 @@ function PlanosContencao({ planos }: { planos: CrisisPlan[] }) {
           return (
             <div key={p.post_url} className="rounded-lg border border-line bg-bg-2 p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: `${cor}1A`, color: cor }}>
+                <span className="rounded px-1.5 py-0.5 text-[12px] font-bold uppercase" style={{ background: `${cor}1A`, color: cor }}>
                   {NIVEL_LABEL[(p.nivel as NivelCrise) ?? "alto"] ?? p.nivel}
                 </span>
-                <span className="text-[11px] text-txt-3">{VEL_ICON[p.velocidade] ?? ""} {p.velocidade}</span>
-                <span className="text-[11px] font-semibold" style={{ color: "#F97316" }}>
+                <span className="text-[13px] text-txt-3">{VEL_ICON[p.velocidade] ?? ""} {p.velocidade}</span>
+                <span className="text-[13px] font-semibold" style={{ color: "#F97316" }}>
                   janela: {p.janela_resposta}
                 </span>
-                <span className="ml-auto text-[11px] text-txt-3">@{p.autor} · risco {p.score_risco}</span>
+                <span className="ml-auto text-[13px] text-txt-3">@{p.autor} · risco {p.score_risco}</span>
               </div>
-              <div className="mt-2 text-[13px] text-txt-1">
+              <div className="mt-2 text-[14px] text-txt-1">
                 <span className="font-semibold text-txt-2">🔥 Pavio: </span>{p.pavio}
               </div>
               {p.plano_contencao?.length > 0 && (
                 <ol className="mt-2 space-y-1">
                   {p.plano_contencao.map((passo, i) => (
-                    <li key={i} className="flex gap-2 text-[13px] text-txt-1">
+                    <li key={i} className="flex gap-2 text-[14px] text-txt-1">
                       <span className="font-bold" style={{ color: "#F97316" }}>{i + 1}.</span>
                       <span>{passo}</span>
                     </li>
@@ -62,13 +62,13 @@ function PlanosContencao({ planos }: { planos: CrisisPlan[] }) {
                 </ol>
               )}
               {p.risco_se_ignorar && (
-                <div className="mt-2 rounded border border-risk-crit/20 bg-risk-crit/5 px-2 py-1.5 text-[12px] text-txt-2">
+                <div className="mt-2 rounded border border-risk-crit/20 bg-risk-crit/5 px-2 py-1.5 text-[13px] text-txt-2">
                   <span className="font-semibold text-risk-crit">Se ignorar: </span>{p.risco_se_ignorar}
                 </div>
               )}
               {p.post_url && (
                 <a href={p.post_url} target="_blank" rel="noopener noreferrer"
-                   className="mt-2 inline-block text-[11px] font-semibold text-brand hover:underline">
+                   className="mt-2 inline-block text-[13px] font-semibold text-brand hover:underline">
                   Ver post ↗
                 </a>
               )}
@@ -80,12 +80,12 @@ function PlanosContencao({ planos }: { planos: CrisisPlan[] }) {
       {/* Avaliados e descartados (o agente olhou e classificou como não-crise) */}
       {descartados.length > 0 && (
         <div className="mt-3 border-t border-line/40 pt-3">
-          <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-txt-3">
+          <div className="mb-2 text-[13px] font-bold uppercase tracking-wide text-txt-3">
             ✅ {descartados.length} post(s) de alto risco avaliado(s) — não é crise (monitorar)
           </div>
           <div className="space-y-1.5">
             {descartados.map((p) => (
-              <div key={p.post_url} className="flex items-start gap-2 text-[12px] text-txt-2">
+              <div key={p.post_url} className="flex items-start gap-2 text-[13px] text-txt-2">
                 <span className="text-txt-3">@{p.autor} · risco {p.score_risco} →</span>
                 <span>{p.pavio}</span>
               </div>

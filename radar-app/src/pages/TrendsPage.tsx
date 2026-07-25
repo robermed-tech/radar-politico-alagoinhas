@@ -116,7 +116,7 @@ function KeywordCloud({ posts }: { posts: Post[] }) {
       {(top5neg.length > 0 || top5pos.length > 0) && (
         <div className="mt-4 grid grid-cols-2 gap-4 border-t border-line pt-3">
           <div>
-            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-risk-crit">
+            <div className="mb-1.5 text-[12px] font-bold uppercase tracking-wide text-risk-crit">
               Negativos
             </div>
             {top5neg.map(k => (
@@ -127,7 +127,7 @@ function KeywordCloud({ posts }: { posts: Post[] }) {
             ))}
           </div>
           <div>
-            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-risk-low">
+            <div className="mb-1.5 text-[12px] font-bold uppercase tracking-wide text-risk-low">
               Positivos
             </div>
             {top5pos.map(k => (
@@ -252,7 +252,7 @@ export function TrendsPage() {
     legend: {
       data: [...topIndiv.map((s) => s.tema), ...(outrosTotal > 0 ? ["Outros"] : [])],
       bottom: 0,
-      textStyle: { color: ink.axis, fontSize: 10 },
+      textStyle: { color: ink.axis, fontSize: 12 },
       itemWidth: 14,
       itemHeight: 8,
     },
@@ -260,12 +260,12 @@ export function TrendsPage() {
       type: "category",
       data: dias.map(fmtDiaBR),
       axisLine: { lineStyle: { color: ink.axisLine } },
-      axisLabel: { color: ink.axis, fontSize: 10, rotate: 30 },
+      axisLabel: { color: ink.axis, fontSize: 12, rotate: 30 },
     },
     yAxis: {
       type: "value",
       splitLine: { lineStyle: { color: ink.grid } },
-      axisLabel: { color: ink.axis, fontSize: 10 },
+      axisLabel: { color: ink.axis, fontSize: 12 },
     },
     series: [
       ...topIndiv.map((s, i) => ({
@@ -334,13 +334,13 @@ export function TrendsPage() {
     xAxis: {
       type: "value",
       splitLine: { lineStyle: { color: ink.grid } },
-      axisLabel: { color: ink.axis, fontSize: 10 },
+      axisLabel: { color: ink.axis, fontSize: 12 },
     },
     yAxis: {
       type: "category",
       data: movers.map((s) => s.tema),
       axisLine: { lineStyle: { color: ink.axisLine } },
-      axisLabel: { color: ink.axis, fontSize: 11 },
+      axisLabel: { color: ink.axis, fontSize: 12 },
     },
     series: [
       {
@@ -466,7 +466,7 @@ export function TrendsPage() {
       <div className="rounded-xl border border-line bg-bg-1 p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm font-bold">{metr.label} · evolução por tema (janela {janela}d)</div>
-          <div className="text-[10px] text-txt-3">
+          <div className="text-[12px] text-txt-3">
             {vsAnterior
               ? <span>linha tracejada fina = período anterior · <span style={{ color: COR_OUTROS }}>cinza = Outros</span></span>
               : <span>linha cinza tracejada = temas agrupados em <span style={{ color: COR_OUTROS }}>Outros</span></span>
@@ -480,7 +480,7 @@ export function TrendsPage() {
       <div className="rounded-xl border border-line bg-bg-1 p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm font-bold">{metr.label} · variação por tema (janela {janela}d)</div>
-          <div className="text-[10px] text-txt-3">
+          <div className="text-[12px] text-txt-3">
             verde = subindo · vermelho = caindo · cinza = estável
           </div>
         </div>
@@ -499,7 +499,7 @@ export function TrendsPage() {
         <div className="mb-3 text-sm font-bold">Todos os temas</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-line text-[11px] uppercase tracking-wide text-txt-3">
+            <thead className="border-b border-line text-[13px] uppercase tracking-wide text-txt-3">
               <tr>
                 <th className="py-2 text-left font-semibold">Tema</th>
                 <th className="py-2 text-right font-semibold">Total</th>

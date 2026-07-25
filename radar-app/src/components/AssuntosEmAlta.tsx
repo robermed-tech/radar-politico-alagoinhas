@@ -35,21 +35,21 @@ function LinhaAlta({ s, limiar }: { s: SubtemaEmAlta; limiar: number }) {
     >
       <div className="flex items-center gap-2">
         <span className="text-sm font-bold text-txt-1 capitalize">{labelSub(s.subtema)}</span>
-        <span className="text-[11px] text-txt-3">{labelTema(s.tema)}</span>
+        <span className="text-[13px] text-txt-3">{labelTema(s.tema)}</span>
         <span
-          className="ml-auto tnum shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold"
+          className="ml-auto tnum shrink-0 rounded-md px-2 py-0.5 text-[13px] font-bold"
           style={{ background: `${cor}1A`, color: cor }}
         >
           {s.total} comentários
         </span>
       </div>
-      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-txt-3">
+      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-txt-3">
         <span className="tnum">{s.autores} {s.autores === 1 ? "pessoa" : "pessoas diferentes"}</span>
         <span className="tnum" style={{ color: cor }}>{s.pctNeg}% negativos</span>
         <span className="tnum text-txt-3">limiar {limiar}</span>
       </div>
       {s.exemplo && (
-        <p className="mt-1.5 line-clamp-2 text-[12px] italic text-txt-2">"{s.exemplo}"</p>
+        <p className="mt-1.5 line-clamp-2 text-[13px] italic text-txt-2">"{s.exemplo}"</p>
       )}
     </div>
   );
@@ -77,7 +77,7 @@ export function AssuntosEmAlta() {
         <IconTrendUp size={16} style={{ color: "#F97316" }} />
         <h3 className="text-sm font-bold text-txt-1">Assuntos em alta · 24h</h3>
         <span
-          className="ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+          className="ml-auto shrink-0 rounded-full px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide"
           style={
             cfg.subtema_ativo
               ? { background: "rgba(34,197,94,0.14)", color: "#22C55E" }
@@ -92,13 +92,13 @@ export function AssuntosEmAlta() {
           {cfg.subtema_ativo ? "Alerta ligado" : "Alerta desligado"}
         </span>
       </div>
-      <p className="mb-3 text-[10px] text-txt-3">
+      <p className="mb-3 text-[12px] text-txt-3">
         Quando um mesmo assunto aparece em {limiar}+ comentários no dia, deixa de ser voz isolada
         e vira pauta — independente do risco de cada post.
       </p>
 
       {emAlta.length === 0 ? (
-        <p className="flex items-center gap-2 rounded-lg border border-line bg-bg-2 px-3 py-2.5 text-[13px] text-txt-2">
+        <p className="flex items-center gap-2 rounded-lg border border-line bg-bg-2 px-3 py-2.5 text-[14px] text-txt-2">
           <IconWarningTriangle size={14} className="shrink-0 text-txt-3" />
           Nenhum assunto cruzou {limiar} comentários nas últimas 24h.
         </p>
@@ -112,14 +112,14 @@ export function AssuntosEmAlta() {
 
       {aproximando.length > 0 && (
         <div className="mt-3 border-t border-line pt-2">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">
+          <div className="text-[12px] font-semibold uppercase tracking-wider text-txt-3">
             Se aproximando do limiar
           </div>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {aproximando.map((s) => (
               <span
                 key={`${s.tema}|${s.subtema}`}
-                className="rounded-md border border-line bg-bg-2 px-2 py-1 text-[11px] text-txt-2"
+                className="rounded-md border border-line bg-bg-2 px-2 py-1 text-[13px] text-txt-2"
               >
                 <span className="capitalize">{labelSub(s.subtema)}</span>
                 <span className="tnum ml-1.5 text-txt-3">{s.total}/{limiar}</span>

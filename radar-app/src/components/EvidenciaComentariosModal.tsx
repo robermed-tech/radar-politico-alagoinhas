@@ -51,10 +51,10 @@ export function EvidenciaComentariosModal({ tema, tituloTema, urlsNoPeriodo, onC
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="font-extrabold text-txt-1">Comentários sobre este tema</div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[13px] text-txt-3">
+            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[14px] text-txt-3">
               <span>{tituloTema}</span>
               {comentarios.length > 0 && (
-                <span className="tnum flex items-center gap-2 text-[11px] font-bold">
+                <span className="tnum flex items-center gap-2 text-[13px] font-bold">
                   <span style={{ color: SENT_COR.negativo }}>
                     {comentarios.filter((c) => c.sentimento === "negativo").length} neg
                   </span>
@@ -91,7 +91,7 @@ export function EvidenciaComentariosModal({ tema, tituloTema, urlsNoPeriodo, onC
           {comentarios?.map((c, i) => (
             <div key={i} className="rounded-lg p-3" style={{ background: "#1E293B", border: "1px solid #334155" }}>
               <p className="text-sm leading-relaxed" style={{ color: "#F8FAFC" }}>“{c.texto}”</p>
-              <div className="mt-1.5 flex items-center gap-3 text-[11px]" style={{ color: "#94A3B8" }}>
+              <div className="mt-1.5 flex items-center gap-3 text-[13px]" style={{ color: "#94A3B8" }}>
                 {c.autor && <span>@{c.autor}</span>}
                 <span>{c.curtidas} curtida{c.curtidas === 1 ? "" : "s"}</span>
                 <span

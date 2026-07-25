@@ -103,7 +103,7 @@ function PostCard({ p }: { p: Post }) {
             background: `${SCCT_CLUSTER[p.cluster_crise].cor}0D`,
           }}
         >
-          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+          <div className="flex flex-wrap items-center gap-2 text-[13px]">
             <span
               className="rounded px-1.5 py-0.5 font-bold uppercase"
               style={{

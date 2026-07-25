@@ -41,7 +41,7 @@ export function Gauge({ value, label, color = "#2563EB", suffix = "" }: GaugePro
           show: true,
           offsetCenter: [0, "56%"],
           color: ink.title,
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: 500,
         },
         data: [{ value, name: label }],

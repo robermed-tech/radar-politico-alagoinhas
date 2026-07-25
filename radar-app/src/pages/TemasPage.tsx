@@ -51,9 +51,11 @@ const COR_OUTROS = "#94A3B8";
 // ── Laço IRT: recuperação de imagem pós-alerta ───────────────────────────────
 // Vocabulário da reunião de 24/07: "estabilizar" no lugar de "recuperar", e
 // cinza neutro no lugar do vermelho ("não brinca com o vermelho").
+// Revisão de 25/07: "Estabilizado" passou de verde para AMARELO — verde
+// parecia caso encerrado; amarelo comunica "melhorou, mas segue observado".
 const IRT_STATUS: Record<string, { label: string; cor: string }> = {
-  monitorando: { label: "Monitorando",              cor: "#EAB308" },
-  recuperado:  { label: "Estabilizado",             cor: "#22C55E" },
+  monitorando: { label: "Monitorando",              cor: "#F59E0B" },
+  recuperado:  { label: "Estabilizado",             cor: "#EAB308" },
   persistente: { label: "Persistente (reavaliar)",  cor: "#94A3B8" },
 };
 const IRT_TEND: Record<string, { label: string; cor: string }> = {
@@ -84,7 +86,7 @@ function PainelRecuperacaoIRT() {
   return (
     <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
       <div className="text-sm font-bold">Estabilização pós-alerta</div>
-      <p className="mb-3 text-[10px] text-txt-3">
+      <p className="mb-3 text-[12px] text-txt-3">
         Temas que dispararam alerta ficam em acompanhamento — queda sustentada indica que a resposta funcionou
       </p>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -96,14 +98,14 @@ function PainelRecuperacaoIRT() {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-bold capitalize text-txt-1">{t.tema}</span>
                 <span
-                  className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                  className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[12px] font-bold uppercase"
                   style={{ background: `${st.cor}1A`, color: st.cor }}
                 >
                   <TendenciaIcone tendencia={t.tendencia} status={t.status} />
                   {st.label}
                 </span>
               </div>
-              <div className="mt-1 text-[11px] text-txt-3">
+              <div className="mt-1 text-[13px] text-txt-3">
                 pico em {fmtDiaBR(t.pico_em)} · volume {t.volume_pico}→{t.volume_atual} posts
                 {" · "}
                 <span className="font-semibold" style={{ color: td.cor }}>{td.label}</span>
@@ -167,27 +169,27 @@ function ComentariosDrill({
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="text-sm font-bold text-txt-1">
           {labelTemaSub(sel.tema)} · <span className="capitalize">{labelSub(sel.subtema)}</span>
-          <span className="ml-2 text-[11px] font-normal text-txt-3">
+          <span className="ml-2 text-[13px] font-normal text-txt-3">
             o que as pessoas realmente escreveram
           </span>
         </div>
         <button
           onClick={onFechar}
-          className="rounded px-2 py-0.5 text-[11px] text-txt-3 hover:text-txt-1"
+          className="rounded px-2 py-0.5 text-[13px] text-txt-3 hover:text-txt-1"
         >
           ✕ fechar
         </button>
       </div>
       {lista.length === 0 ? (
-        <p className="text-[12px] text-txt-3">
+        <p className="text-[13px] text-txt-3">
           Nenhum comentário com texto classificado para este subtema ainda.
         </p>
       ) : (
         <ul className="space-y-2">
           {lista.map((c, i) => (
             <li key={i} className="rounded-md border border-line bg-bg-1 p-2.5">
-              <p className="text-[13px] leading-relaxed text-txt-1">{c.texto}</p>
-              <div className="mt-1 flex items-center gap-2 text-[11px] text-txt-3">
+              <p className="text-[14px] leading-relaxed text-txt-1">{c.texto}</p>
+              <div className="mt-1 flex items-center gap-2 text-[13px] text-txt-3">
                 <span
                   className="inline-block h-2 w-2 rounded-full"
                   style={{ background: SENT_COR[c.sentimento] ?? SENT_COR.neutro }}
@@ -253,20 +255,9 @@ function TimelineClima({ themes, janela }: { themes: DailyTheme[]; janela: numbe
   }, [themes, janela]);
 
   if (!model) return null;
-  const { perDia, deltas, marcados } = model;
-
-  const markData = marcados.map((i) => {
-    const d = perDia[i];
-    const subiu = deltas[i] >= 0;
-    return {
-      coord: [fmtDiaBR(d.dia), d.pctNeg],
-      value: labelTemaSub(d.domTema),
-      symbol: "pin",
-      symbolSize: 46,
-      itemStyle: { color: subiu ? "#EF4444" : "#22C55E" },
-      label: { show: true, formatter: "{c}", color: "#fff", fontSize: 9, fontWeight: 700 },
-    };
-  });
+  const { perDia } = model;
+  // Revisão de 25/07: os balões (pins) que anotavam o tema de cada virada
+  // saíram do gráfico — a informação continua disponível no tooltip do dia.
 
   const option = {
     grid: { left: 38, right: 16, top: 30, bottom: 34 },
@@ -289,14 +280,14 @@ function TimelineClima({ themes, janela }: { themes: DailyTheme[]; janela: numbe
       data: perDia.map((d) => fmtDiaBR(d.dia)),
       boundaryGap: false,
       axisLine: { lineStyle: { color: ink.axisLine } },
-      axisLabel: { color: ink.axis, fontSize: 10 },
+      axisLabel: { color: ink.axis, fontSize: 12 },
     },
     yAxis: {
       type: "value",
       min: 0,
       max: 100,
       splitLine: { lineStyle: { color: ink.grid } },
-      axisLabel: { color: ink.axis, fontSize: 10, formatter: (v: number) => `${v}%` },
+      axisLabel: { color: ink.axis, fontSize: 12, formatter: (v: number) => `${v}%` },
     },
     series: [
       {
@@ -306,7 +297,6 @@ function TimelineClima({ themes, janela }: { themes: DailyTheme[]; janela: numbe
         lineStyle: { color: "#EF4444", width: 2 },
         itemStyle: { color: "#EF4444" },
         areaStyle: glassArea("#EF4444"),
-        markPoint: { data: markData, silent: true },
       },
     ],
   };
@@ -314,10 +304,8 @@ function TimelineClima({ themes, janela }: { themes: DailyTheme[]; janela: numbe
   return (
     <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
       <div className="text-sm font-bold">Linha do tempo do clima</div>
-      <p className="mb-2 text-[10px] text-txt-3">
-        % de críticas por dia — os pins mostram o tema que puxou cada virada
-        (<span style={{ color: "#EF4444" }}>vermelho</span> = críticas subiram,{" "}
-        <span style={{ color: "#22C55E" }}>verde</span> = aliviaram)
+      <p className="mb-2 text-[12px] text-txt-3">
+        % de críticas por dia — passe o mouse num ponto para ver o tema que puxou aquele dia
       </p>
       <ReactECharts option={option} style={{ height: 240 }} notMerge lazyUpdate />
     </div>
@@ -358,7 +346,7 @@ function PainelSubtemas() {
   return (
     <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
       <div className="text-sm font-bold">Dentro de cada tema</div>
-      <p className="mb-3 text-[10px] text-txt-3">
+      <p className="mb-3 text-[12px] text-txt-3">
         O que exatamente o cidadão fala — clique num subtema para ler os comentários
       </p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -368,7 +356,7 @@ function PainelSubtemas() {
             <div key={t.tema} className="rounded-lg border border-line bg-bg-2 p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="text-sm font-bold text-txt-1">{labelTemaSub(t.tema)}</span>
-                <span className="tnum text-[11px] text-txt-3">{t.total} menções</span>
+                <span className="tnum text-[13px] text-txt-3">{t.total} menções</span>
               </div>
               <div className="space-y-1.5">
                 {t.subs.map((s) => {
@@ -384,7 +372,7 @@ function PainelSubtemas() {
                       }`}
                       title="Ver comentários deste subtema"
                     >
-                      <div className="flex items-center justify-between gap-2 text-[12px]">
+                      <div className="flex items-center justify-between gap-2 text-[13px]">
                         <span className="min-w-0 flex-1 truncate capitalize text-txt-2">{labelSub(s.subtema)}</span>
                         <span className="tnum shrink-0 text-txt-3">{s.total}</span>
                       </div>
@@ -567,14 +555,14 @@ export function TemasPage() {
       type: "category",
       data: movers.map((s) => toLabel(s.tema)),
       axisLine: { lineStyle: { color: ink.axisLine } },
-      axisLabel: { color: ink.axis, fontSize: 11, rotate: 30, interval: 0 },
+      axisLabel: { color: ink.axis, fontSize: 12, rotate: 30, interval: 0 },
     },
     yAxis: {
       type: "value",
       splitLine: { lineStyle: { color: ink.grid } },
       axisLabel: {
         color: ink.axis,
-        fontSize: 10,
+        fontSize: 12,
         formatter: (v: number) => fmtSlope(v),
       },
     },
@@ -699,11 +687,11 @@ export function TemasPage() {
             <div className="text-sm font-bold">
               {metr.label} · variação por tema (janela {janela}d)
             </div>
-            <div className="text-[10px] text-txt-3">
+            <div className="text-[12px] text-txt-3">
               Barras mostram variação semanal — passa o mouse para ver o valor exato
             </div>
           </div>
-          <div className="flex items-center gap-3 text-[10px] text-txt-3">
+          <div className="flex items-center gap-3 text-[12px] text-txt-3">
             <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-risk-crit" /> subindo</span>
             <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-risk-low" /> caindo</span>
             <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-txt-3" /> estável</span>

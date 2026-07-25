@@ -38,7 +38,7 @@ export function PublicacoesModal({ posts, periodoLabel, onClose }: Props) {
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="font-extrabold text-txt-1">Publicações analisadas</div>
-            <div className="mt-0.5 text-[13px] text-txt-3">
+            <div className="mt-0.5 text-[14px] text-txt-3">
               {ordenados.length} publicação{ordenados.length === 1 ? "" : "ões"} · {periodoLabel} · clique para abrir no Instagram
             </div>
           </div>
@@ -68,13 +68,13 @@ export function PublicacoesModal({ posts, periodoLabel, onClose }: Props) {
               <div className="flex items-center gap-2">
                 <span className="min-w-0 truncate text-sm font-bold text-txt-1">@{p.autor}</span>
                 {p.tema && p.tema !== "—" && (
-                  <span className="shrink-0 rounded bg-bg-1 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-txt-3">
+                  <span className="shrink-0 rounded bg-bg-1 px-1.5 py-0.5 text-[12px] font-semibold uppercase text-txt-3">
                     {p.tema}
                   </span>
                 )}
-                <span className="ml-auto shrink-0 text-[11px] text-txt-3">{fmtData(p.data_post)}</span>
+                <span className="ml-auto shrink-0 text-[13px] text-txt-3">{fmtData(p.data_post)}</span>
               </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-txt-3">
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-txt-3">
                 <span className="tnum">{fmtInt(p.comentarios_total || 0)} comentário{(p.comentarios_total || 0) === 1 ? "" : "s"}</span>
                 <span className="tnum">{fmtInt(p.curtidas || 0)} curtida{(p.curtidas || 0) === 1 ? "" : "s"}</span>
                 {p.sentimento_comentarios && (

@@ -5,6 +5,12 @@ export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      // Piso tipográfico maior (revisão de 25/07): xs/sm sobem 1px sobre o
+      // default do Tailwind para melhorar a leitura no telão e em TVs.
+      fontSize: {
+        xs: ["13px", { lineHeight: "1.4" }],
+        sm: ["15px", { lineHeight: "1.45" }],
+      },
       colors: {
         // Tokens sensíveis ao tema (CSS vars definidas em index.css: .theme-dark / .theme-light)
         bg: {
