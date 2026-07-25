@@ -479,7 +479,7 @@ def _motivo_relevancia(caption, categoria_filtro):
     elif categoria_filtro == "imprensa":
         kws = KEYWORDS_IMPRENSA
     else:
-        return True, "perfil de governo — a propria fonte e o criterio"
+        kws = KEYWORDS_GOVERNO
 
     especificas, genericas, ancoras = _classificar_keywords(tuple(kws))
 
@@ -491,12 +491,14 @@ def _motivo_relevancia(caption, categoria_filtro):
     if not achou_gen:
         return False, "nenhuma keyword cadastrada encontrada"
 
-    # A ancora so e exigida da IMPRENSA. Perfis de oposicao sao politicos
-    # LOCAIS cadastrados a dedo: quando escrevem "a gestao" ou "a prefeitura"
-    # estao falando da gestao daqui, sem precisar repetir o nome da cidade —
-    # exigir ancora deles descartaria critica legitima de alto engajamento.
-    # Ja a imprensa cobre a regiao inteira e publica sobre outros municipios,
-    # que era exatamente a origem do problema.
+    # A ancora so e exigida da IMPRENSA. Perfis de governo sao as contas
+    # oficiais da propria gestao e os de oposicao sao politicos LOCAIS
+    # cadastrados a dedo: quando escrevem "a gestao" ou "a prefeitura" estao
+    # falando da gestao daqui, sem precisar repetir o nome da cidade — exigir
+    # ancora deles descartaria conteudo legitimo. Ja a imprensa cobre a regiao
+    # inteira e publica sobre outros municipios, que era a origem do problema.
+    if categoria_filtro == "governo":
+        return True, f"keyword '{achou_gen}' (conta oficial da gestao)"
     if categoria_filtro != "imprensa":
         return True, f"keyword '{achou_gen}' (perfil politico local)"
 
@@ -515,13 +517,23 @@ def _motivo_relevancia(caption, categoria_filtro):
 def filtrar_relevante(caption, categoria_filtro):
     """Decide se um post entra na base de analise.
 
-    Revisao de 25/07: uma keyword GENERICA ('prefeito', 'prefeitura', 'gestao
-    municipal') casa com noticia de qualquer municipio do Brasil — foi assim
-    que posts sobre o prefeito de Cardeal da Silva entraram na base de
+    Revisao de 25/07 (a): uma keyword GENERICA ('prefeito', 'prefeitura',
+    'gestao municipal') casa com noticia de qualquer municipio do Brasil — foi
+    assim que posts sobre o prefeito de Cardeal da Silva entraram na base de
     Alagoinhas e acabaram classificados como negativos para Gustavo Carmo.
     Agora ela so vale quando o texto tambem cita uma ancora do tenant, derivada
     das proprias keywords cadastradas. Keywords especificas continuam valendo
     sozinhas. A lista cadastrada nao e alterada em nenhum momento.
+
+    Revisao de 25/07 (b): TODO perfil cadastrado passa pelo filtro, inclusive
+    os de governo. Antes a conta oficial da gestao era isenta ("a fonte ja e o
+    criterio"), o que fazia entrar na base — e portanto no clima — post de
+    aniversario de artista, agenda cultural sem servico e afins, sem nenhuma
+    relacao com as palavras da tela Relevancia. Decisao do cliente: o clima so
+    pode ser formado por conteudo que se relacione com as palavras cadastradas,
+    nada alem disso. Para governo a ancora do municipio nao e exigida (a conta
+    ja e da gestao daqui); exige-se apenas que alguma keyword cadastrada
+    apareca no texto.
     """
     passou, _ = _motivo_relevancia(caption, categoria_filtro)
     return passou
@@ -725,7 +737,9 @@ def _normalizar_posts(resultados_brutos):
             print(f"  caption: {caption[:200]!r}")
             _debug_count += 1
 
-        if filtro != "governo" and not filtrar_relevante(caption, filtro):
+        # Todo perfil cadastrado passa pelo filtro — inclusive governo (antes
+        # isento). Ver filtrar_relevante, "Revisao de 25/07 (b)".
+        if not filtrar_relevante(caption, filtro):
             continue
 
         todos_posts.append({
@@ -3130,6 +3144,106 @@ def gravar_influencers(posts_analisados, comentarios_por_post):
 
 
 # ==============================================================
+# MODULO 8b - SEGUIDORES (snapshot por perfil monitorado)
+# ==============================================================
+
+ACTOR_PERFIS = "apify~instagram-profile-scraper"
+
+
+def _seguidores_via_instagrapi(handles):
+    """Via gratuita. Retorna lista normalizada ou [] se indisponivel/falhou."""
+    if not _INSTAGRAPI_OK:
+        return []
+    try:
+        return _ig.coletar_perfis(handles)
+    except Exception as e:
+        log(f"  Instagrapi (perfis) falhou: {e}")
+        return []
+
+
+def _seguidores_via_apify(handles):
+    """Fallback pago. Um unico run com todos os handles — 1 resultado por
+    perfil, entao o custo e ~1/10 do scraper de posts por execucao."""
+    if not APIFY_TOKEN:
+        return []
+    try:
+        run_id = apify_iniciar_run(ACTOR_PERFIS, {"usernames": handles})
+        if not run_id:
+            return []
+        dataset_id = apify_aguardar_run(run_id, timeout=180)
+        if not dataset_id:
+            return []
+        return apify_buscar_resultados(dataset_id)
+    except Exception as e:
+        log(f"  Apify (perfis) falhou: {e}")
+        return []
+
+
+def gravar_metricas_perfis(permitir_apify=True):
+    """Tira um retrato dos contadores publicos de cada perfil monitorado e
+    grava um ponto novo na serie de `profile_metrics`.
+
+    E o que alimenta o ranking de seguidores da tela "Analise por Perfil": o
+    total atual sai do ponto mais recente; ganhos e perdas saem da diferenca
+    entre pontos consecutivos. Por isso a tabela e uma SERIE (uma linha por
+    coleta), nao um registro unico sobrescrito — sem historico nao existe
+    delta para mostrar.
+
+    Limite honesto do que da pra medir: o Instagram publica so o TOTAL de
+    seguidores de uma conta, nunca quem entrou ou quem saiu. O que o painel
+    mostra e o SALDO da janela (ganhou X, perdeu Y liquidos) — a UI diz isso
+    com todas as letras em vez de sugerir uma lista de quem deixou de seguir.
+
+    Fonte: Instagrapi primeiro (gratis); Apify so como fallback, e apenas
+    quando `permitir_apify` — a flag `--seguidores` roda de graca por padrao.
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return 0
+    handles = list(PERFIS.keys())
+    if not handles:
+        log("  Sem perfis monitorados — nada a coletar")
+        return 0
+
+    log("=== MODULO 8b - Seguidores por perfil ===")
+    brutos = _seguidores_via_instagrapi(handles)
+    fonte  = "instagrapi"
+    if not brutos and permitir_apify:
+        log("  Instagrapi nao retornou — caindo para Apify")
+        brutos = _seguidores_via_apify(handles)
+        fonte  = "apify"
+    if not brutos:
+        log("  Nenhuma metrica de perfil coletada neste run")
+        return 0
+
+    agora_iso = datetime.now(TZ_BAHIA).isoformat()
+    linhas = []
+    for b in brutos:
+        handle = str(extrair(b, "username", "ownerUsername", "handle", padrao="")).lstrip("@").lower()
+        if handle not in PERFIS:
+            continue
+        seguidores = int(extrair(b, "followersCount", "followers_count", "follower_count", padrao=0) or 0)
+        # Sem numero nao ha ponto: gravar 0 criaria uma queda falsa de milhares
+        # de seguidores no grafico e dispararia a leitura de "perda".
+        if seguidores <= 0:
+            log(f"  @{handle}: sem contagem de seguidores na resposta — ponto ignorado")
+            continue
+        linhas.append({
+            "tenant":      TENANT,
+            "handle":      handle,
+            "categoria":   PERFIS[handle].get("categoria", ""),
+            "seguidores":  seguidores,
+            "seguindo":    int(extrair(b, "followsCount", "following_count", "follows_count", padrao=0) or 0),
+            "publicacoes": int(extrair(b, "postsCount", "media_count", "posts_count", padrao=0) or 0),
+            "fonte":       fonte,
+            "coletado_em": agora_iso,
+        })
+
+    n = _supabase_upsert("profile_metrics", linhas, "tenant,handle,coletado_em")
+    log(f"  Seguidores gravados: {n} perfis (fonte: {fonte})")
+    return n
+
+
+# ==============================================================
 # MODULO 9 - NARRATIVAS (clustering por tema + sentimento)
 # ==============================================================
 
@@ -4131,6 +4245,7 @@ def main():
         _safe("briefings_periodo", gerar_briefings_periodo)
     _safe("cacador_crises", rodar_cacador_crises, posts_analisados, comentarios_por_post)  # agente caçador de crises (Fase B)
     _safe("influencers", gravar_influencers, posts_analisados, comentarios_por_post)       # ranking de influenciadores
+    _safe("seguidores", gravar_metricas_perfis)                                            # serie de seguidores por perfil (ranking + saldo)
     _safe("narratives", gravar_narratives, posts_analisados, comentarios_por_post)         # narrativas (tema + sentimento)
     _safe("daily_themes", gravar_daily_themes, posts_analisados)                           # tendencias por tema (Fase 3e)
     temas_alertados = _safe("alertas_limiar", verificar_alertas, posts_analisados) or []   # alertas por limiar (Sprint 2)
@@ -4261,8 +4376,16 @@ def main_multi_tenant():
             log(f"  ERRO no tenant {tid}: {e}")
 
 
-def teste_filtro():
-    """Busca os últimos 5 posts do Supabase e testa o filtro de relevância."""
+def teste_filtro(limite=5, detalhar=True):
+    """Roda o filtro de relevância contra a base real do Supabase.
+
+    `--teste-filtro`         → últimos 5 posts, com caption e motivo de cada um.
+    `--teste-filtro N`       → últimos N posts (N=0 → base inteira, até 5000).
+    `--teste-filtro N --resumo` → só o placar por categoria/perfil, sem captions.
+
+    Serve para MEDIR o impacto de qualquer mexida no critério antes de mandar
+    pra produção (regra do CLAUDE.md). Custo zero de créditos: só lê Postgres.
+    """
     if not SUPABASE_URL or not SUPABASE_KEY:
         print("[teste-filtro] SUPABASE_URL / SUPABASE_SERVICE_KEY não configurados.")
         return
@@ -4271,18 +4394,19 @@ def teste_filtro():
     # (Antes esta funcao lia `_keywords_banco`, que e local de
     # _carregar_config_tenant — a flag quebrava com NameError.)
     esp, gen, ancoras = _classificar_keywords(tuple(KEYWORDS_IMPRENSA))
-    print(f"[keywords] {len(KEYWORDS_IMPRENSA)} cadastradas para imprensa")
+    print(f"[keywords] {len(KEYWORDS_IMPRENSA)} cadastradas na tela Relevância")
     print(f"  especificas (valem sozinhas) : {list(esp)}")
     print(f"  genericas (exigem ancora)    : {list(gen)}")
     print(f"  ancoras derivadas do tenant  : {sorted(ancoras)}")
 
-    print("\n[teste-filtro] Buscando últimos 5 posts do Supabase…")
+    n = 5000 if not limite else limite
+    print(f"\n[teste-filtro] Buscando até {n} posts do Supabase…")
     r = requests.get(
         f"{SUPABASE_URL}/rest/v1/posts",
-        params={"tenant": "eq.alagoinhas", "select": "autor,caption,categoria",
-                "order": "data_post.desc", "limit": 5},
+        params={"tenant": f"eq.{TENANT}", "select": "autor,caption,categoria",
+                "order": "data_post.desc", "limit": n},
         headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
-        timeout=10,
+        timeout=30,
     )
     if r.status_code != 200:
         print(f"[teste-filtro] Erro ao buscar posts: {r.status_code} {r.text[:200]}")
@@ -4294,6 +4418,8 @@ def teste_filtro():
         return
 
     print(f"\n[teste-filtro] {len(posts)} posts — testando filtro de relevância:\n")
+    # placar[filtro] = [passaram, descartados]; por_perfil[handle] = idem
+    placar, por_perfil, motivos_descarte = {}, {}, {}
     for i, p in enumerate(posts, 1):
         handle  = (p.get("autor") or "(desconhecido)").lower()
         caption = p.get("caption") or ""
@@ -4302,11 +4428,32 @@ def teste_filtro():
 
         passou, motivo = _motivo_relevancia(caption, filtro)
 
-        status = "✔ PASSOU" if passou else "✘ DESCARTADO"
-        print(f"  [{i}] @{handle} ({filtro}) → {status}")
-        print(f"       motivo : {motivo}")
-        print(f"       caption: {caption[:300]!r}")
-        print()
+        placar.setdefault(filtro, [0, 0])[0 if passou else 1] += 1
+        por_perfil.setdefault(handle, [0, 0, filtro])[0 if passou else 1] += 1
+        if not passou:
+            motivos_descarte[motivo] = motivos_descarte.get(motivo, 0) + 1
+
+        if detalhar:
+            status = "✔ PASSOU" if passou else "✘ DESCARTADO"
+            print(f"  [{i}] @{handle} ({filtro}) → {status}")
+            print(f"       motivo : {motivo}")
+            print(f"       caption: {caption[:300]!r}")
+            print()
+
+    tot_ok  = sum(v[0] for v in placar.values())
+    tot_out = sum(v[1] for v in placar.values())
+    print(f"\n[placar] {tot_ok} passam · {tot_out} descartados "
+          f"({round(tot_out / max(1, tot_ok + tot_out) * 100)}% da base)")
+    for filtro, (ok, out) in sorted(placar.items()):
+        print(f"  {filtro:<9} passam={ok:<5} descartados={out}")
+    print("\n[por perfil]")
+    for handle, (ok, out, filtro) in sorted(por_perfil.items(), key=lambda x: -x[1][1]):
+        marca = "  <<<" if out else ""
+        print(f"  @{handle:<24} ({filtro:<8}) passam={ok:<4} descartados={out}{marca}")
+    if motivos_descarte:
+        print("\n[motivos de descarte]")
+        for motivo, qtd in sorted(motivos_descarte.items(), key=lambda x: -x[1]):
+            print(f"  {qtd:<5} {motivo}")
 
 
 def main_retroanalise():
@@ -4652,8 +4799,17 @@ if __name__ == "__main__":
     import sys
     if "--multi-tenant" in sys.argv:
         main_multi_tenant()
+    elif "--seguidores" in sys.argv:
+        # Snapshot avulso dos contadores de seguidores (ranking da tela
+        # "Analise por Perfil"), sem rodar o pipeline inteiro. Gratis por
+        # padrao (Instagrapi); --com-apify libera o fallback pago para quando
+        # a sessao do Instagram estiver bloqueada.
+        gravar_metricas_perfis(permitir_apify="--com-apify" in sys.argv)
     elif "--teste-filtro" in sys.argv:
-        teste_filtro()
+        # --teste-filtro [N] [--resumo]  → N=0 varre a base inteira;
+        # --resumo omite as captions e imprime so o placar por perfil.
+        _lim = next((int(a) for a in sys.argv if a.isdigit()), 5)
+        teste_filtro(limite=_lim, detalhar="--resumo" not in sys.argv)
     elif "--teste-localidade" in sys.argv:
         teste_localidade()
     elif "--teste-subtema" in sys.argv:

@@ -179,6 +179,51 @@ def coletar_posts(perfis: list[str], dias_atras: int = DIAS_ATRAS) -> list[dict]
     return todos_posts
 
 
+# ── Coleta de métricas de perfil (seguidores) ─────────────────────────────────
+
+def coletar_perfis(perfis: list[str]) -> list[dict]:
+    """
+    Lê os contadores públicos de cada perfil: seguidores, seguindo e nº de
+    publicações. É a via GRATUITA do ranking de seguidores — o Apify
+    (instagram-profile-scraper) só entra como fallback quando esta falha,
+    porque créditos Apify são o recurso escasso do projeto.
+
+    Retorna lista de dicts no formato normalizado pelo agora.py:
+      username, followersCount, followsCount, postsCount
+
+    Perfis que falharem individualmente são pulados (não derrubam os demais):
+    um snapshot parcial ainda é útil, e o handle ausente simplesmente não
+    ganha ponto novo na série do dia.
+    """
+    if not INSTAGRAPI_DISPONIVEL:
+        raise ImportError("instagrapi não instalado.")
+
+    cl = criar_cliente()
+    coletados = []
+
+    for username in perfis:
+        try:
+            info = cl.user_info_by_username(username)
+            coletados.append({
+                "username":       username,
+                "followersCount": int(info.follower_count or 0),
+                "followsCount":   int(info.following_count or 0),
+                "postsCount":     int(info.media_count or 0),
+            })
+            print(f"  @{username}: {info.follower_count} seguidores")
+            time.sleep(random.uniform(*SLEEP_ENTRE_PERFIS))
+        except UserNotFound:
+            print(f"  ⚠ @{username}: perfil não encontrado ou privado")
+        except RateLimitError:
+            print("  ⚠ Rate limit atingido — pausando 60s...")
+            time.sleep(60)
+        except Exception as e:
+            print(f"  ⚠ Erro ao ler @{username}: {e}")
+
+    print(f"  Total: {len(coletados)}/{len(perfis)} perfis com métricas.")
+    return coletados
+
+
 # ── Coleta de comentários ──────────────────────────────────────────────────────
 
 def coletar_comentarios(posts: list[dict]) -> list[dict]:

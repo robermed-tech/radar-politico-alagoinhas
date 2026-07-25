@@ -6,6 +6,9 @@ import { KpiStat } from "@/components/KpiStat";
 import { COLOR_SENTIMENT } from "@/lib/chartTheme";
 import { fmtInt } from "@/lib/format";
 import { InfluencersSection } from "@/pages/InfluencersPage";
+import { RankingSeguidores, CAT_COR } from "@/components/RankingSeguidores";
+import { fetchProfileMetrics } from "@/lib/data";
+import { montarRanking } from "@/lib/seguidores";
 
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde", educacao: "Educação", obras: "Obras", seguranca: "Segurança",
@@ -13,10 +16,6 @@ const TEMA_LABEL: Record<string, string> = {
   saneamento: "Saneamento", cultura_eventos: "Cultura", comunicacao: "Comunicação",
 };
 const labelTema = (t: string) => TEMA_LABEL[t] ?? (t ? t.charAt(0).toUpperCase() + t.slice(1) : "—");
-
-const CAT_COR: Record<string, string> = {
-  Prefeito: "#22C55E", Prefeitura: "#3B82F6", Imprensa: "#A855F7", Oposicao: "#EF4444",
-};
 
 interface PerfilResumo { autor: string; posts: number; coments: number; categoria: string }
 
@@ -27,6 +26,14 @@ export function PerfilPage() {
     queryFn: () => fetchComments(),
     staleTime: 5 * 60 * 1000,
     retry: false,
+  });
+  // Mesma queryKey do RankingSeguidores: os dois leem do cache do React Query,
+  // então a série é buscada uma vez só por ciclo de atualização.
+  const { data: metrics = [] } = useQuery({
+    queryKey: ["profile-metrics"],
+    queryFn: () => fetchProfileMetrics(),
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
   });
   const posts = data?.data ?? [];
 
@@ -48,6 +55,11 @@ export function PerfilPage() {
     sel ?? perfis.find((p) => /prefeito/i.test(p.categoria))?.autor ?? perfis[0]?.autor ?? null;
 
   const perfilAtivo = perfis.find((p) => p.autor === autor);
+  // Seguidores do perfil selecionado (null enquanto não houver retrato dele).
+  const seguidores = useMemo(
+    () => montarRanking(metrics).find((p) => p.handle === (autor || "").toLowerCase()) ?? null,
+    [metrics, autor]
+  );
   const postsPerfil = useMemo(() => posts.filter((p) => p.autor === autor), [posts, autor]);
   const idx = useMemo(() => calcIndices(postsPerfil), [postsPerfil]);
 
@@ -103,7 +115,7 @@ export function PerfilPage() {
       <div>
         <h1 className="text-xl font-extrabold text-txt-1">Análise por Perfil</h1>
         <p className="text-sm text-txt-3">
-          Isola os números de um único perfil monitorado — sem misturar com o agregado geral.
+          Isola os números de um único perfil monitorado, sem misturar com o agregado geral.
         </p>
       </div>
 
@@ -157,7 +169,27 @@ export function PerfilPage() {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiStat
+          label="Seguidores"
+          value={seguidores ? fmtInt(seguidores.seguidores) : "n/d"}
+          sub={
+            seguidores
+              ? seguidores.delta24h === null
+                ? "primeira coleta registrada"
+                : "saldo nas últimas 24h"
+              : "aguardando primeira coleta"
+          }
+          delta={
+            seguidores && seguidores.delta24h !== null
+              ? {
+                  v: seguidores.delta24h,
+                  dir:
+                    seguidores.delta24h > 0 ? "up" : seguidores.delta24h < 0 ? "down" : "flat",
+                }
+              : undefined
+          }
+        />
         <KpiStat
           label="Críticas (comentários)"
           value={<span style={{ color: COLOR_SENTIMENT.neg, fontWeight: 700 }}>{sent.neg}%</span>}
@@ -171,6 +203,11 @@ export function PerfilPage() {
         <KpiStat label="Posts" value={fmtInt(idx.volumePosts)} sub="no período coletado" />
         <KpiStat label="Comentários" value={fmtInt(idx.volumeComents)} sub="analisados" />
       </div>
+
+      {/* Ranking de seguidores de todos os perfis monitorados (pedido do
+          cliente em 25/07): quem tem mais e menos audiência e quanto cada
+          conta ganhou ou perdeu entre as coletas. */}
+      <RankingSeguidores />
 
       {/* Distribuição de sentimento + temas */}
       <div className="grid gap-3 lg:grid-cols-2">

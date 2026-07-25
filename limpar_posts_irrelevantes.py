@@ -36,8 +36,9 @@ fora = []
 for p in posts:
     handle = (p.get("autor") or "").lower()
     filtro = agora.PERFIS.get(handle, {"filtro": "governo"})["filtro"]
-    if filtro == "governo":
-        continue
+    # Perfis de governo tambem entram na varredura desde a revisao de 25/07:
+    # o clima so pode ser formado por conteudo relacionado as palavras da tela
+    # Relevancia, inclusive nas contas oficiais da gestao.
     passou, motivo = agora._motivo_relevancia(p.get("caption") or "", filtro)
     if not passou:
         p["_motivo_descarte"] = motivo

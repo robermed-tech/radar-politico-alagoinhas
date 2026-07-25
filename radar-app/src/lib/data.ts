@@ -440,6 +440,47 @@ export async function fetchInfluencers(): Promise<Influencer[]> {
   return (await res.json()) as Influencer[];
 }
 
+/** Um ponto da série de seguidores de um perfil (tabela `profile_metrics`). */
+export interface ProfileMetric {
+  handle: string;
+  categoria: string;
+  seguidores: number;
+  seguindo: number;
+  publicacoes: number;
+  fonte: string;
+  coletado_em: string;
+}
+
+/**
+ * Série de seguidores dos perfis monitorados, mais recente primeiro.
+ *
+ * O pipeline grava um ponto por perfil a cada coleta (agora.py
+ * ::gravar_metricas_perfis); o ranking e o saldo de ganhos/perdas são
+ * derivados aqui no cliente, em lib/seguidores.ts. São contas públicas
+ * institucionais, de imprensa e de políticos: nenhum perfil de cidadão entra
+ * nesta tabela.
+ */
+export async function fetchProfileMetrics(limit = 4000): Promise<ProfileMetric[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const q =
+    `${SUPABASE_URL}/rest/v1/profile_metrics?tenant=eq.${TENANT}` +
+    `&select=handle,categoria,seguidores,seguindo,publicacoes,fonte,coletado_em` +
+    `&order=coletado_em.desc&limit=${limit}`;
+  const res = await fetch(q, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  }).catch(() => null);
+  if (!res || !res.ok) return [];
+  return ((await res.json()) as Record<string, unknown>[]).map((r) => ({
+    handle: String(r.handle ?? "").toLowerCase(),
+    categoria: String(r.categoria ?? ""),
+    seguidores: Number(r.seguidores ?? 0),
+    seguindo: Number(r.seguindo ?? 0),
+    publicacoes: Number(r.publicacoes ?? 0),
+    fonte: String(r.fonte ?? ""),
+    coletado_em: String(r.coletado_em ?? ""),
+  }));
+}
+
 export interface Narrative {
   id: string;
   tema: string;
