@@ -83,7 +83,7 @@ function TermometroTemas({ allPosts, dias }: { allPosts: Post[]; dias: number })
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="section-label">Termômetro por tema</div>
         <div className="text-[13px] text-txt-3">
-          % de comentários positivos entre os que tomam partido (neutros fora do ponteiro)
+          % de comentários negativos entre os que tomam partido (neutros fora do ponteiro)
         </div>
       </div>
       <Suspense fallback={<div className="mt-4 text-sm text-txt-3">Carregando termômetro…</div>}>
@@ -102,6 +102,14 @@ const PERIODOS = [
   { dias: 7, label: "7 dias" },
   { dias: 30, label: "30 dias" },
 ];
+
+/** Qualidade da amostra do período — reintroduzida na revisão de 25/07. */
+function forcaAmostra(comentarios: number): { label: string; nivel: number } {
+  if (comentarios >= 300) return { label: "Amostra forte", nivel: 3 };
+  if (comentarios >= 100) return { label: "Boa amostra", nivel: 2 };
+  if (comentarios >= 30) return { label: "Amostra inicial", nivel: 1 };
+  return { label: "Amostra pequena", nivel: 0 };
+}
 
 function scoreParaNivel(score: number): NivelCrise {
   if (score >= 75) return "critico";
@@ -463,6 +471,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
   // Admin vê o clima derivado do score (client). Usuário comum vê a condição
   // que vem pronta do boletim (backend) — sem o número.
   const wx = isAdmin ? view.wx : weatherFromCondicao(boletim?.condicao);
+  const amostra = forcaAmostra(view.comentarios);
   const txt1 = "#FFFFFF";
   const txt2 = "rgba(255,255,255,0.86)";
   const heroBg = `linear-gradient(105deg, rgba(8,11,18,0.72) 0%, rgba(8,11,18,0.32) 50%, rgba(8,11,18,0.58) 100%), url("${wx.image}") center/cover no-repeat, ${wx.bg}`;
@@ -544,13 +553,14 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
               <div>
                 {isAdmin ? (
                   <div className="flex items-end gap-1">
-                    <span className="tnum text-[60px] leading-[0.85] tracking-tight sm:text-[84px]" style={{ color: txt1, fontWeight: 200 }}>
+                    {/* +50% no número do clima (revisão de 25/07). */}
+                    <span className="tnum text-[90px] leading-[0.85] tracking-tight sm:text-[126px]" style={{ color: txt1, fontWeight: 200 }}>
                       {view.iad}
                     </span>
-                    <span className="mb-3 text-2xl font-bold" style={{ color: txt2 }}>%</span>
+                    <span className="mb-4 text-4xl font-bold" style={{ color: txt2 }}>%</span>
                   </div>
                 ) : (
-                  <div className="text-[40px] font-extrabold leading-[1.0] tracking-tight" style={{ color: txt1 }}>
+                  <div className="text-[60px] font-extrabold leading-[1.0] tracking-tight" style={{ color: txt1 }}>
                     {wx.label}
                   </div>
                 )}
@@ -600,8 +610,22 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                 </svg>
               </span>
             </div>
-            {/* Revisão de 25/07: o texto explicativo e a etiqueta de amostra
-                saíram — o box fica só com o número e a ação. */}
+            <p className="mt-2 max-w-[26ch] text-base font-normal leading-snug" style={{ color: "rgba(26,15,2,0.85)" }}>
+              Quanto mais <b className="font-bold">comentários analisados</b>, mais confiável é a leitura do clima.
+            </p>
+
+            <div
+              className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold text-white"
+              style={{ background: CHUMBO }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                <line x1="6" y1="20" x2="6" y2="15" />
+                <line x1="12" y1="20" x2="12" y2={amostra.nivel >= 2 ? "9" : "13"} style={{ opacity: amostra.nivel >= 1 ? 1 : 0.3 }} />
+                <line x1="18" y1="20" x2="18" y2="5" style={{ opacity: amostra.nivel >= 3 ? 1 : 0.3 }} />
+              </svg>
+              {amostra.label}
+            </div>
+
             <div className="mt-auto pt-6">
               <div className="flex items-end gap-1">
                 <span className="tnum text-[68px] leading-[0.85] tracking-tight" style={{ fontWeight: 300, color: "#1A0F02" }}>

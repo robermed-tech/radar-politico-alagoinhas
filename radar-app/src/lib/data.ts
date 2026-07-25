@@ -13,6 +13,8 @@ export interface Post {
   data_post: string;
   autor: string;
   categoria: string;
+  /** Legenda original do post no Instagram (coluna posts.caption). */
+  caption: string;
   curtidas: number;
   comentarios_total: number;
   total_cidadaos: number;
@@ -82,6 +84,7 @@ function normalizePost(r: Record<string, unknown>): Post {
     data_post: String(r.data_post ?? ""),
     autor: String(r.autor ?? ""),
     categoria: String(r.categoria ?? ""),
+    caption: String(r.caption ?? ""),
     curtidas: num(r.curtidas),
     comentarios_total: num(r.comentarios_total ?? r.comentarios_count),
     total_cidadaos: num(r.total_cidadaos),

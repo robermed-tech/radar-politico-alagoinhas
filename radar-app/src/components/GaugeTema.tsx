@@ -5,45 +5,41 @@ import { fmtInt } from "@/lib/format";
 
 interface Props {
   label: string;
-  /** Comentários negativos e positivos do tema — o neutro fica de fora do
-   * ponteiro por decisão de produto (reuniões 24-25/07): o velocímetro mede a
-   * proporção de POSITIVOS sobre (positivos + negativos). */
+  /** Comentários negativos e positivos do tema — os neutros ficam fora do
+   * ponteiro (decisão da reunião de 24/07). */
   neg: number;
   pos: number;
 }
 
 const SEGMENTOS = 14;
 
-/** Cor do degradê vermelho→verde na posição t (0 = vermelho, 1 = verde). */
+/** Cor da escala na posição t (0 = verde, à esquerda; 1 = vermelho, à direita). */
 function corEscala(t: number): string {
-  return `hsl(${Math.round(t * 130)}, 78%, 46%)`;
+  return `hsl(${Math.round(130 - t * 130)}, 78%, 46%)`;
 }
 
 /**
- * Velocímetro segmentado por tema — modelo da referência da revisão de 25/07:
- * arco em segmentos discretos, escala do vermelho (0%) ao verde (100%) em
- * degradê, agulha escura e percentual grande. Mede a % de comentários
- * POSITIVOS entre os que tomam partido; segmentos além do valor ficam apagados.
- * Abaixo de 30% de positivos (com amostra mínima) o card pulsa como alerta.
+ * Velocímetro segmentado por tema. A escala é FIXA e sempre visível: verde à
+ * esquerda (0% de críticas) indo até vermelho à direita (100% de críticas).
+ * O ponteiro aponta a % real de comentários NEGATIVOS entre os que tomam
+ * partido — quanto mais gente reclamando do tema, mais o ponteiro caminha
+ * para o vermelho (revisão de 25/07).
  */
 export function GaugeTema({ label, neg, pos }: Props) {
   const theme = useThemeStore((s) => s.theme);
   const ink = chartInk(theme);
   const total = neg + pos;
-  const valor = total > 0 ? Math.round((pos / total) * 100) : 0;
-  const critico = total >= 5 && valor <= 30;
+  const valor = total > 0 ? Math.round((neg / total) * 100) : 0;
+  const critico = total >= 5 && valor >= 70;
   const corValor = corEscala(valor / 100);
 
-  // Segmentos discretos via paradas do axisLine: cada segmento colorido pelo
-  // degradê na sua posição (aceso até o valor; apagado depois), com um vão
-  // estreito entre segmentos para o efeito "tacômetro" da referência.
-  const GAP = 0.18; // fração de cada segmento reservada ao vão
+  // Segmentos discretos: cada um pintado pela sua própria posição na escala,
+  // com um vão estreito entre eles para o efeito "tacômetro" da referência.
+  const GAP = 0.18;
   const stops: [number, string][] = [];
   for (let i = 0; i < SEGMENTOS; i++) {
     const centro = ((i + 0.5) / SEGMENTOS) * 100;
-    const aceso = centro <= valor && valor > 0;
-    const cor = aceso ? corEscala(centro / 100) : ink.track;
-    stops.push([(i + 1 - GAP) / SEGMENTOS, cor]);
+    stops.push([(i + 1 - GAP) / SEGMENTOS, corEscala(centro / 100)]);
     if (i < SEGMENTOS - 1) stops.push([(i + 1) / SEGMENTOS, "rgba(0,0,0,0)"]);
   }
   stops.push([1, "rgba(0,0,0,0)"]);
