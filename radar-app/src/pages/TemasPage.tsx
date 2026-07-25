@@ -49,10 +49,12 @@ function direcaoSlope(serie: number[]): "subindo" | "estavel" | "caindo" {
 const COR_OUTROS = "#94A3B8";
 
 // ── Laço IRT: recuperação de imagem pós-alerta ───────────────────────────────
+// Vocabulário da reunião de 24/07: "estabilizar" no lugar de "recuperar", e
+// cinza neutro no lugar do vermelho ("não brinca com o vermelho").
 const IRT_STATUS: Record<string, { label: string; cor: string }> = {
   monitorando: { label: "Monitorando",              cor: "#EAB308" },
-  recuperado:  { label: "Recuperado",               cor: "#22C55E" },
-  persistente: { label: "Persistente — reavaliar",  cor: "#EF4444" },
+  recuperado:  { label: "Estabilizado",             cor: "#22C55E" },
+  persistente: { label: "Persistente (reavaliar)",  cor: "#94A3B8" },
 };
 const IRT_TEND: Record<string, { label: string; cor: string }> = {
   em_queda: { label: "em queda", cor: "#22C55E" },
@@ -81,7 +83,7 @@ function PainelRecuperacaoIRT() {
 
   return (
     <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-      <div className="text-sm font-bold">Recuperação pós-alerta</div>
+      <div className="text-sm font-bold">Estabilização pós-alerta</div>
       <p className="mb-3 text-[10px] text-txt-3">
         Temas que dispararam alerta ficam em acompanhamento — queda sustentada indica que a resposta funcionou
       </p>

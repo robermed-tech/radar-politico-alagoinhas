@@ -1,6 +1,15 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAlertHistory, type AlertaHistorico } from "@/lib/data";
+import { fetchEnviosManuais, type EnvioManual } from "@/lib/admin";
 import { IconAlertBell } from "@/components/icons";
+
+/**
+ * Histórico de Alertas — decisão da reunião de 24/07: em vez dos disparos
+ * automáticos do agente (removidos para reduzir risco de alucinação), esta
+ * página registra os envios MANUAIS feitos no card "Alertar Secretário":
+ * o quê foi enviado, para quem, por qual canal e quando — para o gestor poder
+ * comprovar "eu enviei sim, aqui, tal hora".
+ */
 
 function fmtDt(iso: string): string {
   try {
@@ -18,30 +27,19 @@ const CANAL_LABEL: Record<string, string> = {
   email: "E-mail",
 };
 
-const TIPO_COR: Record<string, string> = {
-  auto: "#F97316",
-  manual: "#3B82F6",
+const CANAL_COR: Record<string, string> = {
+  whatsapp: "#16A34A",
+  email: "#2563EB",
 };
 
 function BadgeCanal({ canal }: { canal: string }) {
+  const cor = CANAL_COR[canal] ?? "#64748B";
   return (
     <span
       className="inline-block rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-      style={{ background: "#1E293B", color: "#94A3B8", border: "1px solid #334155" }}
+      style={{ background: `${cor}1A`, color: cor, border: `1px solid ${cor}44` }}
     >
       {CANAL_LABEL[canal] ?? canal}
-    </span>
-  );
-}
-
-function BadgeTipo({ tipo }: { tipo: string }) {
-  const cor = TIPO_COR[tipo] ?? "#6B7280";
-  return (
-    <span
-      className="inline-block rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-      style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}44` }}
-    >
-      {tipo}
     </span>
   );
 }
@@ -50,42 +48,81 @@ function EmptyState() {
   return (
     <div className="card-hover rounded-xl border border-line bg-bg-1 p-10 text-center">
       <IconAlertBell size={28} className="mx-auto mb-2 text-txt-3" />
-      <div className="font-semibold text-txt-1">Nenhum alerta registrado</div>
+      <div className="font-semibold text-txt-1">Nenhum envio registrado</div>
       <div className="mt-1 text-sm text-txt-3">
-        Os alertas automáticos aparecem aqui quando o AGORA os dispara via WhatsApp.
+        Cada alerta enviado pelo botão "Alertar Secretário" fica registrado aqui:
+        quem enviou, para quem, por qual canal e quando.
       </div>
     </div>
   );
 }
 
+function LinhaEnvio({ e }: { e: EnvioManual }) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <div className="rounded-lg border border-line bg-bg-2 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="tnum text-xs text-txt-3">{fmtDt(e.created_at)}</span>
+        <BadgeCanal canal={e.channel} />
+        {e.tema && (
+          <span className="rounded bg-bg-1 px-2 py-0.5 text-[11px] font-bold capitalize text-txt-1">
+            {e.tema}
+          </span>
+        )}
+        <span className="min-w-0 truncate text-xs text-txt-2">
+          {e.sent_by_nome ? <>por <b className="text-txt-1">{e.sent_by_nome}</b></> : null}
+          {e.recipient ? <> · para <b className="text-txt-1">{e.recipient}</b></> : null}
+        </span>
+        {e.mensagem && (
+          <button
+            onClick={() => setAberto((v) => !v)}
+            className="ml-auto shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold text-white transition hover:opacity-90"
+            style={{ background: "#334155" }}
+          >
+            {aberto ? "Ocultar mensagem" : "Ver mensagem"}
+          </button>
+        )}
+      </div>
+      {aberto && e.mensagem && (
+        <pre
+          className="mt-2 whitespace-pre-wrap rounded-lg border border-line bg-bg-1 p-3 text-xs leading-relaxed text-txt-1"
+          style={{ fontFamily: "inherit" }}
+        >
+          {e.mensagem}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 export function AlertasHistPage() {
-  const { data: alertas = [], isLoading } = useQuery<AlertaHistorico[]>({
-    queryKey: ["alerta-historico"],
-    queryFn: () => fetchAlertHistory(200),
+  const { data: envios = [], isLoading } = useQuery<EnvioManual[]>({
+    queryKey: ["envios-manuais"],
+    queryFn: () => fetchEnviosManuais(200),
     staleTime: 5 * 60 * 1000,
   });
 
   if (isLoading) return <div className="p-8 text-txt-2">Carregando histórico de alertas…</div>;
 
-  const total = alertas.length;
-  const totalWhats = alertas.filter((a) => a.canal === "whatsapp").length;
-  const totalAuto  = alertas.filter((a) => a.tipo === "auto").length;
+  const total = envios.length;
+  const totalWhats = envios.filter((e) => e.channel === "whatsapp").length;
+  const totalEmail = envios.filter((e) => e.channel === "email").length;
 
   return (
     <div className="space-y-4 p-5">
       <div>
         <h1 className="text-2xl font-extrabold">Histórico de Alertas</h1>
         <p className="text-sm text-txt-2">
-          Alertas automáticos disparados pelo AGORA via WhatsApp
+          Alertas enviados manualmente aos secretários pelo botão "Alertar Secretário"
         </p>
       </div>
 
       {/* Contadores rápidos */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Total de alertas", value: total, cor: "#F97316" },
-          { label: "Via WhatsApp",     value: totalWhats, cor: "#22C55E" },
-          { label: "Automáticos",      value: totalAuto,  cor: "#3B82F6" },
+          { label: "Total de envios", value: total, cor: "var(--txt1)" },
+          { label: "Via WhatsApp", value: totalWhats, cor: "#16A34A" },
+          { label: "Via E-mail", value: totalEmail, cor: "#2563EB" },
         ].map(({ label, value, cor }) => (
           <div key={label} className="card-hover rounded-xl border border-line bg-bg-1 p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-txt-3">{label}</div>
@@ -96,45 +133,13 @@ export function AlertasHistPage() {
         ))}
       </div>
 
-      {/* Tabela */}
-      {alertas.length === 0 ? (
+      {envios.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-line text-[11px] uppercase tracking-wide text-txt-3">
-                <tr>
-                  <th className="py-2 text-left font-semibold">Data / Hora</th>
-                  <th className="py-2 text-left font-semibold">Tipo</th>
-                  <th className="py-2 text-left font-semibold">Canal</th>
-                  <th className="py-2 text-right font-semibold">IAD</th>
-                  <th className="py-2 text-left font-semibold pl-4">Mensagem</th>
-                </tr>
-              </thead>
-              <tbody>
-                {alertas.map((a, i) => (
-                  <tr key={a.id ?? i} className="border-b border-line/40 hover:bg-bg-2/60 transition-colors">
-                    <td className="py-2.5 tabular-nums text-txt-2 whitespace-nowrap">
-                      {fmtDt(a.criado_em)}
-                    </td>
-                    <td className="py-2.5">
-                      <BadgeTipo tipo={a.tipo} />
-                    </td>
-                    <td className="py-2.5">
-                      <BadgeCanal canal={a.canal} />
-                    </td>
-                    <td className="py-2.5 text-right tabular-nums font-semibold text-txt-2">
-                      {a.valor != null ? `${a.valor}%` : "—"}
-                    </td>
-                    <td className="py-2.5 pl-4 text-txt-1 max-w-md">
-                      <span className="line-clamp-2">{a.mensagem}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="space-y-2">
+          {envios.map((e) => (
+            <LinhaEnvio key={e.id} e={e} />
+          ))}
         </div>
       )}
     </div>

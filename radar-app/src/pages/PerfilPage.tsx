@@ -5,6 +5,7 @@ import { calcIndices, NIVEL_LABEL, NIVEL_COLOR } from "@/lib/indices";
 import { KpiStat } from "@/components/KpiStat";
 import { COLOR_SENTIMENT } from "@/lib/chartTheme";
 import { fmtInt } from "@/lib/format";
+import { InfluencersSection } from "@/pages/InfluencersPage";
 
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde", educacao: "Educação", obras: "Obras", seguranca: "Segurança",
@@ -240,6 +241,10 @@ export function PerfilPage() {
           </ul>
         )}
       </div>
+
+      {/* Influenciadores — conteúdo da antiga página da sidebar, encaixado
+          aqui por decisão da reunião de 24/07 (menos itens no menu). */}
+      <InfluencersSection />
     </div>
   );
 }

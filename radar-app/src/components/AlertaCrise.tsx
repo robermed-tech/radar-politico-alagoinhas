@@ -127,7 +127,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
         "_blank"
       );
     }
-    void logMessageSend(canal, contato.trim());
+    void logMessageSend(canal, contato.trim(), { tema, mensagem });
     flash("✓ Abrindo…");
   }
 

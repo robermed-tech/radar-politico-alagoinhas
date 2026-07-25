@@ -235,17 +235,49 @@ export async function deleteUser(user_id: string): Promise<string | null> {
   return null;
 }
 
-// ── message_log (auditoria de disparos aos secretários) ──────
-/** Registra um disparo. Best-effort: não bloqueia o envio em caso de falha. */
+// ── message_log (histórico de envios manuais aos secretários) ──────
+/** Registra um envio manual do "Alertar Secretário" — o quê (tema/mensagem),
+ * para quem, por qual canal. Alimenta a página "Histórico de Alertas".
+ * Best-effort: não bloqueia o envio em caso de falha. O nome de quem enviou
+ * é desnormalizado na linha (usuário comum não lê profiles de terceiros). */
 export async function logMessageSend(
   channel: "whatsapp" | "email",
   recipient: string,
+  extra?: { tema?: string; mensagem?: string },
   status: "aberto" | "erro" = "aberto"
 ): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
+  const nome =
+    (user.user_metadata?.full_name as string | undefined) || user.email || null;
   await supabase
     .from("message_log")
-    .insert({ tenant_id: TENANT, sent_by: user.id, channel, recipient, status })
+    .insert({
+      tenant_id: TENANT, sent_by: user.id, sent_by_nome: nome,
+      channel, recipient, status,
+      tema: extra?.tema ?? null, mensagem: extra?.mensagem ?? null,
+    })
     .then(undefined, () => {});
+}
+
+export interface EnvioManual {
+  id: number;
+  sent_by_nome: string | null;
+  channel: string;
+  recipient: string | null;
+  tema: string | null;
+  mensagem: string | null;
+  created_at: string;
+}
+
+/** Envios manuais do tenant, mais recentes primeiro (RLS: leitura liberada
+ * para qualquer autenticado do tenant). */
+export async function fetchEnviosManuais(limit = 200): Promise<EnvioManual[]> {
+  const { data } = await supabase
+    .from("message_log")
+    .select("id, sent_by_nome, channel, recipient, tema, mensagem, created_at")
+    .eq("tenant_id", TENANT)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data as EnvioManual[]) ?? [];
 }

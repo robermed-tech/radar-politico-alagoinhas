@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
-import { AlertaConfig } from "@/components/AlertaConfig";
 import {
   fetchSettings, saveSettings,
   fetchKeywords, addKeyword, toggleKeyword, deleteKeyword,
   fetchSources, addSource, toggleSource, deleteSource,
   fetchUsers, inviteUser, setUserRole, deleteUser,
-  type ScoreWeights, type ClimateThresholds, type NotificationConfig,
+  type ScoreWeights, type ClimateThresholds,
 } from "@/lib/admin";
 import {
   fetchSources as fetchColetaSources, addSource as addColetaSource,
@@ -19,25 +18,27 @@ import {
   calcKpis, resumoPorRede, volumePorHora,
 } from "@/lib/collection";
 import { fetchServiceStatus } from "@/lib/data";
-import { DEFAULT_NOTIFICATION } from "@/lib/settings";
 import { type Role } from "@/lib/auth";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
 import { IconWarningTriangle } from "@/components/icons";
 import { useOnlineUserIds } from "@/lib/presence";
 
+// Reunião de 24/07: a aba "Fontes (coleta)" saiu — parecia duplicada com
+// "Fontes"; o cadastro de todas as plataformas agora vive numa aba só (a
+// seção de fontes roteia cada plataforma para o backend certo). A aba
+// "Notificações" também saiu: o disparo automático de alertas foi desativado
+// (só existe envio manual via "Alertar Secretário").
 type Tab =
-  | "score" | "relevancia" | "fontes" | "fontes-coleta" | "monitor"
-  | "usuarios" | "notificacoes" | "clima";
+  | "score" | "relevancia" | "fontes" | "monitor"
+  | "usuarios" | "clima";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "score", label: "Score" },
   { id: "relevancia", label: "Relevância" },
   { id: "fontes", label: "Fontes" },
-  { id: "fontes-coleta", label: "Fontes (coleta)" },
   { id: "monitor", label: "Monitor de coleta" },
   { id: "usuarios", label: "Usuários" },
-  { id: "notificacoes", label: "Notificações" },
   { id: "clima", label: "Clima" },
 ];
 
@@ -162,10 +163,8 @@ export function AdminPage() {
       {tab === "score" && <ScoreSection />}
       {tab === "relevancia" && <KeywordsSection />}
       {tab === "fontes" && <SourcesSection />}
-      {tab === "fontes-coleta" && <FontesColetaSection />}
       {tab === "monitor" && <ColetaMonitorSection />}
       {tab === "usuarios" && <UsersSection />}
-      {tab === "notificacoes" && <NotificationsSection />}
       {tab === "clima" && <ClimateSection />}
     </div>
   );
@@ -311,16 +310,28 @@ const FILTRO_COLOR: Record<string, string> = {
   imprensa: "#6366F1",
 };
 
-// ── Fontes monitoradas ───────────────────────────────────────
+// ── Fontes monitoradas (unificada) ───────────────────────────
+// Uma aba só para todas as plataformas (reunião 24/07). Cada plataforma vai
+// para o backend certo: Instagram → monitored_sources (pipeline ÁGORA atual);
+// YouTube → sources (subsistema de coleta multi-plataforma, nasce pausada).
 function SourcesSection() {
   const qc = useQueryClient();
   const { data: sources } = useQuery({ queryKey: ["admin-sources"], queryFn: fetchSources });
+  const { data: coletaSources } = useQuery({ queryKey: ["coleta-sources"], queryFn: fetchColetaSources });
   const [platform, setPlatform] = useState("instagram");
   const [handle, setHandle] = useState("");
   const [categoria, setCategoria] = useState("");
   const [filtro, setFiltro] = useState("governo");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-sources"] });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["admin-sources"] });
+    qc.invalidateQueries({ queryKey: ["coleta-sources"] });
+    qc.invalidateQueries({ queryKey: ["coleta-fontes-unificadas"] });
+  };
+
+  const ehColeta = platform === "youtube";
+  // Prévia da normalização do subsistema de coleta (YouTube aceita @canal ou URL).
+  const previa = ehColeta && handle.trim() ? normalizeHandle(platform as Platform, handle) : null;
 
   async function run(fn: () => Promise<string | null>, sucesso: string) {
     const err = await fn();
@@ -330,10 +341,21 @@ function SourcesSection() {
 
   function adicionar() {
     if (!handle.trim()) return;
-    run(() => addSource(platform, handle, categoria || handle.trim(), filtro), "✔ Adicionada");
+    if (ehColeta) {
+      run(
+        () => addColetaSource(platform as Platform, handle, categoria),
+        "✔ Fonte cadastrada (pausada — ative para começar a coletar)"
+      );
+    } else {
+      run(() => addSource(platform, handle, categoria || handle.trim(), filtro), "✔ Adicionada");
+    }
     setHandle("");
     setCategoria("");
   }
+
+  // Fontes do subsistema de coleta que não são Instagram (as de Instagram do
+  // pipeline atual já aparecem na lista principal abaixo).
+  const coletaNaoIg = (coletaSources ?? []).filter((s: ColetaSource) => s.platform !== "instagram");
 
   return (
     <Card title="Fontes monitoradas">
@@ -344,38 +366,47 @@ function SourcesSection() {
           className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
         >
           <option value="instagram">Instagram</option>
+          <option value="youtube">YouTube</option>
           <option value="facebook" disabled>Facebook (em breve)</option>
           <option value="tiktok" disabled>TikTok (em breve)</option>
-          <option value="youtube" disabled>YouTube (em breve)</option>
           <option value="x" disabled>X / Twitter (em breve)</option>
         </select>
         <input
           value={handle}
           onChange={(e) => setHandle(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && adicionar()}
-          placeholder="@perfil"
+          placeholder={ehColeta ? "@canal ou URL do canal" : "@perfil"}
           className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
         />
         <input
           value={categoria}
           onChange={(e) => setCategoria(e.target.value)}
-          placeholder="Categoria (ex: Prefeito, Imprensa local…)"
+          placeholder={ehColeta ? "Nome de exibição (opcional)" : "Categoria (ex: Prefeito, Imprensa local…)"}
           className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
         />
-        <select
-          value={filtro}
-          onChange={(e) => setFiltro(e.target.value)}
-          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
-        >
-          {FILTRO_OPTS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
+        {!ehColeta && (
+          <select
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+            className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
+          >
+            {FILTRO_OPTS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        )}
       </div>
+      {previa && (
+        <p className="mt-2 text-xs text-txt-3">
+          {previa.error
+            ? <span className="text-risk-crit">{previa.error}</span>
+            : <>Será salva como <code className="rounded bg-bg-2 px-1 py-0.5 text-txt-2">{platform}/{previa.handle}</code></>}
+        </p>
+      )}
       <p className="mt-2 text-xs text-txt-3">
-        Hoje só o Instagram é coletado de fato. Um perfil salvo aqui entra na próxima
-        execução do ÁGORA automaticamente (o pipeline lê esta lista a cada rodada — não
-        precisa reconfigurar nada na Apify manualmente).
+        {ehColeta
+          ? "Fonte de YouTube nasce pausada — nada é coletado até você ativá-la na lista abaixo."
+          : "Um perfil de Instagram salvo aqui entra na próxima execução do ÁGORA automaticamente (o pipeline lê esta lista a cada rodada — não precisa reconfigurar nada na Apify manualmente)."}
       </p>
       <div className="mt-2 flex items-center gap-3">
         <button
@@ -419,109 +450,12 @@ function SourcesSection() {
             </div>
           </div>
         ))}
-        {sources?.length === 0 && <p className="text-sm text-txt-3">Nenhuma fonte cadastrada.</p>}
-      </div>
-    </Card>
-  );
-}
-
-// ── Fontes (coleta) ──────────────────────────────────────────
-// Subsistema NOVO multi-plataforma (tabela `sources`): Instagram + YouTube.
-// Separado da aba "Fontes" acima (monitored_sources), que alimenta o pipeline
-// Instagram atual. Toda fonte cadastrada aqui nasce PAUSADA — nada é coletado
-// até o admin ativar.
-const COLETA_PLATFORMS: { value: Platform; label: string; placeholder: string }[] = [
-  { value: "instagram", label: "Instagram", placeholder: "@perfil ou link do perfil" },
-  { value: "youtube", label: "YouTube", placeholder: "@canal ou URL do canal" },
-];
-
-function FontesColetaSection() {
-  const qc = useQueryClient();
-  const { data: sources } = useQuery({ queryKey: ["coleta-sources"], queryFn: fetchColetaSources });
-  const [platform, setPlatform] = useState<Platform>("instagram");
-  const [handle, setHandle] = useState("");
-  const [label, setLabel] = useState("");
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const refresh = () => qc.invalidateQueries({ queryKey: ["coleta-sources"] });
-
-  const placeholder = COLETA_PLATFORMS.find((p) => p.value === platform)!.placeholder;
-  // Prévia da normalização — mostra ao admin como o handle será salvo.
-  const previa = handle.trim() ? normalizeHandle(platform, handle) : null;
-
-  async function run(fn: () => Promise<string | null>, sucesso: string) {
-    const err = await fn();
-    setMsg(err ? { ok: false, text: err } : { ok: true, text: sucesso });
-    if (!err) refresh();
-  }
-
-  function adicionar() {
-    if (!handle.trim()) return;
-    run(() => addColetaSource(platform, handle, label).then((err) => {
-      if (!err) { setHandle(""); setLabel(""); }
-      return err;
-    }), "✔ Fonte cadastrada (pausada — ative para começar a coletar)");
-  }
-
-  return (
-    <Card title="Fontes de coleta (Instagram + YouTube)">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <select
-          value={platform}
-          onChange={(e) => setPlatform(e.target.value as Platform)}
-          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
-        >
-          {COLETA_PLATFORMS.map((p) => (
-            <option key={p.value} value={p.value}>{p.label}</option>
-          ))}
-        </select>
-        <input
-          value={handle}
-          onChange={(e) => setHandle(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && adicionar()}
-          placeholder={placeholder}
-          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
-        />
-        <input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && adicionar()}
-          placeholder="Nome de exibição (opcional)"
-          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand sm:col-span-2"
-        />
-      </div>
-
-      {previa && (
-        <p className="mt-2 text-xs text-txt-3">
-          {previa.error
-            ? <span className="text-risk-crit">{previa.error}</span>
-            : <>Será salva como <code className="rounded bg-bg-2 px-1 py-0.5 text-txt-2">{platform}/{previa.handle}</code></>}
-        </p>
-      )}
-      <p className="mt-2 text-xs text-txt-3">
-        Toda fonte nasce <strong>pausada</strong>. Nenhuma coleta roda até você ativá-la aqui.
-      </p>
-
-      <div className="mt-2 flex items-center gap-3">
-        <button
-          onClick={adicionar}
-          disabled={!!previa?.error || !handle.trim()}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Adicionar
-        </button>
-        <Feedback msg={msg} />
-      </div>
-
-      <div className="mt-3 space-y-1.5">
-        {(sources ?? []).map((s: ColetaSource) => (
+        {coletaNaoIg.map((s: ColetaSource) => (
           <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
             <div className="min-w-0 flex items-center gap-2">
               <span
                 className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
-                style={{
-                  background: s.platform === "youtube" ? "rgba(239,68,68,0.12)" : "rgba(168,85,247,0.12)",
-                  color: s.platform === "youtube" ? "#EF4444" : "#A855F7",
-                }}
+                style={{ background: "rgba(239,68,68,0.12)", color: "#EF4444" }}
               >
                 {s.platform}
               </span>
@@ -547,8 +481,8 @@ function FontesColetaSection() {
             </div>
           </div>
         ))}
-        {sources?.length === 0 && (
-          <p className="text-sm text-txt-3">Nenhuma fonte de coleta cadastrada ainda.</p>
+        {sources?.length === 0 && coletaNaoIg.length === 0 && (
+          <p className="text-sm text-txt-3">Nenhuma fonte cadastrada.</p>
         )}
       </div>
     </Card>
@@ -994,81 +928,6 @@ function UsersSection() {
         </div>
       </Card>
     </div>
-  );
-}
-
-// ── Notificações ─────────────────────────────────────────────
-function NotificationsSection() {
-  const qc = useQueryClient();
-  const { data } = useQuery({ queryKey: ["admin-settings"], queryFn: fetchSettings });
-  const [draft, setDraft] = useState<NotificationConfig | null>(null);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  // Merge com os defaults: configs salvas antes desta versão não têm as chaves
-  // subtema_* — sem o merge, o slider receberia undefined (NaN).
-  const cfg: NotificationConfig | null =
-    draft ?? (data ? { ...DEFAULT_NOTIFICATION, ...data.notification_config } : null);
-
-  if (!cfg) return <div className="text-sm text-txt-2">Carregando…</div>;
-  const set = (patch: Partial<NotificationConfig>) => setDraft({ ...cfg, ...patch });
-
-  async function salvar() {
-    const err = await saveSettings({ notification_config: cfg! });
-    if (err) return setMsg({ ok: false, text: err });
-    setMsg({ ok: true, text: "✔ Notificações salvas" });
-    qc.invalidateQueries({ queryKey: ["admin-settings"] });
-  }
-
-  return (
-    <Card title="Alertas por limiar">
-      <div className="space-y-3">
-        <AlertaConfig
-          titulo="IAD abaixo do limiar"
-          descricao="Dispara quando o Índice de Aprovação Digital cai abaixo do valor configurado"
-          limiar={cfg.iad_limiar} unidade="%" min={10} max={70} step={5}
-          ativo={cfg.iad_ativo} cor="#EF4444"
-          onChange={(l, a) => set({ iad_limiar: l, iad_ativo: a })}
-        />
-        <AlertaConfig
-          titulo="% Negativo acima do limiar"
-          descricao="Dispara quando o percentual de posts negativos ultrapassa o valor configurado"
-          limiar={cfg.neg_limiar} unidade="%" min={30} max={90} step={5}
-          ativo={cfg.neg_ativo} cor="#F97316"
-          onChange={(l, a) => set({ neg_limiar: l, neg_ativo: a })}
-        />
-        <AlertaConfig
-          titulo="Tema em crise por sentimento"
-          descricao="Dispara quando um tema específico ultrapassa o % de negatividade configurado"
-          limiar={cfg.tema_limiar} unidade="%" min={30} max={90} step={5}
-          ativo={cfg.tema_ativo} cor="#8B5CF6"
-          onChange={(l, a) => set({ tema_limiar: l, tema_ativo: a })}
-        />
-        <AlertaConfig
-          titulo="Assunto repetido (volume de subtema)"
-          descricao="Dispara quando um mesmo subtema aparece em N+ comentários em 24h — independente do risco de cada post. É a 'sensação popular' do áudio: 3 pessoas falando de buraco viram pauta."
-          limiar={cfg.subtema_limiar} unidade=" com." min={2} max={15} step={1}
-          ativo={cfg.subtema_ativo} cor="#F97316"
-          onChange={(l, a) => set({ subtema_limiar: l, subtema_ativo: a })}
-        />
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-4 border-t border-line pt-3 text-sm">
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={cfg.canal_whats} onChange={(e) => set({ canal_whats: e.target.checked })} />
-          <span className="text-txt-2">Canal WhatsApp</span>
-        </label>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={cfg.canal_email} onChange={(e) => set({ canal_email: e.target.checked })} />
-          <span className="text-txt-2">Canal E-mail</span>
-        </label>
-      </div>
-
-      <div className="mt-4 flex items-center gap-3">
-        <button onClick={salvar} className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:opacity-90">
-          Salvar notificações
-        </button>
-        <Feedback msg={msg} />
-      </div>
-    </Card>
   );
 }
 
