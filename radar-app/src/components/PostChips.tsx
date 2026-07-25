@@ -3,7 +3,6 @@ import { corTema } from "@/lib/temaColors";
 interface PostChipsProps {
   sentimento?: string;
   tema?: string;
-  urgencia?: string;
   risco_crise?: string;
 }
 
@@ -18,7 +17,7 @@ function chipStyle(cor: string) {
 }
 
 const CHIP =
-  "rounded-md px-1.5 py-0.5 text-[12px] font-medium tracking-wide capitalize";
+  "rounded-md px-1.5 py-0.5 text-[12px] font-medium tracking-wide frase-cap";
 
 const SENT_COR: Record<string, string> = {
   positivo: "#22C55E",
@@ -26,9 +25,10 @@ const SENT_COR: Record<string, string> = {
   neutro: "#8593AD",
 };
 
-export function PostChips({ sentimento, tema, urgencia, risco_crise }: PostChipsProps) {
+// O chip de urgência saiu na revisão de 25/07 — o cliente não quer aviso de
+// urgência na leitura dos posts.
+export function PostChips({ sentimento, tema, risco_crise }: PostChipsProps) {
   const sent = sentimento?.toLowerCase();
-  const urg = urgencia?.toLowerCase();
   const risco = risco_crise?.toLowerCase();
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -40,11 +40,6 @@ export function PostChips({ sentimento, tema, urgencia, risco_crise }: PostChips
       {tema && tema !== "—" && (
         <span className={CHIP} style={chipStyle(corTema(tema))}>
           {tema}
-        </span>
-      )}
-      {(urg === "alta" || urg === "crítica" || urg === "critica") && (
-        <span className={CHIP} style={chipStyle("#FB923C")}>
-          urgente
         </span>
       )}
       {(risco === "alto" || risco === "crítico" || risco === "critico") && (

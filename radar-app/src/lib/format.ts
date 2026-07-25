@@ -13,6 +13,19 @@ export function delta(atual: number, anterior: number): { v: number; dir: "up" |
 }
 
 /**
+ * Sentence case: só a primeira letra em maiúscula, o resto preservado
+ * (revisão de 25/07 — o `capitalize` do CSS deixava "Instagram E Facebook Da
+ * Prefeitura", com preposições em maiúscula no meio da frase).
+ * Siglas e nomes próprios já escritos em maiúscula no texto original são
+ * preservados; só o início da frase é normalizado.
+ */
+export function fraseCapitalizada(texto: string): string {
+  const t = (texto ?? "").trim();
+  if (!t) return "";
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/**
  * Remove travessões dos textos gerados pela IA (decisão da reunião de 24/07:
  * nenhum travessão em texto exibido). Cobre textos antigos já gravados no
  * banco; os prompts novos do agora.py também proíbem o caractere na origem.

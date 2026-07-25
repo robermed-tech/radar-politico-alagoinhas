@@ -248,6 +248,18 @@ button:disabled {
   color: transparent;
 }
 
+/* Sentence case (revisão de 25/07): só a primeira letra sobe. Substitui o
+   `capitalize` do Tailwind, que deixava "Instagram E Facebook Da Prefeitura"
+   — com preposições em maiúscula no meio da frase. Preserva siglas (REDA,
+   UPA) e nomes próprios já escritos em maiúscula no texto de origem. */
+.frase-cap {
+  display: inline-block;
+  text-transform: none;
+}
+.frase-cap::first-letter {
+  text-transform: uppercase;
+}
+
 /* Rótulo de seção — caixa alta discreta com tracking (padrão minimalista). */
 .section-label {
   font-size: 0.8125rem;

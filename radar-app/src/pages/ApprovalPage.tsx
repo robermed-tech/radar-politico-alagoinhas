@@ -473,7 +473,7 @@ export function ApprovalPage() {
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center gap-1.5 py-1">
                   <div
-                    className="text-center text-2xl font-extrabold capitalize leading-tight"
+                    className="text-center text-2xl font-extrabold frase-cap leading-tight"
                     style={{ color: "var(--txt1)" }}
                   >
                     {tema.rotulo}

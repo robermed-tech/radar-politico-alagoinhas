@@ -429,15 +429,102 @@ def dentro_do_periodo(data_str, dias=DIAS_RETROATIVOS):
     except Exception:
         return False  # data inválida não passa o filtro (evita posts fantasma)
 
-def filtrar_relevante(caption, categoria_filtro):
-    texto = caption.lower()
-    if categoria_filtro == "governo":
-        return any(kw in texto for kw in KEYWORDS_GOVERNO)
+# Tokens que, sozinhos, nao identificam a gestao monitorada: aparecem em
+# noticia sobre QUALQUER prefeitura do Brasil. NAO sao palavras de busca — a
+# lista cadastrada em relevance_keywords continua intacta. Servem apenas para
+# decidir se uma keyword CADASTRADA e especifica (ja ancora no municipio) ou
+# generica (precisa de ancora no texto para valer).
+_TOKENS_GENERICOS = {
+    "prefeito", "prefeita", "prefeitura", "gestao", "administracao", "adm",
+    "municipal", "municipais", "municipio", "cidade", "governo", "publica",
+    "publico", "de", "da", "do", "dos", "das", "e", "a", "o", "em", "no", "na",
+}
+
+
+def _contem_termo(texto: str, termo: str) -> bool:
+    """Casa o termo por SUBSTRING (nao por palavra inteira), so normalizando
+    acentos e caixa. Substring e proposital: no Instagram a mencao ao perfil
+    oficial vem colada — '@prefeituraalagoinhas', '@gustavoascarmo' — e e
+    justamente o sinal mais forte de que o post fala da gestao daqui. Exigir
+    palavra inteira descartaria esses posts (testado contra a base real)."""
+    return _norm(termo) in _norm(texto)
+
+
+@lru_cache(maxsize=32)
+def _classificar_keywords(keywords: tuple):
+    """Separa as keywords cadastradas em especificas x genericas e deriva as
+    ANCORAS do tenant (os tokens distintivos das especificas: 'alagoinhas',
+    'gustavo', 'carmo'...).
+
+    Tudo sai das palavras que o cliente cadastrou — nada e inventado nem
+    substituido aqui.
+    """
+    especificas, genericas, ancoras = [], [], set()
+    for kw in keywords:
+        distintivos = [t for t in _norm(kw).split()
+                       if t not in _TOKENS_GENERICOS and len(t) > 2]
+        if distintivos:
+            especificas.append(kw)
+            ancoras.update(distintivos)
+        else:
+            genericas.append(kw)
+    return tuple(especificas), tuple(genericas), frozenset(ancoras)
+
+
+def _motivo_relevancia(caption, categoria_filtro):
+    """Igual a filtrar_relevante, mas devolve (passou, motivo) — usado pelo
+    --teste-filtro e pelos logs de depuracao."""
     if categoria_filtro == "oposicao":
-        return any(kw in texto for kw in KEYWORDS_OPOSICAO)
-    if categoria_filtro == "imprensa":
-        return any(kw in texto for kw in KEYWORDS_IMPRENSA)
-    return True
+        kws = KEYWORDS_OPOSICAO
+    elif categoria_filtro == "imprensa":
+        kws = KEYWORDS_IMPRENSA
+    else:
+        return True, "perfil de governo — a propria fonte e o criterio"
+
+    especificas, genericas, ancoras = _classificar_keywords(tuple(kws))
+
+    achou_esp = next((kw for kw in especificas if _contem_termo(caption, kw)), None)
+    if achou_esp:
+        return True, f"keyword especifica '{achou_esp}'"
+
+    achou_gen = next((kw for kw in genericas if _contem_termo(caption, kw)), None)
+    if not achou_gen:
+        return False, "nenhuma keyword cadastrada encontrada"
+
+    # A ancora so e exigida da IMPRENSA. Perfis de oposicao sao politicos
+    # LOCAIS cadastrados a dedo: quando escrevem "a gestao" ou "a prefeitura"
+    # estao falando da gestao daqui, sem precisar repetir o nome da cidade —
+    # exigir ancora deles descartaria critica legitima de alto engajamento.
+    # Ja a imprensa cobre a regiao inteira e publica sobre outros municipios,
+    # que era exatamente a origem do problema.
+    if categoria_filtro != "imprensa":
+        return True, f"keyword '{achou_gen}' (perfil politico local)"
+
+    if not ancoras:
+        # Nenhuma keyword especifica cadastrada: sem ancora para exigir,
+        # mantem o comportamento antigo em vez de descartar tudo.
+        return True, f"keyword '{achou_gen}' (tenant sem keyword especifica cadastrada)"
+
+    achou_anc = next((a for a in sorted(ancoras) if _contem_termo(caption, a)), None)
+    if achou_anc:
+        return True, f"keyword generica '{achou_gen}' + ancora '{achou_anc}'"
+    return False, (f"imprensa: keyword generica '{achou_gen}' sem ancora do municipio "
+                   f"({'/'.join(sorted(ancoras))}) — noticia de outra cidade")
+
+
+def filtrar_relevante(caption, categoria_filtro):
+    """Decide se um post entra na base de analise.
+
+    Revisao de 25/07: uma keyword GENERICA ('prefeito', 'prefeitura', 'gestao
+    municipal') casa com noticia de qualquer municipio do Brasil — foi assim
+    que posts sobre o prefeito de Cardeal da Silva entraram na base de
+    Alagoinhas e acabaram classificados como negativos para Gustavo Carmo.
+    Agora ela so vale quando o texto tambem cita uma ancora do tenant, derivada
+    das proprias keywords cadastradas. Keywords especificas continuam valendo
+    sozinhas. A lista cadastrada nao e alterada em nenhum momento.
+    """
+    passou, _ = _motivo_relevancia(caption, categoria_filtro)
+    return passou
 
 def conectar_sheets():
     if not SPREADSHEET_ID:
@@ -633,13 +720,7 @@ def _normalizar_posts(resultados_brutos):
             continue
 
         if _debug_count < 3:
-            if filtro == "governo":
-                passou = True
-                motivo = "governo (sem filtro de relevância)"
-            else:
-                kw_match = next((kw for kw in (KEYWORDS_OPOSICAO if filtro == "oposicao" else KEYWORDS_IMPRENSA) if kw in caption.lower()), None)
-                passou = kw_match is not None
-                motivo = f"keyword '{kw_match}' encontrada" if passou else "nenhuma keyword encontrada"
+            passou, motivo = _motivo_relevancia(caption, filtro)
             print(f"[filtro-debug #{_debug_count+1}] @{handle} ({filtro}) | passou={passou} | motivo={motivo}")
             print(f"  caption: {caption[:200]!r}")
             _debug_count += 1
@@ -4186,11 +4267,14 @@ def teste_filtro():
         print("[teste-filtro] SUPABASE_URL / SUPABASE_SERVICE_KEY não configurados.")
         return
 
-    # Keywords em uso
-    if _keywords_banco:
-        print(f"[keywords] Supabase: {len(_keywords_banco)} keywords → {_keywords_banco}")
-    else:
-        print(f"[keywords] Fallback — governo:{KEYWORDS_GOVERNO} | oposicao:{KEYWORDS_OPOSICAO} | imprensa:{KEYWORDS_IMPRENSA}")
+    # Keywords em uso, ja classificadas em especificas x genericas.
+    # (Antes esta funcao lia `_keywords_banco`, que e local de
+    # _carregar_config_tenant — a flag quebrava com NameError.)
+    esp, gen, ancoras = _classificar_keywords(tuple(KEYWORDS_IMPRENSA))
+    print(f"[keywords] {len(KEYWORDS_IMPRENSA)} cadastradas para imprensa")
+    print(f"  especificas (valem sozinhas) : {list(esp)}")
+    print(f"  genericas (exigem ancora)    : {list(gen)}")
+    print(f"  ancoras derivadas do tenant  : {sorted(ancoras)}")
 
     print("\n[teste-filtro] Buscando últimos 5 posts do Supabase…")
     r = requests.get(
@@ -4216,14 +4300,7 @@ def teste_filtro():
         info    = PERFIS.get(handle, {"categoria": "Desconhecido", "filtro": "governo"})
         filtro  = info["filtro"]
 
-        if filtro == "governo":
-            passou = True
-            motivo = "governo — sem filtro de relevância aplicado"
-        else:
-            kws = KEYWORDS_OPOSICAO if filtro == "oposicao" else KEYWORDS_IMPRENSA
-            match = next((kw for kw in kws if kw in caption.lower()), None)
-            passou = match is not None
-            motivo = f"keyword '{match}' encontrada" if passou else f"nenhuma keyword bateu (lista={kws})"
+        passou, motivo = _motivo_relevancia(caption, filtro)
 
         status = "✔ PASSOU" if passou else "✘ DESCARTADO"
         print(f"  [{i}] @{handle} ({filtro}) → {status}")
