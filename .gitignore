@@ -9,3 +9,6 @@ __pycache__/
 
 # Saídas de scraping / resultados
 agora_resultado_*.json
+# Backups da limpeza de posts irrelevantes: contêm a base completa (posts +
+# comentários com username), não vão para o repo.
+backup-irrelevantes-*.json
