@@ -22,13 +22,16 @@ Vieram das reuniões com o cliente (PRs #37, #40 e #41). Valem como estado atual
 - Quem pode escrever o quê (migration 007): `relevance_keywords`, `monitored_sources` e `sources` aceitam qualquer autenticado do tenant. **Continuam admin-only**: `tenant_settings` (pesos de score e limiares de clima), `secretaries` e `profiles` — os limiares de clima ficam restritos para o cliente não maquiar os próprios números. Ao mover qualquer tela de config para fora do admin, lembrar que **só mudar a UI não basta**: sem ajustar a policy, a escrita falha silenciosamente no RLS.
 - A seção **Narrativas** foi removida da UI (sidebar + página). O backend continua gerando os dados; não reintroduzir a tela sem pedido.
 - **Influenciadores** não é mais item de menu — o conteúdo vive dentro de "Análise por Perfil".
+- **Ranking de seguidores** (25/07) vive dentro de "Análise por Perfil": quem tem mais e menos seguidores, o total de cada conta e o saldo de ganhos/perdas por janela (última coleta, 24h, 7 dias). Série em `profile_metrics` (migration 008), gravada por `agora.py::gravar_metricas_perfis` a cada run e também sob demanda com `python agora.py --seguidores` (grátis via Instagrapi; `--com-apify` libera o fallback pago). O painel se atualiza sozinho a cada minuto. **O Instagram publica só o TOTAL de seguidores, nunca quem entrou ou saiu** — a tela fala em *saldo líquido* de propósito; não prometer lista de quem deixou de seguir.
 - Rádio escuta (IA transcrevendo programa de rádio) é V2 — fora de escopo por ora.
 
 ### Critério de relevância (não afrouxar)
 
 - **A lista de `relevance_keywords` é do cliente. Nunca adicionar, remover ou "melhorar" as palavras cadastradas** — só o admin mexe nisso pela UI.
+- **Todo perfil cadastrado passa pelo filtro, inclusive os de governo** (revisão de 25/07). Antes a conta oficial da gestão era isenta ("a fonte já é o critério"), e por isso post de agenda cultural, festa junina e afins entrava na base e formava clima sem nenhuma relação com as palavras da tela Relevância. Decisão do cliente: **o clima só pode ser formado por conteúdo que se relacione com as palavras cadastradas, nada além disso.**
 - O filtro (`agora.py::_motivo_relevancia`) classifica as keywords cadastradas em **específicas** (contêm um token distintivo: `prefeito de alagoinhas`, `gustavo carmo`) e **genéricas** (só tokens que servem para qualquer município: `prefeito`, `prefeitura`, `gestao municipal`, `administracao`). Genérica só vale se o texto também citar uma **âncora do tenant** (`alagoinhas`/`gustavo`/`carmo`), derivada das próprias keywords específicas.
-- A âncora é exigida **apenas da imprensa** (cobre a região e publica sobre outras cidades). Oposição são políticos locais — quando escrevem "a gestão" é a daqui; exigir âncora deles descarta crítica legítima. Governo não passa por filtro: a fonte já é o critério.
+- A âncora é exigida **apenas da imprensa** (cobre a região e publica sobre outras cidades). Oposição são políticos locais — quando escrevem "a gestão" é a daqui; exigir âncora deles descarta crítica legítima. Governo também não precisa de âncora (a conta já é da gestão daqui), mas **precisa de alguma keyword cadastrada** no texto.
+- Efeito medido em 25/07 sobre a base real (231 posts, 9 keywords cadastradas): 116 passam e 115 são descartados; só 3 dos 29 posts de `@gustavoascarmo` sobrevivem, porque ele escreve em primeira pessoa e raramente usa as palavras da lista. **Se o cliente quiser recuperar esse volume, o caminho é cadastrar `alagoinhas` na tela Relevância** (mediu-se 188 passam / 43 fora nesse cenário) — a decisão é dele, tomada na UI dele; nunca adicionar a palavra por conta própria.
 - O match é por **substring** de propósito: `@prefeituraalagoinhas` e `@gustavoascarmo` vêm colados na menção e são o sinal mais forte de que o post é local. Trocar por match de palavra inteira já quebrou isso uma vez.
 - Antes de mexer nesse filtro, medir contra a base real com `python agora.py --teste-filtro` (mostra a classificação das keywords e o motivo de cada decisão). No Windows, rodar com `PYTHONIOENCODING=utf-8`.
 
@@ -73,7 +76,7 @@ Fora isso, resolva e implemente diretamente, sem pausar para aprovação passo a
 - SQL remoto (incluindo DDL) roda direto pelo CLI já logado nesta máquina, sem senha do banco:
   `supabase db query --linked --file supabase/migrations/00X_arquivo.sql`
   (projeto linkado com `supabase link --project-ref wtlhqyqxhuchzloodoyx --yes`; o link cria `supabase/.temp/`, que não deve ser commitado).
-- Migrations aplicadas até **007** (006 = histórico de envios manuais em `message_log`; 007 = Relevância/Fontes editáveis por qualquer usuário). Após DDL, o cache do PostgREST atualiza sozinho — validar com um insert/select de teste via REST, ou `select ... from pg_policies` quando a mudança for de RLS.
+- Migrations aplicadas até **008** (006 = histórico de envios manuais em `message_log`; 007 = Relevância/Fontes editáveis por qualquer usuário; 008 = série de seguidores em `profile_metrics`). Após DDL, o cache do PostgREST atualiza sozinho — validar com um insert/select de teste via REST, ou `select ... from pg_policies` quando a mudança for de RLS.
 
 ## Referências
 
