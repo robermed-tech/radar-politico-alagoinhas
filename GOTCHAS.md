@@ -38,6 +38,17 @@ Erros que já custaram ciclos de depuração no passado. Checar aqui antes de as
 - Para forçar reprocessamento ignorando a deduplicação: `python agora.py --reprocessar`.
 - Para testar o filtro de relevância isoladamente sem depender de posts novos: `python agora.py --teste-filtro`.
 
+## Frontend (radar-app) / dev local
+
+- **App renderiza em branco, sem erro no console** = falta o `radar-app/.env`. Os `.env` não são versionados, então **worktrees do Claude Code nascem sem eles** — copiar de `C:\Users\rober\radar-politico\radar-app\.env` (e o `.env` da raiz para rodar `agora.py`). Sintoma: `createClient("", "")` do Supabase quebra a montagem do React silenciosamente.
+- **`radar-app/dist` é versionado, mas o hash local nunca bate com o publicado**: o CI rebuilda com os secrets dele, gerando hashes próprios. Para confirmar que um deploy saiu, procure strings novas no bundle publicado (`curl` + `grep`), não compare hashes.
+- **ClimaPage é a landing e carrega eager, deliberadamente sem ECharts** (chunk de ~1 MB). Qualquer componente dela que use ECharts deve ser importado com `lazy()` (ver `GaugeTema` como exemplo) — import direto regride o primeiro paint.
+
+## Supabase
+
+- **Insert em `message_log` é best-effort silencioso** (`logMessageSend` engole erro). Se o "Histórico de Alertas" ficar vazio após envios, teste um insert via REST com a service key — coluna faltando (migration não aplicada) falha sem nenhum log no front.
+- DDL/migrations remotas: `supabase db query --linked` (fluxo completo no CLAUDE.md). PostgREST não executa DDL e o banco não expõe RPC de SQL genérico.
+
 ## Identificadores do projeto
 
 - Google Sheets ID: `1ERLkUh2IYL1UbQCgmDaKtZb5EybgjDnFVSFlEY3CeDw`
