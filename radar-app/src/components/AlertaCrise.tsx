@@ -174,7 +174,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
                 </div>
                 <div>
                   <div className="font-extrabold text-txt-1">Alerta de Crise</div>
-                  <div className="text-[11px] text-txt-3">Notificação imediata ao secretário responsável</div>
+                  <div className="text-[13px] text-txt-3">Notificação imediata ao secretário responsável</div>
                 </div>
               </div>
               <button
@@ -193,7 +193,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
               className="mt-4 rounded-xl p-3"
               style={{ background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.2)" }}
             >
-              <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#DC2626" }}>
+              <div className="text-[12px] font-bold uppercase tracking-widest" style={{ color: "#DC2626" }}>
                 Tema crítico detectado
               </div>
               <div className="mt-1 text-base font-extrabold capitalize text-txt-1">{tema}</div>
@@ -209,7 +209,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
             {/* Evidência concreta — o que a população realmente diz sobre o tema */}
             {evidencia && (
               <div className="mt-3 rounded-xl border border-line bg-bg-2 p-3">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-txt-3">
+                <div className="text-[12px] font-bold uppercase tracking-widest text-txt-3">
                   O que a população está dizendo
                   {evidencia.subtema && (
                     <span className="ml-1 normal-case text-txt-2">
@@ -220,7 +220,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
                 <p className="mt-1.5 text-sm italic leading-relaxed text-txt-1">
                   “{evidencia.citacao}”
                 </p>
-                <div className="mt-1 text-[11px] text-txt-3">
+                <div className="mt-1 text-[13px] text-txt-3">
                   {evidencia.total} comentário(s) negativo(s) sobre este tema
                 </div>
               </div>
@@ -243,7 +243,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
 
             {/* Contato */}
             <div className="mt-3">
-              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-txt-3">
+              <label className="mb-1 block text-[13px] font-semibold uppercase tracking-wide text-txt-3">
                 {canal === "email" ? "E-mail do(a) secretário(a)" : "WhatsApp com DDD"}
               </label>
               <input
@@ -258,12 +258,12 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
             {/* Mensagem */}
             <div className="mt-3">
               <div className="mb-1 flex items-center justify-between">
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-txt-3">
+                <label className="text-[13px] font-semibold uppercase tracking-wide text-txt-3">
                   Mensagem
                 </label>
                 <button
                   onClick={() => { setEditado(false); setMensagem(baseMsg); }}
-                  className="text-[10px] font-semibold text-brand hover:underline"
+                  className="text-[12px] font-semibold text-brand hover:underline"
                 >
                   ↺ Regenerar
                 </button>

@@ -62,7 +62,7 @@ export function AlertaConfig({
           className="w-full accent-current disabled:opacity-40"
           style={{ accentColor: cor }}
         />
-        <div className="flex justify-between text-[10px] text-txt-3">
+        <div className="flex justify-between text-[12px] text-txt-3">
           <span>{min}{unidade}</span>
           <span>{max}{unidade}</span>
         </div>

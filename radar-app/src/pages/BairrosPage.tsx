@@ -52,13 +52,13 @@ export function BairrosPage() {
       xAxis: {
         type: "value",
         splitLine: { lineStyle: { color: ink.grid } },
-        axisLabel: { color: ink.axis, fontSize: 10 },
+        axisLabel: { color: ink.axis, fontSize: 12 },
       },
       yAxis: {
         type: "category",
         data: top.map((b) => b.localidade),
         axisLine: { lineStyle: { color: ink.axisLine } },
-        axisLabel: { color: ink.axis, fontSize: 11 },
+        axisLabel: { color: ink.axis, fontSize: 12 },
       },
       series: [
         {

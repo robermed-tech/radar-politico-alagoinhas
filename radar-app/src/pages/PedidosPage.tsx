@@ -130,7 +130,7 @@ export function PedidosPage() {
                       <span className="tnum">{p.curtidas}</span>
                     </span>
                   </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[13px]">
                     <span
                       className="rounded px-1.5 py-0.5 font-semibold"
                       style={{ background: `${cor}24`, color: cor, border: `1px solid ${cor}3d` }}

@@ -6,71 +6,85 @@ import { fmtInt } from "@/lib/format";
 interface Props {
   label: string;
   /** Comentários negativos e positivos do tema — o neutro fica de fora do
-   * ponteiro por decisão de produto (reunião 24/07): o velocímetro mede a
-   * proporção de negativos sobre (positivos + negativos). */
+   * ponteiro por decisão de produto (reuniões 24-25/07): o velocímetro mede a
+   * proporção de POSITIVOS sobre (positivos + negativos). */
   neg: number;
   pos: number;
 }
 
+const SEGMENTOS = 14;
+
+/** Cor do degradê vermelho→verde na posição t (0 = vermelho, 1 = verde). */
+function corEscala(t: number): string {
+  return `hsl(${Math.round(t * 130)}, 78%, 46%)`;
+}
+
 /**
- * Velocímetro por tema — substitui as barras empilhadas do volume por tema.
- * Arco moderno (não meia-lua fechada), ponteiro animado do verde ao vermelho
- * conforme a % de negatividade; acima de 70% o card pulsa como alerta.
+ * Velocímetro segmentado por tema — modelo da referência da revisão de 25/07:
+ * arco em segmentos discretos, escala do vermelho (0%) ao verde (100%) em
+ * degradê, agulha escura e percentual grande. Mede a % de comentários
+ * POSITIVOS entre os que tomam partido; segmentos além do valor ficam apagados.
+ * Abaixo de 30% de positivos (com amostra mínima) o card pulsa como alerta.
  */
 export function GaugeTema({ label, neg, pos }: Props) {
   const theme = useThemeStore((s) => s.theme);
   const ink = chartInk(theme);
   const total = neg + pos;
-  const valor = total > 0 ? Math.round((neg / total) * 100) : 0;
-  const critico = total >= 5 && valor >= 70;
+  const valor = total > 0 ? Math.round((pos / total) * 100) : 0;
+  const critico = total >= 5 && valor <= 30;
+  const corValor = corEscala(valor / 100);
 
-  const corPonteiro = valor >= 70 ? "#EF4444" : valor >= 45 ? "#F97316" : "#22C55E";
+  // Segmentos discretos via paradas do axisLine: cada segmento colorido pelo
+  // degradê na sua posição (aceso até o valor; apagado depois), com um vão
+  // estreito entre segmentos para o efeito "tacômetro" da referência.
+  const GAP = 0.18; // fração de cada segmento reservada ao vão
+  const stops: [number, string][] = [];
+  for (let i = 0; i < SEGMENTOS; i++) {
+    const centro = ((i + 0.5) / SEGMENTOS) * 100;
+    const aceso = centro <= valor && valor > 0;
+    const cor = aceso ? corEscala(centro / 100) : ink.track;
+    stops.push([(i + 1 - GAP) / SEGMENTOS, cor]);
+    if (i < SEGMENTOS - 1) stops.push([(i + 1) / SEGMENTOS, "rgba(0,0,0,0)"]);
+  }
+  stops.push([1, "rgba(0,0,0,0)"]);
 
   const option = {
     series: [
       {
         type: "gauge",
-        startAngle: 210,
-        endAngle: -30,
+        startAngle: 205,
+        endAngle: -25,
         min: 0,
         max: 100,
-        axisLine: {
-          lineStyle: {
-            width: 9,
-            color: [
-              [0.45, "#22C55E"],
-              [0.7, "#F97316"],
-              [1, "#EF4444"],
-            ],
-          },
-        },
+        axisLine: { lineStyle: { width: 13, color: stops } },
         pointer: {
           show: true,
-          length: "58%",
-          width: 4,
-          itemStyle: { color: corPonteiro },
+          icon: "path://M2,0 L-2,0 L-1,-58 L1,-58 Z",
+          length: "62%",
+          width: 5,
+          itemStyle: { color: ink.detail },
         },
         anchor: {
           show: true,
-          size: 8,
-          itemStyle: { color: corPonteiro, borderColor: ink.track, borderWidth: 2 },
+          size: 9,
+          itemStyle: { color: ink.detail },
         },
         axisTick: { show: false },
         splitLine: { show: false },
         axisLabel: { show: false },
         detail: {
           valueAnimation: true,
-          fontSize: 22,
-          fontWeight: 400,
+          fontSize: 24,
+          fontWeight: 700,
           fontFamily: "JetBrains Mono, monospace",
-          color: ink.detail,
+          color: corValor,
           offsetCenter: [0, "82%"],
           formatter: (v: number) => `${Math.round(v)}%`,
         },
         title: { show: false },
         data: [{ value: valor }],
         animationDuration: 1200,
-        animationEasing: "elasticOut",
+        animationEasing: "cubicOut",
       },
     ],
   };
@@ -93,11 +107,11 @@ export function GaugeTema({ label, neg, pos }: Props) {
           [style*="gauge-alerta"] { animation: none !important; }
         }
       `}</style>
-      <div className="truncate px-1 text-[12px] font-bold text-txt-1" title={label}>
+      <div className="truncate px-1 text-[14px] font-bold text-txt-1" title={label}>
         {label}
       </div>
-      <ReactECharts option={option} style={{ height: 110 }} notMerge lazyUpdate />
-      <div className="flex items-center justify-center gap-3 text-[11px]">
+      <ReactECharts option={option} style={{ height: 118 }} notMerge lazyUpdate />
+      <div className="flex items-center justify-center gap-3 text-[13px]">
         <span className="tnum font-semibold" style={{ color: "#EF4444" }}>{fmtInt(neg)} neg</span>
         <span className="tnum font-semibold" style={{ color: "#22C55E" }}>{fmtInt(pos)} pos</span>
       </div>

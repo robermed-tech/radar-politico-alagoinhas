@@ -67,7 +67,7 @@ export function RadarStatusBar() {
           style={{ background: cor, boxShadow: `0 0 6px ${cor}` }}
         />
       </div>
-      <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[12px] text-txt-2">
+      <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[13px] text-txt-2">
         <span>
           <b className="tnum text-txt-1">{fmtInt(kpis.fontesAtivas)}</b> fonte{kpis.fontesAtivas === 1 ? "" : "s"} monitorada{kpis.fontesAtivas === 1 ? "" : "s"}
         </span>

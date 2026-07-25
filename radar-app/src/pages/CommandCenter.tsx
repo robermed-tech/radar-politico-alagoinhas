@@ -108,7 +108,7 @@ function TemasRisco({ temas }: { temas: { tema: string; pNeg: number }[] }) {
           <div key={t.tema} className="flex flex-col items-center gap-1.5 text-center">
             <span className="text-3xl font-extrabold capitalize text-txt-1">{t.tema}</span>
             <span
-              className="rounded px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest"
+              className="rounded px-2.5 py-0.5 text-[13px] font-bold uppercase tracking-widest"
               style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}44` }}
             >
               {label}
@@ -125,12 +125,12 @@ function toDeltaProp(v: number): { v: number; dir: "up" | "down" | "flat" } {
 }
 
 function DeltaLine({ value, invert = false }: { value: number; invert?: boolean }) {
-  if (value === 0) return <span className="mt-1 text-[10px] text-txt-3">= igual ao período ant.</span>;
+  if (value === 0) return <span className="mt-1 text-[12px] text-txt-3">= igual ao período ant.</span>;
   const isGood = invert ? value < 0 : value > 0;
   const color = isGood ? "#22c55e" : "#ef4444";
   const sign = value > 0 ? "+" : "";
   return (
-    <span className="mt-1 text-[10px] font-semibold" style={{ color }}>
+    <span className="mt-1 text-[12px] font-semibold" style={{ color }}>
       {value > 0 ? "↑" : "↓"} {sign}{value} pp vs período ant.
     </span>
   );
@@ -293,7 +293,7 @@ export function CommandCenter() {
             <div>{new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</div>
           </div>
         </div>
-        <div className="mt-2 text-[10px] text-txt-3">
+        <div className="mt-2 text-[12px] text-txt-3">
           Gerado pelo Radar Político · Não substitui pesquisa eleitoral
         </div>
       </div>
@@ -305,7 +305,7 @@ export function CommandCenter() {
           <p className="text-sm text-txt-2">
             Alagoinhas/BA · inteligência política
             <span
-              className="print-hide ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+              className="print-hide ml-2 rounded px-1.5 py-0.5 text-[12px] font-bold uppercase"
               style={{
                 background: data?.source === "supabase" ? "#14532d" : "#1A2233",
                 color: data?.source === "supabase" ? "#22C55E" : "#9FB0CC",
@@ -361,7 +361,7 @@ export function CommandCenter() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* IAD sem gauge — número grande + contagem absoluta */}
         <div className="flex flex-col items-center justify-center rounded-xl border border-line bg-bg-1 p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">
+          <div className="text-[12px] font-semibold uppercase tracking-wider text-txt-3">
             Aprovação Digital
           </div>
           <div
@@ -371,7 +371,7 @@ export function CommandCenter() {
             {ind.iad}%
           </div>
           {delta !== null && <DeltaLine value={delta.iad} />}
-          <div className="mt-2 text-center text-[10px] leading-snug text-txt-3">
+          <div className="mt-2 text-center text-[12px] leading-snug text-txt-3">
             <span style={{ color: COLOR_SENTIMENT.pos }}>{fmtInt(view.totalPosComents)} pos</span>
             {" · "}
             <span style={{ color: COLOR_SENTIMENT.neg }}>{fmtInt(view.totalNegComents)} neg</span>
@@ -382,7 +382,7 @@ export function CommandCenter() {
 
         {/* Temas em Atenção — texto grande centralizado */}
         <div className="flex min-h-[160px] flex-col rounded-xl border border-line bg-bg-1 p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-3">
+          <div className="text-[12px] font-semibold uppercase tracking-wider text-txt-3">
             Temas em Atenção
           </div>
           <TemasRisco temas={view.temasRisco} />

@@ -82,8 +82,8 @@ function TermometroTemas({ allPosts, dias }: { allPosts: Post[]; dias: number })
     <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="section-label">Termômetro por tema</div>
-        <div className="text-[11px] text-txt-3">
-          % de comentários negativos entre os que tomam partido (neutros fora do ponteiro)
+        <div className="text-[13px] text-txt-3">
+          % de comentários positivos entre os que tomam partido (neutros fora do ponteiro)
         </div>
       </div>
       <Suspense fallback={<div className="mt-4 text-sm text-txt-3">Carregando termômetro…</div>}>
@@ -102,13 +102,6 @@ const PERIODOS = [
   { dias: 7, label: "7 dias" },
   { dias: 30, label: "30 dias" },
 ];
-
-function forcaAmostra(comentarios: number): { label: string; nivel: number } {
-  if (comentarios >= 300) return { label: "Amostra forte", nivel: 3 };
-  if (comentarios >= 100) return { label: "Boa amostra", nivel: 2 };
-  if (comentarios >= 30) return { label: "Amostra inicial", nivel: 1 };
-  return { label: "Amostra pequena", nivel: 0 };
-}
 
 function scoreParaNivel(score: number): NivelCrise {
   if (score >= 75) return "critico";
@@ -210,22 +203,6 @@ function WeatherIcon({ cls, size = 64, color = "currentColor", strokeWidth = 1.5
   }
 }
 
-// Ícones minimalistas inline (linha) usados nos chips do hero.
-function IconPosts({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-      <line x1="5" y1="20" x2="5" y2="13" /><line x1="12" y1="20" x2="12" y2="7" /><line x1="19" y1="20" x2="19" y2="10" />
-    </svg>
-  );
-}
-function IconVozes({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
-
 /**
  * Resumo principal do porquê do clima. Decisão da reunião de 24/07: a etiqueta
  * de nível ("BAIXO") sai — dava a impressão de bug por não mudar — e o título
@@ -244,7 +221,7 @@ function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number 
         </span>
         <span className="text-xs text-txt-3">{briefing.dia}</span>
       </div>
-      <p className="text-[15px] font-semibold leading-relaxed text-txt-1">
+      <p className="text-[16px] font-semibold leading-relaxed text-txt-1">
         {limparTravessoes(briefing.diagnostico)}
       </p>
     </div>
@@ -298,7 +275,7 @@ function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]
               </span>
               <span className="min-w-0 flex-1 font-semibold text-txt-1">{tema}</span>
               {cont && (cont.neg > 0 || cont.pos > 0) && (
-                <span className="tnum flex shrink-0 items-center gap-2 text-[11px] font-bold">
+                <span className="tnum flex shrink-0 items-center gap-2 text-[13px] font-bold">
                   <span style={{ color: "#EF4444" }}>{cont.neg} neg</span>
                   <span style={{ color: "#22C55E" }}>{cont.pos} pos</span>
                 </span>
@@ -489,7 +466,6 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
   const txt1 = "#FFFFFF";
   const txt2 = "rgba(255,255,255,0.86)";
   const heroBg = `linear-gradient(105deg, rgba(8,11,18,0.72) 0%, rgba(8,11,18,0.32) 50%, rgba(8,11,18,0.58) 100%), url("${wx.image}") center/cover no-repeat, ${wx.bg}`;
-  const amostra = forcaAmostra(view.comentarios);
 
   return (
     <div className="space-y-4 p-5">
@@ -547,11 +523,11 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
 
           <div className="relative z-10 flex h-full flex-col">
             <div className="flex items-start justify-between gap-2">
-              <div className="text-[13px] font-bold tracking-[0.08em]" style={{ color: txt2 }}>
+              <div className="text-[14px] font-bold tracking-[0.08em]" style={{ color: txt2 }}>
                 Como a população vê a gestão
               </div>
               <span
-                className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold opacity-80 transition group-hover:opacity-100"
+                className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[13px] font-bold opacity-80 transition group-hover:opacity-100"
                 style={{ background: "rgba(255,255,255,0.16)", color: "#FFFFFF", backdropFilter: "blur(6px)" }}
               >
                 Ver o que o povo diz
@@ -581,23 +557,10 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
               </div>
             </div>
 
+            {/* Revisão de 25/07: os chips de contagem saíram deste card — os
+                números vivem só no box de engajamento ao lado. */}
             <div className="mt-5 max-w-xl text-lg font-semibold leading-snug" style={{ color: txt1 }}>
               {wx.sub}
-            </div>
-
-            <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold"
-                style={{ background: "rgba(255,255,255,0.16)", color: "#FFFFFF", backdropFilter: "blur(6px)" }}
-              >
-                <IconPosts /> {fmtInt(view.posts)} publicações analisadas
-              </span>
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold"
-                style={{ background: "rgba(255,255,255,0.16)", color: "#FFFFFF", backdropFilter: "blur(6px)" }}
-              >
-                <IconVozes /> {fmtInt(view.comentarios)} comentários analisados
-              </span>
             </div>
           </div>
         </div>
@@ -624,11 +587,11 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           />
           <div className="relative z-10 flex h-full flex-col" style={{ color: "#1A0F02" }}>
             <div className="flex items-start justify-between gap-2">
-              <div className="text-[13px] font-bold tracking-[0.08em]" style={{ color: "rgba(26,15,2,0.75)" }}>
+              <div className="text-[14px] font-bold tracking-[0.08em]" style={{ color: "rgba(26,15,2,0.75)" }}>
                 Engajamento no período
               </div>
               <span
-                className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold text-white opacity-90 transition group-hover:opacity-100"
+                className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[13px] font-bold text-white opacity-90 transition group-hover:opacity-100"
                 style={{ background: CHUMBO_ESCURO }}
               >
                 Ver publicações
@@ -637,22 +600,8 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                 </svg>
               </span>
             </div>
-            <p className="mt-2 max-w-[24ch] text-base font-semibold leading-snug" style={{ color: "rgba(26,15,2,0.85)" }}>
-              Quanto mais comentários analisados, mais confiável é a leitura do clima.
-            </p>
-
-            <div
-              className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold text-white"
-              style={{ background: CHUMBO }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-                <line x1="6" y1="20" x2="6" y2="15" />
-                <line x1="12" y1="20" x2="12" y2={amostra.nivel >= 2 ? "9" : "13"} style={{ opacity: amostra.nivel >= 1 ? 1 : 0.3 }} />
-                <line x1="18" y1="20" x2="18" y2="5" style={{ opacity: amostra.nivel >= 3 ? 1 : 0.3 }} />
-              </svg>
-              {amostra.label}
-            </div>
-
+            {/* Revisão de 25/07: o texto explicativo e a etiqueta de amostra
+                saíram — o box fica só com o número e a ação. */}
             <div className="mt-auto pt-6">
               <div className="flex items-end gap-1">
                 <span className="tnum text-[68px] leading-[0.85] tracking-tight" style={{ fontWeight: 300, color: "#1A0F02" }}>

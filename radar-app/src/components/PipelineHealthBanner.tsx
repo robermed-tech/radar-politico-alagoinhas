@@ -63,7 +63,7 @@ export function PipelineHealthBanner({ health }: { health: PipelineHealth | null
         <div className="text-sm font-bold" style={{ color: cor }}>{titulo}</div>
         <div className="text-xs text-txt-2">{detalhe}</div>
       </div>
-      <div className="shrink-0 text-[11px] text-txt-3">
+      <div className="shrink-0 text-[13px] text-txt-3">
         Última execução: {fmtQuando(health.executado_em)}
       </div>
     </div>

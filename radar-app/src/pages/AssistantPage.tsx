@@ -6,7 +6,7 @@ import { NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
 function Tag({ children, color }: { children: ReactNode; color: string }) {
   return (
     <span
-      className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+      className="rounded px-1.5 py-0.5 text-[12px] font-bold uppercase"
       style={{ background: `${color}1A`, color }}
     >
       {children}
@@ -64,7 +64,7 @@ export function AssistantPage() {
         <div className="mb-2 text-xs font-bold uppercase tracking-wide text-brand-2">
           Diagnóstico
         </div>
-        <p className="text-[15px] leading-relaxed text-txt-1">{b.diagnostico}</p>
+        <p className="text-[16px] leading-relaxed text-txt-1">{b.diagnostico}</p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -141,7 +141,7 @@ export function AssistantPage() {
         </div>
       </div>
 
-      <div className="text-[11px] text-txt-3">
+      <div className="text-[13px] text-txt-3">
         Gerado por IA a partir dos dados do dia · {new Date(b.gerado_em).toLocaleString("pt-BR")}
       </div>
     </div>

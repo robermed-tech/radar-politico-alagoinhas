@@ -36,7 +36,7 @@ function BadgeCanal({ canal }: { canal: string }) {
   const cor = CANAL_COR[canal] ?? "#64748B";
   return (
     <span
-      className="inline-block rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+      className="inline-block rounded-md px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide"
       style={{ background: `${cor}1A`, color: cor, border: `1px solid ${cor}44` }}
     >
       {CANAL_LABEL[canal] ?? canal}
@@ -65,7 +65,7 @@ function LinhaEnvio({ e }: { e: EnvioManual }) {
         <span className="tnum text-xs text-txt-3">{fmtDt(e.created_at)}</span>
         <BadgeCanal canal={e.channel} />
         {e.tema && (
-          <span className="rounded bg-bg-1 px-2 py-0.5 text-[11px] font-bold capitalize text-txt-1">
+          <span className="rounded bg-bg-1 px-2 py-0.5 text-[13px] font-bold capitalize text-txt-1">
             {e.tema}
           </span>
         )}
@@ -76,7 +76,7 @@ function LinhaEnvio({ e }: { e: EnvioManual }) {
         {e.mensagem && (
           <button
             onClick={() => setAberto((v) => !v)}
-            className="ml-auto shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold text-white transition hover:opacity-90"
+            className="ml-auto shrink-0 rounded-lg px-2.5 py-1 text-[13px] font-bold text-white transition hover:opacity-90"
             style={{ background: "#334155" }}
           >
             {aberto ? "Ocultar mensagem" : "Ver mensagem"}

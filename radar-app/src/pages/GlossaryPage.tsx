@@ -108,7 +108,7 @@ function Card({ s }: { s: Secao }) {
         </span>
         <h3 className="text-lg font-extrabold text-txt-1">{s.titulo}</h3>
       </div>
-      <div className="space-y-2.5 text-[14px] leading-relaxed">
+      <div className="space-y-2.5 text-[15px] leading-relaxed">
         <p className="text-txt-2">
           <span className="font-bold text-txt-1">O que é: </span>
           {s.oque}
@@ -140,7 +140,7 @@ export function GlossaryPage() {
       {/* Como ler a plataforma */}
       <div className="card-hover rounded-2xl border border-line bg-bg-1 p-5">
         <h2 className="text-base font-extrabold text-txt-1">Como a plataforma funciona (em 1 minuto)</h2>
-        <p className="mt-2 text-[14px] leading-relaxed text-txt-2">
+        <p className="mt-2 text-[15px] leading-relaxed text-txt-2">
           A cada poucas horas, um robô (o <b>AGORA</b>) coleta os posts e comentários das redes sobre o
           prefeito e a gestão. Uma <b>IA</b> lê cada comentário e classifica o sentimento <i>sob a ótica do
           prefeito</i> (apoio a opositor = negativo). Esses dados viram <b>índices</b> e <b>alertas</b> que
@@ -172,8 +172,8 @@ export function GlossaryPage() {
                 <span className="text-xl font-extrabold" style={{ color: "#38BDF8" }}>{i.sigla}</span>
                 <span className="text-sm font-semibold text-txt-2">{i.nome}</span>
               </div>
-              <p className="mt-2 text-[14px] leading-relaxed text-txt-2">{i.oque}</p>
-              <div className="mt-2 text-[12px] text-txt-3">
+              <p className="mt-2 text-[15px] leading-relaxed text-txt-2">{i.oque}</p>
+              <div className="mt-2 text-[13px] text-txt-3">
                 <span className="font-bold">Escala: </span>{i.escala}
               </div>
             </div>
@@ -184,10 +184,10 @@ export function GlossaryPage() {
       {/* Escala de clima */}
       <div className="card-hover rounded-2xl border border-line bg-bg-1 p-5">
         <h2 className="text-base font-extrabold text-txt-1">A metáfora do clima</h2>
-        <p className="mt-1 text-[13px] text-txt-2">
+        <p className="mt-1 text-[14px] text-txt-2">
           A aprovação (IAD) vira uma condição de clima — fácil de entender num olhar:
         </p>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-[13px] text-txt-2 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-2 gap-2 text-[14px] text-txt-2 sm:grid-cols-3">
           <div>☀️ <b className="text-txt-1">Céu Aberto</b> · 75-100 · ótimo</div>
           <div>⛅ <b className="text-txt-1">Parc. Nublado</b> · 60-74 · bom</div>
           <div>☁️ <b className="text-txt-1">Nublado</b> · 45-59 · dividido</div>
@@ -197,7 +197,7 @@ export function GlossaryPage() {
         </div>
       </div>
 
-      <div className="pb-4 text-center text-[11px] text-txt-3">
+      <div className="pb-4 text-center text-[13px] text-txt-3">
         Radar Político · inteligência para decisões — não substitui o julgamento humano, o potencializa.
       </div>
     </div>

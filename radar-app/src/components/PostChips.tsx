@@ -18,7 +18,7 @@ function chipStyle(cor: string) {
 }
 
 const CHIP =
-  "rounded-md px-1.5 py-0.5 text-[10px] font-medium tracking-wide capitalize";
+  "rounded-md px-1.5 py-0.5 text-[12px] font-medium tracking-wide capitalize";
 
 const SENT_COR: Record<string, string> = {
   positivo: "#22C55E",
