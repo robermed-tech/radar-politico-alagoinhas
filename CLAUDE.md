@@ -18,7 +18,8 @@ Vieram das reuniões com o cliente (PRs #37, #40 e #41). Valem como estado atual
 ### Comportamento
 
 - **Alertas são só manuais.** O disparo automático de WhatsApp pelo agente está desligado por padrão (`agora.py::_auto_dispatch_ativo`; religa via `tenant_settings.notification_config.auto_dispatch_whatsapp = true`). A detecção e o laço IRT continuam rodando; o envio ao secretário é feito pelo card "Alertar Secretário" do dashboard e fica registrado em `message_log` (colunas `tema`/`mensagem`/`sent_by_nome`, migration 006), que alimenta a página "Histórico de Alertas".
-- No admin, o cadastro de fontes é unificado na aba **Fontes** (Instagram → `monitored_sources`, pipeline atual; YouTube → `sources`, nasce pausada). Não recriar as abas "Fontes (coleta)" e "Notificações" — foram removidas de propósito.
+- **Relevância e Fontes são páginas da barra lateral, abertas a qualquer usuário** (não voltar para dentro da Configuração). O cadastro de fontes é unificado numa tela só: Instagram → `monitored_sources` (pipeline atual); YouTube → `sources` (nasce pausada). Não recriar as abas "Fontes (coleta)" e "Notificações" — foram removidas de propósito.
+- Quem pode escrever o quê (migration 007): `relevance_keywords`, `monitored_sources` e `sources` aceitam qualquer autenticado do tenant. **Continuam admin-only**: `tenant_settings` (pesos de score e limiares de clima), `secretaries` e `profiles` — os limiares de clima ficam restritos para o cliente não maquiar os próprios números. Ao mover qualquer tela de config para fora do admin, lembrar que **só mudar a UI não basta**: sem ajustar a policy, a escrita falha silenciosamente no RLS.
 - A seção **Narrativas** foi removida da UI (sidebar + página). O backend continua gerando os dados; não reintroduzir a tela sem pedido.
 - **Influenciadores** não é mais item de menu — o conteúdo vive dentro de "Análise por Perfil".
 - Rádio escuta (IA transcrevendo programa de rádio) é V2 — fora de escopo por ora.
@@ -72,7 +73,7 @@ Fora isso, resolva e implemente diretamente, sem pausar para aprovação passo a
 - SQL remoto (incluindo DDL) roda direto pelo CLI já logado nesta máquina, sem senha do banco:
   `supabase db query --linked --file supabase/migrations/00X_arquivo.sql`
   (projeto linkado com `supabase link --project-ref wtlhqyqxhuchzloodoyx --yes`; o link cria `supabase/.temp/`, que não deve ser commitado).
-- Migrations aplicadas até 006 (histórico de envios manuais em `message_log`). Após DDL, o cache do PostgREST atualiza sozinho — validar com um insert/select de teste via REST.
+- Migrations aplicadas até **007** (006 = histórico de envios manuais em `message_log`; 007 = Relevância/Fontes editáveis por qualquer usuário). Após DDL, o cache do PostgREST atualiza sozinho — validar com um insert/select de teste via REST, ou `select ... from pg_policies` quando a mudança for de RLS.
 
 ## Referências
 
