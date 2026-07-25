@@ -23,10 +23,19 @@ Vieram das reuniões com o cliente (PRs #37, #40 e #41). Valem como estado atual
 - **Influenciadores** não é mais item de menu — o conteúdo vive dentro de "Análise por Perfil".
 - Rádio escuta (IA transcrevendo programa de rádio) é V2 — fora de escopo por ora.
 
+### Critério de relevância (não afrouxar)
+
+- **A lista de `relevance_keywords` é do cliente. Nunca adicionar, remover ou "melhorar" as palavras cadastradas** — só o admin mexe nisso pela UI.
+- O filtro (`agora.py::_motivo_relevancia`) classifica as keywords cadastradas em **específicas** (contêm um token distintivo: `prefeito de alagoinhas`, `gustavo carmo`) e **genéricas** (só tokens que servem para qualquer município: `prefeito`, `prefeitura`, `gestao municipal`, `administracao`). Genérica só vale se o texto também citar uma **âncora do tenant** (`alagoinhas`/`gustavo`/`carmo`), derivada das próprias keywords específicas.
+- A âncora é exigida **apenas da imprensa** (cobre a região e publica sobre outras cidades). Oposição são políticos locais — quando escrevem "a gestão" é a daqui; exigir âncora deles descarta crítica legítima. Governo não passa por filtro: a fonte já é o critério.
+- O match é por **substring** de propósito: `@prefeituraalagoinhas` e `@gustavoascarmo` vêm colados na menção e são o sinal mais forte de que o post é local. Trocar por match de palavra inteira já quebrou isso uma vez.
+- Antes de mexer nesse filtro, medir contra a base real com `python agora.py --teste-filtro` (mostra a classificação das keywords e o motivo de cada decisão). No Windows, rodar com `PYTHONIOENCODING=utf-8`.
+
 ### Texto
 
 - **Nunca usar travessão (—) em texto gerado ou exibido.** Os prompts do `agora.py` proíbem na origem; `limparTravessoes()` (radar-app/src/lib/format.ts) limpa textos antigos na exibição. Vale também para textos novos de UI.
 - **Vocabulário**: "comentários analisados" (não "vozes ouvidas"); "estabilizar/estabilizado" (não "recuperar/recuperado"); "Sugestões genéricas a serem avaliadas por especialista" (nunca "o que deveria ter sido feito" — a plataforma sugere, não prescreve).
+- **Sentence case, não Title Case**: usar a classe `.frase-cap` (index.css), nunca o `capitalize` do Tailwind — ele deixava "Instagram E Facebook Da Prefeitura", com preposição maiúscula no meio da frase.
 
 ### Visual
 
@@ -36,6 +45,7 @@ Vieram das reuniões com o cliente (PRs #37, #40 e #41). Valem como estado atual
 - **Estação Meteorológica** (landing): número do clima em destaque grande (90px, 126px no desktop); o card principal não leva chips de contagem; o box laranja de engajamento tem número + selo de qualidade da amostra + ação "Ver publicações"; a barra do radar de coleta fica no topo da página.
 - **Previsões**: a linha do tempo não usa balões/pins (o tema do dia vive no tooltip); o status "Estabilizado" é **amarelo**, não verde.
 - O modal de publicações mostra uma **introdução da legenda** de cada post (`posts.caption`, com fallback em `resumo`) para localizar a publicação sem abrir o Instagram.
+- O feed **não** exibe a camada SCCT (cluster de crise, nível de responsabilização, resposta recomendada) nem o chip "Urgente" — o backend continua calculando, mas isso não vai para a leitura dos posts.
 
 ## Protocolo de depuração autônoma
 
