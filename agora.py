@@ -493,6 +493,43 @@ def _classificar_keywords(keywords: tuple):
     return tuple(especificas), tuple(genericas), frozenset(ancoras)
 
 
+@lru_cache(maxsize=8)
+def _ancoras_de_perfis(handles: tuple):
+    """Handles dos perfis POLITICOS locais cadastrados pelo cliente na tela
+    Fontes — governo e oposicao — usados como ancora do municipio.
+
+    Por que isso e ancora legitima: sao as pessoas que ocupam ou disputam o
+    poder AQUI. Uma materia que cita @gleysersoares ou @jaldicenunes esta
+    falando de politica de Alagoinhas, mesmo sem escrever o nome da cidade —
+    e um veiculo local raramente escreve, porque para ele isso e obvio. Foi
+    esse o falso positivo que quase apagou a materia sobre os motoristas da
+    COOMAP na limpeza de 25/07.
+
+    Perfis de IMPRENSA ficam de fora de proposito: o nome de um veiculo nao
+    diz de que cidade e o fato narrado. @seligaalagoinhas publica sobre
+    Cardeal da Silva e Jequie, e foi justamente por isso que a ancora passou
+    a ser exigida da imprensa.
+
+    Nada e inventado aqui: a lista sai de monitored_sources, cadastrada pelo
+    cliente na tela Fontes, do mesmo jeito que as ancoras de texto saem das
+    keywords cadastradas na tela Relevancia.
+    """
+    # Handle curto casaria dentro de qualquer palavra (o match e por
+    # substring): exige >= 6 caracteres para nao criar falso positivo novo.
+    return frozenset(h for h in handles if len(h) >= 6)
+
+
+def _ancoras_ativas(ancoras_keywords):
+    """Uniao das ancoras de texto (derivadas das keywords) com os handles
+    politicos cadastrados. Recalculada a cada chamada porque PERFIS e
+    recarregado por tenant (ver _carregar_config_tenant)."""
+    handles = tuple(sorted(
+        h for h, info in PERFIS.items()
+        if (info.get("filtro") or "") in ("governo", "oposicao")
+    ))
+    return ancoras_keywords | _ancoras_de_perfis(handles)
+
+
 def _motivo_relevancia(caption, categoria_filtro):
     """Igual a filtrar_relevante, mas devolve (passou, motivo) — usado pelo
     --teste-filtro e pelos logs de depuracao."""
@@ -524,16 +561,21 @@ def _motivo_relevancia(caption, categoria_filtro):
     if categoria_filtro != "imprensa":
         return True, f"keyword '{achou_gen}' (perfil politico local)"
 
+    # Ancoras = tokens das keywords especificas + handles dos perfis politicos
+    # cadastrados na tela Fontes (ver _ancoras_de_perfis).
+    ancoras = _ancoras_ativas(ancoras)
     if not ancoras:
-        # Nenhuma keyword especifica cadastrada: sem ancora para exigir,
-        # mantem o comportamento antigo em vez de descartar tudo.
+        # Nenhuma keyword especifica cadastrada e nenhum perfil politico: sem
+        # ancora para exigir, mantem o comportamento antigo em vez de descartar
+        # tudo.
         return True, f"keyword '{achou_gen}' (tenant sem keyword especifica cadastrada)"
 
     achou_anc = next((a for a in sorted(ancoras) if _contem_termo(caption, a)), None)
     if achou_anc:
         return True, f"keyword generica '{achou_gen}' + ancora '{achou_anc}'"
     return False, (f"imprensa: keyword generica '{achou_gen}' sem ancora do municipio "
-                   f"({'/'.join(sorted(ancoras))}) — noticia de outra cidade")
+                   "(nem palavra do tenant, nem perfil politico cadastrado) "
+                   "— noticia de outra cidade")
 
 
 def filtrar_relevante(caption, categoria_filtro):
@@ -556,6 +598,14 @@ def filtrar_relevante(caption, categoria_filtro):
     nada alem disso. Para governo a ancora do municipio nao e exigida (a conta
     ja e da gestao daqui); exige-se apenas que alguma keyword cadastrada
     apareca no texto.
+
+    Revisao de 25/07 (c): os handles dos perfis POLITICOS cadastrados na tela
+    Fontes (governo e oposicao) tambem valem como ancora para a imprensa. Um
+    veiculo local nao repete o nome da cidade — para ele isso e obvio — mas
+    cita os politicos daqui. Sem isso, materia sobre cobranca a gestao que
+    marcava @gleysersoares e @jaldicenunes era descartada como "noticia de
+    outra cidade". Handles de IMPRENSA nao entram: o nome do veiculo nao diz
+    de que cidade e o fato narrado. Ver _ancoras_de_perfis.
     """
     passou, _ = _motivo_relevancia(caption, categoria_filtro)
     return passou
@@ -4587,10 +4637,12 @@ def teste_filtro(limite=5, detalhar=True):
     # (Antes esta funcao lia `_keywords_banco`, que e local de
     # _carregar_config_tenant — a flag quebrava com NameError.)
     esp, gen, ancoras = _classificar_keywords(tuple(KEYWORDS_IMPRENSA))
+    todas = _ancoras_ativas(ancoras)
     print(f"[keywords] {len(KEYWORDS_IMPRENSA)} cadastradas na tela Relevância")
     print(f"  especificas (valem sozinhas) : {list(esp)}")
     print(f"  genericas (exigem ancora)    : {list(gen)}")
-    print(f"  ancoras derivadas do tenant  : {sorted(ancoras)}")
+    print(f"  ancoras das keywords         : {sorted(ancoras)}")
+    print(f"  ancoras dos perfis (Fontes)  : {sorted(todas - ancoras)}")
 
     n = 5000 if not limite else limite
     print(f"\n[teste-filtro] Buscando até {n} posts do Supabase…")
