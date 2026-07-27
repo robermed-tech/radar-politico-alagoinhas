@@ -86,19 +86,47 @@ def _normalizar_faixas(faixas) -> list:
 
 
 def _classificar(risco: float, faixas=None) -> tuple[str, Optional[str]]:
+    """Classifica pelo LIMITE INFERIOR da faixa, nunca por intervalo fechado.
+
+    As faixas são escritas como (0, 39.9), (40, 59.9), (60, 79.9), (80, 100),
+    e entre elas existem BURACOS: 39.9 a 40, 59.9 a 60, 79.9 a 80. Um valor
+    caindo num buraco não casava com nenhuma faixa e escorria para o fallback,
+    que devolvia "tempestade" — o estado mais alarmante do produto — para um
+    risco que na verdade estava na fronteira de "nuvens isoladas".
+
+    Não é hipotético: risco 59.99999999999999 (que é como 60 costuma sair de
+    uma divisão em ponto flutuante) exibia "Tempestade: exige ação imediata".
+    Antes da normalização do calc_risco os valores viviam espremidos abaixo de
+    65 e quase nunca tocavam essas bordas; com a escala usando os 0-100 de
+    verdade, elas passam a ser atingidas com frequência.
+
+    Ordenar por limite inferior e pegar a última faixa que começa em ou abaixo
+    do valor cobre a reta inteira, sem buraco, e continua funcionando para as
+    faixas customizadas que vêm de tenant_settings.climate_thresholds.
+    """
     r = _clamp(risco)
-    for lo, hi, condicao, cor in _normalizar_faixas(faixas):
-        if lo <= r <= hi:
-            return condicao, cor
-    return "tempestade", "vermelho"  # r > 99.9 por arredondamento
+    faixas_ord = sorted(_normalizar_faixas(faixas), key=lambda f: f[0])
+    escolhida = faixas_ord[0]
+    for faixa in faixas_ord:
+        if r >= faixa[0]:
+            escolhida = faixa
+        else:
+            break
+    return escolhida[2], escolhida[3]
 
 
 def icone_frente(score: float) -> str:
+    """Mesmo critério de limite inferior do _classificar: ICONES_FRENTE tem os
+    mesmos buracos entre faixas, e ali o fallback pintava o ícone de tempestade
+    numa frente que estava na fronteira de 40 ou de 60."""
     s = _clamp(score)
-    for lo, hi, icone in ICONES_FRENTE:
-        if lo <= s <= hi:
-            return icone
-    return "tempestade"
+    escolhido = ICONES_FRENTE[0][2]
+    for lo, _hi, icone in ICONES_FRENTE:
+        if s >= lo:
+            escolhido = icone
+        else:
+            break
+    return escolhido
 
 
 def _previsao(serie_7d: list[float], limiar: float = LIMIAR_PREVISAO) -> str:
@@ -255,6 +283,16 @@ if __name__ == "__main__":
     assert _classificar(80)[0] == "tempestade"
     assert _classificar(100)[0] == "tempestade"
     assert icone_frente(62) == "chuva" and icone_frente(85) == "tempestade"
+
+    # BURACOS ENTRE FAIXAS: valores nesses intervalos nao casavam com nenhuma
+    # faixa e escorriam para o fallback, que devolvia "tempestade". Ponto
+    # flutuante cai neles o tempo todo (60 saindo de uma divisao vira
+    # 59.99999999999999). Nao reintroduzir intervalo fechado aqui.
+    assert _classificar(39.95)[0] == "ceu_limpo", "buraco 39.9-40"
+    assert _classificar(59.95)[0] == "nuvens_isoladas", "buraco 59.9-60"
+    assert _classificar(79.95)[0] == "tempo_fechando", "buraco 79.9-80"
+    assert _classificar(59.99999999999999)[0] == "nuvens_isoladas"
+    assert icone_frente(39.95) == "sol" and icone_frente(59.95) == "nuvem"
 
     # CALIBRACAO 11/06/2026: post grave (score 62 do exemplo) em dia de risco 62
     # => risco >= 60, alerta presente => tempestade sistemica
