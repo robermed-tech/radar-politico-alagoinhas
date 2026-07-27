@@ -147,6 +147,17 @@ body {
 .font-extrabold,
 .font-black { font-weight: 600 !important; }   /* títulos = semi-bold */
 
+/* Exceção declarada à diretriz acima (pedido de 27/07): o box "Publicações
+   analisadas" é o único ponto do painel em que TODA fonte é bold, nunca
+   regular. Precisa morar aqui porque o override global usa !important e
+   rebaixaria qualquer `font-bold` escrito no componente — foi exatamente o que
+   aconteceu na primeira tentativa: o box virou preto, mas o texto continuou em
+   peso 400. Não estender para o resto do painel sem pedido: a hierarquia
+   padrão do produto vem de tamanho e cor, não de peso. */
+.peso-bold-total,
+.peso-bold-total * { font-weight: 700 !important; }
+.peso-bold-total .peso-titulo { font-weight: 800 !important; }
+
 /* ── UX GLOBAL: cursor + focus visível (acessibilidade) ── */
 button:not(:disabled),
 a,

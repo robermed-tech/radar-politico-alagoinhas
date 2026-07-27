@@ -661,24 +661,57 @@ export interface BairroStats {
   pedidos: string[];
 }
 
+/** Um comentário que cita um bairro, com o texto que embasa a posição dele no rank. */
+export interface ComentarioBairro {
+  localidade: string;
+  sentimento: string;
+  tema: string;
+  pedido: string | null;
+  curtidas: number;
+  texto: string;
+  autor: string;
+  /** URL do post — usada para recortar por período (ver nota em
+   * fetchComentariosPorTema sobre data_comentario_ts ser um backfill parcial). */
+  urlPost: string;
+}
+
 /**
- * Comentários que citam um bairro/local (localidade != nao_identificado),
- * agregados por localidade. PostgREST não agrupa sem view; fazemos client-side.
- * O schema já está migrado, mas não podemos criar views (regra do projeto).
+ * Comentários que citam um bairro/local (localidade != nao_identificado), COM
+ * o texto real e a URL do post. O texto alimenta o drill-down "quais
+ * comentários colocaram este bairro nesta posição"; a URL permite recortar
+ * por 24h/7d/30d cruzando com os posts do período.
  */
-export async function fetchBairros(): Promise<BairroStats[]> {
+export async function fetchComentariosLocalidade(limit = 8000): Promise<ComentarioBairro[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
   const q =
     `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
     `&localidade=neq.nao_identificado&localidade=not.is.null` +
     `&tipo=eq.cidadao` +
-    `&select=localidade,sentimento,tema,pedido,curtidas,confianca_tema&limit=8000`;
+    `&select=localidade,sentimento,tema,pedido,curtidas,texto,username,url_post,confianca_tema` +
+    `&order=curtidas.desc&limit=${limit}`;
   const res = await fetch(q, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   }).catch(() => null);
   if (!res || !res.ok) return [];
-  const rows = ((await res.json()) as Comment[]).map(comSentimentoConfiavel);
+  return ((await res.json()) as Record<string, unknown>[])
+    .map((r) => comSentimentoConfiavel(r as { sentimento?: string; confianca_tema?: number }))
+    .map((r) => ({
+      localidade: String((r as Record<string, unknown>).localidade ?? "").trim(),
+      sentimento: String(r.sentimento ?? "neutro").toLowerCase(),
+      tema: String((r as Record<string, unknown>).tema ?? "").trim(),
+      pedido: ((r as Record<string, unknown>).pedido as string | null) ?? null,
+      curtidas: Number((r as Record<string, unknown>).curtidas ?? 0),
+      texto: String((r as Record<string, unknown>).texto ?? "").trim(),
+      autor: String((r as Record<string, unknown>).username ?? "").trim(),
+      urlPost: String((r as Record<string, unknown>).url_post ?? "").trim(),
+    }));
+}
 
+/**
+ * Agrega comentários por localidade. Separado do fetch para que a página possa
+ * reagregar a cada troca de período sem ir ao banco de novo.
+ */
+export function agregarBairros(rows: ComentarioBairro[]): BairroStats[] {
   const by: Record<string, BairroStats & { temas: Record<string, number> }> = {};
   for (const c of rows) {
     const loc = (c.localidade || "").trim();
@@ -714,6 +747,14 @@ export async function fetchBairros(): Promise<BairroStats[]> {
     .sort((a, b) => b.total - a.total || b.pctNeg - a.pctNeg);
 }
 
+/**
+ * Comentários que citam um bairro, agregados por localidade. Mantido como
+ * atalho para quem só quer o agregado do período completo.
+ */
+export async function fetchBairros(): Promise<BairroStats[]> {
+  return agregarBairros(await fetchComentariosLocalidade());
+}
+
 // ── Pedidos (demandas concretas do cidadão) ──────────────────────────────────
 export interface Pedido {
   pedido: string;
@@ -725,6 +766,8 @@ export interface Pedido {
   confianca_tema: number;
   sentimento: string;
   data_comentario: string;
+  /** URL do post — recorte por período (ver nota em fetchComentariosPorTema). */
+  urlPost: string;
 }
 
 /** Comentários com demanda concreta (pedido != null), mais curtidos primeiro. */
@@ -732,7 +775,7 @@ export async function fetchPedidos(limit = 2000): Promise<Pedido[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
   const q =
     `${SUPABASE_URL}/rest/v1/comments?tenant=eq.${TENANT}` +
-    `&pedido=not.is.null&select=pedido,tema,subtema,localidade,curtidas,texto,confianca_tema,sentimento,data_comentario` +
+    `&pedido=not.is.null&select=pedido,tema,subtema,localidade,curtidas,texto,confianca_tema,sentimento,data_comentario,url_post` +
     `&order=curtidas.desc&limit=${limit}`;
   const res = await fetch(q, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
@@ -748,7 +791,42 @@ export async function fetchPedidos(limit = 2000): Promise<Pedido[]> {
     confianca_tema: Number(r.confianca_tema ?? 0),
     sentimento: String(r.sentimento ?? "neutro"),
     data_comentario: String(r.data_comentario ?? ""),
+    urlPost: String(r.url_post ?? "").trim(),
   }));
+}
+
+// ── Comentários "leves" (sem texto) para contagem por perfil ─────────────────
+export interface ComentarioLeve {
+  urlPost: string;
+  sentimento: "positivo" | "negativo" | "neutro";
+}
+
+/**
+ * Só o par (post, sentimento) de cada comentário de cidadão — sem texto, sem
+ * @, sem curtidas. É o que a Análise por Perfil precisa para contar quantas
+ * críticas favoráveis e contrárias à gestão cada perfil recebeu, e trafega uma
+ * fração do peso de `fetchComments`.
+ *
+ * Aplica as duas regras do clima (ver lib/sentimento.ts): só cidadão, e
+ * confiança abaixo de CONFIANCA_MIN entra como indeterminado, nunca como um
+ * dos lados.
+ */
+export async function fetchComentariosLeves(limit = 20000): Promise<ComentarioLeve[]> {
+  const { data, error } = await supabase
+    .from("comments")
+    .select("url_post,sentimento,confianca_tema")
+    .eq("tenant", TENANT)
+    .eq("tipo", "cidadao")
+    .limit(limit);
+  if (error || !data?.length) return [];
+  return (data as { url_post: string; sentimento: string; confianca_tema?: number }[])
+    .map((r) => ({
+      urlPost: (r.url_post || "").trim(),
+      sentimento: (sentimentoConfiavel(r)
+        ? (r.sentimento || "neutro").toLowerCase()
+        : "neutro") as ComentarioLeve["sentimento"],
+    }))
+    .filter((r) => r.urlPost);
 }
 
 // ── Subtemas (drill-down de tema, agregação client-side) ─────────────────────
