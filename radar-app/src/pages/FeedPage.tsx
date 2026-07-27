@@ -142,7 +142,7 @@ export function FeedPage() {
         <div>
           <h1 className="text-2xl font-extrabold">O que o povo diz</h1>
           <p className="text-sm text-txt-2">
-            {posts.length} publicação{posts.length !== 1 ? "ões" : ""} · últimas {periodoLabel}
+            {posts.length} publicaç{posts.length === 1 ? "ão" : "ões"} · últimas {periodoLabel}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

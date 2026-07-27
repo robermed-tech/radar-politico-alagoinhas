@@ -1,8 +1,9 @@
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchBriefing, fetchCrisisPlans, type CrisisPlan } from "@/lib/data";
 import { NIVEL_COLOR, NIVEL_LABEL, nivelBadgeStyle, type NivelCrise } from "@/lib/indices";
 import { IconAlertBell, IconCheckCircle } from "@/components/icons";
+import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 
 const IMPACTO_COR: Record<string, string> = {
   alto: "#22C55E",
@@ -90,10 +91,22 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
   );
 }
 
+/** 24h/7d/30d -> a chave de periodo com que o backend grava os briefings. */
+function periodoParaChave(dias: number): "dia" | "semana" | "mes" {
+  if (dias <= 1) return "dia";
+  if (dias <= 7) return "semana";
+  return "mes";
+}
+
 export function AlertasAcoesPage() {
+  const [dias, setDias] = useState<Dias>(1);
+  const periodo = periodoParaChave(dias);
+
+  // periodo entra na queryKey: cada janela fica cacheada em separado, entao
+  // voltar para uma ja visitada e instantaneo (mesmo padrao da ClimaPage).
   const { data: b, isLoading: loadBriefing } = useQuery({
-    queryKey: ["briefing"],
-    queryFn: () => fetchBriefing(),
+    queryKey: ["briefing", periodo],
+    queryFn: () => fetchBriefing(periodo),
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });
@@ -113,17 +126,20 @@ export function AlertasAcoesPage() {
 
   return (
     <div className="space-y-4 p-5">
-      <div>
-        <h1 className="text-2xl font-extrabold">Alertas & Ações</h1>
-        <p className="text-sm text-txt-2">
-          O que precisa de atenção hoje e o que fazer
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold">Alertas & Ações</h1>
+          <p className="text-sm text-txt-2">
+            O que precisa de atenção e o que fazer · {periodoLabel(dias)}
+          </p>
+        </div>
+        <PeriodoFilter dias={dias} onChange={setDias} />
       </div>
 
       {semBriefing ? (
         <div className="card-hover rounded-xl border border-line bg-bg-1 p-6 text-txt-2">
-          Ainda não há recomendações geradas. Execute o fluxo ÁGORA para popular
-          esta página.
+          Ainda não há recomendações geradas para os {periodoLabel(dias)}. Tente outra
+          janela acima ou execute o fluxo ÁGORA para popular esta página.
         </div>
       ) : (
         <>

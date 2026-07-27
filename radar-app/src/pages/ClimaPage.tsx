@@ -1,4 +1,4 @@
-﻿import { Suspense, lazy, useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchComentariosPorTema, filtrarPorPeriodo, type Post, type Boletim, type BoletimFrente, type Briefing, type Periodo } from "@/lib/data";
 import { calcIAD, NIVEL_COLOR, NIVEL_LABEL, nivelBadgeStyle, type NivelCrise } from "@/lib/indices";
@@ -7,12 +7,11 @@ import { fmtInt, fraseCapitalizada, limparTravessoes } from "@/lib/format";
 import { useAuth } from "@/components/AuthProvider";
 import { EvidenciaComentariosModal } from "@/components/EvidenciaComentariosModal";
 import { PublicacoesModal } from "@/components/PublicacoesModal";
-import { RadarStatusBar } from "@/components/RadarStatusBar";
-// Lazy: o gauge puxa o chunk do ECharts (~1 MB) — a ClimaPage é a landing e
-// continua pintando sem esperar por ele (o termômetro fica abaixo da dobra).
-const GaugeTema = lazy(() =>
-  import("@/components/GaugeTema").then((m) => ({ default: m.GaugeTema }))
-);
+import { RadarStatusBar, RadarStatusColumn } from "@/components/RadarStatusBar";
+import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
+// Import direto: desde 27/07 o velocímetro é SVG puro (não puxa mais o chunk
+// de ~1 MB do ECharts), então não há mais motivo para carregá-lo em lazy.
+import { GaugeTema } from "@/components/GaugeTema";
 
 // Paleta neutra "chumbo e branco" da reunião de 24/07: enquanto o produto não
 // tem identidade visual fechada, tudo que não tem cor semântica definida usa
@@ -86,22 +85,14 @@ function TermometroTemas({ allPosts, dias }: { allPosts: Post[]; dias: number })
           % de comentários negativos entre os que tomam partido (neutros fora do ponteiro)
         </div>
       </div>
-      <Suspense fallback={<div className="mt-4 text-sm text-txt-3">Carregando termômetro…</div>}>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {temas.map(({ tema, neg, pos }) => (
-            <GaugeTema key={tema} label={TEMA_LABEL[tema]} neg={neg} pos={pos} />
-          ))}
-        </div>
-      </Suspense>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {temas.map(({ tema, neg, pos }) => (
+          <GaugeTema key={tema} label={TEMA_LABEL[tema]} neg={neg} pos={pos} />
+        ))}
+      </div>
     </div>
   );
 }
-
-const PERIODOS = [
-  { dias: 1, label: "24h" },
-  { dias: 7, label: "7 dias" },
-  { dias: 30, label: "30 dias" },
-];
 
 /** Qualidade da amostra do período — reintroduzida na revisão de 25/07. */
 function forcaAmostra(comentarios: number): { label: string; nivel: number } {
@@ -389,7 +380,7 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
 }
 
 export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
-  const [dias, setDias] = useState(1);
+  const [dias, setDias] = useState<Dias>(1);
   const [publicacoesAbertas, setPublicacoesAbertas] = useState(false);
   const { isAdmin } = useAuth();
   const periodo = periodoParaChave(dias);
@@ -445,20 +436,9 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">{periodoTitulo(dias)}</h1>
             <p className="text-base text-txt-2">Alagoinhas/BA · imagem do prefeito e da prefeitura</p>
           </div>
-          <div className="flex rounded-full p-1 glass-btn">
-            {PERIODOS.map((p) => (
-              <button
-                key={p.dias}
-                onClick={() => setDias(p.dias)}
-                className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
-                  dias === p.dias ? "bg-white/25 text-txt-1 shadow-sm" : "text-txt-2 hover:text-txt-1"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          <PeriodoFilter dias={dias} onChange={setDias} />
         </div>
+        {/* Sem os dois cards do clima, o radar volta ao formato de faixa. */}
         <div className="reveal reveal-1">
           <RadarStatusBar />
         </div>
@@ -490,26 +470,12 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">{periodoTitulo(dias)}</h1>
           <p className="text-base text-txt-2">Alagoinhas/BA · imagem do prefeito e da prefeitura</p>
         </div>
-        <div className="flex rounded-full p-1 glass-btn">
-          {PERIODOS.map((p) => (
-            <button
-              key={p.dias}
-              onClick={() => setDias(p.dias)}
-              className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
-                dias === p.dias ? "bg-white/25 text-txt-1 shadow-sm" : "text-txt-2 hover:text-txt-1"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <PeriodoFilter dias={dias} onChange={setDias} />
       </div>
 
-      <div className="reveal reveal-1">
-        <RadarStatusBar />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-5">
+      {/* Clima · radar de coleta · engajamento. O radar saiu do topo da página
+          e passou a ocupar a coluna do meio (pedido de 27/07). */}
+      <div className="grid gap-4 lg:grid-cols-6">
         {/* Card do clima inteiro clicável: leva direto à curadoria de
             comentários que explica o clima ("O que o povo diz"). */}
         <div
@@ -582,6 +548,11 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           </div>
         </div>
 
+        {/* Radar de coleta, entre os dois cards. */}
+        <div className="reveal reveal-3 lg:col-span-1">
+          <RadarStatusColumn />
+        </div>
+
         {/* Box de engajamento — clicável: abre a lista das publicações
             analisadas no período, com link direto para cada post. Texto em
             preto sobre o laranja (decisão de contraste da reunião de 24/07). */}
@@ -590,7 +561,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           tabIndex={0}
           onClick={() => setPublicacoesAbertas(true)}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setPublicacoesAbertas(true); }}
-          className="reveal reveal-3 group relative cursor-pointer overflow-hidden rounded-[28px] p-7 transition-transform duration-200 hover:-translate-y-0.5 lg:col-span-2"
+          className="reveal reveal-4 group relative cursor-pointer overflow-hidden rounded-[28px] p-7 transition-transform duration-200 hover:-translate-y-0.5 lg:col-span-2"
           style={{
             background: "linear-gradient(150deg, #FB923C 0%, #EA580C 100%)",
             minHeight: 320,
@@ -677,7 +648,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
       {publicacoesAbertas && (
         <PublicacoesModal
           posts={filtrarPorPeriodo(data!.data, dias)}
-          periodoLabel={dias === 1 ? "últimas 24h" : `últimos ${dias} dias`}
+          periodoLabel={periodoLabel(dias)}
           onClose={() => setPublicacoesAbertas(false)}
         />
       )}

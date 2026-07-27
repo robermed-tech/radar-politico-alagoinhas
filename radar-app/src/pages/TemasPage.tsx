@@ -17,6 +17,7 @@ import { AlertaCrise } from "@/components/AlertaCrise";
 import { AssuntosEmAlta } from "@/components/AssuntosEmAlta";
 import { IconTrendUp, IconTrendDown, IconCheckCircle, IconWarningTriangle } from "@/components/icons";
 import { fmtDiaBR } from "@/lib/format";
+import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 
 // ── Métricas do gráfico — apenas Volume ──────────────────────────────────────
 type Metrica = "volume";
@@ -459,7 +460,8 @@ function buildTemas(themes: DailyTheme[]): TemaResumido[] {
 // ── Página ───────────────────────────────────────────────────────────────────
 export function TemasPage() {
   const metrica: Metrica = "volume";
-  const [janela, setJanela] = useState(14);
+  // Janela unificada com o resto do painel (24h/7d/30d).
+  const [janela, setJanela] = useState<Dias>(7);
   const ink = chartInk(useThemeStore((s) => s.theme));
 
   const { data: themes = [], isLoading } = useQuery({
@@ -594,21 +596,7 @@ export function TemasPage() {
             Evolução de cada tema — quem está subindo, estável ou caindo
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <div className="flex rounded-lg border border-line bg-bg-1 p-1">
-            {[7, 14, 30].map((d) => (
-              <button
-                key={d}
-                onClick={() => setJanela(d)}
-                className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
-                  janela === d ? "bg-brand text-white" : "text-txt-2 hover:text-txt-1"
-                }`}
-              >
-                {d}d
-              </button>
-            ))}
-          </div>
-        </div>
+        <PeriodoFilter dias={janela} onChange={setJanela} />
       </div>
 
       {/* Linha do tempo do clima — curva de críticas anotada com o tema que a moveu */}
@@ -685,7 +673,7 @@ export function TemasPage() {
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
             <div className="text-sm font-bold">
-              {metr.label} · variação por tema (janela {janela}d)
+              {metr.label} · variação por tema · {periodoLabel(janela)}
             </div>
             <div className="text-[12px] text-txt-3">
               Barras mostram variação semanal — passa o mouse para ver o valor exato

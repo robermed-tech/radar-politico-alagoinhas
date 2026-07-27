@@ -3,24 +3,41 @@ import { fetchCollectionLogsHoje, fetchFontesUnificadas, calcKpis } from "@/lib/
 import { fmtInt } from "@/lib/format";
 
 /**
- * Barra compacta do "radar de coleta" na página principal (decisão da reunião
- * de 24/07: o status do monitor precisa aparecer no topo do dashboard, logo
- * abaixo do clima, para passar a sensação de sistema ativo). A versão completa
- * continua na aba Monitor de coleta da Configuração.
+ * Status do "radar de coleta". A versão completa continua na aba Monitor de
+ * coleta da Configuração; aqui ficam dois formatos compactos:
+ *
+ *   • `barra`  — faixa horizontal (usada quando não há os cards do clima ao
+ *                lado, ex.: período sem dados);
+ *   • `coluna` — painel vertical que fica ENTRE o card do clima e o de
+ *                engajamento na Estação Meteorológica (pedido de 27/07). Antes
+ *                a barra ficava sozinha no topo da página, empurrando os dois
+ *                cards para baixo.
  */
-function MiniRadarSweep({ ativo, size = 34 }: { ativo: boolean; size?: number }) {
+function RadarSweep({ ativo, size = 34 }: { ativo: boolean; size?: number }) {
   const cor = ativo ? "#22C55E" : "#F59E0B";
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }} aria-hidden>
       <style>{`
         @keyframes radar-mini-spin { to { transform: rotate(360deg); } }
+        @keyframes radar-mini-pulso {
+          0%   { transform: scale(0.45); opacity: 0.55; }
+          100% { transform: scale(1);    opacity: 0; }
+        }
         .radar-mini-sweep { animation: radar-mini-spin 3.4s linear infinite; }
-        @media (prefers-reduced-motion: reduce) { .radar-mini-sweep { animation: none; } }
+        .radar-mini-pulso { animation: radar-mini-pulso 3.4s ease-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .radar-mini-sweep, .radar-mini-pulso { animation: none; }
+          .radar-mini-pulso { opacity: 0; }
+        }
       `}</style>
       <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" style={{ color: cor }}>
         <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeOpacity="0.30" strokeWidth="3" />
         <circle cx="50" cy="50" r="26" fill="none" stroke="currentColor" strokeOpacity="0.22" strokeWidth="3" />
       </svg>
+      <div
+        className="radar-mini-pulso absolute inset-0 rounded-full"
+        style={{ border: `2px solid ${cor}`, transformOrigin: "center" }}
+      />
       <div
         className="radar-mini-sweep absolute inset-0 rounded-full"
         style={{
@@ -31,13 +48,26 @@ function MiniRadarSweep({ ativo, size = 34 }: { ativo: boolean; size?: number })
       />
       <span
         className="absolute rounded-full"
-        style={{ width: 5, height: 5, background: cor, boxShadow: `0 0 8px ${cor}`, top: "calc(50% - 2.5px)", left: "calc(50% - 2.5px)" }}
+        style={{
+          width: size * 0.15,
+          height: size * 0.15,
+          background: cor,
+          boxShadow: `0 0 8px ${cor}`,
+          top: `calc(50% - ${(size * 0.15) / 2}px)`,
+          left: `calc(50% - ${(size * 0.15) / 2}px)`,
+        }}
       />
     </div>
   );
 }
 
-export function RadarStatusBar() {
+interface Kpis {
+  fontesAtivas: number;
+  itensColetados: number;
+  execucoes: number;
+}
+
+function useRadarKpis(): Kpis {
   const { data: logs } = useQuery({
     queryKey: ["coleta-logs-hoje"],
     queryFn: fetchCollectionLogsHoje,
@@ -50,14 +80,18 @@ export function RadarStatusBar() {
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+  return calcKpis(logs ?? [], sources ?? []);
+}
 
-  const kpis = calcKpis(logs ?? [], sources ?? []);
+/** Faixa horizontal compacta. */
+export function RadarStatusBar() {
+  const kpis = useRadarKpis();
   const ativo = kpis.fontesAtivas > 0;
   const cor = ativo ? "#22C55E" : "#F59E0B";
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border border-line bg-bg-1 px-4 py-2.5">
-      <MiniRadarSweep ativo={ativo} />
+      <RadarSweep ativo={ativo} />
       <div className="min-w-0">
         <span className="text-sm font-extrabold text-txt-1">
           {ativo ? "Radar em varredura" : "Radar ocioso"}
@@ -77,6 +111,67 @@ export function RadarStatusBar() {
         <span>
           <b className="tnum text-txt-1">{fmtInt(kpis.execucoes)}</b> execuç{kpis.execucoes === 1 ? "ão" : "ões"}
         </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Painel vertical do radar, para ficar entre os dois cards da Estação
+ * Meteorológica. Grafite com texto branco (paleta neutra da reunião de 24/07):
+ * fica de pé entre a foto escura do clima à esquerda e o laranja à direita sem
+ * disputar atenção com nenhum dos dois.
+ */
+export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
+  const kpis = useRadarKpis();
+  const ativo = kpis.fontesAtivas > 0;
+  const cor = ativo ? "#22C55E" : "#F59E0B";
+
+  const linhas: [number, string][] = [
+    [kpis.fontesAtivas, `fonte${kpis.fontesAtivas === 1 ? "" : "s"} monitorada${kpis.fontesAtivas === 1 ? "" : "s"}`],
+    [kpis.itensColetados, `item${kpis.itensColetados === 1 ? "" : "s"} coletado${kpis.itensColetados === 1 ? "" : "s"} hoje`],
+    [kpis.execucoes, `execuç${kpis.execucoes === 1 ? "ão" : "ões"}`],
+  ];
+
+  return (
+    <div
+      className="flex flex-col items-center overflow-hidden rounded-[28px] px-4 py-6 text-center"
+      style={{
+        background: "linear-gradient(165deg, #334155 0%, #1E293B 100%)",
+        minHeight,
+        boxShadow: "0 18px 40px -18px rgba(15,23,42,0.65)",
+      }}
+    >
+      <div
+        className="text-[13px] font-bold uppercase tracking-[0.14em]"
+        style={{ color: "rgba(255,255,255,0.62)" }}
+      >
+        Coleta
+      </div>
+
+      <div className="my-5">
+        <RadarSweep ativo={ativo} size={92} />
+      </div>
+
+      <div className="flex items-center justify-center gap-1.5">
+        <span className="text-[15px] font-extrabold leading-tight text-white">
+          {ativo ? "Em varredura" : "Ocioso"}
+        </span>
+        <span
+          className="inline-block h-2 w-2 shrink-0 rounded-full"
+          style={{ background: cor, boxShadow: `0 0 6px ${cor}` }}
+        />
+      </div>
+
+      <div className="mt-auto w-full space-y-2.5 pt-6">
+        {linhas.map(([v, rotulo]) => (
+          <div key={rotulo}>
+            <div className="tnum text-[26px] font-light leading-none text-white">{fmtInt(v)}</div>
+            <div className="text-[12px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.62)" }}>
+              {rotulo}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

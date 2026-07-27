@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchPedidos, type Pedido } from "@/lib/data";
+import { fetchPedidos, fetchRadar, filtrarPorPeriodo, type Pedido } from "@/lib/data";
 import { IconHeart, IconInbox, IconWarningTriangle } from "@/components/icons";
 import { corTema } from "@/lib/temaColors";
+import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde", educacao: "Educação", obras: "Obras", seguranca: "Segurança",
@@ -20,13 +21,28 @@ const CONF_REVISAR = 70;
 export function PedidosPage() {
   const [temaSel, setTemaSel] = useState<string>("todos");
   const [soRevisar, setSoRevisar] = useState(false);
+  const [dias, setDias] = useState<Dias>(30);
 
-  const { data = [], isLoading } = useQuery({
+  const { data: todos = [], isLoading } = useQuery({
     queryKey: ["pedidos"],
     queryFn: () => fetchPedidos(),
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+  const { data: radar } = useQuery({
+    queryKey: ["radar"],
+    queryFn: fetchRadar,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // A janela vem do POST em que o pedido foi comentado: `data_comentario_ts`
+  // só existe em ~8% das linhas (backfill parcial), então filtrar por ele
+  // sub-representaria violentamente qualquer período (ver lib/data.ts).
+  const data = useMemo<Pedido[]>(() => {
+    const urls = new Set(filtrarPorPeriodo(radar?.data ?? [], dias).map((p) => p.url));
+    if (urls.size === 0) return [];
+    return todos.filter((p) => urls.has(p.urlPost));
+  }, [todos, radar, dias]);
 
   const porTema = useMemo(() => {
     const by: Record<string, number> = {};
@@ -54,21 +70,24 @@ export function PedidosPage() {
         <div>
           <h1 className="text-2xl font-extrabold">Pedidos do Povo</h1>
           <p className="text-sm text-txt-2">
-            Demandas concretas extraídas dos comentários — pauta acionável para o gabinete
+            Demandas concretas extraídas dos comentários · {periodoLabel(dias)}
           </p>
         </div>
-        {nRevisar > 0 && (
-          <button
-            onClick={() => setSoRevisar((v) => !v)}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
-              soRevisar ? "border-transparent bg-brand text-white" : "border-line bg-bg-1 text-txt-2 hover:text-txt-1"
-            }`}
-            title="Comentários com baixa confiança (ironia/ambiguidade) — vale conferência humana"
-          >
-            <IconWarningTriangle size={14} />
-            {soRevisar ? "Mostrando a revisar" : `${nRevisar} a revisar`}
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <PeriodoFilter dias={dias} onChange={setDias} />
+          {nRevisar > 0 && (
+            <button
+              onClick={() => setSoRevisar((v) => !v)}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
+                soRevisar ? "border-transparent bg-brand text-white" : "border-line bg-bg-1 text-txt-2 hover:text-txt-1"
+              }`}
+              title="Comentários com baixa confiança (ironia/ambiguidade) — vale conferência humana"
+            >
+              <IconWarningTriangle size={14} />
+              {soRevisar ? "Mostrando a revisar" : `${nRevisar} a revisar`}
+            </button>
+          )}
+        </div>
       </div>
 
       {data.length === 0 ? (
@@ -76,10 +95,10 @@ export function PedidosPage() {
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-bg-2 text-txt-3">
             <IconInbox size={20} />
           </div>
-          <p className="font-semibold text-txt-1">Nenhum pedido identificado ainda</p>
+          <p className="font-semibold text-txt-1">Nenhum pedido nos {periodoLabel(dias)}</p>
           <p className="mt-1 text-sm text-txt-2">
-            O AGORA extrai demandas concretas dos comentários. Assim que uma coleta
-            processar comentários com pedidos, eles aparecem aqui.
+            O AGORA extrai demandas concretas dos comentários. Amplie o período acima ou
+            aguarde a próxima coleta processar comentários com pedidos.
           </p>
         </div>
       ) : (
