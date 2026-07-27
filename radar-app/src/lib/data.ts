@@ -20,7 +20,17 @@ export interface Post {
   comentarios_total: number;
   total_cidadaos: number;
   total_politicos: number;
+  /** Reação do público ao post (o que os comentários responderam). */
   sentimento_post: string;
+  /**
+   * Tom da PUBLICAÇÃO em si sobre a gestão: o que o perfil disse (migration
+   * 010). Não confundir com `sentimento_post` — os dois discordam de
+   * propósito: post elogioso da prefeitura que tomou uma enxurrada de críticas
+   * é `tom_publicacao: "favoravel"` e `sentimento_post: "negativo"`.
+   */
+  tom_publicacao: "critico" | "favoravel" | "neutro" | "nao_classificado";
+  /** Confiança 0-100 do classificador no tom. Ver CONFIANCA_MIN_TOM. */
+  confianca_tom: number;
   sentimento_comentarios: string;
   comentarios_pct_pos: number;
   comentarios_pct_neg: number;
@@ -78,6 +88,16 @@ function num(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * Grafia desconhecida de tom vira "nao_classificado", nunca "neutro": "não
+ * medido" e "medido e deu neutro" são coisas diferentes na contagem da Análise
+ * por Perfil. Os registros vindos do Sheets, que não têm a coluna, caem aqui.
+ */
+function tomValido(v: unknown): Post["tom_publicacao"] {
+  const t = String(v ?? "").toLowerCase().trim();
+  return t === "critico" || t === "favoravel" || t === "neutro" ? t : "nao_classificado";
+}
+
 /** Normaliza um registro bruto do Sheets para o tipo Post. */
 function normalizePost(r: Record<string, unknown>): Post {
   return {
@@ -91,6 +111,8 @@ function normalizePost(r: Record<string, unknown>): Post {
     total_cidadaos: num(r.total_cidadaos),
     total_politicos: num(r.total_politicos),
     sentimento_post: String(r.sentimento_post ?? "").toLowerCase(),
+    tom_publicacao: tomValido(r.tom_publicacao),
+    confianca_tom: num(r.confianca_tom),
     sentimento_comentarios: String(r.sentimento_comentarios ?? "").toLowerCase(),
     comentarios_pct_pos: num(r.comentarios_pct_pos),
     comentarios_pct_neg: num(r.comentarios_pct_neg),
