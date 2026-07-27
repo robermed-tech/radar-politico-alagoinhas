@@ -67,6 +67,20 @@ Antes de mexer em qualquer critério de sentimento, medir com `python agora.py -
 - **`risco_amplificacao` fica fora do numerador E do denominador** enquanto o dado não for coletado. Ele era multiplicado por zero desde sempre; mantê-lo só no denominador recria o mesmo teto, agora disfarçado.
 - **O clima tem uma fonte só: `getWeather(iad)`.** Havia um ramo `isAdmin` na ClimaPage em que o admin via o clima derivado do IAD (escala de aprovação, alto é bom) e o cliente via a condição do boletim (escala de risco, alto é ruim): duas grandezas na mesma metáfora visual, que podiam discordar no mesmo dia. `weatherFromCondicao` foi removida de propósito. O que ainda varia por papel é só o detalhe numérico (admin vê o valor do IAD, usuário comum vê o rótulo). Não reintroduzir uma segunda fonte de clima sem resolver a diferença de grandeza.
 
+### Medição de acurácia (rótulo humano)
+
+- Todo o valor do produto repousa na classificação de sentimento, e até 27/07 **ninguém tinha medido a taxa de erro**. `--teste-sentimento` compara o modelo atual com o anterior: isso mede **deriva** entre versões do critério, não acerto. Acurácia exige referência externa ao sistema medido.
+- **Reclassificar a amostra com um modelo (o mesmo ou outro) não resolve.** Isso mede autoconsistência: o classificador vira o próprio gabarito e todo erro sistemático passa batido, porque ele erra igual nas duas vezes. O gabarito precisa ser humano.
+- Fluxo em `acuracia.py` (módulo puro, com testes no `__main__`) mais duas flags:
+  1. `python agora.py --amostra-rotulagem [N]` gera `rotulagem_<data>.html` (planilha **cega**, com atalhos 1/2/3/0 e progresso salvo no navegador) e `gabarito_<data>.json` (o que o modelo respondeu). Default 100 por estrato, 300 no total.
+  2. Uma pessoa rotula e exporta `rotulos.csv`.
+  3. `python agora.py --medir-acuracia rotulos.csv gabarito_<data>.json` reporta precisão com IC de Wilson, revocação, F1, matriz de confusão ponderada, acurácia geral e kappa de Cohen.
+- **A amostra é estratificada pela classe PREVISTA**, não aleatória simples: a base é desbalanceada (negativo 47%, neutro 42%, positivo 11%) e 300 aleatórios trariam só ~32 positivos. Estratificar pela predição dá a precisão de cada classe direto do estrato, sem ponderação; para revocação, acurácia e kappa os estratos são reponderados por `N_h/n_h`.
+- **No recorte "só confiantes" o universo também encolhe** (`N_conf`, não `N`). Usar o N cheio extrapolaria a subamostra confiante para uma população maior do que ela representa e inflaria justamente o número que o relatório apresenta como o mais importante. Há asserção cobrindo isso.
+- **A planilha é cega de propósito**: rotulador que vê o palpite da máquina concorda com ela por ancoragem. O gabarito fica noutro arquivo. Há um teste que gera dois cartões idênticos no texto e diferentes só no rótulo do modelo e exige que sejam indistinguíveis.
+- **Os arquivos gerados nunca vão para o repo nem viram artifact publicado** (já no `.gitignore`): contêm texto e @ de cidadãos reais, o mesmo dado que a retenção da migration 009 protege.
+- O guia de rotulagem embutido no HTML espelha o critério do `PROMPT_COMENTARIOS`. Se o critério mudar, mudar o guia junto: senão a medição capta divergência de definição, não erro do modelo.
+
 ### Retenção de dados pessoais (LGPD)
 
 - Opinião política de cidadão identificado é **dado pessoal sensível** (LGPD art. 5º, II) e o controlador é órgão público. O `autor_hash` era gravado na **mesma linha** que `username` e `texto` em claro, então a pseudonimização não separava identidade de conteúdo, e nada nunca era apagado.
