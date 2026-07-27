@@ -82,16 +82,17 @@ export function getWeather(pct: number): WeatherCond {
  * Condição climática a partir do `condicao` do boletim (gerado no backend),
  * sem expor o score numérico. Usado na visão do usuário comum.
  */
-const CONDICAO_TO_PCT: Record<string, number> = {
-  ceu_limpo: 80,
-  nuvens_isoladas: 55,
-  tempo_fechando: 35,
-  tempestade: 12,
-};
-
-export function weatherFromCondicao(condicao: string | undefined | null): WeatherCond {
-  return getWeather(CONDICAO_TO_PCT[condicao ?? ""] ?? 50);
-}
+/*
+ * Removido na auditoria de 26/07: `weatherFromCondicao` traduzia a condição do
+ * boletim (escala de RISCO, alto é ruim) para a mesma metáfora visual que
+ * `getWeather` monta a partir do IAD (escala de APROVAÇÃO, alto é bom).
+ *
+ * Como só o usuário comum passava por essa tradução, admin e cliente podiam
+ * ver climas diferentes para o mesmo dia. O clima agora sai de um lugar só
+ * (`getWeather(iad)`); a condição do boletim continua sendo exibida onde ela
+ * é a informação certa, sem competir com o clima. Não reintroduzir uma
+ * segunda fonte de clima sem resolver a diferença de grandeza.
+ */
 
 export function getDestaque(pct: number, tema: string): string {
   const t = tema ? `"${tema}"` : "temas locais";

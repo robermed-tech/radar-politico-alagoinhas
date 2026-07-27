@@ -46,6 +46,10 @@ O clima mede **o sentimento que o cidadão expressou sobre a gestão municipal**
 - **Limiares simétricos.** Antes: 50% para negativo, 60% para positivo, e "misto" só descia para negativo (empate ia para o lado negativo). Isso é dedo na balança. Hoje os dois lados usam o mesmo limiar, em `agora.py` (safety net e `recalcular_sentimento_posts`) e em `data.ts` (`sentimentoReacao` e `fetchAgregadoComentarios`) — se mexer num, mexer nos quatro.
 - **Sem inversão dupla por oposição.** `comentarios_pct_pos` já é medido como "favorável à gestão" na classificação de cada comentário; inverter de novo no agregado transformava aprovação em crítica.
 
+**Os critérios valem para TODOS os prompts, não só o de comentários** (auditoria de 26/07). A revisão de 25/07 consertou `PROMPT_COMENTARIOS` e deixou `PROMPT_TRIAGEM` e `PROMPT_SISTEMA` para trás: os dois seguiram um mês mandando classificar apoio a opositor como crítica à gestão, e o `PROMPT_SISTEMA` chegava a se contradizer 150 linhas depois de si mesmo. Isso não é cosmético: a triagem produz `score_risco`, `urgencia` e `risco_crise` e decide se o post sobe para o Sonnet, e o `recalcular_sentimento_posts` **não corrige nenhum desses campos** (ele só reprojeta os percentuais). Ao mexer em critério de sentimento, varrer os quatro prompts: `PROMPT_TRIAGEM`, `PROMPT_SISTEMA`, `PROMPT_COMENTARIOS` e as notas de lado (`triar_post_rapido::nota_lado` e `montar_prompt_comentarios::nota_lado`).
+
+Para medir mexidas na **triagem** existe `python agora.py --teste-triagem [N] [--imprensa|--governo]`: roda só o `PROMPT_TRIAGEM` numa amostra real (oposição por padrão, que é onde o atalho distorcia mais) e compara com o gravado, sem escrever nada. Custo: só Anthropic. Ele foi criado justamente porque a ausência de harness foi o que deixou a triagem escapar da revisão anterior.
+
 Quem entra na conta do clima: **só comentário de cidadão** (perfil político não é população e não passa pelo classificador — antes herdava a média do próprio post, a média alimentando a si mesma) e **só com `confianca_tema >= 50`** (`CONFIANCA_MIN_SENTIMENTO` no agora.py, espelhado em `radar-app/src/lib/sentimento.ts`). Abaixo disso o comentário conta no total como indeterminado, nunca como crítica ou elogio.
 
 Antes de mexer em qualquer critério de sentimento, medir com `python agora.py --teste-sentimento [N]`: reclassifica uma amostra real com os critérios atuais e compara com o gravado, **sem escrever nada**. Custo: só Anthropic, zero crédito Apify.
@@ -55,6 +59,19 @@ Antes de mexer em qualquer critério de sentimento, medir com `python agora.py -
 - **Nunca usar travessão (—) em texto gerado ou exibido.** Os prompts do `agora.py` proíbem na origem; `limparTravessoes()` (radar-app/src/lib/format.ts) limpa textos antigos na exibição. Vale também para textos novos de UI.
 - **Vocabulário**: "comentários analisados" (não "vozes ouvidas"); "estabilizar/estabilizado" (não "recuperar/recuperado"); "Sugestões genéricas a serem avaliadas por especialista" (nunca "o que deveria ter sido feito" — a plataforma sugere, não prescreve).
 - **Sentence case, não Title Case**: usar a classe `.frase-cap` (index.css), nunca o `capitalize` do Tailwind — ele deixava "Instagram E Facebook Da Prefeitura", com preposição maiúscula no meio da frase.
+
+### Índices e clima (auditoria de 26/07 — não reverter)
+
+- **O risco político é normalizado pela soma dos pesos.** Antes os pesos somavam 0,65 no `agora.py` e o resultado era apresentado numa escala que diz ir de 0 a 100: o teto real era 65 e as faixas de `boletim.py` ("tempo fechando" ≥ 60, "tempestade" ≥ 80) eram inalcançáveis. Numa varredura das 9.261 combinações de (IAD, % risco alto, ICA), **69,7% caíam em "céu limpo" e "tempestade" tinha probabilidade zero** — o produto que vende alerta de crise não conseguia declarar uma. Depois da normalização: céu limpo 53,7%, tempestade 1,0%, e dia tranquilo continua céu limpo (não virou alarme falso). Se voltar a somar termo sem dividir pela soma dos pesos, o teto artificial volta junto.
+- **`calc_risco()` (agora.py) e `calcRisco()` (indices.ts) são gêmeos**: mesmos termos, mesmos pesos, mesma normalização, incluindo a velocidade do negativo (pct_neg do dia menos o de 3 entradas atrás na série). Antes o backend usava 3 termos e o frontend 4, e o mesmo dia tinha dois riscos diferentes no mesmo produto. Mexeu num, mexe no outro.
+- **`risco_amplificacao` fica fora do numerador E do denominador** enquanto o dado não for coletado. Ele era multiplicado por zero desde sempre; mantê-lo só no denominador recria o mesmo teto, agora disfarçado.
+- **O clima tem uma fonte só: `getWeather(iad)`.** Havia um ramo `isAdmin` na ClimaPage em que o admin via o clima derivado do IAD (escala de aprovação, alto é bom) e o cliente via a condição do boletim (escala de risco, alto é ruim): duas grandezas na mesma metáfora visual, que podiam discordar no mesmo dia. `weatherFromCondicao` foi removida de propósito. O que ainda varia por papel é só o detalhe numérico (admin vê o valor do IAD, usuário comum vê o rótulo). Não reintroduzir uma segunda fonte de clima sem resolver a diferença de grandeza.
+
+### Retenção de dados pessoais (LGPD)
+
+- Opinião política de cidadão identificado é **dado pessoal sensível** (LGPD art. 5º, II) e o controlador é órgão público. O `autor_hash` era gravado na **mesma linha** que `username` e `texto` em claro, então a pseudonimização não separava identidade de conteúdo, e nada nunca era apagado.
+- `agora.py::expurgar_pii` roda a cada pipeline e apaga `texto` e `username` dos comentários fora da janela (`RETENCAO_PII_DIAS`, default 180). **Preserva** sentimento, tema, subtema, localidade, pedido, curtidas, confiança e `autor_hash` — clima, índices, Pedidos, Bairros e a série histórica ficam inteiros. Migration **009**.
+- Sob demanda: `python agora.py --expurgar-pii --dry-run` (conta sem escrever) ou `--expurgar-pii 180`. É idempotente via `pii_expurgado_em`. Cobre também linhas sem `data_comentario_dia` (falha de parse de fuso) pelo `atualizado_em`, senão elas ficariam fora da retenção para sempre.
 
 ### Visual
 
@@ -91,7 +108,7 @@ Fora isso, resolva e implemente diretamente, sem pausar para aprovação passo a
 - SQL remoto (incluindo DDL) roda direto pelo CLI já logado nesta máquina, sem senha do banco:
   `supabase db query --linked --file supabase/migrations/00X_arquivo.sql`
   (projeto linkado com `supabase link --project-ref wtlhqyqxhuchzloodoyx --yes`; o link cria `supabase/.temp/`, que não deve ser commitado).
-- Migrations aplicadas até **008** (006 = histórico de envios manuais em `message_log`; 007 = Relevância/Fontes editáveis por qualquer usuário; 008 = série de seguidores em `profile_metrics`). Após DDL, o cache do PostgREST atualiza sozinho — validar com um insert/select de teste via REST, ou `select ... from pg_policies` quando a mudança for de RLS.
+- Migrations aplicadas até **009** (006 = histórico de envios manuais em `message_log`; 007 = Relevância/Fontes editáveis por qualquer usuário; 008 = série de seguidores em `profile_metrics`; 009 = retenção de dados pessoais em `comments`, coluna `pii_expurgado_em` + índices do expurgo). Após DDL, o cache do PostgREST atualiza sozinho — validar com um insert/select de teste via REST, ou `select ... from pg_policies` quando a mudança for de RLS.
 
 ## Referências
 
