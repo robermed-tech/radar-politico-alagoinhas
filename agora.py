@@ -1085,14 +1085,27 @@ CONFIANCA_MIN_TOM = 60
 
 TONS_VALIDOS = ("critico", "favoravel", "neutro")
 
-# CRITERIO UNICO do tom da publicacao, interpolado em TODOS os prompts que
-# classificam esse campo (triagem, analise profunda e reclassificacao).
+# CRITERIO UNICO do tom da publicacao. Ele alimenta UM prompt so, o PROMPT_TOM,
+# e essa exclusividade e a correcao mais importante deste campo.
 #
-# Existe como constante, e nao copiado em cada prompt, por causa do que a
-# auditoria de 26/07 encontrou: a revisao de 25/07 consertou o criterio de
-# sentimento no PROMPT_COMENTARIOS e deixou PROMPT_TRIAGEM e PROMPT_SISTEMA
-# para tras, que seguiram um mes classificando pelo criterio antigo. Com uma
-# constante so, mudar o criterio muda os tres ao mesmo tempo por construcao.
+# A primeira versao interpolava o criterio tambem no PROMPT_TRIAGEM e no
+# PROMPT_SISTEMA, para nao gastar uma chamada extra. Medido contra a base real
+# em 27/07, deu errado de um jeito instrutivo: os tres posts da inauguracao do
+# Hospital Regional (obra ESTADUAL, com o presidente presente) sairam 'neutro'
+# pelo classificador dedicado e 'favoravel' com confianca 95 pela triagem.
+#
+# O motivo e que `triar_post_rapido` injeta "[LADO: ALIADO]" e uma nota que
+# diz "elogio ao que foi entregue = POSITIVO" — orientacao correta para
+# classificar COMENTARIOS, que vazou para o tom. Ou seja: o atalho de
+# polaridade por lado, banido em 25/07, voltava pela porta dos fundos, e ainda
+# por cima o mesmo post recebia tom diferente conforme tivesse caido no tier
+# rapido ou no profundo.
+#
+# Agora o tom e decidido por uma chamada que ve APENAS a legenda: nao sabe de
+# quem e a conta, nao ve os comentarios, nao tem como deduzir por lado. Como o
+# tom depende so da legenda, que nunca muda, ele e calculado UMA VEZ por post
+# (ver analisar_com_agora) — nas execucoes seguintes o valor gravado e
+# reaproveitado, o que sai mais barato que a versao "sem chamada extra".
 CRITERIO_TOM_PUBLICACAO = (
     "TOM DA PUBLICACAO (campo 'tom_publicacao'): o que o PERFIL DISSE sobre a "
     "gestao municipal de Alagoinhas no TEXTO DA PROPRIA PUBLICACAO. "
@@ -1200,7 +1213,6 @@ PROMPT_TRIAGEM = (
     "comentario religioso/cultural sem conexao com atos da gestao = NEUTRO, nunca POSITIVO. "
     "Reclamacao sobre terceiros, comercio, outros cidadaos ou tema geral que NAO "
     "responsabiliza a gestao = NEUTRO, nunca NEGATIVO. "
-    "\n\n" + CRITERIO_TOM_PUBLICACAO + "\n\n"
     "Retorne APENAS JSON valido, sem markdown, sem texto extra."
 )
 
@@ -1237,10 +1249,7 @@ def triar_post_rapido(post, comentarios):
     return (
         f'Perfil: @{post["autor"]} ({post["categoria"]}) [LADO: {lado}]\n'
         f'{nota_lado}\n'
-        # 600 caracteres, e nao 200: com 200 a legenda era cortada antes da
-        # frase que carrega o juizo ("...e a gestao nao fez nada"), e o
-        # tom_publicacao virava chute sobre a abertura do texto.
-        f'Caption: {post["caption"][:600] or "(sem legenda)"}\n\n'
+        f'Caption: {post["caption"][:200] or "(sem legenda)"}\n\n'
         f'COMENTARIOS (top {len(cidadaos)} por curtidas — otica do prefeito Gustavo Carmo):\n'
         f'{coments_txt}\n'
         'Escolha o TEMA e depois um SUBTEMA valido para esse tema. Use "outro" se nenhum encaixar.\n'
@@ -1254,11 +1263,7 @@ def triar_post_rapido(post, comentarios):
         '"tema":"<saude|educacao|obras|seguranca|transporte|emprego|impostos|saneamento|cultura_eventos|comunicacao>",'
         '"subtema":"<slug conforme a lista acima>",'
         '"sentimento_comentarios":"<positivo|negativo|neutro|misto>",'
-        '"comentarios_pct_pos":<0-100>,"comentarios_pct_neg":<0-100>,'
-        # tom_publicacao le a CAPTION acima; os campos de comentario leem a
-        # lista de comentarios. Sao perguntas diferentes sobre o mesmo post e
-        # podem (devem) discordar.
-        '"tom_publicacao":"<critico|favoravel|neutro>","confianca_tom":<0-100>}'
+        '"comentarios_pct_pos":<0-100>,"comentarios_pct_neg":<0-100>}'
     )
     
 
@@ -1507,21 +1512,6 @@ VERIFICACAO FINAL OBRIGATORIA — execute antes de escrever sentimento_post:
   quando sentimento_comentarios = "negativo" ou "misto" com pct_neg dominante.
 ═══════════════════════════════════════════════════════════════════════
 
-═══════════════════════════════════════════════════════════════════════
-CAMPO SEPARADO: "tom_publicacao" (NAO CONFUNDIR COM sentimento_post)
-═══════════════════════════════════════════════════════════════════════
-Tudo acima classifica a REACAO do publico. Este campo classifica a FALA de
-quem publicou, e por isso e calculado sozinho, a partir da caption, sem olhar
-para os comentarios nem para o sentimento_post que voce acabou de derivar.
-
-Os dois discordam com frequencia, e isso e o esperado, nao um erro:
-  Prefeitura anuncia obra e leva enxurrada de criticas nos comentarios
-    -> tom_publicacao = "favoravel"  (o que a prefeitura disse)
-    -> sentimento_post = "negativo"  (o que o povo respondeu)
-
-""" + CRITERIO_TOM_PUBLICACAO + """
-═══════════════════════════════════════════════════════════════════════
-
 Regras de analise:
 1. Priorize comentarios de cidadaos comuns (tipo=cidadao) sobre perfis politicos
 2. Identifique a queixa ou elogio mais frequente, nao apenas o sentimento medio
@@ -1586,8 +1576,6 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
   "score_risco": <0-100, risco de crise de imagem>,
   "risco_crise": "<alto|medio|baixo>",
   "sentimento_post": "<positivo|negativo|neutro — IMPACTO na imagem do prefeito pela reacao dos comentarios, NAO o tom da caption>",
-  "tom_publicacao": "<critico|favoravel|neutro — o que a CAPTION diz sobre a gestao; independente da reacao acima>",
-  "confianca_tom": <numero 0-100, sua confianca no tom_publicacao — baixe se a caption for vazia, ambigua ou lateral ao assunto>,
   "sentimento_comentarios": "<positivo|negativo|neutro|misto — sentimento medio dos comentarios dos cidadaos>",
   "comentarios_pct_pos": <0-100, percentual de comentarios positivos>,
   "comentarios_pct_neg": <0-100, percentual de comentarios negativos>,
@@ -1828,7 +1816,8 @@ _DEFAULTS_ANALISE = {
     "responsabilidade_atribuida": 0, "confianca": 0,
     "abordagem_recomendada": "", "por_que_funciona": "", "motivo_alerta": "",
     # Tom da publicacao: o default e "nao medido", nunca "neutro" (ver
-    # normalizar_tom e a migration 010).
+    # normalizar_tom e a migration 010). Nenhum prompt de analise devolve este
+    # campo — quem preenche e a chamada dedicada em analisar_com_agora.
     "tom_publicacao": "nao_classificado", "confianca_tom": 0,
 }
 
@@ -1900,7 +1889,18 @@ def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
     log(f"    Triagem: {MODELO_ANALISTA} | Profundo: {MODELO_PROFUNDO} | Comentarios: {MODELO_ANALISTA}")
     cliente = Anthropic(api_key=ANTHROPIC_KEY)
     resultado = []
-    n_profundo = n_rapido = 0
+    n_profundo = n_rapido = n_tom_novo = 0
+
+    # Tom ja classificado, por URL. O tom depende SO da legenda, e legenda nao
+    # muda: reclassificar a cada execucao seria pagar 3x por dia para receber a
+    # mesma resposta. Em regime, so os posts novos custam uma chamada.
+    tom_gravado = {}
+    for _r in _supabase_get(
+        "posts", f"tenant=eq.{TENANT}&select=url,tom_publicacao,confianca_tom&limit=5000"
+    ) or []:
+        _t = _r.get("tom_publicacao") or "nao_classificado"
+        if _t != "nao_classificado":
+            tom_gravado[(_r.get("url") or "").strip()] = (_t, int(_r.get("confianca_tom") or 0))
 
     for i, post in enumerate(posts, 1):
         url = post["url"]
@@ -1912,12 +1912,7 @@ def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
         try:
             rt = cliente.messages.create(
                 model=MODELO_ANALISTA,
-                # 260, e nao 180: o JSON da triagem ganhou tom_publicacao e
-                # confianca_tom. No teto antigo a resposta era cortada no meio,
-                # o parse falhava e TODO post caia nos defaults em silencio —
-                # o log so diria "Triagem falhou", e score_risco, urgencia e
-                # tema virariam zero para a base inteira.
-                max_tokens=260,
+                max_tokens=180,
                 system=PROMPT_TRIAGEM,
                 messages=[{"role": "user", "content": triar_post_rapido(post, comentarios)}],
             )
@@ -1998,15 +1993,18 @@ def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
         if (analise.get("tema") or "").lower().strip() not in TEMAS_VALIDOS:
             analise["tema"] = "comunicacao"
 
-        # Tom da publicacao. Nao passa pelo safety net do sentimento_post logo
-        # acima de proposito: aquele bloco deriva a REACAO a partir dos
-        # percentuais dos comentarios, e amarrar o tom nele desfaria justamente
-        # a separacao que o campo existe para criar.
-        _tom, _conf_tom = normalizar_tom(analise)
-        # Post sem legenda nao tem tom a ser lido; o modelo as vezes devolve
-        # "neutro" com confianca alta para uma foto sem texto, o que e chute.
-        if not (post.get("caption") or "").strip():
-            _tom, _conf_tom = "nao_classificado", 0
+        # Tom da publicacao: chamada dedicada, que ve APENAS a legenda. Nao sai
+        # da triagem nem do Sonnet de proposito — os dois recebem o lado do
+        # perfil e os comentarios no prompt, e isso contaminava o tom (ver a
+        # nota em CRITERIO_TOM_PUBLICACAO: os posts do Hospital Regional saiam
+        # 'favoravel' na conta do governo e 'neutro' no classificador limpo).
+        _url_post = (post.get("url") or "").strip()
+        if _url_post in tom_gravado:
+            _tom, _conf_tom = tom_gravado[_url_post]
+        else:
+            _tom, _conf_tom = classificar_tom_publicacao(post.get("caption") or "", cliente)
+            if _tom != "nao_classificado":
+                n_tom_novo += 1
         analise["tom_publicacao"] = _tom
         analise["confianca_tom"] = _conf_tom
 
@@ -2079,7 +2077,8 @@ def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
             f"{classificados}/{len(cidadaos_lista)} coments classificados")
         time.sleep(1)
 
-    log(f"  {len(resultado)} posts: {n_profundo} profundo (Sonnet), {n_rapido} rapido (Haiku)")
+    log(f"  {len(resultado)} posts: {n_profundo} profundo (Sonnet), {n_rapido} rapido (Haiku), "
+        f"{n_tom_novo} tom novo ({len(resultado) - n_tom_novo} reaproveitados)")
     return resultado
 
 # ==============================================================
@@ -5328,9 +5327,7 @@ def teste_triagem(max_posts=6, categoria="oposicao"):
                 "caption": p.get("caption") or ""}
         try:
             rt = cliente.messages.create(
-                # Mesmo teto do pipeline: se o harness cortar a resposta onde a
-                # producao nao corta, ele mede outra coisa.
-                model=MODELO_ANALISTA, max_tokens=260, system=PROMPT_TRIAGEM,
+                model=MODELO_ANALISTA, max_tokens=180, system=PROMPT_TRIAGEM,
                 messages=[{"role": "user", "content": triar_post_rapido(post, coments)}],
             )
             novo = _parse_json_resposta(rt.content[0].text)
