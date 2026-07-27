@@ -11,9 +11,21 @@ Este arquivo é lido automaticamente pelo Claude Code no início de cada sessão
 - Frontend admin: `radar-comando.surge.sh` e `radar-politico-alg.surge.sh` (mesmo bundle, publicados juntos pelo CI). Supabase: projeto `radar-politico` (ref `wtlhqyqxhuchzloodoyx`), tenant `alagoinhas`.
 - `agora.py` já lê `tenant_settings` do Supabase a cada execução (keywords, fontes, `climate_thresholds`, `notification_config`). Pendência real de configuração: os `score_weights` afetam só os índices calculados no frontend, não o score por post do modelo.
 
-## Decisões de produto vigentes (revisões de 24 e 25/07/2026)
+## Decisões de produto vigentes (revisões de 24, 25 e 27/07/2026)
 
-Vieram das reuniões com o cliente (PRs #37, #40 e #41). Valem como estado atual — não desfazer sem pedido explícito.
+Vieram das reuniões com o cliente (PRs #37, #40, #41 e #55). Valem como estado atual — não desfazer sem pedido explícito.
+
+### Revisão de 27/07 (PR #55)
+
+- **Filtro 24h/7dias/30dias em toda tela que mostra comentário ou análise.** Um componente só: `components/PeriodoFilter.tsx` (rótulos, ordem e desenho vêm dele). Está em Clima, Feed, Aprovação, Mapa da Cidade, Pedidos, Análise por Perfil, Previsões e Alertas & Ações. Ao criar tela nova com esses dados, usar esse componente e não uma cópia local.
+- **O recorte de comentários por período é feito cruzando `url_post` com os posts da janela**, nunca por `comments.data_comentario_ts` (backfill parcial, ~8% das linhas). Mesma abordagem do `agora.py::contar_comentarios_por_tema`.
+- **Estação Meteorológica**: o radar de varredura é a coluna do meio entre o card do clima e o de engajamento (`RadarStatusColumn`, grid de 6 colunas: 3 + 1 + 2). A faixa horizontal (`RadarStatusBar`) sobrou só para o estado sem dados, onde não há os dois cards.
+- **Box "Publicações analisadas" é preto fixo**, não acompanha tema claro/escuro, e toda fonte nele é bold e >= 12px. A diretriz global de tipografia do `index.css` rebaixa `font-bold` para peso 400 com `!important` — por isso existe `.peso-bold-total`, exceção **escopada só a esse box**. Só mudar a classe no componente não basta; foi assim que a primeira tentativa saiu preta e com texto em peso regular.
+- **Velocímetro por tema** (`GaugeTema.tsx`): arco único em degradê com pontas arredondadas, arcos finos internos, ponteiro longo com cubo e o valor abaixo. É **SVG puro** — não reintroduzir ECharts aqui, a ClimaPage é a landing e o chunk é de ~1 MB. O ponteiro **vibra o tempo todo** (animação CSS de `transform`, que roda no compositor e sobrevive à rolagem). O ângulo de repouso é aplicado por `useEffect`, **nunca por `requestAnimationFrame`**: rAF não roda em aba oculta e a agulha ficava travada no zero apontando valor errado. A referência do cliente tem vermelho à esquerda; aqui o degradê continua verde à esquerda porque o ponteiro mede **% de negativos** e 0% é o melhor cenário. Foi adotada a forma, não a inversão de significado.
+- **Mapa da Cidade**: cada barra e cada rótulo de bairro abrem a coletânea de comentários que definiu aquela posição no rank (`ComentariosBairroModal`).
+- **Análise por Perfil usa a tela Relevância como critério** (`lib/relevancia.ts`, match por substring e sem acento, espelhando `agora.py::_motivo_relevancia`). Sem palavra ativa cadastrada, tudo passa e a tela avisa. Há ranking de quem mais/menos publica sobre a gestão e de quem concentra mais/menos críticas contrárias e favoráveis, com piso de amostra (`MIN_AMOSTRA`) nos rankings de polaridade.
+- **O tom da publicação do perfil não é medido, e isso é proposital.** `posts.sentimento_post` **não serve** para isso: o próprio prompt do `agora.py` diz que ele é "o IMPACTO na imagem do prefeito pela REAÇÃO dos comentários, NÃO o tom da caption" — usá-lo como opinião do perfil transformaria a reação do público na fala de quem publicou. Deduzir pela categoria (oposição = crítica) é o atalho de polaridade por lado removido em 25/07. A polaridade exibida vem só dos comentários de cidadãos. **Medir o tom do post exige mudança no backend** (campo novo no `posts`, prompt e reprocessamento).
+- **Mapa de Influência** destaca com contorno laranja os perfis que mais publicaram no período selecionado. O score composto é acumulado e muda devagar; o destaque responde a "quem está usando mais as redes agora", que é outra pergunta.
 
 ### Comportamento
 
