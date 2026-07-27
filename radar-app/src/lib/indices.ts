@@ -14,6 +14,10 @@ export type NivelCrise = "baixo" | "moderado" | "alto" | "critico";
  * mesmos números de sempre. Quando o admin salva novos pesos na aba "Score",
  * `setScoreWeights` reescreve este módulo e os cálculos passam a usá-los.
  */
+/* `risco_amplificacao` continua aqui por compatibilidade com o que já está
+ * salvo em `tenant_settings`, mas NÃO entra no cálculo do risco enquanto o
+ * dado de amplificação não for coletado (ver calcRisco). Mudar este valor não
+ * altera nenhum número exibido. */
 export const DEFAULT_SCORE_WEIGHTS: ScoreWeights = {
   risco_iad: 0.35,
   risco_pct_alto: 0.25,
@@ -120,7 +124,22 @@ export function distribuicao(posts: Post[]) {
   };
 }
 
-/** Risco político 0-100 + nível de crise. */
+/**
+ * Risco político 0-100 + nível de crise.
+ *
+ * NORMALIZADO pela soma dos pesos aplicados (auditoria de 26/07). Gêmeo exato
+ * de `calc_risco()` no agora.py: mesmos termos, mesmos pesos, mesma
+ * normalização. Antes o backend somava 3 termos (teto real 65) e o frontend
+ * somava 4 termos úteis (teto real 85), então o mesmo dia tinha dois riscos
+ * diferentes no mesmo produto, e nenhum dos dois alcançava a faixa "crítico"
+ * que ambos declaravam ter.
+ *
+ * `risco_amplificacao` ficou fora do numerador E do denominador: era
+ * multiplicado por zero desde sempre (dado não coletado). Mantê-lo no
+ * denominador só recriaria o teto artificial. O campo continua no tipo por
+ * compatibilidade com `tenant_settings`; quando o dado existir, ele volta
+ * aqui e no agora.py juntos.
+ */
 export function calcRisco(
   posts: Post[],
   iad: number,
@@ -133,14 +152,15 @@ export function calcRisco(
   // um pico de % negativo num dia não dispara o risco (evita "Crítico" falso).
   const velTerm = Math.min(100, Math.max(0, negVelocity * 4)) * (ica / 100);
   const w = activeWeights;
+  const somaPesos = w.risco_iad + w.risco_pct_alto + w.risco_velocidade + w.risco_ica;
   const risco = clamp(
     0,
     100,
-    w.risco_iad * (100 - iad) +
+    (w.risco_iad * (100 - iad) +
       w.risco_pct_alto * pctRiscoAlto +
       w.risco_velocidade * velTerm +
-      w.risco_amplificacao * 0 + // amplificação negativa: Fase 2 (precisa de comentários granulares)
-      w.risco_ica * (100 - ica)
+      w.risco_ica * (100 - ica)) /
+      (somaPesos || 1)
   );
   let nivel: NivelCrise = "baixo";
   if (risco >= 80) nivel = "critico";

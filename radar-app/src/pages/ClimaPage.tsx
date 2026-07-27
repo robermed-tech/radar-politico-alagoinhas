@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchComentariosPorTema, filtrarPorPeriodo, type Post, type Boletim, type BoletimFrente, type Briefing, type Periodo } from "@/lib/data";
 import { calcIAD, NIVEL_COLOR, NIVEL_LABEL, nivelBadgeStyle, type NivelCrise } from "@/lib/indices";
-import { getWeather, weatherFromCondicao } from "@/lib/weather";
+import { getWeather } from "@/lib/weather";
 import { fmtInt, fraseCapitalizada, limparTravessoes } from "@/lib/format";
 import { useAuth } from "@/components/AuthProvider";
 import { EvidenciaComentariosModal } from "@/components/EvidenciaComentariosModal";
@@ -468,9 +468,16 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
       </div>
     );
 
-  // Admin vê o clima derivado do score (client). Usuário comum vê a condição
-  // que vem pronta do boletim (backend) — sem o número.
-  const wx = isAdmin ? view.wx : weatherFromCondicao(boletim?.condicao);
+  // Clima ÚNICO para todo mundo (auditoria de 26/07). Antes o admin via o
+  // clima derivado do IAD (escala de aprovação, alto é bom) e o usuário comum
+  // via a condição do boletim (escala de risco, alto é ruim): duas grandezas
+  // diferentes traduzidas para a mesma metáfora visual, que podiam discordar
+  // no mesmo dia sem que houvesse explicação possível numa reunião.
+  //
+  // O que continua diferente por papel é só o DETALHE numérico: o admin vê o
+  // valor do IAD, o usuário comum vê o rótulo. A condição do boletim segue
+  // viva onde ela é o dado certo (frentes de instabilidade, mais abaixo).
+  const wx = view.wx;
   const amostra = forcaAmostra(view.comentarios);
   const txt1 = "#FFFFFF";
   const txt2 = "rgba(255,255,255,0.86)";

@@ -367,6 +367,14 @@ def _carregar_config_tenant(tenant_id):
 
 _carregar_config_tenant(TENANT)
 
+# Retencao de dados pessoais (LGPD) — janela em dias para o texto bruto e o @
+# do autor. Opiniao politica de cidadao identificado e dado pessoal SENSIVEL
+# (LGPD art. 5o, II) e o controlador aqui e orgao publico, entao "reter o
+# minimo necessario" nao e boa pratica opcional, e obrigacao legal.
+# Passada a janela, expurgar_pii() apaga texto e username e mantem so a
+# classificacao agregada + autor_hash. Ver supabase/migrations/009.
+RETENCAO_PII_DIAS = int(os.environ.get("RETENCAO_PII_DIAS", "180"))
+
 # Limites de coleta
 MAX_POSTS_POR_PERFIL    = 10
 MAX_COMENTARIOS_POR_POST = 50
@@ -1068,26 +1076,45 @@ def carregar_memoria(planilha):
 # MODULO 4 - ANALISE COM O AGORA (Claude)
 # ==============================================================
 
+# Alinhado ao PROMPT_COMENTARIOS na auditoria de 26/07. Este prompt tinha
+# ficado para tras na revisao de 25/07: continuava mandando classificar apoio a
+# opositor como NEGATIVO, o atalho que fabricava critica que ninguem escreveu.
+# Nao e detalhe cosmetico: a triagem produz score_risco, urgencia e risco_crise,
+# e e ela que decide se o post sobe para o Sonnet. Esses campos alimentam
+# alerta, boletim e Cacador de Crises, e o recalcular_sentimento_posts (que
+# conserta os percentuais a partir dos comentarios) nao toca em nenhum deles.
 PROMPT_TRIAGEM = (
     "Classificador rapido de risco politico. "
-    "REGRA CRITICA DE OTICA: todo sentimento e medido pelo impacto na imagem do "
-    "prefeito Gustavo Carmo de Alagoinhas/BA — NAO pelo tom do comentario isolado. "
-    "POSITIVO = comentario favorece o prefeito Gustavo (elogio a gestao, defesa do prefeito, "
-    "critica a opositores). "
-    "NEGATIVO = comentario prejudica o prefeito Gustavo (critica a gestao, apoio a opositor, "
-    "queixa sobre servico publico, sarcasmo/ironia sobre a prefeitura). "
-    "REGRA PARA PERFIL OPOSITOR: comentarios apoiando/elogiando o opositor = NEGATIVO. "
-    "Comentarios concordando com criticas ao prefeito = NEGATIVO. "
-    "Apenas comentarios DEFENDENDO o prefeito ou ATACANDO o opositor = POSITIVO. "
-    "REGRA PARA PERFIL ALIADO/GOVERNO: comentarios elogiando a gestao = POSITIVO. "
-    "REGRA DO NEUTRO (simetrica para POSITIVO e NEGATIVO): comentario que nao menciona "
-    "nem implica julgamento sobre a gestao = NEUTRO. "
+    "O QUE VOCE MEDE: o sentimento que o CIDADAO EXPRESSOU sobre a atual gestao "
+    "municipal de Alagoinhas/BA (prefeito Gustavo Carmo, prefeitura, secretarias, "
+    "obras, programas e servicos publicos). Voce le a opiniao que a pessoa "
+    "escreveu, nao deduz o que ela significaria politicamente. Se o cidadao nao "
+    "avaliou a gestao, o dado correto e NEUTRO, em nenhuma direcao. "
+    "PORTAO (decida isto antes de qualquer outra regra): 'este comentario avalia "
+    "a GESTAO MUNICIPAL?' So passa quem cita ou implica diretamente o prefeito, a "
+    "prefeitura, a gestao, uma secretaria, uma obra, um programa municipal ou a "
+    "qualidade de um servico publico. Se nao passar, e NEUTRO, e nenhuma regra "
+    "abaixo sobrepoe o portao. "
+    "POSITIVO = o cidadao aprovou algo da gestao (elogia obra, servico, programa "
+    "ou o prefeito; defende a gestao de uma critica; contesta quem esta criticando). "
+    "NEGATIVO = o cidadao reprovou algo da gestao (critica, denuncia, reclama de "
+    "servico, ironiza a gestao, ou endossa a denuncia que o post faz a gestao). "
+    "APOIO A OPOSITOR NAO E, POR SI SO, CRITICA A GESTAO: elogiar vereador ou "
+    "politico local de oposicao ('parabens vereador', 'voce e o proximo prefeito') "
+    "e sentimento sobre AQUELA PESSOA, e o cidadao nao disse nada sobre a gestao: "
+    "classifique NEUTRO. So vira NEGATIVO se o proprio comentario tambem reprovar "
+    "a gestao, explicitamente ou endossando a denuncia do post. Simetricamente, "
+    "atacar um opositor so e POSITIVO se defender a gestao junto. "
+    "RISADA NAO E PROVA DE IRONIA: 😂 e 'kkkk' aparecem em deboche, mas tambem em "
+    "concordancia e no riso de quem DEFENDE a gestao. Para marcar ironia e preciso "
+    "a contradicao no proprio texto (fato que desmente o elogio, aspas ironicas, "
+    "exagero absurdo). "
+    "COBRANCA SO E NEGATIVA QUANDO HA REPROVACAO: pergunta ou recado sem "
+    "reclamacao e NEUTRO. "
     "Animacao com artista/banda em evento ('Vamos!', 'Que show!'), reacao emocional pura, "
     "comentario religioso/cultural sem conexao com atos da gestao = NEUTRO, nunca POSITIVO. "
     "Reclamacao sobre terceiros, comercio, outros cidadaos ou tema geral que NAO "
     "responsabiliza a gestao = NEUTRO, nunca NEGATIVO. "
-    "Para ser POSITIVO ou NEGATIVO precisa mencionar ou implicar diretamente: prefeito, "
-    "prefeitura, gestao, secretaria, obra ou servico publico (ou apoiar/atacar opositor). "
     "Retorne APENAS JSON valido, sem markdown, sem texto extra."
 )
 
@@ -1105,15 +1132,21 @@ def triar_post_rapido(post, comentarios):
         f'  {c["curtidas"]}❤ @{c["username"]}: "{c["texto"][:180]}"\n'
         for c in cidadaos
     ) or "  Nenhum comentario.\n"
+    # O LADO do perfil e contexto de leitura, NAO atalho de polaridade (mesma
+    # regra de montar_prompt_comentarios; ver PROMPT_TRIAGEM).
     nota_lado = (
-        "ATENCAO: este e um perfil OPOSITOR. Comentarios apoiando/elogiando este perfil "
-        "= NEGATIVO para o prefeito. So e POSITIVO se o comentario defende Gustavo ou "
-        "ataca o opositor diretamente."
+        "CONTEXTO: a publicacao e de um perfil OPOSITOR a gestao. Isso ajuda a "
+        "entender o assunto, mas NAO define a polaridade. Elogiar o opositor sem "
+        "reprovar a gestao e NEUTRO; so e NEGATIVO se o comentario tambem critica a "
+        "gestao ou endossa a denuncia feita no post."
         if lado == "OPOSITOR" else
-        "ATENCAO: este e um perfil ALIADO/GOVERNO. Comentarios elogiando a gestao = "
-        "POSITIVO. Criticas = NEGATIVO."
+        "CONTEXTO: a publicacao e de um perfil ALIADO/GOVERNO (conta oficial da "
+        "gestao). Elogio ao que foi entregue = POSITIVO; reclamacao ou cobranca com "
+        "reprovacao dirigida a gestao = NEGATIVO; recado e pergunta sem juizo = NEUTRO."
         if lado == "ALIADO" else
-        "Analise o conteudo do comentario para determinar o impacto na imagem do prefeito."
+        "CONTEXTO: a publicacao e de imprensa. Leia cada comentario pelo que ele diz "
+        "sobre a gestao municipal; se a materia for sobre outra cidade ou sobre "
+        "politica nacional, os comentarios sao NEUTROS."
     )
     return (
         f'Perfil: @{post["autor"]} ({post["categoria"]}) [LADO: {lado}]\n'
@@ -1151,23 +1184,32 @@ O alvo da analise e SEMPRE o prefeito Gustavo Carmo e sua gestao municipal.
 Todo sentimento e classificado sob a OTICA DO PREFEITO ATUAL, independente
 de em qual perfil o comentario foi feito.
 
-  POSITIVO = favorece a imagem do prefeito Gustavo Carmo
+  POSITIVO = o cidadao APROVOU algo da gestao
     - Elogio direto ao prefeito ou a gestao municipal
     - Defesa do prefeito contra criticas
-    - Critica/ataque a OPOSITORES de Gustavo (vereadores opositores,
-      Luciano Almeida, Joaquim Neto, Jaldice Nunes, Paulo Cezar, etc.)
     - Apoio a obras, programas ou secretarias da prefeitura
     - Lembrar realizacoes da gestao positivamente
+    - Contestar quem esta criticando a gestao
+    - Atacar um opositor SOMENTE quando o comentario tambem defende a
+      gestao junto ("Luciano e incompetente, prefiro Gustavo")
 
-  NEGATIVO = prejudica a imagem do prefeito Gustavo Carmo
+  NEGATIVO = o cidadao REPROVOU algo da gestao
     - Critica direta ao prefeito ou a gestao municipal
-    - APOIO/elogio a opositores ("vai ser nosso proximo prefeito",
-      "Luciano e melhor", "Joaquim ja deveria estar na prefeitura")
     - Queixas concretas sobre servicos municipais (saude, educacao,
       obras, limpeza, IPTU, transporte)
     - Comparacoes desfavoraveis com outras gestoes/cidades
     - Sarcasmo, ironia ou descrenca sobre promessas (ver secao IRONIA abaixo)
     - Acusacao de que o perfil/portal e "pago", "patrocinado" ou "passa pano" pela gestao
+    - Endossar a denuncia que o post faz a gestao ("e verdade, aqui e assim mesmo")
+    - Apoiar um opositor SOMENTE quando o comentario tambem reprova a
+      gestao ("esse sim trabalha, diferente do atual")
+
+  APOIO A OPOSITOR, SOZINHO, NAO E CRITICA A GESTAO:
+    Elogiar vereador ou politico local de oposicao ("parabens vereador",
+    "voce tem meu respeito", "vai ser nosso proximo prefeito") e sentimento
+    sobre AQUELA PESSOA. O cidadao nao disse nada sobre a gestao: e NEUTRO.
+    Simetricamente, atacar opositor sem defender a gestao tambem e NEUTRO.
+    Esta regra ja fabricou 400 criticas que ninguem escreveu; nao a afrouxe.
 
   NEUTRO = nao avalia a gestao municipal — NAO contribui para pct_pos nem pct_neg
     - Pergunta sobre horario, endereco, informacao pratica
@@ -1188,8 +1230,9 @@ de em qual perfil o comentario foi feito.
     a acao ou qualidade da gestao -> NEUTRO, NAO POSITIVO.
 
 EXEMPLOS — OBRIGATORIO ACERTAR:
-  "Acompanho voce Luciano, vai ser nosso prefeito"          -> NEGATIVO
-  "Luciano e incompetente, prefiro Gustavo"                 -> POSITIVO
+  "Acompanho voce Luciano, vai ser nosso prefeito"          -> NEUTRO (apoio ao opositor, nada dito sobre a gestao)
+  "Esse sim trabalha, diferente do atual"                   -> NEGATIVO (apoio ao opositor + reprova a gestao)
+  "Luciano e incompetente, prefiro Gustavo"                 -> POSITIVO (ataca opositor + defende a gestao)
   "SUS de Alagoinhas da certo, parabens equipe!"            -> POSITIVO
   "Prefeitura abandonou minha rua, ha 2 meses sem luz"      -> NEGATIVO
   "Que horas abre o posto de saude?"                        -> NEUTRO
@@ -2240,6 +2283,83 @@ def recalcular_sentimento_posts(dry_run=False):
         f"posts com comentarios: {len(agg)}, atualizados: {n_atualizados}")
 
 
+def expurgar_pii(dias=None, dry_run=False):
+    """Apaga o texto bruto e o @ do autor dos comentarios que passaram da janela
+    de retencao, preservando tudo que os indices precisam.
+
+    POR QUE ISTO EXISTE (auditoria de 26/07): o autor_hash era gravado na MESMA
+    linha que o `username` e o `texto` em claro. A pseudonimizacao nao separava
+    identidade de conteudo, ficava ao lado dela, e portanto nao protegia nada.
+    Somado a isso, nada nunca era apagado: o banco acumulava indefinidamente
+    opiniao politica de cidadao identificado, que a LGPD classifica como dado
+    pessoal SENSIVEL (art. 5o, II), sob controle de um orgao publico.
+
+    Depois do expurgo a linha historica fica so com o hash, que e o que ele
+    sempre prometeu ser. O que SOBREVIVE (e o que alimenta clima, indices,
+    Pedidos, Bairros e a serie historica):
+        sentimento, tema, subtema, localidade, pedido, curtidas,
+        confianca_tema, autor_hash, datas
+    O que e APAGADO: texto, username.
+
+    Cobre tambem as linhas sem `data_comentario_dia` (falha de parse do fuso),
+    usando `atualizado_em` — senao elas ficariam fora da retencao para sempre.
+
+    Custo ZERO: nao chama Apify nem Anthropic, so escreve no Supabase.
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log("[expurgo-pii] SUPABASE ausente — abortando.")
+        return 0
+
+    dias = int(dias if dias is not None else RETENCAO_PII_DIAS)
+    corte_dia = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d")
+    corte_iso = (datetime.now() - timedelta(days=dias)).isoformat()
+    log(f"[expurgo-pii] tenant={TENANT} retencao={dias}d corte={corte_dia} dry_run={dry_run}")
+
+    # Dois recortes: pelo dia do comentario e, para quem nao tem dia parseado,
+    # pela data de atualizacao da linha.
+    recortes = [
+        ("por data do comentario", f"data_comentario_dia=lt.{corte_dia}"),
+        ("sem data (fallback)",    f"data_comentario_dia=is.null&atualizado_em=lt.{corte_iso}"),
+    ]
+
+    total = 0
+    for rotulo, recorte in recortes:
+        base = f"tenant=eq.{TENANT}&{recorte}&pii_expurgado_em=is.null"
+
+        # Conta paginando (PostgREST corta em 1000/req).
+        n, page = 0, 0
+        while True:
+            chunk = _supabase_get("comments", f"{base}&select=id&limit=1000&offset={page * 1000}")
+            if not chunk:
+                break
+            n += len(chunk)
+            if len(chunk) < 1000:
+                break
+            page += 1
+
+        if not n:
+            log(f"  {rotulo}: nada a expurgar")
+            continue
+        if dry_run:
+            log(f"  {rotulo}: {n} comentarios seriam expurgados")
+            total += n
+            continue
+
+        ok = _supabase_patch("comments", base, {
+            "texto": "",
+            "username": "",
+            "pii_expurgado_em": datetime.now().isoformat(),
+        })
+        if ok:
+            log(f"  {rotulo}: {n} comentarios expurgados")
+            total += n
+        else:
+            log(f"  {rotulo}: FALHOU o PATCH de {n} comentarios")
+
+    log(f"[expurgo-pii] {'(dry-run) ' if dry_run else ''}total: {total}")
+    return total
+
+
 def gravar_no_supabase(posts_analisados, comentarios_por_post):
     """Espelha os dados no Postgres do Supabase. Sheets continua como fonte da verdade."""
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -2385,11 +2505,49 @@ def calc_ica(posts):
     fBal = 1 - abs(pPos - pNeg) / 100 * 0.3
     return max(0.0, min(100.0, 100 * (0.45 * fVol + 0.25 * fFontes + 0.20 * fRec + 0.10 * fBal)))
 
-def calc_risco(posts, iad, ica):
-    """Risco politico (0-100) + nivel de crise."""
+# Pesos do risco politico. Espelham DEFAULT_SCORE_WEIGHTS de
+# radar-app/src/lib/indices.ts: os dois lados precisam calcular o MESMO numero
+# a partir das MESMAS entradas. Se mexer aqui, mexer la.
+PESO_RISCO_IAD        = 0.35
+PESO_RISCO_PCT_ALTO   = 0.25
+PESO_RISCO_VELOCIDADE = 0.20
+PESO_RISCO_ICA        = 0.05
+_SOMA_PESOS_RISCO = (PESO_RISCO_IAD + PESO_RISCO_PCT_ALTO
+                     + PESO_RISCO_VELOCIDADE + PESO_RISCO_ICA)
+
+
+def calc_risco(posts, iad, ica, neg_velocity=0.0):
+    """Risco politico (0-100) + nivel de crise.
+
+    NORMALIZADO pela soma dos pesos aplicados (auditoria de 26/07).
+
+    Antes os pesos somavam 0,65 e o resultado era apresentado numa escala que
+    diz ir de 0 a 100. O teto real era 65, e as faixas de boletim.py
+    ("tempo fechando" >= 60, "tempestade" >= 80) eram inalcancaveis: numa
+    varredura das 9.261 combinacoes possiveis de (iad, pct_alto, ica), 69,7%
+    caiam em "ceu limpo", 1% chegava a "tempo fechando" e "tempestade" tinha
+    probabilidade ZERO. Um cenario de aprovacao 5 com 90% dos posts em risco
+    alto devolvia 58,8 e era exibido como "nuvens isoladas".
+
+    Dividir pela soma dos pesos faz a escala usar de fato os 0-100 que ela
+    declara ter, sem mexer nas faixas nem no significado das palavras.
+
+    O termo de amplificacao ficou de fora da conta (numerador E denominador):
+    era multiplicado por zero desde sempre, porque o dado nao e coletado.
+    Mante-lo no denominador so reintroduziria o mesmo teto artificial, agora
+    disfarcado. Quando o dado existir, ele entra aqui e no indices.ts juntos.
+    """
     tot = len(posts) or 1
     pctRiscoAlto = sum(1 for p in posts if str(p.get("risco_crise", "")).strip().lower() == "alto") / tot * 100
-    risco = max(0.0, min(100.0, 0.35 * (100 - iad) + 0.25 * pctRiscoAlto + 0.05 * (100 - ica)))
+    # Velocidade do negativo AMORTECIDA pela confianca da amostra: com amostra
+    # fraca, um pico de % negativo num dia nao dispara o risco.
+    velTerm = max(0.0, min(100.0, neg_velocity * 4)) * (ica / 100)
+    risco = max(0.0, min(100.0, (
+        PESO_RISCO_IAD * (100 - iad)
+        + PESO_RISCO_PCT_ALTO * pctRiscoAlto
+        + PESO_RISCO_VELOCIDADE * velTerm
+        + PESO_RISCO_ICA * (100 - ica)
+    ) / _SOMA_PESOS_RISCO))
     if risco >= 80:
         nivel = "critico"
     elif risco >= 60:
@@ -2411,11 +2569,34 @@ def gravar_daily_metrics(posts_analisados):
         d = _dia_iso(p.get("data_post", ""))
         if d:
             by_day.setdefault(d, []).append(p)
+
+    # Velocidade do negativo: MESMA definicao do frontend (CommandCenter.tsx),
+    # pct_neg do dia menos o de 3 entradas atras na serie de dias com posts.
+    # Sem isso o backend calcularia o risco com 3 termos e o frontend com 4,
+    # e o mesmo dia teria dois riscos diferentes no mesmo produto.
+    pct_neg_por_dia = {}
+    for r in (_supabase_get(
+        "daily_metrics",
+        f"tenant=eq.{TENANT}&select=dia,pct_neg&order=dia.desc&limit=30") or []):
+        if r.get("dia"):
+            pct_neg_por_dia[r["dia"]] = float(r.get("pct_neg") or 0)
+    for dia, ps in by_day.items():
+        t = len(ps) or 1
+        pct_neg_por_dia[dia] = sum(1 for p in ps if _sent(p) == "negativo") / t * 100
+    dias_ordenados = sorted(pct_neg_por_dia)
+    idx_do_dia = {d: i for i, d in enumerate(dias_ordenados)}
+
+    def _velocidade(dia):
+        i = idx_do_dia.get(dia, 0)
+        if i < 3:
+            return 0.0
+        return pct_neg_por_dia[dia] - pct_neg_por_dia[dias_ordenados[i - 3]]
+
     rows = []
     for dia, ps in by_day.items():
         iad = calc_iad(ps)
         ica = calc_ica(ps)
-        risco, nivel = calc_risco(ps, iad, ica)
+        risco, nivel = calc_risco(ps, iad, ica, _velocidade(dia))
         tot = len(ps) or 1
         pos = sum(1 for p in ps if _sent(p) == "positivo")
         neg = sum(1 for p in ps if _sent(p) == "negativo")
@@ -4388,6 +4569,7 @@ def main():
     _safe("creditos_apify", verificar_creditos_apify)                               # alerta quando creditos > 80%
     _safe("supabase", gravar_no_supabase, posts_analisados, comentarios_por_post)  # dual-write -> dashboard
     _safe("recalc_sentimento", recalcular_sentimento_posts)                        # reprojeta comments->posts p/ evitar o dessync do "0% criticas"
+    _safe("expurgo_pii", expurgar_pii)                                             # LGPD: apaga texto/@ do autor fora da janela de retencao
     _safe("daily_metrics", gravar_daily_metrics, posts_analisados)                 # historico de indices (Fase 3)
     _safe("boletim_climatico", gravar_boletim_climatico, posts_analisados)         # boletim climatico (Radar Comando)
     briefing_ia = _safe("briefing_estrategico", gerar_briefing_estrategico, posts_analisados)  # assistente IA (Fase 3d)
@@ -4617,6 +4799,84 @@ def teste_sentimento(max_posts=8, so_divergencias=True):
         for cat, antes, depois, conf, texto in mudou:
             t = " ".join((texto or "").split())[:110]
             print(f"  {antes:>8} -> {depois:<8} [conf {conf:>3}] ({cat}) {t!r}")
+
+
+def teste_triagem(max_posts=6, categoria="oposicao"):
+    """Roda SO a triagem (PROMPT_TRIAGEM) numa amostra real e compara com o que
+    esta gravado. NAO grava nada. Custo: so Anthropic (Haiku), zero Apify.
+
+    POR QUE EXISTE (auditoria de 26/07): a triagem nao tinha harness de teste.
+    Foi por isso que ela ficou de fora da revisao de 25/07 e seguiu mandando
+    classificar "apoio a opositor" como critica a gestao. Isso importa porque a
+    triagem produz score_risco, urgencia e risco_crise e decide se o post sobe
+    para o Sonnet, e o recalcular_sentimento_posts (que conserta os percentuais
+    a partir dos comentarios) nao toca em nenhum desses campos.
+
+    Prioriza posts de OPOSICAO, que e onde o atalho distorcia mais: e la que
+    "parabens vereador" era contado como reprovacao da gestao.
+
+    `--teste-triagem [N] [--imprensa|--governo]`
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY or not ANTHROPIC_KEY:
+        print("[teste-triagem] SUPABASE_URL / SUPABASE_SERVICE_KEY / ANTHROPIC_API_KEY ausentes.")
+        return
+
+    from urllib.parse import quote
+    posts = _supabase_get(
+        "posts",
+        f"tenant=eq.{TENANT}&categoria=ilike.{categoria}"
+        f"&select=url,autor,categoria,caption,score_risco,comentarios_pct_pos,"
+        f"comentarios_pct_neg,sentimento_comentarios"
+        f"&order=comentarios_total.desc&limit={max_posts}",
+    )
+    if not posts:
+        print(f"[teste-triagem] Nenhum post da categoria '{categoria}'.")
+        return
+
+    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    print(f"[teste-triagem] {len(posts)} posts de '{categoria}' — comparando triagem atual x gravado\n")
+    print(f"  {'perfil':<24} {'score':>12} {'%favoravel':>22} {'%critico':>20}")
+
+    for p in posts:
+        coments = _supabase_get(
+            "comments",
+            f"tenant=eq.{TENANT}&url_post=eq.{quote(p['url'], safe='')}"
+            f"&select=texto,username,curtidas,tipo&order=curtidas.desc&limit=60",
+        )
+        coments = [
+            {"tipo": c.get("tipo", "cidadao"), "curtidas": int(c.get("curtidas") or 0),
+             "username": c.get("username") or "", "texto": c.get("texto") or ""}
+            for c in coments if (c.get("texto") or "").strip()
+        ]
+        if not coments:
+            continue
+
+        post = {"autor": p.get("autor", ""), "categoria": p.get("categoria", ""),
+                "caption": p.get("caption") or ""}
+        try:
+            rt = cliente.messages.create(
+                model=MODELO_ANALISTA, max_tokens=180, system=PROMPT_TRIAGEM,
+                messages=[{"role": "user", "content": triar_post_rapido(post, coments)}],
+            )
+            novo = _parse_json_resposta(rt.content[0].text)
+        except Exception as e:
+            print(f"  @{p.get('autor','')}: falhou ({e})")
+            continue
+
+        def _cmp(antes, depois):
+            a, d = int(antes or 0), int(depois or 0)
+            seta = "=" if a == d else ("v" if d < a else "^")
+            return f"{a:>3} {seta} {d:<3}"
+
+        print(f"  @{p.get('autor',''):<23} "
+              f"{_cmp(p.get('score_risco'), novo.get('score_risco')):>12} "
+              f"{_cmp(p.get('comentarios_pct_pos'), novo.get('comentarios_pct_pos')):>22} "
+              f"{_cmp(p.get('comentarios_pct_neg'), novo.get('comentarios_pct_neg')):>20}")
+        time.sleep(1)
+
+    print("\n  Legenda: gravado -> triagem atual. 'v' caiu, '^' subiu, '=' igual.")
+    print("  Em posts de oposicao, o efeito esperado da correcao e %critico CAIR:")
+    print("  elogio a opositor deixa de ser contado como reprovacao da gestao.")
 
 
 def teste_filtro(limite=5, detalhar=True):
@@ -5055,6 +5315,16 @@ if __name__ == "__main__":
         # padrao (Instagrapi); --com-apify libera o fallback pago para quando
         # a sessao do Instagram estiver bloqueada.
         gravar_metricas_perfis(permitir_apify="--com-apify" in sys.argv)
+    elif "--teste-triagem" in sys.argv:
+        # Mede o efeito de mexidas no PROMPT_TRIAGEM contra a base real.
+        # Custo: so Anthropic (Haiku). Nao grava nada.
+        _n = 6
+        for _a in sys.argv:
+            if _a.isdigit():
+                _n = int(_a)
+        _cat = ("imprensa" if "--imprensa" in sys.argv
+                else "prefeit%" if "--governo" in sys.argv else "oposicao")
+        teste_triagem(max_posts=_n, categoria=_cat)
     elif "--teste-filtro" in sys.argv:
         # --teste-filtro [N] [--resumo]  → N=0 varre a base inteira;
         # --resumo omite as captions e imprime so o placar por perfil.
@@ -5083,6 +5353,15 @@ if __name__ == "__main__":
         # partir da tabela `comments`. Custo zero de creditos. Use --dry-run
         # para so imprimir o que mudaria, sem gravar.
         recalcular_sentimento_posts(dry_run="--dry-run" in sys.argv)
+    elif "--expurgar-pii" in sys.argv:
+        # --expurgar-pii [N] [--dry-run]  → apaga texto e @ do autor dos
+        # comentarios com mais de N dias (default RETENCAO_PII_DIAS=180),
+        # preservando a classificacao que alimenta os indices. Custo zero.
+        _dias = None
+        for _a in sys.argv:
+            if _a.isdigit():
+                _dias = int(_a)
+        expurgar_pii(dias=_dias, dry_run="--dry-run" in sys.argv)
     elif "--reprocessar" in sys.argv:
         reprocessar()
     elif "--retroanalise" in sys.argv:
