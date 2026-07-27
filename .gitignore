@@ -12,3 +12,12 @@ agora_resultado_*.json
 # Backups da limpeza de posts irrelevantes: contêm a base completa (posts +
 # comentários com username), não vão para o repo.
 backup-irrelevantes-*.json
+
+# Medição de acurácia (--amostra-rotulagem). A planilha traz texto e @ de
+# cidadãos reais, que é exatamente o dado que a retenção da migration 009
+# existe para proteger: é arquivo local de trabalho, nunca versionado nem
+# publicado. O gabarito e os rótulos ficam de fora junto, para o par não ser
+# reconstruído a partir do repo.
+rotulagem_*.html
+gabarito_*.json
+rotulos*.csv

@@ -4801,6 +4801,146 @@ def teste_sentimento(max_posts=8, so_divergencias=True):
             print(f"  {antes:>8} -> {depois:<8} [conf {conf:>3}] ({cat}) {t!r}")
 
 
+def amostra_rotulagem(por_estrato=100, semente=42):
+    """Sorteia a amostra e gera a planilha de rotulagem humana (item 2.10 da
+    auditoria: a acuracia nunca foi medida contra rotulo humano).
+
+    Escreve DOIS arquivos:
+      rotulagem_<data>.html  -> planilha CEGA, para uma pessoa rotular
+      gabarito_<data>.json   -> o que o modelo respondeu + tamanho dos estratos
+
+    O gabarito fica separado de proposito: rotulador que ve o palpite da maquina
+    concorda com ela por ancoragem, e a medicao perde o sentido.
+
+    O HTML e um arquivo LOCAL e NAO deve ser publicado: ele contem texto e @ de
+    cidadaos reais, que e o dado que a politica de retencao (migration 009)
+    existe para proteger.
+
+    Custo ZERO: nao chama Apify nem Anthropic.
+    """
+    import acuracia
+
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("[rotulagem] SUPABASE ausente.")
+        return
+
+    comentarios, page = [], 0
+    while True:
+        chunk = _supabase_get(
+            "comments",
+            f"tenant=eq.{TENANT}&tipo=eq.cidadao"
+            f"&select=id,texto,sentimento,confianca_tema,url_post,autor_post,categoria_post"
+            f"&limit=1000&offset={page * 1000}",
+        )
+        if not chunk:
+            break
+        comentarios.extend(chunk)
+        if len(chunk) < 1000:
+            break
+        page += 1
+    if not comentarios:
+        print("[rotulagem] Nenhum comentario de cidadao encontrado.")
+        return
+
+    # Legenda do post como contexto: o rotulador precisa da mesma informacao
+    # que o modelo teve, senao a comparacao e injusta (ex.: materia sobre outra
+    # cidade muda a resposta certa).
+    captions = {p["url"]: (p.get("caption") or "")
+                for p in (_supabase_get("posts", f"tenant=eq.{TENANT}&select=url,caption") or [])
+                if p.get("url")}
+    for c in comentarios:
+        c["caption_post"] = captions.get(c.get("url_post", ""), "")
+
+    amostra, estratos = acuracia.montar_amostra(comentarios, por_estrato, semente)
+    if not amostra:
+        print("[rotulagem] Amostra vazia (todos os comentarios sem texto?).")
+        return
+
+    data = datetime.now().strftime("%Y%m%d")
+    f_html, f_gab = f"rotulagem_{data}.html", f"gabarito_{data}.json"
+
+    with open(f_html, "w", encoding="utf-8") as f:
+        f.write(acuracia.gerar_html_rotulagem(
+            amostra, titulo=f"Rotulagem de sentimento — {TENANT}"))
+    with open(f_gab, "w", encoding="utf-8") as f:
+        json.dump({
+            "tenant": TENANT, "gerado_em": datetime.now().isoformat(),
+            "semente": semente, "estratos": estratos,
+            "gabarito": {str(c["id"]): {
+                "previsto": (c.get("sentimento") or "neutro").lower(),
+                "confianca": int(c.get("confianca_tema") or 0),
+            } for c in amostra},
+        }, f, ensure_ascii=False, indent=2)
+
+    print(f"[rotulagem] {len(amostra)} comentarios sorteados de {len(comentarios)}")
+    for classe, e in estratos.items():
+        print(f"    {classe:<10} {e['n']:>4} da amostra  (universo: {e['N']})")
+    print(f"\n  Planilha : {f_html}")
+    print(f"  Gabarito : {f_gab}  (NAO abra antes de rotular)")
+    print("\n  1. Abra a planilha no navegador e rotule (atalhos 1/2/3/0).")
+    print("     O progresso fica salvo no navegador, da pra parar e voltar.")
+    print("  2. Clique em 'Exportar CSV' ao terminar.")
+    print(f"  3. python agora.py --medir-acuracia rotulos.csv {f_gab}")
+
+
+def medir_acuracia(caminho_rotulos, caminho_gabarito=None):
+    """Cruza os rotulos humanos com o gabarito do modelo e reporta as metricas.
+
+    Custo ZERO: so aritmetica sobre dois arquivos locais.
+    """
+    import acuracia
+    import glob as _glob
+
+    if not caminho_gabarito:
+        candidatos = sorted(_glob.glob("gabarito_*.json"))
+        if not candidatos:
+            print("[acuracia] Nenhum gabarito_*.json encontrado. Rode --amostra-rotulagem antes.")
+            return
+        caminho_gabarito = candidatos[-1]
+
+    try:
+        with open(caminho_gabarito, encoding="utf-8") as f:
+            gab = json.load(f)
+        rotulos = acuracia.ler_rotulos_csv(caminho_rotulos)
+    except (OSError, ValueError) as e:
+        print(f"[acuracia] Falha ao ler os arquivos: {e}")
+        return
+
+    if not rotulos:
+        print("[acuracia] Nenhum rotulo valido no CSV.")
+        return
+
+    pares, orfaos = [], 0
+    for rid, verdadeiro in rotulos.items():
+        item = gab.get("gabarito", {}).get(rid)
+        if not item:
+            orfaos += 1
+            continue
+        pares.append({"previsto": item["previsto"], "verdadeiro": verdadeiro,
+                      "confianca": item.get("confianca", 0)})
+
+    if not pares:
+        print("[acuracia] Nenhum id do CSV bate com o gabarito. Arquivos de rodadas diferentes?")
+        return
+
+    n_amostra = sum(e["n"] for e in gab["estratos"].values())
+    print(f"[acuracia] gabarito: {caminho_gabarito} | rotulos: {caminho_rotulos}")
+    print(f"  {len(pares)} de {n_amostra} rotulados"
+          f"{f' ({orfaos} ids sem correspondencia)' if orfaos else ''}")
+    nao_sei = n_amostra - len(rotulos)
+    if nao_sei > 0:
+        print(f"  {nao_sei} ficaram sem rotulo ou marcados 'nao sei' (fora da conta)")
+    if len(pares) < n_amostra * 0.5:
+        print("  ATENCAO: menos da metade da amostra foi rotulada; os intervalos "
+              "de confianca vao ficar largos e as conclusoes fracas.")
+
+    print(acuracia.formatar_relatorio(acuracia.calcular_metricas(pares, gab["estratos"])))
+    print(acuracia.formatar_relatorio(
+        acuracia.calcular_metricas(pares, gab["estratos"], so_confiantes=True)))
+    print("\n  O segundo bloco e o numero que importa para o clima: o painel so "
+          "conta comentario com confianca >= 50.")
+
+
 def teste_triagem(max_posts=6, categoria="oposicao"):
     """Roda SO a triagem (PROMPT_TRIAGEM) numa amostra real e compara com o que
     esta gravado. NAO grava nada. Custo: so Anthropic (Haiku), zero Apify.
@@ -5315,6 +5455,21 @@ if __name__ == "__main__":
         # padrao (Instagrapi); --com-apify libera o fallback pago para quando
         # a sessao do Instagram estiver bloqueada.
         gravar_metricas_perfis(permitir_apify="--com-apify" in sys.argv)
+    elif "--amostra-rotulagem" in sys.argv:
+        # --amostra-rotulagem [N]  -> N por estrato (default 100, total 300).
+        # Gera a planilha cega de rotulagem humana. Custo zero.
+        _n = 100
+        for _a in sys.argv:
+            if _a.isdigit():
+                _n = int(_a)
+        amostra_rotulagem(por_estrato=_n)
+    elif "--medir-acuracia" in sys.argv:
+        # --medir-acuracia rotulos.csv [gabarito.json]
+        _args = [a for a in sys.argv[1:] if not a.startswith("--")]
+        if not _args:
+            print("uso: python agora.py --medir-acuracia rotulos.csv [gabarito_AAAAMMDD.json]")
+        else:
+            medir_acuracia(_args[0], _args[1] if len(_args) > 1 else None)
     elif "--teste-triagem" in sys.argv:
         # Mede o efeito de mexidas no PROMPT_TRIAGEM contra a base real.
         # Custo: so Anthropic (Haiku). Nao grava nada.
