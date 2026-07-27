@@ -7,28 +7,43 @@
  * perfil de um veículo local aparecia com dezenas de publicações, das quais
  * boa parte não falava de prefeito, prefeitura ou gestão.
  *
- * ## O que é medido, e o que deliberadamente não é
+ * ## Os dois eixos, e por que são dois campos diferentes
  *
- * A polaridade ("crítica contrária" x "manifestação favorável") vem dos
- * **comentários de cidadãos** nesses posts — a mesma fonte, com os mesmos
- * critérios, que forma o clima (ver lib/sentimento.ts).
+ * **O que o perfil FAZ** vem de `posts.tom_publicacao` (migration 010): o tom
+ * da própria publicação sobre a gestão, classificado a partir do texto
+ * publicado, sem olhar para os comentários.
  *
- * O tom da **própria publicação** do perfil NÃO é medido, e não é por
- * esquecimento: o pipeline não classifica isso hoje. `posts.sentimento_post`
- * parece servir, mas não serve — o prompt do agora.py diz explicitamente que
- * ele é "o IMPACTO na imagem do prefeito pela REAÇÃO dos comentários, NÃO o
- * tom da caption". Usá-lo como se fosse a opinião do perfil transformaria a
- * reação do público na fala de quem publicou. A outra tentação, deduzir o tom
- * pela categoria do perfil (oposição = crítica), é o atalho de polaridade por
- * lado que a revisão de 25/07 removeu de todos os prompts.
+ * **O que o perfil RECEBE** vem dos comentários de cidadãos nessas
+ * publicações, com os mesmos critérios que formam o clima (lib/sentimento.ts).
  *
- * Então o eixo "quem fala mais e quem fala menos da gestão" é medido por
- * VOLUME de publicações sobre a gestão, que é um número real e auditável, e o
- * eixo de polaridade é medido onde a polaridade de fato existe: nos
- * comentários. Classificar o tom do post exige mudança no backend.
+ * `posts.sentimento_post` não entra em nenhum dos dois: ele é, pelo próprio
+ * prompt do agora.py, "o IMPACTO na imagem do prefeito pela REAÇÃO dos
+ * comentários, NÃO o tom da caption". Usá-lo como fala do perfil faria um post
+ * elogioso da prefeitura que tomou uma enxurrada de críticas ser contabilizado
+ * como uma crítica feita pela prefeitura contra ela mesma.
+ *
+ * Publicação com `confianca_tom` abaixo de `CONFIANCA_MIN_TOM` conta no total
+ * mas não entra em nenhum dos lados, mesma política da confiança dos
+ * comentários: quando o classificador declarou que não decidiu, contar como
+ * certeza infla o lado maior.
  */
 import type { ComentarioLeve, Post } from "@/lib/data";
 import { casaRelevancia } from "@/lib/relevancia";
+
+/**
+ * Confiança mínima para o tom de uma publicação contar como crítica ou elogio.
+ * Gêmeo de `CONFIANCA_MIN_TOM` no agora.py: se mudar aqui, mude lá.
+ */
+export const CONFIANCA_MIN_TOM = 60;
+
+export function tomConfiavel(p: Pick<Post, "tom_publicacao" | "confianca_tom">): boolean {
+  if (p.tom_publicacao === "nao_classificado") return false;
+  const c = Number(p.confianca_tom ?? 0);
+  // Confiança 0 vem de post anterior ao campo: a confiança nunca foi medida,
+  // então o valor é mantido em vez de reprovado à toa (mesma regra de
+  // sentimentoConfiavel para comentários).
+  return c === 0 || c >= CONFIANCA_MIN_TOM;
+}
 
 export interface PerfilAnalise {
   autor: string;
@@ -37,6 +52,14 @@ export interface PerfilAnalise {
   posts: number;
   /** Quantas delas citam as palavras cadastradas em Relevância. */
   postsGestao: number;
+  /** Publicações do perfil que criticam a gestão (tom_publicacao). */
+  fazCritica: number;
+  /** Publicações do perfil que elogiam ou defendem a gestão. */
+  fazElogio: number;
+  /** Publicações sobre a gestão sem juízo, ou com confiança baixa demais. */
+  fazNeutro: number;
+  /** % de críticas entre as publicações que tomam partido (neutras fora). */
+  pctFazCritica: number;
   /** Comentários de cidadãos nessas publicações. */
   comentarios: number;
   /** Comentários contrários à gestão. */
@@ -72,6 +95,10 @@ export function analisarPerfis(
       categoria: p.categoria || "",
       posts: 0,
       postsGestao: 0,
+      fazCritica: 0,
+      fazElogio: 0,
+      fazNeutro: 0,
+      pctFazCritica: 0,
       comentarios: 0,
       contra: 0,
       favor: 0,
@@ -83,6 +110,12 @@ export function analisarPerfis(
     if (!e.categoria && p.categoria) e.categoria = p.categoria;
     if (casaRelevancia(p, keywordsNormalizadas)) {
       e.postsGestao += 1;
+      // Tom sem confiança suficiente cai em "neutro" da contagem, e não num
+      // dos lados: a publicação existiu, mas o classificador não decidiu.
+      if (!tomConfiavel(p)) e.fazNeutro += 1;
+      else if (p.tom_publicacao === "critico") e.fazCritica += 1;
+      else if (p.tom_publicacao === "favoravel") e.fazElogio += 1;
+      else e.fazNeutro += 1;
       const url = (p.url || "").trim();
       if (url) donoDoPost.set(url, autor);
     }
@@ -102,13 +135,19 @@ export function analisarPerfis(
   return Object.values(by)
     .map((e) => {
       const lado = e.contra + e.favor;
+      const ladoFaz = e.fazCritica + e.fazElogio;
       return {
         ...e,
         pctContra: lado ? Math.round((e.contra / lado) * 100) : 0,
+        pctFazCritica: ladoFaz ? Math.round((e.fazCritica / ladoFaz) * 100) : 0,
         saldo: e.favor - e.contra,
       };
     })
-    .sort((a, b) => b.postsGestao - a.postsGestao || b.comentarios - a.comentarios);
+    .sort(
+      (a, b) =>
+        b.fazCritica + b.fazElogio - (a.fazCritica + a.fazElogio) ||
+        b.postsGestao - a.postsGestao
+    );
 }
 
 /** Extremos de um ranking: quem lidera e quem fica na ponta oposta. */

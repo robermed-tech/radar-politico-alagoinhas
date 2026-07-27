@@ -1076,6 +1076,91 @@ def carregar_memoria(planilha):
 # MODULO 4 - ANALISE COM O AGORA (Claude)
 # ==============================================================
 
+# ── TOM DA PUBLICACAO ───────────────────────────────────────────────────────
+# Confianca minima para o tom valer como critica ou elogio. Abaixo disso a
+# publicacao conta no total mas nao entra em nenhum dos dois lados — mesma
+# politica de CONFIANCA_MIN_SENTIMENTO nos comentarios: quando o modelo declara
+# que nao conseguiu decidir, contar como certeza infla o lado maior.
+CONFIANCA_MIN_TOM = 60
+
+TONS_VALIDOS = ("critico", "favoravel", "neutro")
+
+# CRITERIO UNICO do tom da publicacao, interpolado em TODOS os prompts que
+# classificam esse campo (triagem, analise profunda e reclassificacao).
+#
+# Existe como constante, e nao copiado em cada prompt, por causa do que a
+# auditoria de 26/07 encontrou: a revisao de 25/07 consertou o criterio de
+# sentimento no PROMPT_COMENTARIOS e deixou PROMPT_TRIAGEM e PROMPT_SISTEMA
+# para tras, que seguiram um mes classificando pelo criterio antigo. Com uma
+# constante so, mudar o criterio muda os tres ao mesmo tempo por construcao.
+CRITERIO_TOM_PUBLICACAO = (
+    "TOM DA PUBLICACAO (campo 'tom_publicacao'): o que o PERFIL DISSE sobre a "
+    "gestao municipal de Alagoinhas no TEXTO DA PROPRIA PUBLICACAO. "
+    "NAO e a reacao dos comentarios, NAO e o clima do post, NAO e o que o "
+    "publico achou: e a fala de quem publicou. Um post elogioso da prefeitura "
+    "que recebeu enxurrada de criticas continua sendo 'favoravel', porque o tom "
+    "mede o que a prefeitura disse, nao o que responderam a ela.\n"
+    "PORTAO (decida isto ANTES de qualquer outra regra): 'esta publicacao emite "
+    "juizo sobre a GESTAO MUNICIPAL DE ALAGOINHAS?' So passa quem avalia, "
+    "elogia, cobra ou critica o prefeito Gustavo Carmo, a prefeitura, uma "
+    "secretaria, uma obra, um programa ou um servico municipal. Se nao passar "
+    "no portao, o tom e 'neutro', e NENHUMA regra abaixo sobrepoe o portao.\n"
+    "TOM OTIMISTA SOBRE A CIDADE NAO E ELOGIO A GESTAO. Noticia boa sobre "
+    "economia, comercio, festa, cultura, tradicao, time, clima ou 'novo momento "
+    "da cidade', sem creditar aquilo a uma acao da prefeitura, e 'neutro'. "
+    "Obra ou servico de OUTRO ENTE (governo estadual, governo federal, hospital "
+    "regional, universidade, concessionaria) e 'neutro' para a gestao municipal, "
+    "mesmo quando o texto e entusiasmado e mesmo quando o prefeito aparece na "
+    "foto: so vira 'favoravel' se o texto atribuir merito a prefeitura.\n"
+    "NAO DEDUZA PELO LADO DO PERFIL. Perfil de oposicao publica agenda, "
+    "aniversario e agradecimento, e isso e 'neutro'. Conta oficial da gestao "
+    "publica utilidade publica (IPTU, horario, interdicao, vagas, edital, "
+    "inscricao de curso), e isso tambem e 'neutro'. Quem define e o texto, "
+    "nunca de quem e a conta.\n"
+    "AUTOPROMOCAO DE POLITICO NAO E JUIZO SOBRE A GESTAO. Politico contando a "
+    "propria agenda, apresentando sua equipe, descrevendo seu metodo de "
+    "trabalho ('a gente caminha, escuta as ruas, fiscaliza') ou anunciando "
+    "evento proprio esta falando de SI, nao da prefeitura: e 'neutro'. So vira "
+    "'critico' se o texto tambem reprovar a gestao, e so vira 'favoravel' se "
+    "elogiar a gestao junto. Esta e a mesma regra que vale para comentario: "
+    "falar bem de um lado nao equivale a falar mal do outro.\n"
+    "  critico   = a publicacao reprova, denuncia, cobra com reprovacao, "
+    "expoe falha ou ironiza a gestao, o prefeito, a prefeitura, uma secretaria, "
+    "uma obra ou um servico municipal. Vale tambem quando o perfil noticia a "
+    "denuncia de terceiros enquadrando-a como falha da gestao ('moradores "
+    "denunciam abandono da rua X').\n"
+    "  favoravel = a publicacao elogia, defende de uma critica, ou promove "
+    "como conquista uma realizacao, entrega, obra ou programa DA PREFEITURA "
+    "('entregamos a nova UBS', 'gestao investe R$ 2 mi em saude', 'prefeitura "
+    "recupera 40 ruas').\n"
+    "  neutro    = passa longe do portao, informa sem julgar, ou cobre os dois "
+    "lados sem enquadrar como falha nem como merito.\n"
+    "EXEMPLOS — OBRIGATORIO ACERTAR:\n"
+    "  'Inauguracao do Hospital Regional com a presenca do presidente Lula' "
+    "-> neutro (obra estadual/federal; nada dito sobre a prefeitura)\n"
+    "  'Alagoinhas esta prestes a viver um novo momento na saude publica' "
+    "-> neutro (otimismo sobre a cidade sem creditar acao da prefeitura)\n"
+    "  'Alvorada de Santa Terezinha celebra tradicao e movimenta a economia' "
+    "-> neutro (evento cultural; a gestao nao e avaliada)\n"
+    "  'Seu carne do IPTU 2026 esta a um zap de distancia' "
+    "-> neutro (utilidade publica da propria prefeitura)\n"
+    "  'Sao Joao realizado sem comprometer recursos proprios do municipio' "
+    "-> favoravel (credita merito de gestao a prefeitura)\n"
+    "  'Prefeitura entregou a reforma da praca do bairro X' -> favoravel\n"
+    "  'A conta nao fecha e quem paga e sempre quem ganha menos' (sobre tarifa "
+    "municipal) -> critico\n"
+    "  'Moradores do Riacho da Guia estao ha tres dias sem agua' -> critico\n"
+    "IRONIA exige a contradicao no proprio texto (fato que desmente o elogio, "
+    "aspas ironicas, exagero absurdo). Emoji de risada, '😂' e 'kkkk' NAO sao "
+    "prova de ironia.\n"
+    "COBRANCA sem reprovacao e 'neutro': pergunta, pedido de informacao ou "
+    "encaminhamento de demanda sem juizo sobre a gestao.\n"
+    "CONFIANCA ('confianca_tom', 0-100): baixe abaixo de 60 quando a publicacao "
+    "nao tiver legenda, for so foto/emoji, for ambigua ou tratar da gestao de "
+    "forma tao lateral que o tom seja chute. Preferir confianca baixa a "
+    "inventar um lado."
+)
+
 # Alinhado ao PROMPT_COMENTARIOS na auditoria de 26/07. Este prompt tinha
 # ficado para tras na revisao de 25/07: continuava mandando classificar apoio a
 # opositor como NEGATIVO, o atalho que fabricava critica que ninguem escreveu.
@@ -1115,6 +1200,7 @@ PROMPT_TRIAGEM = (
     "comentario religioso/cultural sem conexao com atos da gestao = NEUTRO, nunca POSITIVO. "
     "Reclamacao sobre terceiros, comercio, outros cidadaos ou tema geral que NAO "
     "responsabiliza a gestao = NEUTRO, nunca NEGATIVO. "
+    "\n\n" + CRITERIO_TOM_PUBLICACAO + "\n\n"
     "Retorne APENAS JSON valido, sem markdown, sem texto extra."
 )
 
@@ -1151,7 +1237,10 @@ def triar_post_rapido(post, comentarios):
     return (
         f'Perfil: @{post["autor"]} ({post["categoria"]}) [LADO: {lado}]\n'
         f'{nota_lado}\n'
-        f'Caption: {post["caption"][:200] or "(sem legenda)"}\n\n'
+        # 600 caracteres, e nao 200: com 200 a legenda era cortada antes da
+        # frase que carrega o juizo ("...e a gestao nao fez nada"), e o
+        # tom_publicacao virava chute sobre a abertura do texto.
+        f'Caption: {post["caption"][:600] or "(sem legenda)"}\n\n'
         f'COMENTARIOS (top {len(cidadaos)} por curtidas — otica do prefeito Gustavo Carmo):\n'
         f'{coments_txt}\n'
         'Escolha o TEMA e depois um SUBTEMA valido para esse tema. Use "outro" se nenhum encaixar.\n'
@@ -1165,7 +1254,11 @@ def triar_post_rapido(post, comentarios):
         '"tema":"<saude|educacao|obras|seguranca|transporte|emprego|impostos|saneamento|cultura_eventos|comunicacao>",'
         '"subtema":"<slug conforme a lista acima>",'
         '"sentimento_comentarios":"<positivo|negativo|neutro|misto>",'
-        '"comentarios_pct_pos":<0-100>,"comentarios_pct_neg":<0-100>}'
+        '"comentarios_pct_pos":<0-100>,"comentarios_pct_neg":<0-100>,'
+        # tom_publicacao le a CAPTION acima; os campos de comentario leem a
+        # lista de comentarios. Sao perguntas diferentes sobre o mesmo post e
+        # podem (devem) discordar.
+        '"tom_publicacao":"<critico|favoravel|neutro>","confianca_tom":<0-100>}'
     )
     
 
@@ -1414,6 +1507,21 @@ VERIFICACAO FINAL OBRIGATORIA — execute antes de escrever sentimento_post:
   quando sentimento_comentarios = "negativo" ou "misto" com pct_neg dominante.
 ═══════════════════════════════════════════════════════════════════════
 
+═══════════════════════════════════════════════════════════════════════
+CAMPO SEPARADO: "tom_publicacao" (NAO CONFUNDIR COM sentimento_post)
+═══════════════════════════════════════════════════════════════════════
+Tudo acima classifica a REACAO do publico. Este campo classifica a FALA de
+quem publicou, e por isso e calculado sozinho, a partir da caption, sem olhar
+para os comentarios nem para o sentimento_post que voce acabou de derivar.
+
+Os dois discordam com frequencia, e isso e o esperado, nao um erro:
+  Prefeitura anuncia obra e leva enxurrada de criticas nos comentarios
+    -> tom_publicacao = "favoravel"  (o que a prefeitura disse)
+    -> sentimento_post = "negativo"  (o que o povo respondeu)
+
+""" + CRITERIO_TOM_PUBLICACAO + """
+═══════════════════════════════════════════════════════════════════════
+
 Regras de analise:
 1. Priorize comentarios de cidadaos comuns (tipo=cidadao) sobre perfis politicos
 2. Identifique a queixa ou elogio mais frequente, nao apenas o sentimento medio
@@ -1478,6 +1586,8 @@ Retorne APENAS este JSON (sem markdown, sem texto fora do JSON):
   "score_risco": <0-100, risco de crise de imagem>,
   "risco_crise": "<alto|medio|baixo>",
   "sentimento_post": "<positivo|negativo|neutro — IMPACTO na imagem do prefeito pela reacao dos comentarios, NAO o tom da caption>",
+  "tom_publicacao": "<critico|favoravel|neutro — o que a CAPTION diz sobre a gestao; independente da reacao acima>",
+  "confianca_tom": <numero 0-100, sua confianca no tom_publicacao — baixe se a caption for vazia, ambigua ou lateral ao assunto>,
   "sentimento_comentarios": "<positivo|negativo|neutro|misto — sentimento medio dos comentarios dos cidadaos>",
   "comentarios_pct_pos": <0-100, percentual de comentarios positivos>,
   "comentarios_pct_neg": <0-100, percentual de comentarios negativos>,
@@ -1717,7 +1827,64 @@ _DEFAULTS_ANALISE = {
     "janela_acao": "esta semana", "cluster_crise": "nenhum",
     "responsabilidade_atribuida": 0, "confianca": 0,
     "abordagem_recomendada": "", "por_que_funciona": "", "motivo_alerta": "",
+    # Tom da publicacao: o default e "nao medido", nunca "neutro" (ver
+    # normalizar_tom e a migration 010).
+    "tom_publicacao": "nao_classificado", "confianca_tom": 0,
 }
+
+PROMPT_TOM = (
+    "Classificador do TOM de uma publicacao sobre a gestao municipal de "
+    "Alagoinhas/BA (prefeito Gustavo Carmo). Voce recebe SO o texto publicado "
+    "pelo perfil, sem comentarios, porque o que se mede aqui e a fala de quem "
+    "publicou.\n\n"
+    + CRITERIO_TOM_PUBLICACAO +
+    '\n\nRetorne APENAS JSON valido, sem markdown: '
+    '{"tom_publicacao":"<critico|favoravel|neutro>","confianca_tom":<0-100>}'
+)
+
+
+def normalizar_tom(analise):
+    """Devolve (tom, confianca) validados a partir de uma resposta do modelo.
+
+    Grafia fora do conjunto valido vira 'nao_classificado' em vez de escorregar
+    para 'neutro': "nao medido" e "medido e deu neutro" sao coisas diferentes na
+    contagem da tela Analise por Perfil, e a constraint da migration 010
+    recusaria o valor de qualquer forma.
+    """
+    tom = str(analise.get("tom_publicacao") or "").strip().lower()
+    try:
+        conf = int(float(analise.get("confianca_tom") or 0))
+    except (TypeError, ValueError):
+        conf = 0
+    conf = max(0, min(100, conf))
+    if tom not in TONS_VALIDOS:
+        return "nao_classificado", conf
+    return tom, conf
+
+
+def classificar_tom_publicacao(caption, cliente):
+    """Classifica o tom de UMA publicacao a partir da caption.
+
+    Usada pela reclassificacao da base e pelo harness `--teste-tom`. No
+    pipeline o tom ja vem junto da triagem/analise profunda, sem chamada extra.
+    Publicacao sem legenda nao vai para o modelo: nao ha texto para ler, e
+    inventar um tom a partir do nada e exatamente o que se quer evitar.
+    """
+    texto = (caption or "").strip()
+    if not texto:
+        return "nao_classificado", 0
+    try:
+        r = cliente.messages.create(
+            model=MODELO_ANALISTA,
+            max_tokens=90,
+            system=PROMPT_TOM,
+            messages=[{"role": "user", "content": f"Publicacao:\n{texto[:1500]}"}],
+        )
+        return normalizar_tom(_parse_json_resposta(r.content[0].text))
+    except Exception as e:
+        log(f"    tom falhou ({e})")
+        return "nao_classificado", 0
+
 
 def _parse_json_resposta(texto):
     """Remove bloco markdown e faz parse do JSON."""
@@ -1745,7 +1912,12 @@ def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
         try:
             rt = cliente.messages.create(
                 model=MODELO_ANALISTA,
-                max_tokens=180,
+                # 260, e nao 180: o JSON da triagem ganhou tom_publicacao e
+                # confianca_tom. No teto antigo a resposta era cortada no meio,
+                # o parse falhava e TODO post caia nos defaults em silencio —
+                # o log so diria "Triagem falhou", e score_risco, urgencia e
+                # tema virariam zero para a base inteira.
+                max_tokens=260,
                 system=PROMPT_TRIAGEM,
                 messages=[{"role": "user", "content": triar_post_rapido(post, comentarios)}],
             )
@@ -1825,6 +1997,18 @@ def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
         # Normaliza tema: valores fora do conjunto permitido → "comunicacao"
         if (analise.get("tema") or "").lower().strip() not in TEMAS_VALIDOS:
             analise["tema"] = "comunicacao"
+
+        # Tom da publicacao. Nao passa pelo safety net do sentimento_post logo
+        # acima de proposito: aquele bloco deriva a REACAO a partir dos
+        # percentuais dos comentarios, e amarrar o tom nele desfaria justamente
+        # a separacao que o campo existe para criar.
+        _tom, _conf_tom = normalizar_tom(analise)
+        # Post sem legenda nao tem tom a ser lido; o modelo as vezes devolve
+        # "neutro" com confianca alta para uma foto sem texto, o que e chute.
+        if not (post.get("caption") or "").strip():
+            _tom, _conf_tom = "nao_classificado", 0
+        analise["tom_publicacao"] = _tom
+        analise["confianca_tom"] = _conf_tom
 
         post_enriquecido = {**post, **analise}
         post_enriquecido["total_cidadaos"]  = len([c for c in comentarios if c["tipo"] == "cidadao"])
@@ -2368,6 +2552,20 @@ def gravar_no_supabase(posts_analisados, comentarios_por_post):
     log("=== MODULO 5c - Dual-write Supabase ===")
     agora = datetime.now().isoformat()
 
+    # Tom ja gravado, por URL. O pipeline reprocessa os mesmos posts a cada
+    # execucao (a janela retroativa se sobrepoe), entao um upsert que mandasse
+    # 'nao_classificado' porque a triagem falhou naquela rodada apagaria uma
+    # classificacao boa da rodada anterior. Aqui o valor antigo e preservado:
+    # so sobrescreve quem chegou classificado de verdade.
+    tom_atual = {}
+    for _r in _supabase_get(
+        "posts", f"tenant=eq.{TENANT}&select=url,tom_publicacao,confianca_tom&limit=5000"
+    ) or []:
+        tom_atual[(_r.get("url") or "").strip()] = (
+            _r.get("tom_publicacao") or "nao_classificado",
+            int(_r.get("confianca_tom") or 0),
+        )
+
     posts_rows = []
     for p in posts_analisados:
         if not p.get("url"):
@@ -2377,6 +2575,11 @@ def gravar_no_supabase(posts_analisados, comentarios_por_post):
         if _ppos + _pneg > 100:
             _tot = _ppos + _pneg
             _ppos, _pneg = _ppos / _tot * 100, _pneg / _tot * 100
+        _tom = p.get("tom_publicacao") or "nao_classificado"
+        _conf_tom = int(p.get("confianca_tom", 0) or 0)
+        if _tom == "nao_classificado":
+            _tom, _conf_tom = tom_atual.get((p.get("url") or "").strip(),
+                                            ("nao_classificado", 0))
         posts_rows.append({
             "url": p.get("url"), "tenant": TENANT,
             "data_post": p.get("data_post", ""), "autor": p.get("autor", ""),
@@ -2387,6 +2590,10 @@ def gravar_no_supabase(posts_analisados, comentarios_por_post):
             "total_politicos": int(p.get("total_politicos", 0) or 0),
             "sentimento_post": p.get("sentimento_post", ""),
             "sentimento_comentarios": p.get("sentimento_comentarios", ""),
+            # Tom da PUBLICACAO (o que o perfil disse) — separado do
+            # sentimento_post, que e a REACAO. Migration 010.
+            "tom_publicacao": _tom,
+            "confianca_tom": _conf_tom,
             "comentarios_pct_pos": _ppos,
             "comentarios_pct_neg": _pneg,
             "score_imagem": int(p.get("score_imagem", 50) or 50),
@@ -4941,6 +5148,132 @@ def medir_acuracia(caminho_rotulos, caminho_gabarito=None):
           "conta comentario com confianca >= 50.")
 
 
+def teste_tom(max_posts=20, categoria=None):
+    """Classifica o TOM de uma amostra real de publicacoes SEM escrever nada.
+
+    `--teste-tom [N] [--oposicao|--imprensa|--governo]`
+
+    Serve para conferir o criterio antes de reclassificar a base (regra do
+    CLAUDE.md: medir contra a base real antes de mexer em criterio). Custo: so
+    Anthropic, uma chamada Haiku curta por post. Zero credito Apify.
+
+    O que olhar no resultado: se todo post de oposicao sair 'critico' e todo
+    post de governo sair 'favoravel', o modelo esta deduzindo pelo perfil em
+    vez de ler o texto, que e exatamente o atalho que este campo existe para
+    nao repetir. Agenda, aniversario e utilidade publica tem que sair 'neutro'
+    dos dois lados.
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY or not ANTHROPIC_KEY:
+        print("[teste-tom] SUPABASE_URL / SUPABASE_SERVICE_KEY / ANTHROPIC_API_KEY ausentes.")
+        return
+
+    filtro = f"tenant=eq.{TENANT}"
+    if categoria:
+        filtro += f"&categoria=ilike.{categoria}"
+    posts = _supabase_get(
+        "posts",
+        f"{filtro}&caption=neq.&select=url,autor,categoria,caption,tom_publicacao,"
+        f"confianca_tom,sentimento_post&order=data_post.desc&limit={max_posts}",
+    )
+    if not posts:
+        print(f"[teste-tom] Nenhum post{' de ' + categoria if categoria else ''} com legenda.")
+        return
+
+    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    print(f"[teste-tom] {len(posts)} publicacoes — tom classificado agora x gravado\n")
+
+    placar = {}
+    mudou = 0
+    for p in posts:
+        tom, conf = classificar_tom_publicacao(p.get("caption") or "", cliente)
+        antes = p.get("tom_publicacao") or "nao_classificado"
+        cat = (p.get("categoria") or "?").lower()
+        placar.setdefault(cat, {}).setdefault(tom, 0)
+        placar[cat][tom] += 1
+        if antes != tom:
+            mudou += 1
+        baixa = " (confianca baixa, nao conta)" if conf < CONFIANCA_MIN_TOM else ""
+        seta = "=" if antes == tom else "->"
+        print(f"  @{(p.get('autor') or '')[:20]:<20} [{cat[:10]:<10}] "
+              f"{antes:<16} {seta} {tom:<10} conf={conf:>3}{baixa}")
+        # 220 caracteres, e nao 96: o juizo costuma estar no meio da legenda,
+        # nao na abertura. Com o preview curto, um post que cobrava a
+        # Prefeitura na Justica aparecia aqui como "de volta as ruas" e passava
+        # por erro do classificador quando o classificador estava certo.
+        _leg = " ".join((p.get("caption") or "").split())[:220]
+        print(f"      reacao gravada: {p.get('sentimento_post') or '?'} | legenda: {_leg}")
+        time.sleep(0.6)
+
+    print("\n  Placar por categoria (tom classificado agora):")
+    for cat in sorted(placar):
+        linha = " ".join(f"{t}={n}" for t, n in sorted(placar[cat].items()))
+        print(f"    {cat:<14} {linha}")
+    print(f"\n  {mudou}/{len(posts)} mudariam se a reclassificacao rodasse agora.")
+    print("  'reacao gravada' e o sentimento_post (o que o povo respondeu). "
+          "Discordar do tom e o esperado, nao um erro.")
+
+
+def reclassificar_tom(limite=500, dry_run=False, refazer=False):
+    """Preenche `posts.tom_publicacao` na base ja existente.
+
+    `--reclassificar-tom --dry-run`  → so conta o que falta, nao chama a API
+    `--reclassificar-tom [N]`        → classifica ate N publicacoes pendentes
+    `--reclassificar-tom N --refazer`→ inclui as ja classificadas (mudanca de criterio)
+
+    Idempotente: por padrao so toca em quem esta 'nao_classificado', entao
+    rodar duas vezes nao gasta token a toa nem reescreve o que ja foi medido.
+    Custo: so Anthropic. Nenhum credito Apify e nenhuma coleta.
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("[tom] SUPABASE_URL / SUPABASE_SERVICE_KEY ausentes.")
+        return
+    from urllib.parse import quote
+
+    filtro = f"tenant=eq.{TENANT}&caption=neq."
+    if not refazer:
+        filtro += "&tom_publicacao=eq.nao_classificado"
+    pendentes = _supabase_get(
+        "posts",
+        f"{filtro}&select=url,autor,caption&order=data_post.desc&limit={limite}",
+    )
+    if not pendentes:
+        print("[tom] Nada a classificar: todas as publicacoes com legenda ja tem tom.")
+        return
+
+    if dry_run:
+        print(f"[tom] {len(pendentes)} publicacoes seriam classificadas "
+              f"(limite {limite}, refazer={refazer}). Nenhuma chamada feita.")
+        for p in pendentes[:10]:
+            print(f"    @{p.get('autor','')}: {(p.get('caption') or '')[:80].strip()}")
+        if len(pendentes) > 10:
+            print(f"    ... e mais {len(pendentes) - 10}")
+        return
+
+    if not ANTHROPIC_KEY:
+        print("[tom] ANTHROPIC_API_KEY ausente.")
+        return
+
+    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    print(f"[tom] Classificando {len(pendentes)} publicacoes…")
+    placar, gravados = {}, 0
+    for i, p in enumerate(pendentes, 1):
+        tom, conf = classificar_tom_publicacao(p.get("caption") or "", cliente)
+        placar[tom] = placar.get(tom, 0) + 1
+        ok = _supabase_patch(
+            "posts",
+            f"url=eq.{quote(p['url'], safe='')}&tenant=eq.{TENANT}",
+            {"tom_publicacao": tom, "confianca_tom": conf},
+        )
+        gravados += 1 if ok else 0
+        if i % 25 == 0 or i == len(pendentes):
+            print(f"    {i}/{len(pendentes)} · {gravados} gravados")
+        time.sleep(0.6)
+
+    print(f"\n[tom] {gravados}/{len(pendentes)} gravados.")
+    for t, n in sorted(placar.items()):
+        print(f"    {t:<18} {n}")
+
+
 def teste_triagem(max_posts=6, categoria="oposicao"):
     """Roda SO a triagem (PROMPT_TRIAGEM) numa amostra real e compara com o que
     esta gravado. NAO grava nada. Custo: so Anthropic (Haiku), zero Apify.
@@ -4995,7 +5328,9 @@ def teste_triagem(max_posts=6, categoria="oposicao"):
                 "caption": p.get("caption") or ""}
         try:
             rt = cliente.messages.create(
-                model=MODELO_ANALISTA, max_tokens=180, system=PROMPT_TRIAGEM,
+                # Mesmo teto do pipeline: se o harness cortar a resposta onde a
+                # producao nao corta, ele mede outra coisa.
+                model=MODELO_ANALISTA, max_tokens=260, system=PROMPT_TRIAGEM,
                 messages=[{"role": "user", "content": triar_post_rapido(post, coments)}],
             )
             novo = _parse_json_resposta(rt.content[0].text)
@@ -5480,6 +5815,20 @@ if __name__ == "__main__":
         _cat = ("imprensa" if "--imprensa" in sys.argv
                 else "prefeit%" if "--governo" in sys.argv else "oposicao")
         teste_triagem(max_posts=_n, categoria=_cat)
+    elif "--teste-tom" in sys.argv:
+        # Mede o criterio de tom_publicacao contra a base real, sem escrever.
+        # Custo: so Anthropic (Haiku). Sem categoria = amostra de todos.
+        _n = next((int(a) for a in sys.argv if a.isdigit()), 20)
+        _cat = ("imprensa" if "--imprensa" in sys.argv
+                else "prefeit%" if "--governo" in sys.argv
+                else "oposicao" if "--oposicao" in sys.argv else None)
+        teste_tom(max_posts=_n, categoria=_cat)
+    elif "--reclassificar-tom" in sys.argv:
+        # Backfill de tom_publicacao na base existente. Idempotente: so pega
+        # 'nao_classificado', a menos que venha --refazer. Custo: so Anthropic.
+        _n = next((int(a) for a in sys.argv if a.isdigit()), 500)
+        reclassificar_tom(limite=_n, dry_run="--dry-run" in sys.argv,
+                          refazer="--refazer" in sys.argv)
     elif "--teste-filtro" in sys.argv:
         # --teste-filtro [N] [--resumo]  → N=0 varre a base inteira;
         # --resumo omite as captions e imprime so o placar por perfil.

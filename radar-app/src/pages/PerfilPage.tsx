@@ -127,10 +127,18 @@ export function PerfilPage() {
   // Só perfis que publicaram sobre a gestão no período entram nos rankings.
   const ativos = useMemo(() => analise.filter((p) => p.postsGestao > 0), [analise]);
 
-  const rankVolume = useMemo(
-    () => extremos(analise, (p) => p.postsGestao, (p) => p.postsGestao > 0),
+  // Quem FAZ: tom das publicações do próprio perfil (migration 010).
+  // Elegível quem publicou sobre a gestão; "quem menos critica" entre perfis
+  // que não falam do assunto não seria resposta, seria ausência.
+  const rankFazCritica = useMemo(
+    () => extremos(analise, (p) => p.fazCritica, (p) => p.postsGestao > 0),
     [analise]
   );
+  const rankFazElogio = useMemo(
+    () => extremos(analise, (p) => p.fazElogio, (p) => p.postsGestao > 0),
+    [analise]
+  );
+  // Quem TEM: reação dos cidadãos nas publicações do perfil.
   const rankContra = useMemo(
     () => extremos(analise, (p) => p.contra, (p) => p.contra + p.favor >= MIN_AMOSTRA),
     [analise]
@@ -143,9 +151,11 @@ export function PerfilPage() {
   const totalGeral = useMemo(() => {
     const contra = ativos.reduce((s, p) => s + p.contra, 0);
     const favor = ativos.reduce((s, p) => s + p.favor, 0);
+    const fazCritica = ativos.reduce((s, p) => s + p.fazCritica, 0);
+    const fazElogio = ativos.reduce((s, p) => s + p.fazElogio, 0);
     const postsGestao = ativos.reduce((s, p) => s + p.postsGestao, 0);
     const posts = analise.reduce((s, p) => s + p.posts, 0);
-    return { contra, favor, postsGestao, posts };
+    return { contra, favor, fazCritica, fazElogio, postsGestao, posts };
   }, [ativos, analise]);
 
   // ── Perfil selecionado ────────────────────────────────────────────────────
@@ -224,48 +234,96 @@ export function PerfilPage() {
           <p className="text-sm text-txt-2">
             Só entram as publicações que citam alguma das <b>{kws.length} palavras</b> cadastradas
             em <b>Relevância</b>: {fmtInt(totalGeral.postsGestao)} de {fmtInt(totalGeral.posts)}{" "}
-            publicações do período. As críticas favoráveis e contrárias vêm dos{" "}
-            <b>comentários de cidadãos</b> nessas publicações, com o mesmo critério que forma o
-            clima. O tom da publicação em si não é classificado pelo pipeline e não é deduzido
-            pelo lado do perfil.
+            publicações do período. <b>O que o perfil faz</b> vem do tom da própria publicação;{" "}
+            <b>o que o perfil recebe</b> vem dos comentários de cidadãos nela, com o mesmo
+            critério que forma o clima. Os dois podem discordar: post elogioso que tomou uma
+            enxurrada de críticas continua sendo um elogio feito pelo perfil.
           </p>
         )}
       </div>
 
-      {/* Quem faz e quem tem — os quatro extremos pedidos pelo cliente */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <CardExtremo
-          titulo="Mais publica sobre a gestão"
-          perfil={rankVolume.maior}
-          valor={(p) => fmtInt(p.postsGestao)}
-          sufixo="publicações"
-          cor="var(--brand)"
-          vazio="Sem publicações no período"
-        />
-        <CardExtremo
-          titulo="Menos publica sobre a gestão"
-          perfil={rankVolume.menor}
-          valor={(p) => fmtInt(p.postsGestao)}
-          sufixo="publicações"
-          cor="#64748B"
-          vazio="Só um perfil no período"
-        />
-        <CardExtremo
-          titulo="Concentra mais críticas"
-          perfil={rankContra.maior}
-          valor={(p) => `${fmtInt(p.contra)} contrárias · ${p.pctContra}%`}
-          sufixo=""
-          cor={COR_CONTRA}
-          vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
-        />
-        <CardExtremo
-          titulo="Concentra mais elogios"
-          perfil={rankFavor.maior}
-          valor={(p) => `${fmtInt(p.favor)} favoráveis · ${100 - p.pctContra}%`}
-          sufixo=""
-          cor={COR_FAVOR}
-          vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
-        />
+      {/* O que cada perfil PUBLICA sobre a gestão */}
+      <div>
+        <div className="section-label mb-2">
+          Quem critica e quem elogia a gestão · {fmtInt(totalGeral.fazCritica)} publicações
+          críticas e {fmtInt(totalGeral.fazElogio)} favoráveis no período
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <CardExtremo
+            titulo="Mais critica a gestão"
+            perfil={rankFazCritica.maior}
+            valor={(p) => `${fmtInt(p.fazCritica)} de ${fmtInt(p.postsGestao)}`}
+            sufixo="publicações"
+            cor={COR_CONTRA}
+            vazio="Ninguém publicou sobre a gestão"
+          />
+          <CardExtremo
+            titulo="Menos critica a gestão"
+            perfil={rankFazCritica.menor}
+            valor={(p) => `${fmtInt(p.fazCritica)} de ${fmtInt(p.postsGestao)}`}
+            sufixo="publicações"
+            cor="#64748B"
+            vazio="Só um perfil no período"
+          />
+          <CardExtremo
+            titulo="Mais elogia a gestão"
+            perfil={rankFazElogio.maior}
+            valor={(p) => `${fmtInt(p.fazElogio)} de ${fmtInt(p.postsGestao)}`}
+            sufixo="publicações"
+            cor={COR_FAVOR}
+            vazio="Ninguém publicou sobre a gestão"
+          />
+          <CardExtremo
+            titulo="Menos elogia a gestão"
+            perfil={rankFazElogio.menor}
+            valor={(p) => `${fmtInt(p.fazElogio)} de ${fmtInt(p.postsGestao)}`}
+            sufixo="publicações"
+            cor="#64748B"
+            vazio="Só um perfil no período"
+          />
+        </div>
+      </div>
+
+      {/* O que cada perfil RECEBE dos cidadãos */}
+      <div>
+        <div className="section-label mb-2">
+          Quem concentra a reação dos cidadãos · {fmtInt(totalGeral.contra)} comentários
+          contrários e {fmtInt(totalGeral.favor)} favoráveis
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <CardExtremo
+            titulo="Recebe mais críticas"
+            perfil={rankContra.maior}
+            valor={(p) => `${fmtInt(p.contra)} contrárias · ${p.pctContra}%`}
+            sufixo=""
+            cor={COR_CONTRA}
+            vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
+          />
+          <CardExtremo
+            titulo="Recebe menos críticas"
+            perfil={rankContra.menor}
+            valor={(p) => `${fmtInt(p.contra)} contrárias · ${p.pctContra}%`}
+            sufixo=""
+            cor="#64748B"
+            vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
+          />
+          <CardExtremo
+            titulo="Recebe mais elogios"
+            perfil={rankFavor.maior}
+            valor={(p) => `${fmtInt(p.favor)} favoráveis · ${100 - p.pctContra}%`}
+            sufixo=""
+            cor={COR_FAVOR}
+            vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
+          />
+          <CardExtremo
+            titulo="Recebe menos elogios"
+            perfil={rankFavor.menor}
+            valor={(p) => `${fmtInt(p.favor)} favoráveis · ${100 - p.pctContra}%`}
+            sufixo=""
+            cor="#64748B"
+            vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
+          />
+        </div>
       </div>
 
       {/* Ranking completo */}
@@ -283,15 +341,17 @@ export function PerfilPage() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left">
+            <table className="w-full min-w-[820px] text-left">
               <thead>
                 <tr className="text-[12px] font-bold uppercase tracking-wide text-txt-3">
                   <th className="pb-2 pr-3 font-bold">Perfil</th>
                   <th className="pb-2 pr-3 text-right font-bold">Publicações<br />sobre a gestão</th>
-                  <th className="pb-2 pr-3 text-right font-bold">Críticas<br />contrárias</th>
-                  <th className="pb-2 pr-3 text-right font-bold">Manifestações<br />favoráveis</th>
-                  <th className="pb-2 pr-3 text-right font-bold">Saldo</th>
-                  <th className="pb-2 w-32 font-bold">Composição</th>
+                  <th className="pb-2 pr-3 text-right font-bold">Publica<br />criticando</th>
+                  <th className="pb-2 pr-3 text-right font-bold">Publica<br />elogiando</th>
+                  <th className="pb-2 pr-3 text-right font-bold">Recebe<br />críticas</th>
+                  <th className="pb-2 pr-3 text-right font-bold">Recebe<br />elogios</th>
+                  <th className="pb-2 pr-3 text-right font-bold">Saldo<br />recebido</th>
+                  <th className="pb-2 w-32 font-bold">Reação</th>
                 </tr>
               </thead>
               <tbody>
@@ -315,6 +375,18 @@ export function PerfilPage() {
                       <td className="tnum py-2 pr-3 text-right font-bold text-txt-1">
                         {fmtInt(p.postsGestao)}
                         <span className="ml-1 text-[12px] font-semibold text-txt-3">/{fmtInt(p.posts)}</span>
+                      </td>
+                      <td
+                        className="tnum py-2 pr-3 text-right font-bold"
+                        style={{ color: p.fazCritica ? COR_CONTRA : "var(--txt3)" }}
+                      >
+                        {fmtInt(p.fazCritica)}
+                      </td>
+                      <td
+                        className="tnum py-2 pr-3 text-right font-bold"
+                        style={{ color: p.fazElogio ? COR_FAVOR : "var(--txt3)" }}
+                      >
+                        {fmtInt(p.fazElogio)}
                       </td>
                       <td className="tnum py-2 pr-3 text-right font-bold" style={{ color: COR_CONTRA }}>
                         {fmtInt(p.contra)}
@@ -449,11 +521,59 @@ export function PerfilPage() {
               sub={`${100 - (perfilAtivo?.pctContra ?? 0)}% dos que tomam partido`}
             />
             <KpiStat
-              label="Publicações sobre a gestão"
-              value={fmtInt(perfilAtivo?.postsGestao ?? 0)}
-              sub={`${fmtInt(perfilAtivo?.comentarios ?? 0)} comentários analisados`}
+              label="O que publica sobre a gestão"
+              value={
+                <>
+                  <span style={{ color: COR_CONTRA, fontWeight: 700 }}>
+                    {fmtInt(perfilAtivo?.fazCritica ?? 0)}
+                  </span>
+                  <span className="text-txt-3">/</span>
+                  <span style={{ color: COR_FAVOR, fontWeight: 700 }}>
+                    {fmtInt(perfilAtivo?.fazElogio ?? 0)}
+                  </span>
+                </>
+              }
+              sub={`críticas / elogios em ${fmtInt(perfilAtivo?.postsGestao ?? 0)} publicações`}
             />
           </div>
+
+          {/* O que o perfil publica x o que recebe, lado a lado. É a leitura
+              que o cliente pediu: fala e reação são coisas diferentes. */}
+          {perfilAtivo && perfilAtivo.postsGestao > 0 && (
+            <div className="rounded-xl border border-line bg-bg-1 p-4">
+              <div className="section-label mb-2">Tom das publicações de @{perfilAtivo.autor}</div>
+              <div className="flex h-4 w-full overflow-hidden rounded-full bg-bg-2">
+                <div
+                  style={{
+                    width: `${(perfilAtivo.fazCritica / perfilAtivo.postsGestao) * 100}%`,
+                    background: COR_CONTRA,
+                  }}
+                />
+                <div
+                  style={{
+                    width: `${(perfilAtivo.fazNeutro / perfilAtivo.postsGestao) * 100}%`,
+                    background: COLOR_SENTIMENT.neu,
+                  }}
+                />
+                <div
+                  style={{
+                    width: `${(perfilAtivo.fazElogio / perfilAtivo.postsGestao) * 100}%`,
+                    background: COR_FAVOR,
+                  }}
+                />
+              </div>
+              <div className="mt-2 flex flex-wrap gap-3 text-xs text-txt-2">
+                <span><b style={{ color: COR_CONTRA }}>{fmtInt(perfilAtivo.fazCritica)}</b> criticam a gestão</span>
+                <span><b style={{ color: COLOR_SENTIMENT.neu }}>{fmtInt(perfilAtivo.fazNeutro)}</b> sem juízo</span>
+                <span><b style={{ color: COR_FAVOR }}>{fmtInt(perfilAtivo.fazElogio)}</b> elogiam a gestão</span>
+                {perfilAtivo.fazCritica + perfilAtivo.fazElogio > 0 && (
+                  <span className="ml-auto text-txt-3">
+                    {perfilAtivo.pctFazCritica}% das que tomam partido são críticas
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Ranking de seguidores de todos os perfis monitorados (pedido do
               cliente em 25/07): quem tem mais e menos audiência e quanto cada
