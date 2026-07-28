@@ -168,6 +168,28 @@ _MARCADOR_DE_LUGAR = {"cidade", "bairro", "povoado", "distrito", "vila", "munici
 
 _LIGACAO_DE_LUGAR = re.compile(r"^(?:de|da|do|dos|das)\s+(\w+)")
 
+# Palavra que, ANTES de um bairro com nome de santo, indica a festa ou a igreja
+# e nao o lugar: "nossa alvorada santa Terezinha esta de parabens" fala do
+# festejo, nao do bairro. Alagoinhas tem Santa Terezinha e Santa Isabel, entao
+# a confusao e estrutural, nao um caso isolado.
+_CONTEXTO_DE_FESTA = {
+    "alvorada", "festa", "festejo", "festejos", "igreja", "paroquia",
+    "padroeira", "missa", "novena", "procissao", "capela", "santuario",
+    "quermesse", "arraia", "arraial",
+}
+
+# Alias de UMA palavra que tambem e nome de municipio vizinho. "Ate Catu
+# colocou umas atracoes de peso" compara Alagoinhas com a CIDADE de Catu, nao
+# com a rua do Catu daqui. Como o apelido especifico ("rua do catu") existe na
+# tabela, exigir prova de lugar do apelido curto nao custa capturas boas.
+_ALIAS_DE_MUNICIPIO_VIZINHO = {"catu"}
+
+
+def _contexto_de_festa(texto_norm: str, pos_inicio: int) -> bool:
+    """As duas palavras antes do alias indicam festa/igreja em vez de bairro?"""
+    anteriores = texto_norm[:pos_inicio].split()[-2:]
+    return any(p.strip(".,;:!?()") in _CONTEXTO_DE_FESTA for p in anteriores)
+
 
 def _alias_extensivel(alias_norm: str) -> bool:
     """O alias termina numa palavra comum, e por isso pode ser so o comeco de
@@ -182,7 +204,11 @@ def _alias_extensivel(alias_norm: str) -> bool:
     (cidade, guia) e seguem valendo por conteudo, como deve ser.
     """
     ultima = (alias_norm or "").split()[-1:] or [""]
-    return ultima[0] in _PALAVRA_COMUM_DE_LUGAR
+    if ultima[0] in _PALAVRA_COMUM_DE_LUGAR:
+        return True
+    # Apelido de uma palavra so que colide com municipio vizinho tambem precisa
+    # de prova de lugar: "Ate Catu colocou" e a cidade, nao a rua do Catu.
+    return alias_norm in _ALIAS_DE_MUNICIPIO_VIZINHO
 
 
 def _generico_e_lugar(valor_norm: str, alias_norm: str, tenant: str) -> bool:
@@ -5791,6 +5817,93 @@ def reparar_localidade(dry_run=False):
     print(f"\n[reparar-localidade] {ok}/{len(suspeitos)} corrigidos.")
 
 
+def _bairro_no_texto(texto_norm: str, mapa_bairros: dict, tenant: str):
+    """Bairro nomeado de forma INEQUIVOCA no texto, ou None.
+
+    Usada so pela recuperacao, e por isso mais exigente que o normalizador: em
+    vez de resolver o que o modelo extraiu, ela decide sozinha o que o modelo
+    deixou passar. Inventar bairro errado e pior que deixar em branco, entao a
+    duvida sempre resolve para None.
+
+    Recusa apelido extensivel sem prova de lugar (o mesmo criterio do CTA) e
+    recusa nome de santo em contexto de festa.
+    """
+    for alias_norm, slug in sorted(mapa_bairros.items(), key=lambda kv: -len(kv[0] or "")):
+        if slug == "nao_identificado" or not alias_norm:
+            continue
+        m = _padrao(alias_norm).search(texto_norm)
+        if not m:
+            continue
+        if _alias_extensivel(alias_norm) and not _generico_e_lugar(texto_norm, alias_norm, tenant):
+            continue
+        if _contexto_de_festa(texto_norm, m.start()):
+            continue
+        return slug, alias_norm
+    return None
+
+
+def recuperar_localidade(dry_run=False):
+    """Preenche localidade onde o TEXTO nomeia um bairro e a linha ficou vazia.
+
+    `--recuperar-localidade --dry-run`  → so lista o que mudaria
+    `--recuperar-localidade`            → grava
+
+    E o outro lado do --reparar-localidade: aquele desfaz atribuicao errada,
+    este recupera captura perdida. Nao chama o modelo — le o texto ja gravado e
+    aplica a regra corrigida, entao custa zero token e zero credito Apify.
+
+    So mexe em linha que esta como 'nao_identificado'. Nunca sobrescreve bairro
+    ja atribuido: se o modelo decidiu algo, a decisao dele fica.
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("[recuperar-localidade] SUPABASE_URL / SUPABASE_SERVICE_KEY ausentes.")
+        return
+    mapa = carregar_bairros(abortar_em_falha=False)
+    if mapa == _BAIRRO_FALLBACK_MINIMO:
+        print("[recuperar-localidade] ABORTANDO: mapa de bairros indisponivel.")
+        return
+
+    linhas, off = [], 0
+    while True:
+        lote = _supabase_get(
+            "comments",
+            f"tenant=eq.{TENANT}&texto=not.is.null&localidade=eq.nao_identificado"
+            f"&select=id,texto&limit=1000&offset={off}",
+        )
+        if not lote:
+            break
+        linhas.extend(lote)
+        if len(lote) < 1000:
+            break
+        off += 1000
+
+    achados = []
+    for c in linhas:
+        r = _bairro_no_texto(_norm(c.get("texto") or ""), mapa, TENANT)
+        if r:
+            achados.append((c, r[0], r[1]))
+
+    print(f"[recuperar-localidade] {len(linhas)} linhas sem bairro conferidas.")
+    if not achados:
+        print("[recuperar-localidade] Nada a recuperar.")
+        return
+
+    print(f"[recuperar-localidade] {len(achados)} com bairro nomeado no texto:\n")
+    for c, slug, alias in achados:
+        print(f"  nao_identificado -> {slug}   (via {alias!r})")
+        print(f"      {' '.join((c.get('texto') or '').split())[:170]}")
+    if dry_run:
+        print("\n[recuperar-localidade] --dry-run: nada gravado.")
+        return
+
+    ok = 0
+    for c, slug, _ in achados:
+        if _supabase_patch("comments", f"id=eq.{c['id']}&tenant=eq.{TENANT}",
+                           {"localidade": slug}):
+            ok += 1
+    print(f"\n[recuperar-localidade] {ok}/{len(achados)} recuperados.")
+
+
 def teste_localidade(limite=50):
     """Roda normalizar_localidade() sem chamar Claude e sem gravar nada.
 
@@ -5884,14 +5997,12 @@ def teste_localidade(limite=50):
             continue
 
         # Marcado como nao_identificado: o texto nomeia um bairro de forma
-        # inequivoca? Só conta apelido NAO generico, para nao acusar captura
-        # perdida em cima de "centro de saude".
-        for alias_norm, s in sorted(mapa_bairros.items(), key=lambda kv: -len(kv[0] or "")):
-            if s == "nao_identificado" or _alias_extensivel(alias_norm):
-                continue
-            if _tem_termo(texto, alias_norm):
-                possiveis_perdas[s] = possiveis_perdas.get(s, 0) + 1
-                break
+        # inequivoca? Usa exatamente o mesmo julgamento da recuperacao — se a
+        # varredura acusasse com um criterio e a recuperacao agisse com outro,
+        # o relatorio contradiria a ferramenta que ele manda rodar.
+        achado = _bairro_no_texto(texto, mapa_bairros, TENANT)
+        if achado:
+            possiveis_perdas[achado[0]] = possiveis_perdas.get(achado[0], 0) + 1
 
     total = len(linhas)
     print(f"\n[teste-localidade] {total} comentários com texto na base.")
@@ -6161,6 +6272,10 @@ if __name__ == "__main__":
         # Desfaz bairro atribuido por nome composto ("Centro de Testagem").
         # So le texto ja gravado e aplica a regra corrigida: zero token.
         reparar_localidade(dry_run="--dry-run" in sys.argv)
+    elif "--recuperar-localidade" in sys.argv:
+        # Preenche bairro que o modelo deixou passar e o texto nomeia.
+        # So le texto ja gravado: zero token.
+        recuperar_localidade(dry_run="--dry-run" in sys.argv)
     elif "--teste-subtema" in sys.argv:
         # Dry-run: mostra o que o alerta de subtema dispararia (24h reais do
         # Supabase), sem enviar WhatsApp nem gravar historico.
