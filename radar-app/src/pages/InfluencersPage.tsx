@@ -120,7 +120,7 @@ export function InfluencersSection({ postsPeriodo = [], dias = 30 }: Props) {
       },
       xAxis: {
         type: "value",
-        axisLabel: { color: ink.axis, fontSize: 12 },
+        axisLabel: { color: ink.axis, fontSize: 13, fontWeight: 700 },
         splitLine: { lineStyle: { color: ink.grid } },
       },
       yAxis: {
@@ -128,7 +128,8 @@ export function InfluencersSection({ postsPeriodo = [], dias = 30 }: Props) {
         data: top10.map((i) => i.handle),
         axisLabel: {
           color: ink.axis,
-          fontSize: 12,
+          fontSize: 13,
+          fontWeight: 700,
           // O perfil destacado ganha o marcador também no eixo, para quem lê
           // a lista de nomes antes de olhar as barras.
           formatter: (v: string) => (maisAtivos.has(v.toLowerCase()) ? `▶ @${v}` : `@${v}`),
@@ -160,8 +161,8 @@ export function InfluencersSection({ postsPeriodo = [], dias = 30 }: Props) {
               label: {
                 show: true,
                 position: "right",
-                fontSize: 12,
-                fontWeight: destaque ? "bold" : "normal",
+                fontSize: 13,
+                fontWeight: destaque ? "bold" : 700,
                 color: destaque ? COR_DESTAQUE : ink.axis,
                 formatter: nPosts > 0 ? `${pts} pts · ${nPosts} pub.` : `${pts} pts`,
               },
@@ -194,29 +195,35 @@ export function InfluencersSection({ postsPeriodo = [], dias = 30 }: Props) {
         </p>
       </div>
 
+      {/* Revisão de 28/07: a descrição longa que ficava ACIMA do gráfico foi
+          sintetizada e desceu para ABAIXO dele — o gráfico é o dado, o texto
+          é a legenda dele, não o contrário. Título no padrão .section-label
+          (mesmo de todo card do painel) e texto do corpo maior/mais pesado,
+          seguindo o resto da revisão tipográfica. */}
       <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-        <div className="mb-1 text-sm font-bold">
-          Mapa de Influência
-          <span className="ml-2 text-[12px] font-normal text-txt-3">
-            top 10 por score · <span style={{ color: COR_ALIADO }}>verde=aliado</span> ·{" "}
-            <span style={{ color: COR_OPOSICAO }}>vermelho=oposição</span> ·{" "}
-            <span style={{ color: COR_IMPRENSA }}>amarelo=imprensa</span>
+        <div className="section-label">Mapa de Influência</div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-txt-3">
+          <span>Top 10 por score</span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: COR_ALIADO }} />
+            <span style={{ color: COR_ALIADO }}>Aliado</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: COR_OPOSICAO }} />
+            <span style={{ color: COR_OPOSICAO }}>Oposição</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: COR_IMPRENSA }} />
+            <span style={{ color: COR_IMPRENSA }}>Imprensa</span>
           </span>
         </div>
-        <p className="mb-2 text-[13px] text-txt-3">
-          Em <b style={{ color: COR_DESTAQUE }}>destaque com contorno laranja</b>: os{" "}
-          {N_DESTAQUES} perfis que mais publicaram {periodoLabel(dias)}, ou seja, quem mais
-          usou as redes no período, independente do score acumulado. Apenas contas
-          institucionais, imprensa e perfis políticos; cidadãos não são rankeados
-          nominalmente (LGPD).
-        </p>
 
         {podio.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-1.5">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             {podio.map(([handle, n], i) => (
               <span
                 key={handle}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-bold"
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold"
                 style={{
                   border: `1px solid ${COR_DESTAQUE}66`,
                   background: `${COR_DESTAQUE}14`,
@@ -236,6 +243,14 @@ export function InfluencersSection({ postsPeriodo = [], dias = 30 }: Props) {
           style={{ height: Math.max(160, Math.min(lista.length, 10) * 34 + 32) }}
           notMerge
         />
+
+        {/* Texto do ranking, sintetizado — o parágrafo antigo tinha o dobro
+            do tamanho e dizia a mesma coisa. */}
+        <p className="mt-3 text-sm font-semibold leading-relaxed text-txt-2">
+          <b style={{ color: COR_DESTAQUE }}>Contorno laranja</b> = quem mais publicou{" "}
+          {periodoLabel(dias)}, independente do score acumulado. Só contas institucionais,
+          imprensa e perfis políticos — cidadãos não entram (LGPD).
+        </p>
       </div>
 
       {/* Mapa de alinhamento */}
@@ -244,24 +259,24 @@ export function InfluencersSection({ postsPeriodo = [], dias = 30 }: Props) {
           <div className="section-label" style={{ color: COR_ALIADO }}>
             Aliados
           </div>
-          <div className="tnum mt-1 text-[40px] font-light leading-none" style={{ color: COR_ALIADO }}>{aliados}</div>
-          <div className="text-xs text-txt-3">perfis favoráveis</div>
+          <div className="tnum mt-1 text-[40px] font-semibold leading-none" style={{ color: COR_ALIADO }}>{aliados}</div>
+          <div className="text-sm font-semibold text-txt-3">perfis favoráveis</div>
         </div>
         <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
           <div className="section-label" style={{ color: COR_IMPRENSA }}>
             Imprensa
           </div>
-          <div className="tnum mt-1 text-[40px] font-light leading-none" style={{ color: COR_IMPRENSA }}>
+          <div className="tnum mt-1 text-[40px] font-semibold leading-none" style={{ color: COR_IMPRENSA }}>
             {imprensa}
           </div>
-          <div className="text-xs text-txt-3">veículos de mídia</div>
+          <div className="text-sm font-semibold text-txt-3">veículos de mídia</div>
         </div>
         <div className="card-hover rounded-xl border border-line bg-bg-1 px-4 py-3">
           <div className="section-label" style={{ color: COR_OPOSICAO }}>
             Oposição
           </div>
-          <div className="tnum mt-1 text-[40px] font-light leading-none" style={{ color: COR_OPOSICAO }}>{opositores}</div>
-          <div className="text-xs text-txt-3">perfis críticos</div>
+          <div className="tnum mt-1 text-[40px] font-semibold leading-none" style={{ color: COR_OPOSICAO }}>{opositores}</div>
+          <div className="text-sm font-semibold text-txt-3">perfis críticos</div>
         </div>
       </div>
     </div>
