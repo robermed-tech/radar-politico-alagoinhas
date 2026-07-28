@@ -46,17 +46,24 @@ function RadarSweep({ ativo, size = 34 }: { ativo: boolean; size?: number }) {
           maskImage: "radial-gradient(circle, #000 60%, transparent 61%)",
         }}
       />
-      <span
-        className="absolute rounded-full"
-        style={{
-          width: size * 0.15,
-          height: size * 0.15,
-          background: cor,
-          boxShadow: `0 0 8px ${cor}`,
-          top: `calc(50% - ${(size * 0.15) / 2}px)`,
-          left: `calc(50% - ${(size * 0.15) / 2}px)`,
-        }}
-      />
+      {/* O ponto central cresce devagar de propósito: numa proporção fixa de
+          15% ele virava um blob de 25px quando o radar foi para 168px. */}
+      {(() => {
+        const p = Math.max(5, Math.round(size * 0.075));
+        return (
+          <span
+            className="absolute rounded-full"
+            style={{
+              width: p,
+              height: p,
+              background: cor,
+              boxShadow: `0 0 ${Math.max(8, p)}px ${cor}`,
+              top: `calc(50% - ${p / 2}px)`,
+              left: `calc(50% - ${p / 2}px)`,
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -127,15 +134,14 @@ export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
   const ativo = kpis.fontesAtivas > 0;
   const cor = ativo ? "#22C55E" : "#F59E0B";
 
-  const linhas: [number, string][] = [
-    [kpis.fontesAtivas, `fonte${kpis.fontesAtivas === 1 ? "" : "s"} monitorada${kpis.fontesAtivas === 1 ? "" : "s"}`],
-    [kpis.itensColetados, `item${kpis.itensColetados === 1 ? "" : "s"} coletado${kpis.itensColetados === 1 ? "" : "s"} hoje`],
-    [kpis.execucoes, `execuç${kpis.execucoes === 1 ? "ão" : "ões"}`],
-  ];
-
+  // Revisão de 27/07: as três contagens (fontes monitoradas, itens coletados,
+  // execuções) saíram deste card. Elas eram detalhe operacional competindo por
+  // atenção com o clima e o engajamento, que são a leitura principal da tela;
+  // continuam inteiras na aba Monitor de coleta da Configuração. O que resta é
+  // o sinal de que o sistema está vivo, e o radar cresce para ocupar o espaço.
   return (
     <div
-      className="flex flex-col items-center overflow-hidden rounded-[28px] px-4 py-6 text-center"
+      className="flex flex-col items-center justify-center overflow-hidden rounded-[28px] px-4 py-6 text-center"
       style={{
         background: "linear-gradient(165deg, #334155 0%, #1E293B 100%)",
         minHeight,
@@ -143,35 +149,24 @@ export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
       }}
     >
       <div
-        className="text-[13px] font-bold uppercase tracking-[0.14em]"
-        style={{ color: "rgba(255,255,255,0.62)" }}
+        className="text-[13px] uppercase tracking-[0.14em]"
+        style={{ color: "rgba(255,255,255,0.62)", fontWeight: 700 }}
       >
         Coleta
       </div>
 
-      <div className="my-5">
-        <RadarSweep ativo={ativo} size={92} />
+      <div className="my-7">
+        <RadarSweep ativo={ativo} size={168} />
       </div>
 
-      <div className="flex items-center justify-center gap-1.5">
-        <span className="text-[15px] font-extrabold leading-tight text-white">
+      <div className="flex items-center justify-center gap-2">
+        <span className="text-[17px] leading-tight text-white" style={{ fontWeight: 800 }}>
           {ativo ? "Em varredura" : "Ocioso"}
         </span>
         <span
-          className="inline-block h-2 w-2 shrink-0 rounded-full"
-          style={{ background: cor, boxShadow: `0 0 6px ${cor}` }}
+          className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ background: cor, boxShadow: `0 0 8px ${cor}` }}
         />
-      </div>
-
-      <div className="mt-auto w-full space-y-2.5 pt-6">
-        {linhas.map(([v, rotulo]) => (
-          <div key={rotulo}>
-            <div className="tnum text-[26px] font-light leading-none text-white">{fmtInt(v)}</div>
-            <div className="text-[12px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.62)" }}>
-              {rotulo}
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );

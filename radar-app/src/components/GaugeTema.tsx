@@ -23,9 +23,10 @@ const R = 68;            // raio da linha média do arco grosso
 const LARGURA = 14;      // espessura do arco
 const ANG_INI = 212;     // 0% — ponta esquerda
 const ANG_FIM = -32;     // 100% — ponta direita
-// Altura da viewBox: pontas do arco + traço + número, com folga para a caixa
-// de texto do número (a fonte reserva descida abaixo da linha de base).
-const ALTURA = 174;
+// Altura da viewBox: pontas do arco + número, com folga para a caixa de texto
+// do número (a fonte reserva descida abaixo da linha de base). Encolheu de 174
+// para 166 quando o traço decorativo saiu de cima do valor.
+const ALTURA = 166;
 
 /**
  * Cor da escala na posição t (0 = verde, à esquerda; 1 = vermelho, à direita).
@@ -182,22 +183,28 @@ export function GaugeTema({ label, neg, pos }: Props) {
         <circle cx={CX} cy={CY} r="9.5" fill={ink.detail} filter={`url(#s-${gradId})`} />
         <circle cx={CX} cy={CY} r="3.4" fill="var(--g1)" opacity="0.35" />
 
-        {/* Traço + valor, como na referência — abaixo das pontas do arco */}
-        <line x1={CX - 16} y1={CY + 52} x2={CX + 16} y2={CY + 52} stroke={ink.detail} strokeWidth="2.6" strokeLinecap="round" />
+        {/* Valor abaixo das pontas do arco. O traço horizontal que existia
+            acima dele saiu na revisão de 27/07: era enfeite herdado da imagem
+            de referência e, nos cards estreitos, virava um risco solto que
+            parecia parte da escala. */}
         <text
           x={CX}
-          y={CY + 74}
+          y={CY + 66}
           textAnchor="middle"
           fill={corValor}
-          style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 24, fontWeight: 700, letterSpacing: "0.02em" }}
+          style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 26, fontWeight: 700, letterSpacing: "0.02em" }}
         >
           {valor}%
         </text>
       </svg>
 
-      <div className="flex items-center justify-center gap-3 text-[13px]">
-        <span className="tnum font-semibold" style={{ color: "#EF4444" }}>{fmtInt(neg)} neg</span>
-        <span className="tnum font-semibold" style={{ color: "#22C55E" }}>{fmtInt(pos)} pos</span>
+      {/* O peso vai inline, e sem classe de peso junto: a diretriz global do
+          index.css rebaixa font-semibold/font-bold para 400 com !important, e
+          a classe venceria o estilo inline. Era por isso que este contador
+          aparecia em peso regular apesar do `font-semibold`. */}
+      <div className="mt-0.5 flex items-center justify-center gap-4 text-[17px]">
+        <span className="tnum" style={{ color: "#EF4444", fontWeight: 800 }}>{fmtInt(neg)} neg</span>
+        <span className="tnum" style={{ color: "#22C55E", fontWeight: 800 }}>{fmtInt(pos)} pos</span>
       </div>
     </div>
   );

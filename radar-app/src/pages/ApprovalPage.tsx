@@ -17,6 +17,7 @@ import { fmtInt, fmtDiaBR } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, withAlpha, colorByIAD } from "@/lib/chartTheme";
 import { IconInbox, IconTrendUp, IconTrendDown, IconHeart, IconWarningTriangle } from "@/components/icons";
+import { PeriodoFilter, periodoLabel as rotuloPeriodo, type Dias } from "@/components/PeriodoFilter";
 
 interface AprovBucket {
   rotulo: string;
@@ -219,23 +220,17 @@ function ComentarioRow({ c, color }: { c: Comment; color: string }) {
   );
 }
 
-const PERIODOS = [
-  { dias: 1, label: "24h" },
-  { dias: 7, label: "7d" },
-  { dias: 30, label: "30d" },
-] as const;
-
 export function ApprovalPage() {
   // Período em destaque — padrão 24h (leitura mais próxima do tempo real).
   // O seletor permite ampliar para 7d/30d quando a amostra de 24h for pequena.
-  const [dias, setDias] = useState<number>(7);
+  const [dias, setDias] = useState<Dias>(7);
   // Carousel de temas: índice do tema exibido no card "Temas em Atenção"
   const [temaIdx, setTemaIdx] = useState(0);
   // Drill-down: filtra as "Vozes da população" pelo perfil/categoria clicado.
   const [filtroVoz, setFiltroVoz] = useState<{ tipo: "perfil" | "categoria"; valor: string } | null>(null);
   // Período das "Vozes da população" — independente do período dos índices.
-  const [diasVozes, setDiasVozes] = useState<1 | 7 | 30>(7);
-  const periodoLabel = PERIODOS.find((p) => p.dias === dias)?.label ?? `${dias}d`;
+  const [diasVozes, setDiasVozes] = useState<Dias>(7);
+  const periodoLabel = rotuloPeriodo(dias);
   const ink = chartInk(useThemeStore((s) => s.theme));
 
   const { data: radar, isLoading: lr } = useQuery({
@@ -408,26 +403,7 @@ export function ApprovalPage() {
             Drill-down do IAD · quem aprova, quem rejeita e por quais temas
           </p>
         </div>
-        <div
-          className="inline-flex rounded-lg border border-line bg-bg-2 p-0.5"
-          role="group"
-          aria-label="Período em destaque"
-        >
-          {PERIODOS.map((p) => (
-            <button
-              key={p.dias}
-              onClick={() => setDias(p.dias)}
-              aria-pressed={dias === p.dias}
-              className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
-                dias === p.dias
-                  ? "bg-bg-1 text-txt-1 shadow-sm"
-                  : "text-txt-3 hover:text-txt-1"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <PeriodoFilter dias={dias} onChange={setDias} ariaLabel="Período em destaque" />
       </div>
 
       {/* Aviso de amostra fraca */}
@@ -564,30 +540,10 @@ export function ApprovalPage() {
             </button>
           )}
         </div>
-        <div
-          className="inline-flex rounded-lg border border-line bg-bg-2 p-0.5"
-          role="group"
-          aria-label="Período das vozes"
-        >
-          {([
-            { d: 1, label: "Hoje" },
-            { d: 7, label: "Semana" },
-            { d: 30, label: "Mês" },
-          ] as { d: 1 | 7 | 30; label: string }[]).map((p) => (
-            <button
-              key={p.d}
-              onClick={() => setDiasVozes(p.d)}
-              aria-pressed={diasVozes === p.d}
-              className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
-                diasVozes === p.d
-                  ? "bg-bg-1 text-txt-1 shadow-sm"
-                  : "text-txt-3 hover:text-txt-1"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+        {/* Era "Hoje / Semana / Mês" aqui e "24h / 7d / 30d" no filtro de cima,
+            medindo exatamente a mesma janela com três vocabulários diferentes
+            na mesma tela. Padronizado em 27/07. */}
+        <PeriodoFilter dias={diasVozes} onChange={setDiasVozes} ariaLabel="Período das vozes" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
