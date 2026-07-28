@@ -168,11 +168,21 @@ _MARCADOR_DE_LUGAR = {"cidade", "bairro", "povoado", "distrito", "vila", "munici
 
 _LIGACAO_DE_LUGAR = re.compile(r"^(?:de|da|do|dos|das)\s+(\w+)")
 
-# Preposicao/substantivo que, ANTES do alias, ja o marca como lugar:
-# "no Riacho", "no barreiro", "bairro Centro", "rua do Catu".
-_ANTES_E_LUGAR = re.compile(
-    r"(?:^|\W)(?:no|na|em|do|da|ao|pro|pra|bairro|bairro do|bairro da|rua|praca|avenida|povoado|distrito)\s+$"
-)
+
+def _alias_extensivel(alias_norm: str) -> bool:
+    """O alias termina numa palavra comum, e por isso pode ser so o comeco de
+    outro nome?
+
+    Olha a ULTIMA palavra, e nao o alias inteiro. Foi o buraco da primeira
+    versao: "no centro" tem duas palavras, entao nao estava na lista de
+    genericos e voltava a casar dentro de "no centro de cirurgias eletivas" e
+    "no Centro Administrativo" — a contaminacao do CTA por outra porta.
+
+    "centro da cidade" e "riacho da guia" terminam em palavra distintiva
+    (cidade, guia) e seguem valendo por conteudo, como deve ser.
+    """
+    ultima = (alias_norm or "").split()[-1:] or [""]
+    return ultima[0] in _PALAVRA_COMUM_DE_LUGAR
 
 
 def _generico_e_lugar(valor_norm: str, alias_norm: str, tenant: str) -> bool:
@@ -180,17 +190,20 @@ def _generico_e_lugar(valor_norm: str, alias_norm: str, tenant: str) -> bool:
 
     Vale para o valor CURTO que o modelo extrai no campo `localidade`, nao para
     texto corrido (ver _so_em_composto, usado pelo reparo). Aceita quando o
-    alias vem precedido de preposicao de lugar, quando termina a frase, quando
-    e seguido de pontuacao, ou quando e seguido de marcador de lugar. Recusa
-    "centro de testagem": foi o caso que contaminou o Mapa da Cidade, com
-    quatro denuncias sobre o CTA virando quatro criticas ao bairro Centro, que
-    de verdade tinha duas mencoes.
+    alias termina a frase, quando e seguido de pontuacao, ou quando e seguido
+    de marcador de lugar. Recusa "centro de testagem": foi o caso que
+    contaminou o Mapa da Cidade, com quatro denuncias sobre o CTA virando
+    quatro criticas ao bairro Centro, que de verdade tinha duas mencoes.
+
+    Nao existe aqui um resgate por preposicao anterior ("no centro..."). Chegou
+    a existir, e abria justamente o buraco que a regra fecha: em "no centro de
+    cirurgias eletivas" a preposicao aprovava a linha antes de alguem olhar o
+    que vinha depois. Como a entrada e o valor curto extraido, "no Riacho" ja
+    passa pelo fim-de-frase e o resgate nao fazia falta.
     """
     m = _padrao(alias_norm).search(valor_norm)
     if not m:
         return False
-    if _ANTES_E_LUGAR.search(valor_norm[: m.start()]):
-        return True
     depois = valor_norm[m.end():].strip()
     if not depois:
         return True
@@ -256,7 +269,7 @@ def normalizar_localidade(valor: str, mapa_bairros: dict, tenant: str = None) ->
         for alias_norm, slug in sorted(mapa_bairros.items(), key=lambda kv: -len(kv[0] or "")):
             if not alias_norm or not _tem_termo(v, alias_norm):
                 continue
-            if alias_norm in _PALAVRA_COMUM_DE_LUGAR and not _generico_e_lugar(
+            if _alias_extensivel(alias_norm) and not _generico_e_lugar(
                 v, alias_norm, tenant or TENANT
             ):
                 continue
@@ -5664,6 +5677,12 @@ _CASOS_LOCALIDADE = [
     ("centro de saude", "nao_identificado"),
     ("centro cirurgico", "nao_identificado"),
     ("Cruzeiro do Sul", "nao_identificado"),
+    # Achados na varredura da base inteira: o apelido "no centro" tem duas
+    # palavras e escapava da checagem quando ela olhava o alias todo em vez da
+    # ultima palavra dele.
+    ("no centro de cirurgias Eletivas", "nao_identificado"),
+    ("no Centro Administrativo", "nao_identificado"),
+    ("Centro de Convivencia", "nao_identificado"),
     # O bairro Centro de verdade precisa continuar resolvendo.
     ("Centro", "centro"),
     ("no centro", "centro"),
@@ -5723,7 +5742,7 @@ def reparar_localidade(dry_run=False):
         aliases_por_slug.setdefault(slug, []).append(alias_norm)
     em_risco = {
         slug: al for slug, al in aliases_por_slug.items()
-        if any(a in _PALAVRA_COMUM_DE_LUGAR for a in al)
+        if any(_alias_extensivel(a) for a in al)
     }
     if not em_risco:
         print("[reparar-localidade] Nenhum bairro deste tenant tem apelido generico.")
@@ -5744,11 +5763,11 @@ def reparar_localidade(dry_run=False):
         aliases = aliases_por_slug.get(slug, [])
         # Algum apelido NAO generico aparece? Entao o bairro tem apoio direto
         # no texto ("riacho da guia", "santa terezinha") e nada a fazer.
-        if any(a not in _PALAVRA_COMUM_DE_LUGAR and _tem_termo(texto, a) for a in aliases):
+        if any(not _alias_extensivel(a) and _tem_termo(texto, a) for a in aliases):
             continue
         # Sobra o caso do apelido generico: so e contaminacao quando TODA
         # ocorrencia dele e cabeca de nome composto.
-        genericos = [a for a in aliases if a in _PALAVRA_COMUM_DE_LUGAR]
+        genericos = [a for a in aliases if _alias_extensivel(a)]
         if genericos and all(_so_em_composto(texto, a, TENANT) for a in genericos):
             suspeitos.append(c)
 
@@ -5772,19 +5791,26 @@ def reparar_localidade(dry_run=False):
     print(f"\n[reparar-localidade] {ok}/{len(suspeitos)} corrigidos.")
 
 
-def teste_localidade():
+def teste_localidade(limite=50):
     """Roda normalizar_localidade() sem chamar Claude e sem gravar nada.
+
+    `--teste-localidade`     → regressao + varredura de 50 comentarios
+    `--teste-localidade N`   → varre N
+    `--teste-localidade 0`   → varre a base INTEIRA
 
     Duas partes:
       1. Casos com resposta esperada (_CASOS_LOCALIDADE) — teste de regressao
          da contaminacao de 27/07, em que "Centro de Testagem e Aconselhamento"
-         virava o bairro Centro.
-      2. Amostra real do banco, so para olho humano.
+         virava o bairro Centro. E esta a parte que aprova ou reprova a build.
+      2. Varredura da base, que procura DOIS erros de sinais opostos:
+         contaminacao (bairro atribuido sem apoio no texto) e captura perdida
+         (o texto nomeia um bairro e a linha ficou nao_identificado). O segundo
+         existe para a correcao do primeiro nao virar excesso de zelo.
 
-    Atencao ao que a parte 2 mede: ela alimenta o TEXTO INTEIRO do comentario,
+    Atencao ao que a parte 2 mede: ela le o TEXTO INTEIRO do comentario,
     enquanto a producao alimenta o valor curto que o modelo extraiu no campo
-    `localidade`. Sao entradas diferentes, entao a taxa de resolucao aqui e
-    otimista e nao vale como metrica de producao — quem vale e a parte 1.
+    `localidade`. Sao entradas diferentes, entao isto acha erro, mas nao e
+    taxa de acerto de producao.
     """
     print("[teste-localidade] Carregando bairros...")
     mapa_bairros = carregar_bairros(abortar_em_falha=False)
@@ -5808,40 +5834,92 @@ def teste_localidade():
         print("[teste-localidade] SUPABASE_URL / SUPABASE_SERVICE_KEY não configurados.")
         return
 
-    print("\n[teste-localidade] Buscando 50 comentários do Supabase…")
-    r = requests.get(
-        f"{SUPABASE_URL}/rest/v1/comments",
-        params={"tenant": f"eq.{TENANT}", "select": "texto", "limit": "50"},
-        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
-        timeout=15,
-    )
-    if r.status_code != 200:
-        print(f"[teste-localidade] Erro ao buscar comentários: {r.status_code} {r.text[:200]}")
+    if limite == 0:
+        print("\n[teste-localidade] Varrendo a base INTEIRA…")
+    else:
+        print(f"\n[teste-localidade] Varrendo {limite} comentários…")
+
+    linhas, offset = [], 0
+    while True:
+        lote = _supabase_get(
+            "comments",
+            f"tenant=eq.{TENANT}&texto=not.is.null"
+            f"&select=localidade,texto&limit=1000&offset={offset}",
+        )
+        if not lote:
+            break
+        linhas.extend(lote)
+        if len(lote) < 1000 or (limite and len(linhas) >= limite):
+            break
+        offset += 1000
+    if limite:
+        linhas = linhas[:limite]
+    if not linhas:
+        print("[teste-localidade] Nenhum comentário com texto no Supabase.")
         return
 
-    rows = r.json()
-    if not rows:
-        print("[teste-localidade] Nenhum comentário encontrado no Supabase.")
-        return
+    aliases_por_slug = {}
+    for alias_norm, slug in mapa_bairros.items():
+        aliases_por_slug.setdefault(slug, []).append(alias_norm)
 
-    total = len(rows)
-    resolvidos = nao_identificados = 0
-    print(f"\n[teste-localidade] {total} comentários — testando normalizar_localidade():\n")
-    for row in rows:
-        texto = row.get("texto", "") or ""
-        slug = normalizar_localidade(texto, mapa_bairros)
-        if slug == "nao_identificado":
-            nao_identificados += 1
-        else:
-            resolvidos += 1
-        print(f"  {texto[:60]!r} | {texto!r} | {slug}")
+    atribuidos = sem_apoio = 0
+    possiveis_perdas = {}
+    por_slug = {}
+    for c in linhas:
+        slug = (c.get("localidade") or "nao_identificado")
+        texto = _norm(c.get("texto") or "")
 
-    pct_resolvido = round(resolvidos / total * 100)
-    pct_nao_ident = round(nao_identificados / total * 100)
-    print(f"\n[teste-localidade] resolvido: {pct_resolvido}% | nao_identificado: {pct_nao_ident}%")
-    if pct_nao_ident > 60:
-        print("[teste-localidade] ATENÇÃO: nao_identificado > 60% — "
-              "o dicionário de aliases de bairros está pobre. Revisar antes de subir para produção.")
+        if slug != "nao_identificado":
+            atribuidos += 1
+            por_slug[slug] = por_slug.get(slug, 0) + 1
+            aliases = aliases_por_slug.get(slug, [])
+            apoio_direto = any(
+                not _alias_extensivel(a) and _tem_termo(texto, a) for a in aliases
+            )
+            genericos = [a for a in aliases if _alias_extensivel(a)]
+            if not apoio_direto and genericos and all(
+                _so_em_composto(texto, a, TENANT) for a in genericos
+            ):
+                sem_apoio += 1
+            continue
+
+        # Marcado como nao_identificado: o texto nomeia um bairro de forma
+        # inequivoca? Só conta apelido NAO generico, para nao acusar captura
+        # perdida em cima de "centro de saude".
+        for alias_norm, s in sorted(mapa_bairros.items(), key=lambda kv: -len(kv[0] or "")):
+            if s == "nao_identificado" or _alias_extensivel(alias_norm):
+                continue
+            if _tem_termo(texto, alias_norm):
+                possiveis_perdas[s] = possiveis_perdas.get(s, 0) + 1
+                break
+
+    total = len(linhas)
+    print(f"\n[teste-localidade] {total} comentários com texto na base.")
+    print(f"  com bairro atribuído : {atribuidos} ({round(atribuidos / total * 100)}%)")
+    print(f"  nao_identificado     : {total - atribuidos} ({round((total - atribuidos) / total * 100)}%)")
+
+    print("\n  Distribuição por bairro:")
+    for s, n in sorted(por_slug.items(), key=lambda kv: -kv[1]):
+        print(f"    {s:<20} {n}")
+
+    print(f"\n  CONTAMINAÇÃO restante (bairro sem apoio no texto): {sem_apoio}")
+    if sem_apoio:
+        print("    Rode `python agora.py --reparar-localidade --dry-run` e leia os textos.")
+    else:
+        print("    Nenhuma. Todo bairro atribuído tem apoio no texto do comentário.")
+
+    if possiveis_perdas:
+        perdidos = sum(possiveis_perdas.values())
+        print(f"\n  CAPTURA PERDIDA (texto nomeia bairro mas ficou nao_identificado): {perdidos}")
+        for s, n in sorted(possiveis_perdas.items(), key=lambda kv: -kv[1])[:12]:
+            print(f"    {s:<20} {n}")
+        print("    Isto é o outro lado do erro: o filtro apertado demais também custa dado.")
+    else:
+        print("\n  CAPTURA PERDIDA: nenhuma detectada.")
+
+    print("\n  Lembrete: esta varredura lê o TEXTO INTEIRO do comentário, enquanto a")
+    print("  produção alimenta o valor curto que o modelo extraiu no campo `localidade`.")
+    print("  Ela serve para achar contaminação e captura perdida, não como taxa de acerto.")
 
 
 def reprocessar():
@@ -6077,7 +6155,8 @@ if __name__ == "__main__":
         _lim = next((int(a) for a in sys.argv if a.isdigit()), 5)
         teste_filtro(limite=_lim, detalhar="--resumo" not in sys.argv)
     elif "--teste-localidade" in sys.argv:
-        teste_localidade()
+        _n = next((int(a) for a in sys.argv if a.isdigit()), 50)
+        teste_localidade(limite=_n)
     elif "--reparar-localidade" in sys.argv:
         # Desfaz bairro atribuido por nome composto ("Centro de Testagem").
         # So le texto ja gravado e aplica a regra corrigida: zero token.
