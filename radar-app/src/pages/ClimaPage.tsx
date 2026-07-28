@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchComentariosPorTema, filtrarPorPeriodo, type Post, type Boletim, type BoletimFrente, type Briefing, type Periodo } from "@/lib/data";
 import { calcIAD, NIVEL_COLOR, NIVEL_LABEL, nivelBadgeStyle, type NivelCrise } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
-import { fmtInt, fraseCapitalizada, limparTravessoes } from "@/lib/format";
+import { fmtInt, fmtDataBR, fraseCapitalizada, limparTravessoes } from "@/lib/format";
 import { useAuth } from "@/components/AuthProvider";
 import { EvidenciaComentariosModal } from "@/components/EvidenciaComentariosModal";
 import { PublicacoesModal } from "@/components/PublicacoesModal";
@@ -218,7 +218,7 @@ function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number 
         >
           {periodoClima(dias)}
         </span>
-        <span className="text-xs text-txt-3">{briefing.dia}</span>
+        <span className="text-xs text-txt-3">{fmtDataBR(briefing.dia)}</span>
       </div>
       <p className="text-[16px] font-semibold leading-relaxed text-txt-1">
         {limparTravessoes(briefing.diagnostico)}

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { BairroStats, ComentarioBairro } from "@/lib/data";
-import { fmtInt } from "@/lib/format";
+import { fmtInt, labelBairro } from "@/lib/format";
 
 const SENT_COR: Record<string, string> = {
   negativo: "#EF4444",
@@ -73,7 +73,7 @@ export function ComentariosBairroModal({
       <div className="flex max-h-[84vh] w-full max-w-xl flex-col rounded-2xl border border-line bg-bg-1 p-5 shadow-2xl">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="truncate text-[17px] font-extrabold text-txt-1">{bairro.localidade}</div>
+            <div className="truncate text-xl font-extrabold text-txt-1">{labelBairro(bairro.localidade)}</div>
             <div className="mt-0.5 text-[13px] font-semibold text-txt-3">
               {explicacao} · {periodoLabel}
             </div>
@@ -123,12 +123,15 @@ export function ComentariosBairroModal({
         <div className="mt-3 space-y-2 overflow-y-auto">
           {lista.length === 0 && (
             <p className="text-sm text-txt-3">
-              Nenhum comentário deste tipo para {bairro.localidade} no período selecionado.
+              Nenhum comentário deste tipo para {labelBairro(bairro.localidade)} no período selecionado.
             </p>
           )}
           {lista.map((c, i) => (
             <div key={i} className="rounded-lg p-3" style={{ background: "#1E293B", border: "1px solid #334155" }}>
-              <p className="text-sm leading-relaxed" style={{ color: "#F8FAFC" }}>
+              {/* Comentário em destaque maior e mais pesado (pedido de 27/07):
+                  é o dado bruto que sustenta o número da barra, e precisa ser
+                  o elemento mais fácil de ler do card. */}
+              <p className="text-base leading-relaxed" style={{ color: "#F8FAFC", fontWeight: 600 }}>
                 “{c.texto}”
               </p>
               <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[13px]" style={{ color: "#94A3B8" }}>
