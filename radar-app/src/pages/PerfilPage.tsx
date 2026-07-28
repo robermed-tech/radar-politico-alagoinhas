@@ -147,8 +147,11 @@ export function PerfilPage() {
     refetchInterval: 60 * 1000,
   });
 
+  // Sem palavra ativa cadastrada, `casaRelevancia` deixa tudo passar e a tela
+  // conta o período inteiro. Isso não é mais sinalizado aqui (o aviso saiu em
+  // 27/07): quem configura a lista é a tela Relevância, e é lá que a ausência
+  // dela aparece.
   const kws = useMemo(() => prepararKeywords(keywords), [keywords]);
-  const semKeywords = kws.length === 0;
 
   const postsPeriodo = useMemo<Post[]>(
     () => filtrarPorPeriodo(data?.data ?? [], dias),
@@ -256,27 +259,6 @@ export function PerfilPage() {
         </div>
         <PeriodoFilter dias={dias} onChange={setDias} />
       </div>
-
-      {/* O card "Critério desta análise" saiu na revisão de 27/07. Sobrou só
-          este aviso, que aparece exclusivamente quando NÃO há palavra
-          cadastrada: nesse estado a tela conta todas as publicações, e sem o
-          aviso ela ficaria silenciosamente errada. Com palavras cadastradas
-          (o caso normal) nada é exibido aqui. */}
-      {semKeywords && (
-        <div
-          className="rounded-xl p-3 text-sm"
-          style={{
-            background: "rgba(234,179,8,0.12)",
-            border: "1px solid rgba(234,179,8,0.4)",
-            color: "var(--txt1)",
-            fontWeight: 600,
-          }}
-        >
-          Nenhuma palavra ativa cadastrada em <b>Relevância</b>: todas as publicações do
-          período estão sendo contadas. Cadastre as palavras que definem o assunto para o
-          recorte passar a valer.
-        </div>
-      )}
 
       {/* O que cada perfil PUBLICA sobre a gestão */}
       <div>
