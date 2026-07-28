@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchBriefing } from "@/lib/data";
 import { NIVEL_COLOR, NIVEL_LABEL, type NivelCrise } from "@/lib/indices";
+import { fmtDataBR } from "@/lib/format";
 
 function Tag({ children, color }: { children: ReactNode; color: string }) {
   return (
@@ -51,7 +52,7 @@ export function AssistantPage() {
         <div>
           <h1 className="text-2xl font-extrabold">Assistente Estratégico</h1>
           <p className="text-sm text-txt-2">
-            Briefing de {b.dia} ·{" "}
+            Briefing de {fmtDataBR(b.dia)} ·{" "}
             <span style={{ color: cor }} className="font-bold">
               Crise {NIVEL_LABEL[nivel]} ({Math.round(b.risco)})
             </span>

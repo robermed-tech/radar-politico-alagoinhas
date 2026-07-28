@@ -134,18 +134,19 @@ body {
   background: var(--wx-bg);
   background-attachment: fixed;
   transition: background 1.2s ease;
-  font-weight: 300; /* light por padrão */
+  font-weight: 400; /* regular por padrão (revisão de 27/07, ver nota abaixo) */
   letter-spacing: 0.02em;
 }
 
-/* ── DIRETRIZ TIPOGRÁFICA: apenas thin/regular (sem bold/extra-bold) ──
-   Override global: rebaixa todas as utilidades de peso do Tailwind.
-   Hierarquia passa a vir de TAMANHO + COR, não de peso. */
-.font-medium,
-.font-semibold,
-.font-bold { font-weight: 400 !important; }   /* ênfase = regular */
-.font-extrabold,
-.font-black { font-weight: 600 !important; }   /* títulos = semi-bold */
+/* ── TIPOGRAFIA: pesos normais do Tailwind, sem achatamento ──
+   Até 27/07 havia aqui um override que rebaixava TODA utilidade de peso
+   (font-bold virava 400, font-extrabold virava 600): a doutrina era
+   "hierarquia só por tamanho e cor, nunca por peso", pensada para telão/TV.
+   O cliente pediu o oposto — letras maiores E mais pesadas, em toda a tela,
+   para melhorar a leitura — então o achatamento saiu. Cada utilidade agora
+   pesa o que o nome diz. Não reintroduzir o override sem novo pedido: ele
+   já causou um bug (a primeira versão do box "Publicações analisadas" saiu
+   preta com texto em peso regular, porque font-bold apontava para 400). */
 
 /* Exceção declarada à diretriz acima (pedido de 27/07): o box "Publicações
    analisadas" é o único ponto do painel em que TODA fonte é bold, nunca
@@ -272,11 +273,15 @@ button:disabled {
 }
 
 /* Rótulo de seção — caixa alta discreta com tracking (padrão minimalista). */
+/* Título padrão de card em todo o painel (revisão de 27/07: subiu de
+   0.8125rem/500 para 0.9375rem/700, para ficar legível e com peso visível
+   como o resto da tipografia). Qualquer título novo de card deve usar esta
+   classe, e não recriar uppercase+tracking+cor na mão. */
 .section-label {
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: 0.9375rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--txt3);
 }
 

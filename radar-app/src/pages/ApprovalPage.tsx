@@ -413,7 +413,7 @@ export function ApprovalPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* IAD — número grande sem gauge */}
         <div className="flex flex-col items-center justify-center rounded-xl border border-line bg-bg-1 p-4">
-          <div className="text-[12px] font-semibold uppercase tracking-wider text-txt-3">Aprovação Digital</div>
+          <div className="section-label">Aprovação Digital</div>
           <div className="mt-1 text-6xl font-extrabold leading-none" style={{ color: colorByIAD(view.iad) }}>
             {view.iad}%
           </div>
@@ -441,9 +441,7 @@ export function ApprovalPage() {
           const cor = nivel === "CRÍTICO" ? "#EF4444" : nivel === "ATENÇÃO" ? "#EAB308" : "#6B7280";
           return (
             <div className="flex flex-col rounded-xl border border-line bg-bg-1 p-3">
-              <div className="text-[12px] font-semibold uppercase tracking-wider text-txt-3">
-                Temas em Atenção
-              </div>
+              <div className="section-label">Temas em Atenção</div>
               {!tema ? (
                 <div className="flex flex-1 items-center justify-center text-sm text-txt-3">Sem dados</div>
               ) : (

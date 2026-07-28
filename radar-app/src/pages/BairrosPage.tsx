@@ -13,6 +13,7 @@ import { chartInk, glassBar } from "@/lib/chartTheme";
 import { IconInbox } from "@/components/icons";
 import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 import { ComentariosBairroModal } from "@/components/ComentariosBairroModal";
+import { labelBairro } from "@/lib/format";
 
 type Ordem = "volume" | "negativo";
 
@@ -77,19 +78,29 @@ export function BairrosPage() {
         textStyle: { color: ink.tooltipText },
         formatter: (ps: { name: string; value: number; dataIndex: number }[]) => {
           const b = dados[ps[0].dataIndex];
-          return `<b>${b.localidade}</b><br/>${b.total} menções · ${b.pctNeg}% negativas<br/><span style="opacity:.7">clique para ver os comentários</span>`;
+          return `<b>${labelBairro(b.localidade)}</b><br/>${b.total} menções · ${b.pctNeg}% negativas<br/><span style="opacity:.7">clique para ver os comentários</span>`;
         },
       },
       xAxis: {
         type: "value",
         splitLine: { lineStyle: { color: ink.grid } },
-        axisLabel: { color: ink.axis, fontSize: 12 },
+        // Números maiores no eixo (pedido de 27/07: "aumente o tamanho dos
+        // números das informações").
+        axisLabel: { color: ink.axis, fontSize: 13, fontWeight: 700 },
       },
       yAxis: {
         type: "category",
+        // Mantém o SLUG como valor da categoria — é o que os cliques no
+        // gráfico devolvem em `p.name`/`p.value` (ver abrirPorNome). O
+        // formatter só troca o que aparece na tela, sem o underscore.
         data: dados.map((b) => b.localidade),
         axisLine: { lineStyle: { color: ink.axisLine } },
-        axisLabel: { color: ink.axis, fontSize: 12 },
+        axisLabel: {
+          color: ink.axis,
+          fontSize: 13,
+          fontWeight: 700,
+          formatter: (v: string) => labelBairro(v),
+        },
         triggerEvent: true, // o rótulo do bairro também abre o drill-down
       },
       series: [
@@ -162,29 +173,35 @@ export function BairrosPage() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
               <div className="section-label">Locais citados</div>
-              <div className="tnum mt-1 text-2xl font-light text-txt-1">{bairros.length}</div>
+              <div className="tnum mt-1 text-[2.75rem] font-semibold leading-none text-txt-1">{bairros.length}</div>
             </div>
             <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
               <div className="section-label">Menções com local</div>
-              <div className="tnum mt-1 text-2xl font-light text-txt-1">{totalMencoes}</div>
+              <div className="tnum mt-1 text-[2.75rem] font-semibold leading-none text-txt-1">{totalMencoes}</div>
             </div>
             <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
               <div className="section-label">Bairro mais citado</div>
-              <div className="mt-1 truncate text-lg font-medium" style={{ color: "#3B82F6" }}>
-                {[...bairros].sort((a, b) => b.total - a.total)[0]?.localidade ?? "—"}
+              <div className="mt-1.5 truncate text-xl font-bold" style={{ color: "#3B82F6" }}>
+                {(() => {
+                  const l = [...bairros].sort((a, b) => b.total - a.total)[0]?.localidade;
+                  return l ? labelBairro(l) : "—";
+                })()}
               </div>
             </div>
             <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
               <div className="section-label">Bairro mais crítico</div>
-              <div className="mt-1 truncate text-lg font-medium" style={{ color: "#EF4444" }}>
-                {[...bairros].sort((a, b) => b.pctNeg - a.pctNeg)[0]?.localidade ?? "—"}
+              <div className="mt-1.5 truncate text-xl font-bold" style={{ color: "#EF4444" }}>
+                {(() => {
+                  const l = [...bairros].sort((a, b) => b.pctNeg - a.pctNeg)[0]?.localidade;
+                  return l ? labelBairro(l) : "—";
+                })()}
               </div>
             </div>
           </div>
 
           <div className="rounded-xl border border-line bg-bg-1 p-4">
             <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-              <div className="text-sm font-bold">Menções por local (cor = % negativo)</div>
+              <div className="section-label">Menções por local (cor = % negativo)</div>
               <div className="text-[13px] text-txt-3">
                 Clique numa barra para ler os comentários que a formaram
               </div>

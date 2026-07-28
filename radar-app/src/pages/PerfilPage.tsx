@@ -31,19 +31,24 @@ const labelTema = (t: string) => TEMA_LABEL[t] ?? (t ? t.charAt(0).toUpperCase()
 const COR_CONTRA = COLOR_SENTIMENT.neg;
 const COR_FAVOR = COLOR_SENTIMENT.pos;
 
-/** Card de extremo ("quem mais…", "quem menos…"). */
 /**
- * Fundo sólido por GRUPO (revisão de 27/07): tudo que fala de crítica é
- * vermelho, tudo que fala de elogio é verde. Antes os oito cards eram brancos
- * com o @ colorido, e crítica e elogio se misturavam numa faixa só.
+ * Card de extremo ("quem mais critica…", "quem mais elogia…"). Fundo por
+ * GRUPO: tudo que fala de crítica é vermelho, tudo que fala de elogio é
+ * verde — antes os cards eram brancos com o @ colorido, e os dois grupos se
+ * misturavam numa faixa só.
  *
- * Os tons são escuros de propósito: `#EF4444` (o vermelho de sentimento do
- * painel) com texto branco mede 3,3:1 e reprova no AA; `#B91C1C` mede 6,4:1.
- * Quem separa "mais" de "menos" é o título, não a cor — senão seriam quatro
- * cores para duas ideias.
+ * Revisão de 27/07: os "Menos critica"/"Menos elogia"/"Recebe menos
+ * críticas"/"Recebe menos elogios" saíram (só ficam os extremos de maior
+ * interesse), e o preenchimento virou degradê suave em vez de cor sólida.
+ * As duas pontas do degradê continuam escuras de propósito: `#EF4444` (o
+ * vermelho de sentimento do painel) com texto branco mede 3,3:1 e reprova no
+ * AA; as pontas usadas aqui medem 4,79:1+ nos três textos do card, nas duas
+ * pontas do degradê (a ponta clara é sempre o pior caso — testar só a
+ * escura, como na primeira tentativa do verde, deixou passar uma combinação
+ * que reprovava: título 4,03:1 e valor 3,58:1 na ponta clara).
  */
-const FUNDO_CRITICA = "#B91C1C";
-const FUNDO_ELOGIO = "#166534";
+const FUNDO_CRITICA = "linear-gradient(135deg, #C22323 0%, #8B1919 100%)";
+const FUNDO_ELOGIO = "linear-gradient(135deg, #146C38 0%, #0B3D20 100%)";
 // Tintas OPACAS, e não branco com alpha. Medido no harness: com
 // `rgba(255,255,255,0.78)` o título sobre o verde dava 3,70:1 e o valor 4,09:1,
 // os dois abaixo do mínimo AA de 4,5. Cor opaca também evita que o contraste
@@ -266,7 +271,10 @@ export function PerfilPage() {
           Quem critica e quem elogia a gestão · {fmtInt(totalGeral.fazCritica)} publicações
           críticas e {fmtInt(totalGeral.fazElogio)} favoráveis no período
         </div>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {/* Só os extremos de "mais" (revisão de 27/07) — "menos critica"/
+            "menos elogia" saíram: o interesse prático é quem concentra a
+            crítica e quem concentra o elogio, não quem faz pouco de cada. */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <CardExtremo
             titulo="Mais critica a gestão"
             perfil={rankFazCritica.maior}
@@ -276,28 +284,12 @@ export function PerfilPage() {
             vazio="Ninguém publicou sobre a gestão"
           />
           <CardExtremo
-            titulo="Menos critica a gestão"
-            perfil={rankFazCritica.menor}
-            valor={(p) => `${fmtInt(p.fazCritica)} de ${fmtInt(p.postsGestao)}`}
-            sufixo="publicações"
-            fundo={FUNDO_CRITICA}
-            vazio="Só um perfil no período"
-          />
-          <CardExtremo
             titulo="Mais elogia a gestão"
             perfil={rankFazElogio.maior}
             valor={(p) => `${fmtInt(p.fazElogio)} de ${fmtInt(p.postsGestao)}`}
             sufixo="publicações"
             fundo={FUNDO_ELOGIO}
             vazio="Ninguém publicou sobre a gestão"
-          />
-          <CardExtremo
-            titulo="Menos elogia a gestão"
-            perfil={rankFazElogio.menor}
-            valor={(p) => `${fmtInt(p.fazElogio)} de ${fmtInt(p.postsGestao)}`}
-            sufixo="publicações"
-            fundo={FUNDO_ELOGIO}
-            vazio="Só um perfil no período"
           />
         </div>
       </div>
@@ -308,7 +300,7 @@ export function PerfilPage() {
           Quem concentra a reação dos cidadãos · {fmtInt(totalGeral.contra)} comentários
           contrários e {fmtInt(totalGeral.favor)} favoráveis
         </div>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <CardExtremo
             titulo="Recebe mais críticas"
             perfil={rankContra.maior}
@@ -318,24 +310,8 @@ export function PerfilPage() {
             vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
           />
           <CardExtremo
-            titulo="Recebe menos críticas"
-            perfil={rankContra.menor}
-            valor={(p) => `${fmtInt(p.contra)} contrárias · ${p.pctContra}%`}
-            sufixo=""
-            fundo={FUNDO_CRITICA}
-            vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
-          />
-          <CardExtremo
             titulo="Recebe mais elogios"
             perfil={rankFavor.maior}
-            valor={(p) => `${fmtInt(p.favor)} favoráveis · ${100 - p.pctContra}%`}
-            sufixo=""
-            fundo={FUNDO_ELOGIO}
-            vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
-          />
-          <CardExtremo
-            titulo="Recebe menos elogios"
-            perfil={rankFavor.menor}
             valor={(p) => `${fmtInt(p.favor)} favoráveis · ${100 - p.pctContra}%`}
             sufixo=""
             fundo={FUNDO_ELOGIO}
@@ -676,7 +652,7 @@ export function PerfilPage() {
               <ul className="space-y-2">
                 {negComments.map((c, i) => (
                   <li key={i} className="rounded-md border border-line bg-bg-2 p-2.5">
-                    <p className="text-[14px] leading-relaxed text-txt-1">{c.texto}</p>
+                    <p className="text-base leading-relaxed text-txt-1" style={{ fontWeight: 600 }}>{c.texto}</p>
                     <div className="mt-1 flex items-center gap-2 text-[13px] text-txt-3">
                       <span className="inline-block h-2 w-2 rounded-full" style={{ background: COR_CONTRA }} />
                       {c.username && <span>@{c.username}</span>}

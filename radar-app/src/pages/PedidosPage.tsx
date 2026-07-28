@@ -4,6 +4,7 @@ import { fetchPedidos, fetchRadar, filtrarPorPeriodo, type Pedido } from "@/lib/
 import { IconHeart, IconInbox, IconWarningTriangle } from "@/components/icons";
 import { corTema } from "@/lib/temaColors";
 import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
+import { labelBairro } from "@/lib/format";
 
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde", educacao: "Educação", obras: "Obras", seguranca: "Segurança",
@@ -143,25 +144,27 @@ export function PedidosPage() {
                   style={{ borderLeftColor: cor, borderLeftWidth: 3 }}
                 >
                   <div className="flex items-start gap-2">
-                    <p className="flex-1 text-sm font-semibold text-txt-1">{p.pedido}</p>
-                    <span className="flex shrink-0 items-center gap-1 text-xs text-txt-3">
+                    <p className="flex-1 text-base font-bold text-txt-1">{p.pedido}</p>
+                    <span className="flex shrink-0 items-center gap-1 text-sm font-bold text-txt-3">
                       <IconHeart size={13} />
                       <span className="tnum">{p.curtidas}</span>
                     </span>
                   </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[13px]">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-sm">
                     <span
-                      className="rounded px-1.5 py-0.5 font-semibold"
+                      className="rounded px-1.5 py-0.5 font-bold"
                       style={{ background: `${cor}24`, color: cor, border: `1px solid ${cor}3d` }}
                     >
                       {labelTema(p.tema)}
                     </span>
                     {p.localidade && p.localidade !== "nao_identificado" && (
-                      <span className="rounded bg-bg-2 px-1.5 py-0.5 text-txt-2">📍 {p.localidade}</span>
+                      <span className="rounded bg-bg-2 px-1.5 py-0.5 font-semibold text-txt-2">
+                        📍 {labelBairro(p.localidade)}
+                      </span>
                     )}
                     {revisar && (
                       <span
-                        className="flex items-center gap-1 rounded px-1.5 py-0.5 font-semibold"
+                        className="flex items-center gap-1 rounded px-1.5 py-0.5 font-bold"
                         style={{ background: "rgba(234,179,8,0.14)", color: "#CA8A04" }}
                         title={`Confiança ${p.confianca_tema ?? 0}/100 — texto ambíguo ou irônico`}
                       >
@@ -169,8 +172,15 @@ export function PedidosPage() {
                       </span>
                     )}
                   </div>
+                  {/* Comentário em destaque maior e mais pesado (pedido de
+                      27/07) — é a evidência bruta atrás do pedido resumido. */}
                   {p.texto && (
-                    <p className="mt-2 line-clamp-2 text-xs italic text-txt-3">"{p.texto}"</p>
+                    <p
+                      className="mt-2 line-clamp-2 text-sm italic text-txt-2"
+                      style={{ fontWeight: 600 }}
+                    >
+                      "{p.texto}"
+                    </p>
                   )}
                 </div>
               );

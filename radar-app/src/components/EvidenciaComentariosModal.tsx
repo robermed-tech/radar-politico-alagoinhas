@@ -90,7 +90,8 @@ export function EvidenciaComentariosModal({ tema, tituloTema, urlsNoPeriodo, onC
               não tinha contraste suficiente (reunião 24/07). */}
           {comentarios?.map((c, i) => (
             <div key={i} className="rounded-lg p-3" style={{ background: "#1E293B", border: "1px solid #334155" }}>
-              <p className="text-sm leading-relaxed" style={{ color: "#F8FAFC" }}>“{c.texto}”</p>
+              {/* Comentário maior e mais pesado (pedido de 27/07). */}
+              <p className="text-base leading-relaxed" style={{ color: "#F8FAFC", fontWeight: 600 }}>“{c.texto}”</p>
               <div className="mt-1.5 flex items-center gap-3 text-[13px]" style={{ color: "#94A3B8" }}>
                 {c.autor && <span>@{c.autor}</span>}
                 <span>{c.curtidas} curtida{c.curtidas === 1 ? "" : "s"}</span>
