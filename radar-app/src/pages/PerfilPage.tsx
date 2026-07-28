@@ -32,35 +32,71 @@ const COR_CONTRA = COLOR_SENTIMENT.neg;
 const COR_FAVOR = COLOR_SENTIMENT.pos;
 
 /** Card de extremo ("quem mais…", "quem menos…"). */
+/**
+ * Fundo sólido por GRUPO (revisão de 27/07): tudo que fala de crítica é
+ * vermelho, tudo que fala de elogio é verde. Antes os oito cards eram brancos
+ * com o @ colorido, e crítica e elogio se misturavam numa faixa só.
+ *
+ * Os tons são escuros de propósito: `#EF4444` (o vermelho de sentimento do
+ * painel) com texto branco mede 3,3:1 e reprova no AA; `#B91C1C` mede 6,4:1.
+ * Quem separa "mais" de "menos" é o título, não a cor — senão seriam quatro
+ * cores para duas ideias.
+ */
+const FUNDO_CRITICA = "#B91C1C";
+const FUNDO_ELOGIO = "#166534";
+// Tintas OPACAS, e não branco com alpha. Medido no harness: com
+// `rgba(255,255,255,0.78)` o título sobre o verde dava 3,70:1 e o valor 4,09:1,
+// os dois abaixo do mínimo AA de 4,5. Cor opaca também evita que o contraste
+// dependa de qual fundo está por trás.
+const TINTA_TITULO = "#F1F5F9";
+const TINTA_VALOR = "#E2E8F0";
+
 function CardExtremo({
   titulo,
   perfil,
   valor,
   sufixo,
-  cor,
+  fundo,
   vazio,
 }: {
   titulo: string;
   perfil: PerfilAnalise | null;
   valor?: (p: PerfilAnalise) => string;
   sufixo: string;
-  cor: string;
+  fundo: string;
   vazio: string;
 }) {
   return (
-    <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-      <div className="section-label">{titulo}</div>
+    <div
+      className="card-hover overflow-hidden rounded-xl p-4"
+      style={{ background: fundo, boxShadow: "0 10px 24px -14px rgba(0,0,0,0.55)" }}
+    >
+      <div
+        className="text-[13px] uppercase tracking-[0.12em]"
+        style={{ color: TINTA_TITULO, fontWeight: 700 }}
+      >
+        {titulo}
+      </div>
       {perfil ? (
         <>
-          <div className="mt-1 truncate text-[17px] font-extrabold" style={{ color: cor }} title={`@${perfil.autor}`}>
+          <div
+            className="mt-1.5 truncate text-[18px] text-white"
+            style={{ fontWeight: 800 }}
+            title={`@${perfil.autor}`}
+          >
             @{perfil.autor}
           </div>
-          <div className="tnum mt-0.5 text-[13px] font-bold text-txt-2">
+          <div
+            className="tnum mt-0.5 text-[13px]"
+            style={{ color: TINTA_VALOR, fontWeight: 700 }}
+          >
             {valor ? valor(perfil) : ""} {sufixo}
           </div>
         </>
       ) : (
-        <div className="mt-1 text-[13px] text-txt-3">{vazio}</div>
+        <div className="mt-1.5 text-[13px]" style={{ color: TINTA_VALOR, fontWeight: 600 }}>
+          {vazio}
+        </div>
       )}
     </div>
   );
@@ -221,26 +257,26 @@ export function PerfilPage() {
         <PeriodoFilter dias={dias} onChange={setDias} />
       </div>
 
-      {/* Critério da análise, dito na cara: o recorte é a tela Relevância. */}
-      <div className="rounded-xl border border-line bg-bg-1 p-4">
-        <div className="section-label mb-1">Critério desta análise</div>
-        {semKeywords ? (
-          <p className="text-sm text-txt-2">
-            Nenhuma palavra ativa cadastrada em <b>Relevância</b>, então todas as publicações
-            do período estão sendo contadas. Cadastre as palavras que definem o assunto
-            (prefeito, prefeitura, gestão) para que o recorte passe a valer.
-          </p>
-        ) : (
-          <p className="text-sm text-txt-2">
-            Só entram as publicações que citam alguma das <b>{kws.length} palavras</b> cadastradas
-            em <b>Relevância</b>: {fmtInt(totalGeral.postsGestao)} de {fmtInt(totalGeral.posts)}{" "}
-            publicações do período. <b>O que o perfil faz</b> vem do tom da própria publicação;{" "}
-            <b>o que o perfil recebe</b> vem dos comentários de cidadãos nela, com o mesmo
-            critério que forma o clima. Os dois podem discordar: post elogioso que tomou uma
-            enxurrada de críticas continua sendo um elogio feito pelo perfil.
-          </p>
-        )}
-      </div>
+      {/* O card "Critério desta análise" saiu na revisão de 27/07. Sobrou só
+          este aviso, que aparece exclusivamente quando NÃO há palavra
+          cadastrada: nesse estado a tela conta todas as publicações, e sem o
+          aviso ela ficaria silenciosamente errada. Com palavras cadastradas
+          (o caso normal) nada é exibido aqui. */}
+      {semKeywords && (
+        <div
+          className="rounded-xl p-3 text-sm"
+          style={{
+            background: "rgba(234,179,8,0.12)",
+            border: "1px solid rgba(234,179,8,0.4)",
+            color: "var(--txt1)",
+            fontWeight: 600,
+          }}
+        >
+          Nenhuma palavra ativa cadastrada em <b>Relevância</b>: todas as publicações do
+          período estão sendo contadas. Cadastre as palavras que definem o assunto para o
+          recorte passar a valer.
+        </div>
+      )}
 
       {/* O que cada perfil PUBLICA sobre a gestão */}
       <div>
@@ -254,7 +290,7 @@ export function PerfilPage() {
             perfil={rankFazCritica.maior}
             valor={(p) => `${fmtInt(p.fazCritica)} de ${fmtInt(p.postsGestao)}`}
             sufixo="publicações"
-            cor={COR_CONTRA}
+            fundo={FUNDO_CRITICA}
             vazio="Ninguém publicou sobre a gestão"
           />
           <CardExtremo
@@ -262,7 +298,7 @@ export function PerfilPage() {
             perfil={rankFazCritica.menor}
             valor={(p) => `${fmtInt(p.fazCritica)} de ${fmtInt(p.postsGestao)}`}
             sufixo="publicações"
-            cor="#64748B"
+            fundo={FUNDO_CRITICA}
             vazio="Só um perfil no período"
           />
           <CardExtremo
@@ -270,7 +306,7 @@ export function PerfilPage() {
             perfil={rankFazElogio.maior}
             valor={(p) => `${fmtInt(p.fazElogio)} de ${fmtInt(p.postsGestao)}`}
             sufixo="publicações"
-            cor={COR_FAVOR}
+            fundo={FUNDO_ELOGIO}
             vazio="Ninguém publicou sobre a gestão"
           />
           <CardExtremo
@@ -278,7 +314,7 @@ export function PerfilPage() {
             perfil={rankFazElogio.menor}
             valor={(p) => `${fmtInt(p.fazElogio)} de ${fmtInt(p.postsGestao)}`}
             sufixo="publicações"
-            cor="#64748B"
+            fundo={FUNDO_ELOGIO}
             vazio="Só um perfil no período"
           />
         </div>
@@ -296,7 +332,7 @@ export function PerfilPage() {
             perfil={rankContra.maior}
             valor={(p) => `${fmtInt(p.contra)} contrárias · ${p.pctContra}%`}
             sufixo=""
-            cor={COR_CONTRA}
+            fundo={FUNDO_CRITICA}
             vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
           />
           <CardExtremo
@@ -304,7 +340,7 @@ export function PerfilPage() {
             perfil={rankContra.menor}
             valor={(p) => `${fmtInt(p.contra)} contrárias · ${p.pctContra}%`}
             sufixo=""
-            cor="#64748B"
+            fundo={FUNDO_CRITICA}
             vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
           />
           <CardExtremo
@@ -312,7 +348,7 @@ export function PerfilPage() {
             perfil={rankFavor.maior}
             valor={(p) => `${fmtInt(p.favor)} favoráveis · ${100 - p.pctContra}%`}
             sufixo=""
-            cor={COR_FAVOR}
+            fundo={FUNDO_ELOGIO}
             vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
           />
           <CardExtremo
@@ -320,7 +356,7 @@ export function PerfilPage() {
             perfil={rankFavor.menor}
             valor={(p) => `${fmtInt(p.favor)} favoráveis · ${100 - p.pctContra}%`}
             sufixo=""
-            cor="#64748B"
+            fundo={FUNDO_ELOGIO}
             vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
           />
         </div>
@@ -520,20 +556,15 @@ export function PerfilPage() {
               }
               sub={`${100 - (perfilAtivo?.pctContra ?? 0)}% dos que tomam partido`}
             />
+            {/* O KPI "O que publica sobre a gestão" saiu na revisão de 27/07:
+                mostrava "7/2 críticas / elogios" logo acima da barra "Tom das
+                publicações", que já diz o mesmo com mais clareza e ainda
+                separa as neutras. Dois números para o mesmo fato, e o do KPI
+                era o mais difícil de ler. */}
             <KpiStat
-              label="O que publica sobre a gestão"
-              value={
-                <>
-                  <span style={{ color: COR_CONTRA, fontWeight: 700 }}>
-                    {fmtInt(perfilAtivo?.fazCritica ?? 0)}
-                  </span>
-                  <span className="text-txt-3">/</span>
-                  <span style={{ color: COR_FAVOR, fontWeight: 700 }}>
-                    {fmtInt(perfilAtivo?.fazElogio ?? 0)}
-                  </span>
-                </>
-              }
-              sub={`críticas / elogios em ${fmtInt(perfilAtivo?.postsGestao ?? 0)} publicações`}
+              label="Publicações sobre a gestão"
+              value={fmtInt(perfilAtivo?.postsGestao ?? 0)}
+              sub={`de ${fmtInt(perfilAtivo?.posts ?? 0)} no período`}
             />
           </div>
 
