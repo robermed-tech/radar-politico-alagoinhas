@@ -146,13 +146,104 @@ def carregar_bairros(tenant: str = None, abortar_em_falha: bool = True) -> dict:
     log(f"[bairros] Supabase: {len(rows)} bairros ativos, {len(mapa)} aliases carregados")
     return mapa
 
-def normalizar_localidade(valor: str, mapa_bairros: dict) -> str:
+# Aliases de bairro que TAMBEM sao substantivo comum do portugues. Para eles,
+# "o valor contem essa palavra" nao prova nada sobre lugar: "centro" aparece em
+# "Centro de Testagem e Aconselhamento", "centro de saude", "centro cirurgico";
+# "cruzeiro" em "Cruzeiro do Sul"; "riacho" em qualquer riacho do municipio.
+#
+# A lista e de palavras, nao de bairros: ela e cruzada com os aliases reais de
+# cada tenant em tempo de execucao, entao serve para qualquer cidade cujo bairro
+# se chame Centro, Alto, Parque, Vila e afins.
+_PALAVRA_COMUM_DE_LUGAR = {
+    "centro", "cruzeiro", "velha", "velho", "riacho", "roca", "barreiro",
+    "jardim", "parque", "praca", "alto", "vila", "morro", "campo", "ponte",
+    "lagoa", "rio", "feira", "porto", "ilha", "estacao", "mata", "serra",
+    "varzea", "poco", "fonte", "pedreira", "olaria", "matadouro",
+}
+
+# Palavras que, depois de um alias generico, MANTEM o sentido de lugar:
+# "centro da CIDADE", "centro de ALAGOINHAS". O nome do tenant entra em tempo
+# de execucao. Qualquer outra continuacao ("centro de testagem") descarta.
+_MARCADOR_DE_LUGAR = {"cidade", "bairro", "povoado", "distrito", "vila", "municipio"}
+
+_LIGACAO_DE_LUGAR = re.compile(r"^(?:de|da|do|dos|das)\s+(\w+)")
+
+# Preposicao/substantivo que, ANTES do alias, ja o marca como lugar:
+# "no Riacho", "no barreiro", "bairro Centro", "rua do Catu".
+_ANTES_E_LUGAR = re.compile(
+    r"(?:^|\W)(?:no|na|em|do|da|ao|pro|pra|bairro|bairro do|bairro da|rua|praca|avenida|povoado|distrito)\s+$"
+)
+
+
+def _generico_e_lugar(valor_norm: str, alias_norm: str, tenant: str) -> bool:
+    """O alias generico aparece como LUGAR, ou como cabeca de outro nome?
+
+    Vale para o valor CURTO que o modelo extrai no campo `localidade`, nao para
+    texto corrido (ver _so_em_composto, usado pelo reparo). Aceita quando o
+    alias vem precedido de preposicao de lugar, quando termina a frase, quando
+    e seguido de pontuacao, ou quando e seguido de marcador de lugar. Recusa
+    "centro de testagem": foi o caso que contaminou o Mapa da Cidade, com
+    quatro denuncias sobre o CTA virando quatro criticas ao bairro Centro, que
+    de verdade tinha duas mencoes.
+    """
+    m = _padrao(alias_norm).search(valor_norm)
+    if not m:
+        return False
+    if _ANTES_E_LUGAR.search(valor_norm[: m.start()]):
+        return True
+    depois = valor_norm[m.end():].strip()
+    if not depois:
+        return True
+    if depois[0] in ",.;:!?)]}/|":
+        return True
+    lig = _LIGACAO_DE_LUGAR.match(depois)
+    if lig:
+        return lig.group(1) in (_MARCADOR_DE_LUGAR | {_norm(tenant)})
+    # Qualquer outra palavra colada ("centro cirurgico", "centro esportivo")
+    # transforma o alias em cabeca de um nome que nao e o bairro.
+    return False
+
+
+def _so_em_composto(texto_norm: str, alias_norm: str, tenant: str) -> bool:
+    """TODA ocorrencia do alias no texto e cabeca de um nome composto?
+
+    Regra do REPARO, deliberadamente mais conservadora que a do normalizador.
+    Aqui a entrada e texto corrido, onde a palavra aparece cercada de verbo e
+    virgula ("Barreiro estao so as crateras", "no Riacho esse ano"): exigir a
+    mesma prova de lugar do normalizador marcaria bairro legitimo como erro.
+    Foi o que aconteceu na primeira tentativa, com 3 falsos positivos em 7.
+
+    So devolve True quando o alias APARECE e todas as suas ocorrencias sao do
+    tipo "centro de testagem". Texto que nao cita a palavra devolve False: o
+    modelo pode ter usado outra pista (em "era Riachense" ele acertou Riacho da
+    Guia sem escrever "riacho"), e adivinhar contra ele apagaria dado bom.
+    """
+    achou = False
+    for m in _padrao(alias_norm).finditer(texto_norm):
+        achou = True
+        lig = _LIGACAO_DE_LUGAR.match(texto_norm[m.end():].strip())
+        composto = bool(lig) and lig.group(1) not in (_MARCADOR_DE_LUGAR | {_norm(tenant)})
+        if not composto:
+            return False
+    return achou
+
+
+def normalizar_localidade(valor: str, mapa_bairros: dict, tenant: str = None) -> str:
     """
     Sempre devolve slug valido de public.bairros, ou 'nao_identificado'.
     Nunca texto livre. Nunca levanta excecao.
 
-    Ordem de resolucao: match exato do slug -> match exato de alias normalizado ->
-    _tem_termo (palavra inteira) -> 'nao_identificado'.
+    Ordem de resolucao: match exato do slug/alias -> match por palavra inteira,
+    do alias MAIS LONGO para o mais curto -> 'nao_identificado'.
+
+    Duas regras existem por causa da contaminacao achada em 27/07:
+
+    1. Alias mais longo primeiro. Antes a varredura seguia a ordem de insercao
+       do dicionario, entao "centro" podia vencer "centro da cidade" e "riacho"
+       podia vencer "riacho da guia" — o apelido curto decidindo no lugar do
+       nome completo.
+    2. Alias que e substantivo comum (ver _PALAVRA_COMUM_DE_LUGAR) precisa
+       aparecer como LUGAR, nao como primeira palavra de outro nome.
     """
     try:
         if not valor or not mapa_bairros:
@@ -160,9 +251,16 @@ def normalizar_localidade(valor: str, mapa_bairros: dict) -> str:
         v = _norm(valor)
         if v in mapa_bairros:
             return mapa_bairros[v]
-        for alias_norm, slug in mapa_bairros.items():
-            if alias_norm and _tem_termo(valor, alias_norm):
-                return slug
+        # A ordenacao mora aqui, e nao em carregar_bairros, para que nenhum
+        # chamador consiga quebrar a regra montando o mapa por conta propria.
+        for alias_norm, slug in sorted(mapa_bairros.items(), key=lambda kv: -len(kv[0] or "")):
+            if not alias_norm or not _tem_termo(v, alias_norm):
+                continue
+            if alias_norm in _PALAVRA_COMUM_DE_LUGAR and not _generico_e_lugar(
+                v, alias_norm, tenant or TENANT
+            ):
+                continue
+            return slug
     except Exception:
         pass
     return "nao_identificado"
@@ -1748,7 +1846,14 @@ def montar_prompt_comentarios(post, lote, offset):
         '"sentimento": "<positivo|negativo|neutro>", '
         '"tema": "<saude|educacao|obras|seguranca|transporte|emprego|impostos|saneamento|cultura_eventos|comunicacao>", '
         '"subtema": "<slug conforme a lista acima>", '
-        '"localidade": "<bairro/praca/rua/escola citado, como escrito, ou null>", '
+        # ONDE na cidade, e nao QUAL equipamento. A formulacao anterior pedia
+        # "bairro/praca/rua/escola citado" e convidava o modelo a devolver o
+        # nome do servico: "Centro de Testagem e Aconselhamento" virava o
+        # bairro Centro depois da normalizacao (achado de 27/07).
+        '"localidade": "<APENAS bairro, povoado, praca ou rua da cidade, como escrito. '
+        'Nome de equipamento ou programa (posto, CTA, hospital, UPA, escola, creche, '
+        'secretaria) NAO e localidade: use null, a menos que o texto tambem diga em que '
+        'bairro ele fica, e ai devolva o BAIRRO. null quando nao houver lugar citado>", '
         '"pedido": "<demanda concreta ate 8 palavras no infinitivo, ou null>", '
         '"confianca_tema": <0-100>}, ...\n'
         ']}\n'
@@ -5548,16 +5653,156 @@ def main_retroanalise():
     log("+====================================================+")
 
 
+# Casos com resposta conhecida. O primeiro bloco e a contaminacao real achada
+# em 27/07 no Mapa da Cidade; os demais protegem o que precisa continuar
+# funcionando, para a correcao nao virar excesso de zelo que descarta bairro
+# legitimo. Cada linha e (valor_que_o_modelo_devolveria, slug_esperado).
+_CASOS_LOCALIDADE = [
+    # O caso que quebrou: nome de equipamento nao e bairro.
+    ("Centro de Testagem e Aconselhamento - CTA Alagoinhas-Ba", "nao_identificado"),
+    ("Centro de Testagem e Aconselhamento", "nao_identificado"),
+    ("centro de saude", "nao_identificado"),
+    ("centro cirurgico", "nao_identificado"),
+    ("Cruzeiro do Sul", "nao_identificado"),
+    # O bairro Centro de verdade precisa continuar resolvendo.
+    ("Centro", "centro"),
+    ("no centro", "centro"),
+    ("centro da cidade", "centro"),
+    ("centro de Alagoinhas", "centro"),
+    ("Centro.", "centro"),
+    ("(CENTRO)", "centro"),
+    # Apelido generico precedido de preposicao de lugar continua valendo. Os
+    # tres primeiros sao falsos positivos que a primeira versao da correcao
+    # produziu ao rodar contra a base real: eram bairro de verdade.
+    ("no Riacho", "riacho_da_guia"),
+    ("no barreiro", "barreiro"),
+    ("bairro Centro", "centro"),
+    ("rua do Catu", "catu"),
+    # Alias mais longo tem de vencer o mais curto.
+    ("Riacho da Guia", "riacho_da_guia"),
+    ("Alto do Cruzeiro", "alto_do_cruzeiro"),
+    # Bairros de nome distintivo seguem resolvendo dentro de frase.
+    ("bairro Santa Terezinha", "santa_terezinha"),
+    ("praca Kennedy", "kennedy"),
+    ("Jardim Petrolar", "jardim_petrolar"),
+    ("zona rural", "area_rural"),
+    # Sem lugar citado.
+    ("", "nao_identificado"),
+    ("a prefeitura toda", "nao_identificado"),
+]
+
+
+def reparar_localidade(dry_run=False):
+    """Desfaz atribuicoes de bairro que vieram do bug de alias generico.
+
+    `--reparar-localidade --dry-run`  → so lista o que mudaria
+    `--reparar-localidade`            → grava
+
+    Como decide: para cada comentario ja atribuido a um bairro cujo apelido e
+    substantivo comum (Centro, Alto do Cruzeiro, Riacho da Guia...), verifica
+    se o TEXTO do comentario menciona aquele bairro como LUGAR, pela mesma
+    regra nova de normalizar_localidade. Se em nenhum ponto do texto a palavra
+    aparece como lugar, a atribuicao so pode ter vindo de um nome composto
+    ("Centro de Testagem e Aconselhamento") e a linha volta para
+    'nao_identificado'.
+
+    Nao chama o modelo: e leitura de texto ja gravado mais a regra corrigida.
+    Custo zero de token e de credito Apify.
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("[reparar-localidade] SUPABASE_URL / SUPABASE_SERVICE_KEY ausentes.")
+        return
+    mapa = carregar_bairros(abortar_em_falha=False)
+    if mapa == _BAIRRO_FALLBACK_MINIMO:
+        print("[reparar-localidade] ABORTANDO: mapa de bairros indisponivel.")
+        return
+
+    # Slugs em risco: os que tem ao menos um apelido que e substantivo comum.
+    aliases_por_slug = {}
+    for alias_norm, slug in mapa.items():
+        aliases_por_slug.setdefault(slug, []).append(alias_norm)
+    em_risco = {
+        slug: al for slug, al in aliases_por_slug.items()
+        if any(a in _PALAVRA_COMUM_DE_LUGAR for a in al)
+    }
+    if not em_risco:
+        print("[reparar-localidade] Nenhum bairro deste tenant tem apelido generico.")
+        return
+    print(f"[reparar-localidade] Bairros em risco: {sorted(em_risco)}")
+
+    linhas = _supabase_get(
+        "comments",
+        f"tenant=eq.{TENANT}&localidade=in.({','.join(em_risco)})"
+        f"&texto=not.is.null&select=id,localidade,texto&limit=5000",
+    ) or []
+    print(f"[reparar-localidade] {len(linhas)} comentarios a conferir.\n")
+
+    suspeitos = []
+    for c in linhas:
+        slug = c.get("localidade")
+        texto = _norm(c.get("texto") or "")
+        aliases = aliases_por_slug.get(slug, [])
+        # Algum apelido NAO generico aparece? Entao o bairro tem apoio direto
+        # no texto ("riacho da guia", "santa terezinha") e nada a fazer.
+        if any(a not in _PALAVRA_COMUM_DE_LUGAR and _tem_termo(texto, a) for a in aliases):
+            continue
+        # Sobra o caso do apelido generico: so e contaminacao quando TODA
+        # ocorrencia dele e cabeca de nome composto.
+        genericos = [a for a in aliases if a in _PALAVRA_COMUM_DE_LUGAR]
+        if genericos and all(_so_em_composto(texto, a, TENANT) for a in genericos):
+            suspeitos.append(c)
+
+    if not suspeitos:
+        print("[reparar-localidade] Nada a corrigir: todo bairro atribuido tem apoio no texto.")
+        return
+
+    print(f"[reparar-localidade] {len(suspeitos)} linhas sem apoio no texto:\n")
+    for c in suspeitos:
+        print(f"  {c['localidade']:<18} -> nao_identificado")
+        print(f"      {' '.join((c.get('texto') or '').split())[:150]}")
+    if dry_run:
+        print("\n[reparar-localidade] --dry-run: nada gravado.")
+        return
+
+    ok = 0
+    for c in suspeitos:
+        if _supabase_patch("comments", f"id=eq.{c['id']}&tenant=eq.{TENANT}",
+                           {"localidade": "nao_identificado"}):
+            ok += 1
+    print(f"\n[reparar-localidade] {ok}/{len(suspeitos)} corrigidos.")
+
+
 def teste_localidade():
-    """Le 50 comentarios do Supabase e roda APENAS normalizar_localidade() sobre
-    o texto de cada um — sem chamar Claude, sem gravar nada no banco/planilha.
-    Serve para medir a qualidade do dicionario de aliases de bairros ANTES de
-    subir para producao. Nao exige SPREADSHEET_ID (variaveis do Sheets sao lazy)."""
+    """Roda normalizar_localidade() sem chamar Claude e sem gravar nada.
+
+    Duas partes:
+      1. Casos com resposta esperada (_CASOS_LOCALIDADE) — teste de regressao
+         da contaminacao de 27/07, em que "Centro de Testagem e Aconselhamento"
+         virava o bairro Centro.
+      2. Amostra real do banco, so para olho humano.
+
+    Atencao ao que a parte 2 mede: ela alimenta o TEXTO INTEIRO do comentario,
+    enquanto a producao alimenta o valor curto que o modelo extraiu no campo
+    `localidade`. Sao entradas diferentes, entao a taxa de resolucao aqui e
+    otimista e nao vale como metrica de producao — quem vale e a parte 1.
+    """
     print("[teste-localidade] Carregando bairros...")
     mapa_bairros = carregar_bairros(abortar_em_falha=False)
     if mapa_bairros == _BAIRRO_FALLBACK_MINIMO:
         print("[teste-localidade] WARNING ALTO: fallback minimo em uso "
               "(leitura de public.bairros falhou ou banco vazio) — resultado nao e confiavel.")
+
+    print(f"\n[teste-localidade] Casos com resposta esperada ({len(_CASOS_LOCALIDADE)}):\n")
+    falhas = 0
+    for valor, esperado in _CASOS_LOCALIDADE:
+        obtido = normalizar_localidade(valor, mapa_bairros)
+        ok = obtido == esperado
+        falhas += 0 if ok else 1
+        print(f"  {'ok  ' if ok else 'FALHOU'}  {valor!r:<58} -> {obtido}"
+              f"{'' if ok else f'  (esperado {esperado})'}")
+    print(f"\n[teste-localidade] {len(_CASOS_LOCALIDADE) - falhas}/{len(_CASOS_LOCALIDADE)} casos passaram.")
+    if falhas:
+        print("[teste-localidade] ATENCAO: ha caso falhando — nao subir para producao.")
 
     if not SUPABASE_URL or not SUPABASE_KEY:
         print("[teste-localidade] SUPABASE_URL / SUPABASE_SERVICE_KEY não configurados.")
@@ -5833,6 +6078,10 @@ if __name__ == "__main__":
         teste_filtro(limite=_lim, detalhar="--resumo" not in sys.argv)
     elif "--teste-localidade" in sys.argv:
         teste_localidade()
+    elif "--reparar-localidade" in sys.argv:
+        # Desfaz bairro atribuido por nome composto ("Centro de Testagem").
+        # So le texto ja gravado e aplica a regra corrigida: zero token.
+        reparar_localidade(dry_run="--dry-run" in sys.argv)
     elif "--teste-subtema" in sys.argv:
         # Dry-run: mostra o que o alerta de subtema dispararia (24h reais do
         # Supabase), sem enviar WhatsApp nem gravar historico.
