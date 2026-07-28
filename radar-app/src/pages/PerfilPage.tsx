@@ -21,13 +21,6 @@ import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilt
 import { prepararKeywords, casaRelevancia } from "@/lib/relevancia";
 import { analisarPerfis, extremos, MIN_AMOSTRA, type PerfilAnalise } from "@/lib/analisePerfis";
 
-const TEMA_LABEL: Record<string, string> = {
-  saude: "Saúde", educacao: "Educação", obras: "Obras", seguranca: "Segurança",
-  transporte: "Transporte", emprego: "Emprego", impostos: "Impostos",
-  saneamento: "Saneamento", cultura_eventos: "Cultura", comunicacao: "Comunicação",
-};
-const labelTema = (t: string) => TEMA_LABEL[t] ?? (t ? t.charAt(0).toUpperCase() + t.slice(1) : "—");
-
 const COR_CONTRA = COLOR_SENTIMENT.neg;
 const COR_FAVOR = COLOR_SENTIMENT.pos;
 
@@ -37,24 +30,42 @@ const COR_FAVOR = COLOR_SENTIMENT.pos;
  * verde — antes os cards eram brancos com o @ colorido, e os dois grupos se
  * misturavam numa faixa só.
  *
- * Revisão de 27/07: os "Menos critica"/"Menos elogia"/"Recebe menos
- * críticas"/"Recebe menos elogios" saíram (só ficam os extremos de maior
- * interesse), e o preenchimento virou degradê suave em vez de cor sólida.
- * As duas pontas do degradê continuam escuras de propósito: `#EF4444` (o
- * vermelho de sentimento do painel) com texto branco mede 3,3:1 e reprova no
- * AA; as pontas usadas aqui medem 4,79:1+ nos três textos do card, nas duas
- * pontas do degradê (a ponta clara é sempre o pior caso — testar só a
- * escura, como na primeira tentativa do verde, deixou passar uma combinação
- * que reprovava: título 4,03:1 e valor 3,58:1 na ponta clara).
+ * Revisão de 28/07: o degradê escuro com texto claro saiu — destoava do
+ * resto do painel. O padrão que o dashboard já usa para card colorido é o
+ * box "Engajamento no período" da Estação Meteorológica: gradiente CLARO
+ * (150deg, mesma família de cor do início ao fim) com texto quase preto por
+ * cima, não o inverso. Aqui é a mesma receita: `#FCA5A5 → #EF4444` (o
+ * vermelho de sentimento do painel) e `#86EFAC → #22C55E` (idem, verde),
+ * texto em `#1A0F02` (o preto usado nos outros botões/cards em degradê do
+ * painel — puro #000 teria contraste igual ou maior, mas esse tom é o que já
+ * está em uso, e reaproveitar mantém uma paleta de "preto" só no produto).
  */
-const FUNDO_CRITICA = "linear-gradient(135deg, #C22323 0%, #8B1919 100%)";
-const FUNDO_ELOGIO = "linear-gradient(135deg, #146C38 0%, #0B3D20 100%)";
-// Tintas OPACAS, e não branco com alpha. Medido no harness: com
-// `rgba(255,255,255,0.78)` o título sobre o verde dava 3,70:1 e o valor 4,09:1,
-// os dois abaixo do mínimo AA de 4,5. Cor opaca também evita que o contraste
-// dependa de qual fundo está por trás.
-const TINTA_TITULO = "#F1F5F9";
-const TINTA_VALOR = "#E2E8F0";
+const FUNDO_CRITICA = "linear-gradient(150deg, #FCA5A5 0%, #EF4444 100%)";
+const FUNDO_ELOGIO = "linear-gradient(150deg, #86EFAC 0%, #22C55E 100%)";
+// Preta SÓLIDA em todo lugar, e não com alpha. Medido no harness: o alpha
+// (0,78) passava na ponta clara mas reprovava na escura do vermelho (3,87:1,
+// abaixo do mínimo AA de 4,5) — a mesma pegadinha do texto branco-com-alpha
+// da primeira versão deste componente. Preto sólido mede 5,01:1+ nas duas
+// pontas dos dois gradientes; a hierarquia entre título e valor vem do peso
+// da fonte, não de uma segunda tinta.
+const TINTA_PRETA = "#1A0F02";
+
+/**
+ * Um degradê por categoria de perfil, mesma receita clara→base e mesma
+ * paleta de CAT_COR (RankingSeguidores.tsx) — usado nos botões do seletor de
+ * perfis, que "suberam" para o topo da página e viraram botão preenchido em
+ * vez de pílula com contorno.
+ */
+const CAT_GRADIENTE: Record<string, string> = {
+  Prefeito: "linear-gradient(150deg, #86EFAC 0%, #22C55E 100%)",
+  Prefeitura: "linear-gradient(150deg, #93C5FD 0%, #3B82F6 100%)",
+  Imprensa: "linear-gradient(150deg, #D8B4FE 0%, #A855F7 100%)",
+  Oposicao: "linear-gradient(150deg, #FCA5A5 0%, #EF4444 100%)",
+};
+const FUNDO_CATEGORIA_PADRAO = "linear-gradient(150deg, #CBD5E1 0%, #94A3B8 100%)";
+function gradienteCategoria(categoria: string): string {
+  return CAT_GRADIENTE[categoria] ?? FUNDO_CATEGORIA_PADRAO;
+}
 
 function CardExtremo({
   titulo,
@@ -74,32 +85,32 @@ function CardExtremo({
   return (
     <div
       className="card-hover overflow-hidden rounded-xl p-4"
-      style={{ background: fundo, boxShadow: "0 10px 24px -14px rgba(0,0,0,0.55)" }}
+      style={{ background: fundo, boxShadow: "0 10px 24px -14px rgba(0,0,0,0.35)" }}
     >
       <div
         className="text-[13px] uppercase tracking-[0.12em]"
-        style={{ color: TINTA_TITULO, fontWeight: 700 }}
+        style={{ color: TINTA_PRETA, fontWeight: 700 }}
       >
         {titulo}
       </div>
       {perfil ? (
         <>
           <div
-            className="mt-1.5 truncate text-[18px] text-white"
-            style={{ fontWeight: 800 }}
+            className="mt-1.5 truncate text-[19px]"
+            style={{ fontWeight: 800, color: TINTA_PRETA }}
             title={`@${perfil.autor}`}
           >
             @{perfil.autor}
           </div>
           <div
-            className="tnum mt-0.5 text-[13px]"
-            style={{ color: TINTA_VALOR, fontWeight: 700 }}
+            className="tnum mt-0.5 text-sm"
+            style={{ color: TINTA_PRETA, fontWeight: 700 }}
           >
             {valor ? valor(perfil) : ""} {sufixo}
           </div>
         </>
       ) : (
-        <div className="mt-1.5 text-[13px]" style={{ color: TINTA_VALOR, fontWeight: 600 }}>
+        <div className="mt-1.5 text-sm" style={{ color: TINTA_PRETA, fontWeight: 600 }}>
           {vazio}
         </div>
       )}
@@ -222,19 +233,6 @@ export function PerfilPage() {
 
   const urlsPerfil = useMemo(() => new Set(postsPerfil.map((p) => p.url)), [postsPerfil]);
 
-  // Temas das publicações do perfil sobre a gestão.
-  const temas = useMemo(() => {
-    const by: Record<string, { tema: string; n: number; neg: number }> = {};
-    for (const p of postsPerfil) {
-      const t = (p.tema || "").trim();
-      if (!t || t === "—") continue;
-      const e = (by[t] ??= { tema: t, n: 0, neg: 0 });
-      e.n += 1;
-      if (p.sentimento_post === "negativo") e.neg += 1;
-    }
-    return Object.values(by).sort((a, b) => b.n - a.n).slice(0, 6);
-  }, [postsPerfil]);
-
   // Críticas em destaque: comentários contrários mais curtidos, restritos às
   // publicações do perfil que falam da gestão.
   const negComments = useMemo<Comment[]>(
@@ -264,6 +262,60 @@ export function PerfilPage() {
         </div>
         <PeriodoFilter dias={dias} onChange={setDias} />
       </div>
+
+      {/* Seletor de perfis — subiu para o topo da página (revisão de 28/07):
+          é o controle que decide o que todo o resto da tela mostra, então
+          vem antes dos cards, não depois do ranking. Cada botão é preenchido
+          com o degradê da categoria do perfil (mesma paleta de CAT_COR) e
+          texto preto, no mesmo padrão dos cards de extremo logo abaixo — os
+          dois lugares onde o painel usa "botão colorido" seguem a mesma
+          receita agora. */}
+      {analise.length > 0 && (
+        <div>
+          <div className="section-label mb-2">Selecionar perfil</div>
+          <div className="flex flex-wrap gap-2">
+            {analise.map((p) => {
+              const ativo = p.autor === autor;
+              const gradiente = gradienteCategoria(p.categoria);
+              return (
+                <button
+                  key={p.autor}
+                  onClick={() => setSel(p.autor)}
+                  className="flex items-center gap-2 rounded-full px-4 py-2 text-sm transition"
+                  style={{
+                    background: gradiente,
+                    fontWeight: 800,
+                    color: TINTA_PRETA,
+                    // Sem opacity reduzida no estado inativo: opacity mistura
+                    // TODO o botão (fundo + texto) com o que está atrás dele,
+                    // e isso desidratava o contraste do gradiente com o fundo
+                    // escuro da página sem eu saber por quanto — melhor
+                    // diferenciar ativo/inativo só pelo anel, que não mexe em
+                    // nenhuma cor de texto.
+                    boxShadow: ativo
+                      ? "0 0 0 2px rgba(255,255,255,0.9), 0 10px 22px -10px rgba(0,0,0,0.55)"
+                      : "0 6px 16px -10px rgba(0,0,0,0.45)",
+                  }}
+                  title={`${p.categoria} · ${p.postsGestao} publicações sobre a gestão`}
+                >
+                  @{p.autor}
+                  {/* Selo com fundo QUASE sólido, não translúcido: um chip
+                      raso (14% de opacidade) media abaixo do mínimo AA em
+                      quase toda categoria (3,80:1 a 4,05:1) porque o gradiente
+                      por trás varia demais para um alpha tão baixo compensar.
+                      Fundo perto de sólido isola o selo do gradiente. */}
+                  <span
+                    className="tnum rounded-full px-1.5 py-0.5 text-[12px]"
+                    style={{ background: "rgba(26,15,2,0.88)", color: "#FDF6EC", fontWeight: 800 }}
+                  >
+                    {p.postsGestao}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* O que cada perfil PUBLICA sobre a gestão */}
       <div>
@@ -422,33 +474,6 @@ export function PerfilPage() {
         </div>
       ) : (
         <>
-          {/* Seletor de perfis */}
-          <div className="flex flex-wrap gap-1.5">
-            {analise.map((p) => {
-              const ativo = p.autor === autor;
-              const cor = CAT_COR[p.categoria] ?? "#64748B";
-              return (
-                <button
-                  key={p.autor}
-                  onClick={() => setSel(p.autor)}
-                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                    ativo ? "text-white" : "text-txt-2 hover:text-txt-1"
-                  }`}
-                  style={
-                    ativo
-                      ? { background: cor, borderColor: cor }
-                      : { borderColor: "var(--line)", background: "var(--bg-2)" }
-                  }
-                  title={`${p.categoria} · ${p.postsGestao} publicações sobre a gestão`}
-                >
-                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: ativo ? "#fff" : cor }} />
-                  @{p.autor}
-                  <span className={ativo ? "opacity-80" : "text-txt-3"}>{p.postsGestao}</span>
-                </button>
-              );
-            })}
-          </div>
-
           {/* Cabeçalho do perfil ativo */}
           {perfilAtivo && (
             <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-bg-1 px-4 py-3">
@@ -568,77 +593,6 @@ export function PerfilPage() {
               cliente em 25/07): quem tem mais e menos audiência e quanto cada
               conta ganhou ou perdeu entre as coletas. */}
           <RankingSeguidores />
-
-          {/* Distribuição de sentimento + temas */}
-          <div className="grid gap-3 lg:grid-cols-2">
-            <div className="rounded-xl border border-line bg-bg-1 p-4">
-              <div className="section-label mb-2">Comentários nas publicações sobre a gestão</div>
-              {perfilAtivo && perfilAtivo.comentarios > 0 ? (
-                <>
-                  <div className="flex h-4 w-full overflow-hidden rounded-full bg-bg-2">
-                    <div
-                      style={{
-                        width: `${(perfilAtivo.contra / perfilAtivo.comentarios) * 100}%`,
-                        background: COR_CONTRA,
-                      }}
-                    />
-                    <div
-                      style={{
-                        width: `${(perfilAtivo.indefinido / perfilAtivo.comentarios) * 100}%`,
-                        background: COLOR_SENTIMENT.neu,
-                      }}
-                    />
-                    <div
-                      style={{
-                        width: `${(perfilAtivo.favor / perfilAtivo.comentarios) * 100}%`,
-                        background: COR_FAVOR,
-                      }}
-                    />
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-txt-2">
-                    <span><b style={{ color: COR_CONTRA }}>{fmtInt(perfilAtivo.contra)}</b> contrárias</span>
-                    <span><b style={{ color: COLOR_SENTIMENT.neu }}>{fmtInt(perfilAtivo.indefinido)}</b> sem lado</span>
-                    <span><b style={{ color: COR_FAVOR }}>{fmtInt(perfilAtivo.favor)}</b> favoráveis</span>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-txt-3">
-                  Nenhum comentário de cidadão classificado nas publicações deste perfil no período.
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-xl border border-line bg-bg-1 p-4">
-              <div className="section-label mb-2">Temas das publicações sobre a gestão</div>
-              {temas.length === 0 ? (
-                <p className="text-sm text-txt-3">Sem temas classificados para este perfil no período.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {temas.map((t) => {
-                    const pctNeg = t.n ? Math.round((t.neg / t.n) * 100) : 0;
-                    const maxTema = temas[0]?.n || 1;
-                    return (
-                      <div key={t.tema}>
-                        <div className="flex items-center justify-between gap-2 text-[13px]">
-                          <span className="min-w-0 flex-1 truncate text-txt-2">{labelTema(t.tema)}</span>
-                          <span className="tnum shrink-0 text-txt-3">{t.n} posts</span>
-                        </div>
-                        <div className="mt-0.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-2">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${Math.round((t.n / maxTema) * 100)}%`,
-                              background: pctNeg >= 50 ? "#EF4444" : pctNeg >= 30 ? "#F97316" : "#3B82F6",
-                            }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Comentários contrários em destaque */}
           <div className="rounded-xl border border-line bg-bg-1 p-4">
