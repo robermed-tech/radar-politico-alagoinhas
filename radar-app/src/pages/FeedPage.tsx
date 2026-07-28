@@ -5,23 +5,17 @@ import { resumoProsaPost } from "@/lib/resumo";
 import { limparTravessoes } from "@/lib/format";
 import { PostChips } from "@/components/PostChips";
 import { IconNewspaper, IconSwords, IconBuilding, IconPerson, IconDocument } from "@/components/icons";
+import { PeriodoFilter, type Dias } from "@/components/PeriodoFilter";
 
 // A aba "Urgentes" saiu junto com o chip de urgência (revisão de 25/07):
 // sem a marcação no post, o filtro ficava sem explicação visível.
 type Filtro = "todos" | "negativos" | "positivos";
-type Periodo = 1 | 7 | 30;
 
 const FILTRO_LABELS: Record<Filtro, string> = {
   todos: "Todos",
   negativos: "Críticos",
   positivos: "Favoráveis",
 };
-
-const PERIODOS: { dias: Periodo; label: string }[] = [
-  { dias: 1, label: "24h" },
-  { dias: 7, label: "7 dias" },
-  { dias: 30, label: "30 dias" },
-];
 
 const SENT_BORDER: Record<string, string> = {
   positivo: "#22C55E",
@@ -102,7 +96,7 @@ function PostCard({ p }: { p: Post }) {
 
 export function FeedPage() {
   const [filtro, setFiltro] = useState<Filtro>("todos");
-  const [periodo, setPeriodo] = useState<Periodo>(7);
+  const [periodo, setPeriodo] = useState<Dias>(7);
 
   const { data, isLoading } = useQuery({
     queryKey: ["radar"],
@@ -146,31 +140,31 @@ export function FeedPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-lg p-1 glass-btn">
-            {PERIODOS.map((p) => (
-              <button
-                key={p.dias}
-                onClick={() => setPeriodo(p.dias)}
-                className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
-                  periodo === p.dias ? "bg-white/20 text-txt-1" : "text-txt-2 hover:text-txt-1"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          <PeriodoFilter dias={periodo} onChange={setPeriodo} />
+          {/* Mesmo desenho do PeriodoFilter ao lado, inclusive a tinta escura
+              sobre o laranja: os dois grupos ficam encostados e antes tinham
+              alturas, pesos e cor de texto diferentes. */}
           <div className="flex rounded-lg border border-line bg-bg-1 p-1">
-            {(Object.keys(FILTRO_LABELS) as Filtro[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFiltro(f)}
-                className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
-                  filtro === f ? "bg-brand text-white" : "text-txt-2 hover:text-txt-1"
-                }`}
-              >
-                {FILTRO_LABELS[f]}
-              </button>
-            ))}
+            {(Object.keys(FILTRO_LABELS) as Filtro[]).map((f) => {
+              const ativo = filtro === f;
+              return (
+                <button
+                  key={f}
+                  onClick={() => setFiltro(f)}
+                  aria-pressed={ativo}
+                  className={`rounded-md px-3.5 py-1 text-sm transition ${
+                    ativo ? "" : "text-txt-2 hover:text-txt-1"
+                  }`}
+                  style={
+                    ativo
+                      ? { background: "var(--brand)", color: "#1A0F02", fontWeight: 700 }
+                      : { fontWeight: 600 }
+                  }
+                >
+                  {FILTRO_LABELS[f]}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -327,10 +327,18 @@ function RecomendacoesPeriodo({
   // que "deveria" ser feito; oferece sugestões genéricas que um humano avalia.
   return (
     <div className="rounded-[28px] border border-line bg-bg-1 p-6">
-      <div className="mb-1 section-label">
+      {/* Corpo e peso maiores que o padrão de seção (pedido de 27/07): é a
+          ressalva que separa "sugestão" de "prescrição", e no tamanho antigo
+          (.section-label, 13px peso 500) passava despercebida. O peso vai
+          inline porque a diretriz global do index.css rebaixa as classes de
+          peso do Tailwind com !important. */}
+      <div
+        className="mb-1.5 uppercase tracking-[0.1em] text-txt-1"
+        style={{ fontSize: 17, fontWeight: 800 }}
+      >
         Sugestões genéricas a serem avaliadas por especialista
       </div>
-      <p className="mb-3 text-xs text-txt-3">
+      <p className="mb-4 text-txt-2" style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.5 }}>
         Baseadas em protocolos de gestão de crise de imagem e nos temas que merecem atenção {rotulo}.
         Cabe à assessoria avaliar se (e como) aplicá-las.
       </p>
@@ -519,31 +527,47 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
               </span>
             </div>
 
-            <div className="mt-5 flex items-center gap-6">
-              <div style={{ filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.22))" }}>
-                <WeatherIcon cls={wx.cls} size={88} color="#FFFFFF" strokeWidth={1.4} />
-              </div>
-              <div>
-                {isAdmin ? (
-                  <div className="flex items-end gap-1">
-                    {/* +50% no número do clima (revisão de 25/07). */}
-                    <span className="tnum text-[90px] leading-[0.85] tracking-tight sm:text-[126px]" style={{ color: txt1, fontWeight: 200 }}>
-                      {view.iad}
-                    </span>
-                    <span className="mb-4 text-4xl font-bold" style={{ color: txt2 }}>%</span>
-                  </div>
-                ) : (
-                  <div className="text-[60px] font-extrabold leading-[1.0] tracking-tight" style={{ color: txt1 }}>
-                    {wx.label}
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* Revisão de 27/07: o número passa a ocupar a altura do card e o
+                clima (ícone + frase) vai para a DIREITA dele, em corpo maior.
+                Antes o ícone ficava à esquerda do número e a frase embaixo,
+                sobrando faixa vazia no meio do card. Os chips de contagem
+                seguem fora daqui (25/07): vivem no box de engajamento ao lado. */}
+            <div className="mt-4 flex min-h-0 flex-1 flex-wrap items-center gap-x-8 gap-y-4">
+              {isAdmin ? (
+                <div className="flex items-start">
+                  <span
+                    className="tnum text-[120px] leading-[0.76] tracking-tighter sm:text-[168px] lg:text-[208px]"
+                    style={{ color: txt1, fontWeight: 200 }}
+                  >
+                    {view.iad}
+                  </span>
+                  <span
+                    className="mt-3 text-5xl sm:text-6xl lg:text-7xl"
+                    style={{ color: txt2, fontWeight: 300 }}
+                  >
+                    %
+                  </span>
+                </div>
+              ) : (
+                <div
+                  className="text-[72px] leading-[0.9] tracking-tight sm:text-[92px]"
+                  style={{ color: txt1, fontWeight: 200 }}
+                >
+                  {wx.label}
+                </div>
+              )}
 
-            {/* Revisão de 25/07: os chips de contagem saíram deste card — os
-                números vivem só no box de engajamento ao lado. */}
-            <div className="mt-5 max-w-xl text-lg font-semibold leading-snug" style={{ color: txt1 }}>
-              {wx.sub}
+              <div className="flex min-w-0 flex-1 items-center gap-4">
+                <div className="shrink-0" style={{ filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.22))" }}>
+                  <WeatherIcon cls={wx.cls} size={72} color="#FFFFFF" strokeWidth={1.4} />
+                </div>
+                <div
+                  className="min-w-0 text-[26px] leading-tight sm:text-[30px]"
+                  style={{ color: txt1, fontWeight: 600 }}
+                >
+                  {wx.sub}
+                </div>
+              </div>
             </div>
           </div>
         </div>

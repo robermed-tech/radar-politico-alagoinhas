@@ -21,6 +21,18 @@ from datetime import datetime, timezone
 
 import requests
 
+# No GitHub Actions as variaveis vem dos secrets e nao ha .env — por isso a
+# ausencia do arquivo e silenciosa. Na maquina do Roberio elas vivem no .env da
+# raiz do repo, e sem esta linha o script imprimia "APIFY_API_TOKEN ausente" e
+# saia com codigo 0, parecendo um no-op bem sucedido. E o pior lugar possivel
+# para essa mentira: este e justamente o script que se usa para conferir se um
+# token NOVO esta valendo.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 APIFY_TOKEN = os.environ.get("APIFY_API_TOKEN", "")
 APIFY_BASE = "https://api.apify.com/v2"
 

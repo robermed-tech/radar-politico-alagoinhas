@@ -35,7 +35,7 @@ export function PeriodoFilter({ dias, onChange, ariaLabel = "Período de anális
     <div
       role="group"
       aria-label={ariaLabel}
-      className="glass-btn inline-flex shrink-0 rounded-full p-1"
+      className="inline-flex shrink-0 rounded-lg border border-line bg-bg-1 p-1"
     >
       {PERIODOS.map((p) => {
         const ativo = dias === p.dias;
@@ -44,10 +44,22 @@ export function PeriodoFilter({ dias, onChange, ariaLabel = "Período de anális
             key={p.dias}
             onClick={() => onChange(p.dias)}
             aria-pressed={ativo}
-            className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
-              ativo ? "text-txt-1 shadow-sm" : "text-txt-2 hover:text-txt-1"
+            className={`rounded-md px-3.5 py-1 text-sm transition ${
+              ativo ? "" : "text-txt-2 hover:text-txt-1"
             }`}
-            style={ativo ? { background: "rgba(255,255,255,0.25)" } : undefined}
+            // Tinta escura sobre o laranja, e não branca: é a decisão de
+            // contraste da reunião de 24/07, já usada na pílula ativa do menu
+            // e no box de engajamento. Branco sobre #FB923C mede 2,26:1 e
+            // reprova no AA (mínimo 4,5); com #1A0F02 passa folgado.
+            //
+            // O peso vem inline porque a diretriz tipográfica global do
+            // index.css rebaixa `font-bold` para 400 com !important — classe
+            // de peso aqui não teria efeito nenhum.
+            style={
+              ativo
+                ? { background: "var(--brand)", color: "#1A0F02", fontWeight: 700 }
+                : { fontWeight: 600 }
+            }
           >
             {p.label}
           </button>
