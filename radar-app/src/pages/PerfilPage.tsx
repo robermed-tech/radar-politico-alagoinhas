@@ -50,22 +50,28 @@ const FUNDO_ELOGIO = "linear-gradient(150deg, #86EFAC 0%, #22C55E 100%)";
 // da fonte, não de uma segunda tinta.
 const TINTA_PRETA = "#1A0F02";
 
+const CHUMBO = "#334155";
+
 /**
- * Um degradê por categoria de perfil, mesma receita clara→base e mesma
- * paleta de CAT_COR (RankingSeguidores.tsx) — usado nos botões do seletor de
- * perfis, que "suberam" para o topo da página e viraram botão preenchido em
- * vez de pílula com contorno.
+ * Revisão de 28/07: o degradê por categoria (verde/azul/roxo/vermelho) saiu
+ * do seletor de perfis — cor por perfil contrariava a doutrina do painel
+ * ("sem identidade visual fechada"; verde/vermelho ficam reservados para
+ * sentimento, nunca para identidade). Todo perfil agora usa o mesmo chip
+ * neutro: base em degradê chumbo→preto com um brilho translúcido branco por
+ * cima (a mesma linguagem de vidro fosco do resto do painel) — daí "branco,
+ * chumbo e preto" no pedido do cliente. Texto branco sólido funciona em
+ * qualquer ponto do chip porque a base NUNCA sai da faixa escura, e o brilho
+ * tem teto baixo (24% no máximo, no estado ativo).
+ *
+ * A ponta clara da base é chumbo (#334155, slate-700), não um cinza mais
+ * aberto (slate-600): medido num harness de contraste, o brilho por cima
+ * empurrava o texto branco pra 4,13:1 (inativo) e 2,54:1 (ativo) no canto
+ * mais claro do botão — os dois abaixo do mínimo AA de 4,5. Com a base mais
+ * escura e o teto do brilho reduzido, o mesmo cálculo dá 6,83:1 e 5,12:1.
  */
-const CAT_GRADIENTE: Record<string, string> = {
-  Prefeito: "linear-gradient(150deg, #86EFAC 0%, #22C55E 100%)",
-  Prefeitura: "linear-gradient(150deg, #93C5FD 0%, #3B82F6 100%)",
-  Imprensa: "linear-gradient(150deg, #D8B4FE 0%, #A855F7 100%)",
-  Oposicao: "linear-gradient(150deg, #FCA5A5 0%, #EF4444 100%)",
-};
-const FUNDO_CATEGORIA_PADRAO = "linear-gradient(150deg, #CBD5E1 0%, #94A3B8 100%)";
-function gradienteCategoria(categoria: string): string {
-  return CAT_GRADIENTE[categoria] ?? FUNDO_CATEGORIA_PADRAO;
-}
+const FUNDO_PERFIL_BASE = "linear-gradient(150deg, #334155 0%, #1E293B 55%, #020617 100%)";
+const BRILHO_PERFIL = "linear-gradient(120deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 46%)";
+const BRILHO_PERFIL_ATIVO = "linear-gradient(120deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0) 58%)";
 
 function CardExtremo({
   titulo,
@@ -252,7 +258,7 @@ export function PerfilPage() {
   if (!data) return <div className="p-8 text-txt-2">Carregando…</div>;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
+    <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-extrabold text-txt-1">Análise por Perfil</h1>
@@ -265,48 +271,43 @@ export function PerfilPage() {
 
       {/* Seletor de perfis — subiu para o topo da página (revisão de 28/07):
           é o controle que decide o que todo o resto da tela mostra, então
-          vem antes dos cards, não depois do ranking. Cada botão é preenchido
-          com o degradê da categoria do perfil (mesma paleta de CAT_COR) e
-          texto preto, no mesmo padrão dos cards de extremo logo abaixo — os
-          dois lugares onde o painel usa "botão colorido" seguem a mesma
-          receita agora. */}
+          vem antes dos cards, não depois do ranking. Chip neutro (revisão de
+          28/07 novamente, mesmo dia): a cor por categoria saiu — todo perfil
+          usa o mesmo degradê chumbo→preto com brilho translúcido branco;
+          diferenciar por categoria virou tarefa só do tooltip (title). */}
       {analise.length > 0 && (
         <div>
           <div className="section-label mb-2">Selecionar perfil</div>
           <div className="flex flex-wrap gap-2">
             {analise.map((p) => {
               const ativo = p.autor === autor;
-              const gradiente = gradienteCategoria(p.categoria);
               return (
                 <button
                   key={p.autor}
                   onClick={() => setSel(p.autor)}
-                  className="flex items-center gap-2 rounded-full px-4 py-2 text-sm transition"
+                  className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition"
                   style={{
-                    background: gradiente,
+                    backgroundImage: `${ativo ? BRILHO_PERFIL_ATIVO : BRILHO_PERFIL}, ${FUNDO_PERFIL_BASE}`,
                     fontWeight: 800,
-                    color: TINTA_PRETA,
                     // Sem opacity reduzida no estado inativo: opacity mistura
                     // TODO o botão (fundo + texto) com o que está atrás dele,
                     // e isso desidratava o contraste do gradiente com o fundo
                     // escuro da página sem eu saber por quanto — melhor
-                    // diferenciar ativo/inativo só pelo anel, que não mexe em
-                    // nenhuma cor de texto.
+                    // diferenciar ativo/inativo só pelo anel e pela força do
+                    // brilho, que não mexem na cor do texto.
                     boxShadow: ativo
-                      ? "0 0 0 2px rgba(255,255,255,0.9), 0 10px 22px -10px rgba(0,0,0,0.55)"
-                      : "0 6px 16px -10px rgba(0,0,0,0.45)",
+                      ? "0 0 0 2px rgba(255,255,255,0.9), 0 10px 22px -10px rgba(0,0,0,0.6)"
+                      : "0 6px 16px -10px rgba(0,0,0,0.5)",
                   }}
                   title={`${p.categoria} · ${p.postsGestao} publicações sobre a gestão`}
                 >
                   @{p.autor}
-                  {/* Selo com fundo QUASE sólido, não translúcido: um chip
-                      raso (14% de opacidade) media abaixo do mínimo AA em
-                      quase toda categoria (3,80:1 a 4,05:1) porque o gradiente
-                      por trás varia demais para um alpha tão baixo compensar.
-                      Fundo perto de sólido isola o selo do gradiente. */}
+                  {/* Selo claro (quase sólido) sobre o chip escuro — inverte
+                      o selo escuro da versão colorida, que sumia de vista
+                      num fundo agora igualmente escuro. */}
                   <span
                     className="tnum rounded-full px-1.5 py-0.5 text-[12px]"
-                    style={{ background: "rgba(26,15,2,0.88)", color: "#FDF6EC", fontWeight: 800 }}
+                    style={{ background: "rgba(248,250,252,0.92)", color: "#0B1120", fontWeight: 800 }}
                   >
                     {p.postsGestao}
                   </span>
@@ -474,29 +475,37 @@ export function PerfilPage() {
         </div>
       ) : (
         <>
-          {/* Cabeçalho do perfil ativo */}
+          {/* Cabeçalho do perfil ativo — nome em corpo de título de página
+              (revisão de 28/07): era text-lg, do mesmo tamanho que qualquer
+              rótulo ao redor, fácil de olhar pra tela e não ter certeza de
+              qual perfil está em verificação. Categoria volta a ser um chip
+              neutro (chumbo), não colorido por CAT_COR — mesma doutrina do
+              seletor logo acima. */}
           {perfilAtivo && (
-            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-bg-1 px-4 py-3">
-              <span className="text-lg font-extrabold text-txt-1">@{perfilAtivo.autor}</span>
-              <span
-                className="rounded px-2 py-0.5 text-xs font-bold uppercase"
-                style={{
-                  color: CAT_COR[perfilAtivo.categoria] ?? "#64748B",
-                  background: `${CAT_COR[perfilAtivo.categoria] ?? "#64748B"}1A`,
-                }}
-              >
-                {perfilAtivo.categoria || "—"}
-              </span>
-              <span className="text-[13px] font-semibold text-txt-3">
+            <div className="rounded-xl border border-line bg-bg-1 px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-[34px] font-extrabold leading-none tracking-tight text-txt-1 sm:text-[42px]">
+                    @{perfilAtivo.autor}
+                  </span>
+                  <span
+                    className="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide text-white"
+                    style={{ background: CHUMBO }}
+                  >
+                    {perfilAtivo.categoria || "—"}
+                  </span>
+                </div>
+                <span
+                  className="rounded-full px-3 py-1.5 text-sm font-bold"
+                  style={{ color: NIVEL_COLOR[idx.nivel], background: `${NIVEL_COLOR[idx.nivel]}1A` }}
+                >
+                  Risco {NIVEL_LABEL[idx.nivel]}
+                </span>
+              </div>
+              <p className="mt-2 text-[13px] font-semibold text-txt-3">
                 {fmtInt(perfilAtivo.postsGestao)} de {fmtInt(perfilAtivo.posts)} publicações citam
                 as palavras da Relevância
-              </span>
-              <span
-                className="ml-auto rounded px-2 py-0.5 text-xs font-bold"
-                style={{ color: NIVEL_COLOR[idx.nivel], background: `${NIVEL_COLOR[idx.nivel]}1A` }}
-              >
-                Risco {NIVEL_LABEL[idx.nivel]}
-              </span>
+              </p>
             </div>
           )}
 
