@@ -13,7 +13,13 @@
 import { supabase } from "@/lib/auth";
 import { explainError } from "@/lib/admin";
 
-export type Platform = "instagram" | "youtube";
+/**
+ * Plataformas que aparecem na tabela `sources`. Rádio está aqui porque
+ * compartilha a tabela, mas NÃO é cadastrada por esta camada: o cadastro dela
+ * vive em lib/radio.ts e na tela Escuta do Rádio (admin-only). Aqui ela só
+ * precisa existir no tipo para as telas poderem filtrá-la.
+ */
+export type Platform = "instagram" | "youtube" | "radio";
 
 export interface Source {
   id: string;
@@ -90,6 +96,12 @@ function normalizeYoutube(raw: string): NormalizeResult {
 
 /** Normaliza+valida o handle conforme a rede. */
 export function normalizeHandle(platform: Platform, raw: string): NormalizeResult {
+  // Rádio não passa por aqui: o "handle" dela é uma URL de stream, validada por
+  // lib/radio.ts::validarStream. Cair na normalização de Instagram destruiria a
+  // URL silenciosamente, então a recusa é explícita.
+  if (platform === "radio") {
+    return { error: "Rádio é cadastrada na tela Escuta do Rádio." };
+  }
   return platform === "youtube" ? normalizeYoutube(raw) : normalizeInstagram(raw);
 }
 

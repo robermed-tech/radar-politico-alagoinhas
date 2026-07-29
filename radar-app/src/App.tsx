@@ -16,6 +16,7 @@ const AlertasHistPage = lazy(() => import("@/pages/AlertasHistPage").then((m) =>
 const BairrosPage = lazy(() => import("@/pages/BairrosPage").then((m) => ({ default: m.BairrosPage })));
 const PedidosPage = lazy(() => import("@/pages/PedidosPage").then((m) => ({ default: m.PedidosPage })));
 const PerfilPage = lazy(() => import("@/pages/PerfilPage").then((m) => ({ default: m.PerfilPage })));
+const RadioPage = lazy(() => import("@/pages/RadioPage").then((m) => ({ default: m.RadioPage })));
 import { fetchRadar, fetchPipelineHealth, filtrarPorPeriodo } from "@/lib/data";
 import { calcIAD } from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
@@ -35,6 +36,7 @@ type Page =
   | "bairros"
   | "pedidos"
   | "perfil"
+  | "radio"
   | "relevancia"
   | "fontes"
   | "admin"
@@ -77,6 +79,9 @@ function NIcoInbox() {
 function NIcoUser() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
 }
+function NIcoRadio() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m16 3-8 5"/><circle cx="8" cy="14" r="2.5"/><line x1="15" y1="12" x2="18" y2="12"/><line x1="15" y1="16" x2="18" y2="16"/></svg>;
+}
 function NIcoAlertHist() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="12" y1="2" x2="12" y2="4"/></svg>;
 }
@@ -88,6 +93,10 @@ const NAV_MAIN: NavItem[] = [
   { id: "pedidos",     label: "Pedidos do Povo",       icon: <NIcoInbox /> },
   { id: "bairros",     label: "Mapa da Cidade",        icon: <NIcoMapPin /> },
   { id: "perfil",      label: "Análise por Perfil",    icon: <NIcoUser /> },
+  // Escuta do Rádio é admin-only (pedido explícito): fica fora do menu para
+  // usuário comum, e a página vem embrulhada em RequireAdmin. O RLS da
+  // migration 011 é a outra metade — sem ele, esconder o item seria cosmético.
+  { id: "radio",       label: "Escuta do Rádio",       icon: <NIcoRadio /> },
   { id: "topics",      label: "Previsões",             icon: <NIcoTrending /> },
   { id: "actions",     label: "Alertas & Ações",       icon: <NIcoBell /> },
   { id: "alerts-hist", label: "Histórico Alertas",     icon: <NIcoAlertHist /> },
@@ -153,8 +162,10 @@ export default function App() {
   // Usuários — ver src/lib/presence.ts.
   useTrackPresence(session?.user?.id);
 
-  // Itens de menu visíveis conforme o papel (Configuração só p/ admin).
-  const navMain = NAV_MAIN.filter((n) => n.id !== "admin" || isAdmin);
+  // Itens de menu visíveis conforme o papel (Configuração e Escuta do Rádio só
+  // para admin).
+  const SO_ADMIN = new Set<Page>(["admin", "radio"]);
+  const navMain = NAV_MAIN.filter((n) => !SO_ADMIN.has(n.id) || isAdmin);
 
   // Aplica tema no <html> + persiste
   useEffect(() => {
@@ -320,6 +331,7 @@ export default function App() {
             {page === "pedidos"  && <PedidosPage />}
             {page === "bairros"  && <BairrosPage />}
             {page === "perfil"   && <PerfilPage />}
+            {page === "radio"    && <RequireAdmin><RadioPage /></RequireAdmin>}
             {page === "relevancia" && <RelevanciaPage />}
             {page === "fontes"     && <FontesPage />}
             {page === "topics"   && <TemasPage />}
