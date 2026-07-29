@@ -537,19 +537,32 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                 nome do clima ("Chuva"), sem o número que dá a magnitude por
                 trás do rótulo. */}
             <div className="mt-4 flex min-h-0 flex-1 flex-wrap items-center gap-x-8 gap-y-4">
-              <div className="flex items-start" aria-label={`Índice de aprovação: ${view.iad}%`}>
-                <span
-                  className="tnum text-[120px] leading-[0.76] tracking-tighter sm:text-[168px] lg:text-[208px]"
-                  style={{ color: txt1, fontWeight: 200 }}
+              <div className="flex flex-col items-start">
+                <div className="flex items-start" aria-label={`Índice de aprovação: ${view.iad}%`}>
+                  <span
+                    className="tnum text-[120px] leading-[0.76] tracking-tighter sm:text-[168px] lg:text-[208px]"
+                    style={{ color: txt1, fontWeight: 200 }}
+                  >
+                    {view.iad}
+                  </span>
+                  <span
+                    className="mt-3 text-5xl sm:text-6xl lg:text-7xl"
+                    style={{ color: txt2, fontWeight: 300 }}
+                  >
+                    %
+                  </span>
+                </div>
+                {/* Legenda pedida pelo cliente em 28/07: o número sozinho não
+                    dizia o que media. Fica sempre igual, direto embaixo do
+                    número — o rótulo qualitativo ao lado (wx.sub) já varia
+                    por faixa, então essa linha é a única explicação fixa do
+                    que "44%" quer dizer. */}
+                <p
+                  className="-mt-1 max-w-[24ch] text-[15px] font-semibold leading-snug sm:text-[17px]"
+                  style={{ color: txt2 }}
                 >
-                  {view.iad}
-                </span>
-                <span
-                  className="mt-3 text-5xl sm:text-6xl lg:text-7xl"
-                  style={{ color: txt2, fontWeight: 300 }}
-                >
-                  %
-                </span>
+                  Aprovação da gestão nos comentários analisados no período
+                </p>
               </div>
 
               <div className="flex min-w-0 flex-1 items-center gap-4">

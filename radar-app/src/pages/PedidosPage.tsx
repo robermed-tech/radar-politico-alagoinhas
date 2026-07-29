@@ -67,10 +67,10 @@ export function PedidosPage() {
 
   return (
     <div className="space-y-4 p-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold">Pedidos do Povo</h1>
-          <p className="text-sm text-txt-2">
+          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Pedidos do Povo</h1>
+          <p className="text-base text-txt-2">
             Demandas concretas extraídas dos comentários · {periodoLabel(dias)}
           </p>
         </div>

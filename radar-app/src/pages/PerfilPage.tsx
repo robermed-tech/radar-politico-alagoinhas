@@ -259,10 +259,10 @@ export function PerfilPage() {
 
   return (
     <div className="space-y-4 p-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-extrabold text-txt-1">Análise por Perfil</h1>
-          <p className="text-sm text-txt-3">
+          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Análise por Perfil</h1>
+          <p className="text-base text-txt-2">
             Quem fala do prefeito, da prefeitura e da gestão · {periodoLabel(dias)}
           </p>
         </div>
