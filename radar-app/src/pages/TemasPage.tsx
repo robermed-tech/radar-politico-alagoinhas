@@ -508,7 +508,7 @@ export function TemasPage() {
   if (!view || themes.length === 0)
     return (
       <div className="p-5">
-        <h1 className="text-2xl font-extrabold">Previsões</h1>
+        <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Previsões</h1>
         <div className="mt-4 rounded-xl border border-line bg-bg-1 p-6 text-txt-2">
           Ainda sem histórico de temas. Execute o fluxo ÁGORA para popular.
         </div>
@@ -523,10 +523,10 @@ export function TemasPage() {
   return (
     <div className="space-y-4 p-5">
       {/* Cabeçalho + controles */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold">Previsões</h1>
-          <p className="text-sm text-txt-2">
+          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Previsões</h1>
+          <p className="text-base text-txt-2">
             Evolução de cada tema — quem está subindo, estável ou caindo
           </p>
         </div>

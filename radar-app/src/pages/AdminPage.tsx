@@ -106,8 +106,8 @@ export function AdminPage() {
   return (
     <div className="space-y-4 p-5">
       <div>
-        <h1 className="text-2xl font-extrabold">Administração</h1>
-        <p className="text-sm text-txt-2">Configuração do Radar Comando — acesso exclusivo de administradores</p>
+        <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Administração</h1>
+        <p className="text-base text-txt-2">Configuração do Radar Comando — acesso exclusivo de administradores</p>
       </div>
       <ApifyStatusBanner />
 
@@ -685,7 +685,7 @@ function ClimateSection() {
       </div>
 
       <div className="mt-4 rounded-lg border border-line bg-bg-2 p-3">
-        <div className="mb-2 text-[13px] font-bold uppercase tracking-wider text-txt-3">Faixas de condição</div>
+        <div className="section-label mb-2">Faixas de condição</div>
         <div className="space-y-1 text-xs text-txt-2">
           {thr.faixas.map((fx, i) => (
             <div key={i} className="flex justify-between">

@@ -111,8 +111,8 @@ export function AlertasHistPage() {
   return (
     <div className="space-y-4 p-5">
       <div>
-        <h1 className="text-2xl font-extrabold">Histórico de Alertas</h1>
-        <p className="text-sm text-txt-2">
+        <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Histórico de Alertas</h1>
+        <p className="text-base text-txt-2">
           Alertas enviados manualmente aos secretários pelo botão "Alertar Secretário"
         </p>
       </div>

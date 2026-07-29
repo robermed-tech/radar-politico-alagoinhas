@@ -7,7 +7,7 @@
 export function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-line bg-bg-1 p-4">
-      <div className="mb-3 text-xs font-bold uppercase tracking-wider text-txt-3">{title}</div>
+      <div className="section-label mb-3">{title}</div>
       {children}
     </div>
   );

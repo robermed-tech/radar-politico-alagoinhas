@@ -71,8 +71,8 @@ export function RelevanciaPage() {
   return (
     <div className="space-y-4 p-5">
       <div>
-        <h1 className="text-2xl font-extrabold">Relevância</h1>
-        <p className="text-sm text-txt-2">
+        <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Relevância</h1>
+        <p className="text-base text-txt-2">
           Palavras que o radar procura nos posts para decidir o que entra na análise
         </p>
       </div>

@@ -128,10 +128,10 @@ export function BairrosPage() {
 
   return (
     <div className="space-y-4 p-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold">Mapa da Cidade</h1>
-          <p className="text-sm text-txt-2">
+          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Mapa da Cidade</h1>
+          <p className="text-base text-txt-2">
             Onde a conversa se concentra — bairros e locais citados nos comentários
           </p>
         </div>

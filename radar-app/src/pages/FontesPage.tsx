@@ -213,8 +213,8 @@ export function FontesPage() {
   return (
     <div className="space-y-4 p-5">
       <div>
-        <h1 className="text-2xl font-extrabold">Fontes</h1>
-        <p className="text-sm text-txt-2">
+        <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Fontes</h1>
+        <p className="text-base text-txt-2">
           Perfis que o radar acompanha para coletar posts e comentários
         </p>
       </div>
