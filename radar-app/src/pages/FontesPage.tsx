@@ -69,7 +69,15 @@ function SourcesSection() {
 
   // Fontes do subsistema de coleta que não são Instagram (as de Instagram do
   // pipeline atual já aparecem na lista principal abaixo).
-  const coletaNaoIg = (coletaSources ?? []).filter((s: ColetaSource) => s.platform !== "instagram");
+  //
+  // Rádio também fica de fora: ela vive na mesma tabela `sources`, mas o
+  // cadastro dela mora na tela Escuta do Rádio, que é admin-only. Esta página é
+  // aberta a qualquer usuário do tenant, e sem este filtro a estação apareceria
+  // aqui — para o admin, ao menos, já que o RLS da migration 011 esconde as
+  // linhas de rádio de quem não é admin.
+  const coletaNaoIg = (coletaSources ?? []).filter(
+    (s: ColetaSource) => s.platform !== "instagram" && s.platform !== "radio"
+  );
 
   return (
     <Card title="Fontes monitoradas">

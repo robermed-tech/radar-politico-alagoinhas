@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { findSecretario } from "@/config/secretarios";
-import { logMessageSend } from "@/lib/admin";
 import { fetchComentariosPorTema } from "@/lib/data";
+import { EnvioSecretario } from "@/components/EnvioSecretario";
 
 interface Props {
   tema: string;
@@ -58,12 +57,18 @@ function montarMensagem(
   );
 }
 
+/** Ícone de alerta, compartilhado pelo botão e pelo cabeçalho do modal. */
+function IcoAlerta({ className, fill }: { className: string; fill: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} style={{ fill }}>
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+    </svg>
+  );
+}
+
 export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
   const [aberto, setAberto] = useState(false);
   const sec = findSecretario(tema);
-  const [canal, setCanal] = useState<"whatsapp" | "email">("whatsapp");
-  const [contato, setContato] = useState(sec.whatsapp);
-  const [feedback, setFeedback] = useState<string | null>(null);
 
   // Evidência concreta: os comentários negativos reais deste tema.
   // Só busca quando o modal abre (não paga a query em cada card de alerta).
@@ -95,46 +100,6 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
     [tema, pNeg, posts, iad, sec.cargo, evidencia]
   );
 
-  const [mensagem, setMensagem] = useState(baseMsg);
-  const [editado, setEditado] = useState(false);
-  // Enquanto o usuário não editar à mão, a mensagem acompanha a evidência
-  // que chega da query (assíncrona) e as regenerações.
-  useEffect(() => {
-    if (!editado) setMensagem(baseMsg);
-  }, [baseMsg, editado]);
-
-  function switchCanal(c: "whatsapp" | "email") {
-    setCanal(c);
-    setContato(c === "email" ? sec.email : sec.whatsapp);
-  }
-
-  function flash(msg: string) {
-    setFeedback(msg);
-    setTimeout(() => setFeedback(null), 2500);
-  }
-
-  function enviar() {
-    if (!contato.trim()) { flash("Preencha o contato"); return; }
-    if (canal === "email") {
-      const assunto = `🚨 ALERTA DE CRISE — Tema: ${tema}`;
-      window.open(
-        `mailto:${contato.trim()}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(mensagem)}`
-      );
-    } else {
-      const num = contato.replace(/\D/g, "");
-      window.open(
-        `https://wa.me/${num.startsWith("55") ? num : "55" + num}?text=${encodeURIComponent(mensagem)}`,
-        "_blank"
-      );
-    }
-    void logMessageSend(canal, contato.trim(), { tema, mensagem });
-    flash("✓ Abrindo…");
-  }
-
-  function copiar() {
-    navigator.clipboard.writeText(mensagem).then(() => flash("✓ Copiado!"));
-  }
-
   return (
     <>
       {/* Botão de alerta — aparece pulsando */}
@@ -147,165 +112,61 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
         }}
         aria-label={`Alertar secretário sobre crise no tema ${tema}`}
       >
-        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white flex-shrink-0">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-        </svg>
+        <IcoAlerta className="h-4 w-4 flex-shrink-0" fill="#FFFFFF" />
         <span>Alertar Secretário</span>
       </button>
 
-      {/* Modal — renderizado via Portal no document.body para evitar stacking context */}
-      {aberto && createPortal(
+      <EnvioSecretario
+        aberto={aberto}
+        onFechar={() => setAberto(false)}
+        titulo="Alerta de Crise"
+        subtitulo="Notificação imediata ao secretário responsável"
+        cor="#DC2626"
+        icone={<IcoAlerta className="h-5 w-5" fill="#DC2626" />}
+        assunto={`🚨 ALERTA DE CRISE — Tema: ${tema}`}
+        mensagemBase={baseMsg}
+        tema={tema}
+        contatoWhatsapp={sec.whatsapp}
+        contatoEmail={sec.email}
+      >
+        {/* Crise detectada */}
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.8)" }}
-          onClick={(e) => e.target === e.currentTarget && setAberto(false)}
+          className="mt-4 rounded-xl p-3"
+          style={{ background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.2)" }}
         >
-          <div className="w-full max-w-lg rounded-2xl border border-line bg-bg-1 p-5 shadow-2xl">
-            {/* Cabeçalho */}
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <div
-                  className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl"
-                  style={{ background: "rgba(220,38,38,0.12)" }}
-                >
-                  <svg viewBox="0 0 24 24" className="h-5 w-5" style={{ fill: "#DC2626" }}>
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="font-extrabold text-txt-1">Alerta de Crise</div>
-                  <div className="text-[13px] text-txt-3">Notificação imediata ao secretário responsável</div>
-                </div>
-              </div>
-              <button
-                onClick={() => setAberto(false)}
-                className="cursor-pointer rounded-lg p-1 text-txt-3 hover:text-txt-1 transition"
-                aria-label="Fechar"
-              >
-                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
-                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                </svg>
-              </button>
-            </div>
+          <div className="text-[12px] font-bold uppercase tracking-widest" style={{ color: "#DC2626" }}>
+            Tema crítico detectado
+          </div>
+          <div className="mt-1 text-base font-extrabold frase-cap text-txt-1">{tema}</div>
+          <div className="mt-1.5 flex flex-wrap gap-3 text-sm">
+            <span className="font-bold" style={{ color: "#DC2626" }}>
+              {pNeg}% negatividade
+            </span>
+            <span className="text-txt-3">{posts} posts analisados</span>
+            <span className="text-txt-3">IAD {iad}/100</span>
+          </div>
+        </div>
 
-            {/* Crise detectada */}
-            <div
-              className="mt-4 rounded-xl p-3"
-              style={{ background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.2)" }}
-            >
-              <div className="text-[12px] font-bold uppercase tracking-widest" style={{ color: "#DC2626" }}>
-                Tema crítico detectado
-              </div>
-              <div className="mt-1 text-base font-extrabold frase-cap text-txt-1">{tema}</div>
-              <div className="mt-1.5 flex flex-wrap gap-3 text-sm">
-                <span className="font-bold" style={{ color: "#DC2626" }}>
-                  {pNeg}% negatividade
+        {/* Evidência concreta — o que a população realmente diz sobre o tema */}
+        {evidencia && (
+          <div className="mt-3 rounded-xl border border-line bg-bg-2 p-3">
+            <div className="text-[12px] font-bold uppercase tracking-widest text-txt-3">
+              O que a população está dizendo
+              {evidencia.subtema && (
+                <span className="ml-1 normal-case text-txt-2">
+                  · foco em <b className="frase-cap">{evidencia.subtema.replace(/_/g, " ")}</b>
                 </span>
-                <span className="text-txt-3">{posts} posts analisados</span>
-                <span className="text-txt-3">IAD {iad}/100</span>
-              </div>
-            </div>
-
-            {/* Evidência concreta — o que a população realmente diz sobre o tema */}
-            {evidencia && (
-              <div className="mt-3 rounded-xl border border-line bg-bg-2 p-3">
-                <div className="text-[12px] font-bold uppercase tracking-widest text-txt-3">
-                  O que a população está dizendo
-                  {evidencia.subtema && (
-                    <span className="ml-1 normal-case text-txt-2">
-                      · foco em <b className="frase-cap">{evidencia.subtema.replace(/_/g, " ")}</b>
-                    </span>
-                  )}
-                </div>
-                <p className="mt-1.5 text-sm italic leading-relaxed text-txt-1">
-                  “{evidencia.citacao}”
-                </p>
-                <div className="mt-1 text-[13px] text-txt-3">
-                  {evidencia.total} comentário(s) negativo(s) sobre este tema
-                </div>
-              </div>
-            )}
-
-            {/* Canal selector */}
-            <div className="mt-4 flex gap-0.5 rounded-lg border border-line bg-bg-2 p-0.5 w-fit">
-              {(["whatsapp", "email"] as const).map((c) => (
-                <button
-                  key={c}
-                  onClick={() => switchCanal(c)}
-                  className={`rounded px-3 py-1.5 text-xs font-semibold transition-all ${
-                    canal === c ? "bg-brand text-white" : "text-txt-3 hover:text-txt-1"
-                  }`}
-                >
-                  {c === "whatsapp" ? "WhatsApp" : "E-mail"}
-                </button>
-              ))}
-            </div>
-
-            {/* Contato */}
-            <div className="mt-3">
-              <label className="mb-1 block text-[13px] font-semibold uppercase tracking-wide text-txt-3">
-                {canal === "email" ? "E-mail do(a) secretário(a)" : "WhatsApp com DDD"}
-              </label>
-              <input
-                type={canal === "email" ? "email" : "tel"}
-                value={contato}
-                onChange={(e) => setContato(e.target.value)}
-                placeholder={canal === "email" ? "secretario@prefeitura.ba.gov.br" : "75 9 9999-0000"}
-                className="w-full rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none transition focus:border-brand"
-              />
-            </div>
-
-            {/* Mensagem */}
-            <div className="mt-3">
-              <div className="mb-1 flex items-center justify-between">
-                <label className="text-[13px] font-semibold uppercase tracking-wide text-txt-3">
-                  Mensagem
-                </label>
-                <button
-                  onClick={() => { setEditado(false); setMensagem(baseMsg); }}
-                  className="text-[12px] font-semibold text-brand hover:underline"
-                >
-                  ↺ Regenerar
-                </button>
-              </div>
-              <textarea
-                value={mensagem}
-                onChange={(e) => { setEditado(true); setMensagem(e.target.value); }}
-                rows={6}
-                className="w-full resize-none rounded-lg border border-line bg-bg-2 px-3 py-2 text-xs leading-relaxed text-txt-1 outline-none transition focus:border-brand"
-                style={{ fontFamily: "JetBrains Mono, monospace" }}
-              />
-            </div>
-
-            {/* Ações */}
-            <div className="mt-4 flex items-center gap-2">
-              {feedback && !feedback.startsWith("✓") && (
-                <p className="flex-1 text-xs text-risk-crit">{feedback}</p>
               )}
-              <button
-                onClick={copiar}
-                title="Copiar texto"
-                className="rounded-lg border border-line bg-bg-2 px-3 py-2.5 text-sm transition hover:bg-bg-3"
-              >
-                {feedback === "✓ Copiado!" ? "✓" : "📋"}
-              </button>
-              <button
-                onClick={enviar}
-                disabled={!contato.trim()}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-40"
-                style={{ background: canal === "whatsapp" ? "#16A34A" : "#2563EB" }}
-              >
-                {feedback?.startsWith("✓ Abrindo")
-                  ? "✓ Abrindo…"
-                  : canal === "whatsapp"
-                  ? "💬 Enviar WhatsApp"
-                  : "📧 Enviar E-mail"}
-              </button>
+            </div>
+            <p className="mt-1.5 text-sm italic leading-relaxed text-txt-1">
+              “{evidencia.citacao}”
+            </p>
+            <div className="mt-1 text-[13px] text-txt-3">
+              {evidencia.total} comentário(s) negativo(s) sobre este tema
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+        )}
+      </EnvioSecretario>
     </>
   );
 }

@@ -37,6 +37,16 @@ try:
     _YOUTUBE_OK = True
 except Exception:
     _YOUTUBE_OK = False
+
+# Escuta do Radio: coleta/transcricao via Apify e analise das pautas. Tambem
+# fica inerte enquanto nao houver radio ativa em `sources` — ver
+# coletor_radio.py, radio_analise.py e RADAR_ESCUTA_RADIO.md.
+try:
+    import coletor_radio as _radio
+    import radio_analise as _radio_an
+    _RADIO_OK = True
+except Exception:
+    _RADIO_OK = False
 from dotenv import load_dotenv
 load_dotenv()
 # ── Taxonomia de subtemas (editavel) ──────────────────────────────
@@ -511,6 +521,13 @@ _carregar_config_tenant(TENANT)
 # Passada a janela, expurgar_pii() apaga texto e username e mantem so a
 # classificacao agregada + autor_hash. Ver supabase/migrations/009.
 RETENCAO_PII_DIAS = int(os.environ.get("RETENCAO_PII_DIAS", "180"))
+
+# Retencao da transcricao bruta de radio. Mais curta que a dos comentarios de
+# proposito: quem liga para a radio e se identifica no ar nunca escolheu falar
+# com este sistema, a transcricao e volumosa, e o valor analitico dela ja foi
+# extraido para radio_topics na primeira analise. Ver expurgar_pii_radio e a
+# migration 011.
+RETENCAO_RADIO_DIAS = int(os.environ.get("RETENCAO_RADIO_DIAS", "90"))
 
 # Limites de coleta
 MAX_POSTS_POR_PERFIL    = 10
@@ -2027,6 +2044,114 @@ def _parse_json_resposta(texto):
         if texto.startswith("json"):
             texto = texto[4:]
     return json.loads(texto.strip())
+
+
+# ==============================================================
+# MODULO 4c - ESCUTA DO RADIO
+# ==============================================================
+# O radio_analise.py nao reimplementa nenhuma regra: ele RECEBE daqui o
+# criterio de relevancia, o criterio de tom, o vocabulario de temas e o
+# normalizador de localidade. Foi assim de proposito — PROMPT_TRIAGEM e
+# PROMPT_COMENTARIOS passaram um mes divergindo justamente porque cada um tinha
+# a sua copia do mesmo criterio, e ninguem percebeu ate a auditoria de 26/07.
+
+def _contexto_radio(mapa_bairros=None):
+    """Monta o Contexto que o radio_analise consome.
+
+    A radio e tratada como IMPRENSA no filtro de relevancia: uma estacao local
+    cobre a regiao e comenta outros municipios, que e exatamente a razao pela
+    qual a ancora do municipio passou a ser exigida dos veiculos. Trecho com
+    palavra generica ('a prefeitura', 'o prefeito') sem ancora do tenant nao
+    prova que se fala DAQUI, e nao sobe para o modelo.
+    """
+    mapa = (mapa_bairros if mapa_bairros is not None
+            else carregar_bairros(TENANT, abortar_em_falha=False))
+
+    def _candidato(texto):
+        """Localizador do primeiro estagio: 'ha alguma keyword cadastrada neste
+        segmento?'. Permissivo de proposito — quem decide e o gate, sobre a
+        janela inteira. As palavras sao as MESMAS cadastradas pelo cliente na
+        tela Relevancia; nada e adicionado aqui."""
+        return any(_contem_termo(texto, kw) for kw in KEYWORDS_IMPRENSA)
+
+    return _radio_an.Contexto(
+        gate=lambda texto: _motivo_relevancia(texto, "imprensa")[0],
+        candidato=_candidato,
+        criterio_tom=CRITERIO_TOM_PUBLICACAO,
+        temas_validos=frozenset(TEMAS_VALIDOS),
+        normalizar_localidade=lambda valor: normalizar_localidade(valor, mapa, TENANT),
+    )
+
+
+def analisar_radio(limite=20, dry_run=False, refazer=False, mapa_bairros=None):
+    """Analisa as transcricoes de radio pendentes.
+
+    Usa o Haiku (MODELO_ANALISTA): a tarefa e extrair e resumir trecho curto de
+    texto, nao arbitrar crise. O custo por bloco ja e contido pelo portao de
+    relevancia, que descarta a musica e a publicidade antes de qualquer chamada.
+    """
+    if not _RADIO_OK:
+        log("  radio_analise indisponivel (falha de import).")
+        return {"blocos": 0, "pautas": 0, "chamadas": 0}
+    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    return _radio_an.analisar_pendentes(
+        _contexto_radio(mapa_bairros), cliente, MODELO_ANALISTA,
+        limite=limite, dry_run=dry_run, refazer=refazer,
+    )
+
+
+def teste_radio(limite=3):
+    """Harness do --teste-radio: le transcricoes ja gravadas, analisa e imprime,
+    sem escrever nada. Custo: so Anthropic, zero credito Apify."""
+    if not _RADIO_OK:
+        log("radio_analise indisponivel (falha de import).")
+        return
+    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    _radio_an.teste_radio(_contexto_radio(), cliente, MODELO_ANALISTA, limite=limite)
+
+
+def expurgar_pii_radio(dias=None, dry_run=False):
+    """Apaga a transcricao bruta e os segmentos das capturas de radio fora da
+    janela de retencao, preservando as pautas ja extraidas.
+
+    Por que radio tambem entra na LGPD: a transcricao registra ouvinte que liga
+    e se identifica ("boa tarde para Diego ali na Rua da Usina" apareceu no
+    primeiro teste real), e opiniao politica de pessoa identificada e dado
+    sensivel. O que sobrevive ao expurgo e o que sustenta a serie historica:
+    assunto, resumo, tema, tom, localidade e o instante da citacao.
+
+    Retencao mais curta que a dos comentarios (90 x 180 dias): a transcricao e
+    volumosa, contem terceiro que nunca escolheu falar com o sistema (quem liga
+    para a radio nao publicou nada) e o valor analitico dela ja foi extraido
+    para radio_topics na primeira analise.
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log("[expurgo-radio] SUPABASE ausente — abortando.")
+        return 0
+
+    dias = int(dias if dias is not None else RETENCAO_RADIO_DIAS)
+    corte = (datetime.now() - timedelta(days=dias)).isoformat()
+    base = f"tenant=eq.{TENANT}&inicio_ts=lt.{corte}&pii_expurgado_em=is.null"
+
+    linhas = _supabase_get("radio_transcripts", f"{base}&select=id&limit=1000")
+    if not linhas:
+        log(f"[expurgo-radio] nada a expurgar (retencao={dias}d)")
+        return 0
+    if dry_run:
+        log(f"[expurgo-radio] {len(linhas)} captura(s) seriam expurgadas (retencao={dias}d)")
+        return len(linhas)
+
+    ok = _supabase_patch("radio_transcripts", base, {
+        "transcricao": None,
+        "segments": [],
+        "pii_expurgado_em": datetime.now().isoformat(),
+    })
+    if ok:
+        log(f"[expurgo-radio] {len(linhas)} captura(s) expurgadas")
+        return len(linhas)
+    log(f"[expurgo-radio] FALHOU o PATCH de {len(linhas)} capturas")
+    return 0
+
 
 def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
     log(f"=== MODULO 4 - Analisando com o AGORA (triagem 2 niveis | limiar={LIMIAR_TRIAGEM}) ===")
@@ -4858,6 +4983,16 @@ def main():
     if _YOUTUBE_OK:
         _safe("coletor_youtube", _yt.coletar_e_gravar)
 
+    # Escuta do Radio (admin-only no painel). Tambem antes da coleta Instagram,
+    # e pelo mesmo motivo: esta pode encerrar o run cedo. E inerte por si — sem
+    # radio ativa em `sources`, sem GROQ_API_KEY ou fora da faixa horaria do
+    # programa, retorna sem tocar na Apify. A analise roda em seguida e le do
+    # banco, entao ela aproveita tambem captura de execucao anterior que tenha
+    # ficado pendente (ex.: run que caiu depois de gravar).
+    if _RADIO_OK:
+        _safe("coletor_radio", _radio.coletar_e_gravar)
+        _safe("analise_radio", analisar_radio)
+
     posts = coletar_posts()
     if not posts:
         log("  Nenhum post coletado. Pipeline encerrado.")
@@ -4920,6 +5055,7 @@ def main():
     _safe("supabase", gravar_no_supabase, posts_analisados, comentarios_por_post)  # dual-write -> dashboard
     _safe("recalc_sentimento", recalcular_sentimento_posts)                        # reprojeta comments->posts p/ evitar o dessync do "0% criticas"
     _safe("expurgo_pii", expurgar_pii)                                             # LGPD: apaga texto/@ do autor fora da janela de retencao
+    _safe("expurgo_pii_radio", expurgar_pii_radio)                                 # LGPD: apaga transcricao bruta de radio fora da retencao
     _safe("daily_metrics", gravar_daily_metrics, posts_analisados)                 # historico de indices (Fase 3)
     _safe("boletim_climatico", gravar_boletim_climatico, posts_analisados)         # boletim climatico (Radar Comando)
     briefing_ia = _safe("briefing_estrategico", gerar_briefing_estrategico, posts_analisados)  # assistente IA (Fase 3d)
@@ -6310,6 +6446,32 @@ if __name__ == "__main__":
         reprocessar()
     elif "--retroanalise" in sys.argv:
         main_retroanalise()
+    elif "--teste-radio" in sys.argv:
+        # Analisa transcricoes de radio JA gravadas e imprime as pautas, sem
+        # escrever nada. O que olhar: se uma estacao so produz um tom, o modelo
+        # esta deduzindo pelo microfone em vez de ler a fala.
+        _n = next((int(a) for a in sys.argv if a.isdigit()), 3)
+        teste_radio(limite=_n)
+    elif "--radio-dry-run" in sys.argv or "--radio" in sys.argv:
+        # Coleta de radio isolada. --radio-dry-run captura e loga sem gravar;
+        # --radio grava. --agora ignora a faixa horaria do programa (teste
+        # manual; em producao a janela e respeitada, senao o ator grava musica).
+        if not _RADIO_OK:
+            log("coletor_radio indisponivel (falha de import).")
+        else:
+            _radio.coletar_e_gravar(dry_run="--radio-dry-run" in sys.argv,
+                                    ignorar_janela="--agora" in sys.argv)
+    elif "--analisar-radio" in sys.argv:
+        # Analisa e GRAVA as pautas dos blocos pendentes (sem coletar nada).
+        # Usar depois de uma captura, ou para reprocessar com --refazer.
+        _n = next((int(a) for a in sys.argv if a.isdigit()), 20)
+        analisar_radio(limite=_n, dry_run="--dry-run" in sys.argv,
+                       refazer="--refazer" in sys.argv)
+    elif "--expurgar-radio" in sys.argv:
+        # --expurgar-radio [N] [--dry-run] → apaga transcricao bruta e segmentos
+        # das capturas com mais de N dias (default RETENCAO_RADIO_DIAS=90).
+        _dias = next((int(a) for a in sys.argv if a.isdigit()), None)
+        expurgar_pii_radio(dias=_dias, dry_run="--dry-run" in sys.argv)
     elif "--youtube-dry-run" in sys.argv or "--youtube" in sys.argv:
         # Coleta YouTube isolada. --youtube-dry-run busca da Apify e loga a
         # saida (inclui as chaves cruas p/ ajustar o mapeamento), sem gravar
