@@ -558,7 +558,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                     por faixa, então essa linha é a única explicação fixa do
                     que "44%" quer dizer. */}
                 <p
-                  className="mt-3 max-w-[24ch] text-[15px] font-semibold leading-snug sm:text-[17px]"
+                  className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug sm:text-[17px]"
                   style={{ color: txt2 }}
                 >
                   Aprovação da gestão nos comentários analisados no período
