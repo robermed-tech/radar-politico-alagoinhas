@@ -241,16 +241,46 @@ credencial lida no import fica vazia em execução local, e a escrita no Supabas
 retorna 0 sem erro nenhum. Os dois módulos de rádio leem env em tempo de
 chamada por isso.
 
-## 10. Pendências que dependem do Robério
+## 10. URLs das estações (corrigidas em 29/07/2026)
 
-1. **`GROQ_API_KEY`** — é `required` no input do ator. O ator não guarda a chave;
-   quem chama precisa passá-la. Sem esse secret no ambiente e no GitHub Actions,
-   a coleta não roda.
-2. **URL duplicada no cadastro do ator** — `Digital FM 96.3` e
-   `Rádio Ouro Negro 100.5 FM` apontam para o mesmo stream
-   (`https://8058.brasilstream.com.br/stream`) e, no teste, transcreveram áudios
-   diferentes do mesmo endereço. Uma das duas está com a URL errada, e do jeito
-   que está uma pauta vai ser atribuída à estação errada. Precisa da URL correta
-   antes de a atribuição por estação valer algo.
-3. **`Rádio Boa 94.1 FM`** falhou a gravação. A URL é uma página do
-   radios.com.br, não um stream direto — provavelmente precisa da URL do stream.
+As quatro URLs do `DEFAULT_RADIOS` do ator foram verificadas uma a uma: cada
+endereço foi aberto, confirmado como áudio (`content-type: audio/*`) e
+identificado pelo `icy-name` do stream. Duas estavam erradas e foram trocadas.
+
+| Estação | URL | Como foi confirmada |
+|---|---|---|
+| 93 FM Bahia | `https://a.cdni.live/radio93fm/radio93fm/playlist.m3u8` | HLS, já funcionava (transcreveu no teste) |
+| Digital FM 96.3 | `https://8058.brasilstream.com.br/stream` | `icy-name` genérico, mas onlineradiobox e tudoradio apontam para este mesmo endereço |
+| Rádio Boa 94.1 FM | `https://cast.radiu.live:9304/stream` | `icy-name: BOA FM ALAGOINHAS` |
+| Rádio Ouro Negro 100.5 FM | `http://stm50.conectastm.com:24964/stream` | `icy-name: Radio Ouro Negro FM 100.5` |
+
+O que estava errado:
+
+- **Rádio Boa** apontava para uma *página* do radios.com.br
+  (`/play/playlist/44545/listen-radio.m3u`), que está atrás de Cloudflare e
+  devolve HTML 403 em vez de áudio. Era a causa do `RECORDING_FAILED`.
+- **Ouro Negro** repetia a URL da Digital FM. As duas gravavam o mesmo áudio, e
+  uma pauta seria atribuída à estação errada — o mesmo tipo de erro do
+  Centro/CTA, por outro caminho.
+
+**Ao trocar qualquer URL, confira o `icy-name` do stream antes.** É a única
+forma de saber que o endereço pertence à estação que o nome diz; o teste que
+pegou a duplicação foi exatamente esse.
+
+`icy-name` genérico não é impedimento (a Digital FM tem "This is my server
+name", default do Icecast), mas aí a confirmação precisa vir de duas fontes
+independentes que apontem para o mesmo endereço.
+
+## 11. Pendências que dependem do Robério
+
+1. **`GROQ_API_KEY`** — é `required` no input do ator. O ator não guarda a
+   chave; quem chama precisa passá-la. Sem esse secret no ambiente e no GitHub
+   Actions, a coleta não roda. **É a única pendência que bloqueia.**
+2. **Decisão de produto: `Rádio Ouro Negro 100.5 FM` é de CATU, não de
+   Alagoinhas.** A URL está correta, mas a emissora é do município vizinho.
+   Vale manter? Ela cobre a região e comenta Alagoinhas, e o portão de
+   relevância trata rádio como imprensa (exige âncora do município), então
+   pauta de Catu já é descartada. Manter ou remover é decisão do cliente.
+3. As rádios precisam ser **cadastradas na tela Escuta do Rádio**, com o
+   horário do programa. O `DEFAULT_RADIOS` do ator é só o fallback de execução
+   manual: o pipeline monta a lista a partir de `sources`, nunca do default.
