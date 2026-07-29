@@ -1,0 +1,96 @@
+name: Escuta do Rádio — captação
+
+# Workflow separado do ÁGORA de propósito. O ator da Apify grava o stream EM
+# TEMPO REAL, então uma captação de 30 minutos é um run de 30 minutos. O step do
+# agora.yml tem timeout de 20 min e o job de 30: capturar lá dentro derrubaria o
+# pipeline inteiro (Instagram, clima, alertas, briefing) no dia em que o horário
+# de um programa coincidisse com uma das três rodadas.
+#
+# Aqui a captação tem o horário e o timeout dela. A ANÁLISE das transcrições
+# continua acontecendo no agora.py a cada rodada normal, porque é rápida e lê do
+# banco — mas roda também no fim deste workflow, para a pauta aparecer no painel
+# logo depois do programa em vez de esperar a próxima execução do ÁGORA.
+
+on:
+  schedule:
+    # O cron precisa BATER com o `hora_inicio` cadastrado na tela Escuta do
+    # Rádio (BRT = UTC-3). O coletor tem 20 min de tolerância para atraso do
+    # agendador; fora dessa janela ele não captura nada, de propósito, para não
+    # gravar bloco musical.
+    #
+    # 07:00 BRT = 10:00 UTC — programa da manhã (ajuste conforme o cadastro)
+    - cron: '0 10 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      ignorar_janela:
+        description: 'Capturar agora, fora da faixa horária cadastrada (teste)'
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Captar e mostrar sem gravar no banco'
+        type: boolean
+        default: false
+
+jobs:
+  captar:
+    runs-on: ubuntu-latest
+    # Folga sobre a captação: 30 min de gravação + transcrição + margem. O run
+    # da Apify tem o timeout dele calculado em coletor_radio.py; este aqui é a
+    # rede de segurança do lado do Actions.
+    timeout-minutes: 75
+
+    steps:
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Captar rádios
+        timeout-minutes: 65
+        env:
+          APIFY_API_TOKEN:      ${{ secrets.APIFY_API_TOKEN }}
+          # O ator declara groqApiKey como required e NÃO guarda a chave: quem
+          # chama precisa passá-la. Sem este secret o coletor encerra antes de
+          # tocar na Apify, para não queimar um run que falharia na largada.
+          GROQ_API_KEY:         ${{ secrets.GROQ_API_KEY }}
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          RADAR_TENANT:         alagoinhas
+        run: |
+          ARGS="--radio"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="--radio-dry-run"; fi
+          if [ "${{ inputs.ignorar_janela }}" = "true" ]; then ARGS="$ARGS --agora"; fi
+          echo "Executando: python agora.py $ARGS"
+          python agora.py $ARGS
+
+      - name: Analisar as pautas captadas
+        # Não roda em dry-run: não há bloco gravado para analisar.
+        if: ${{ inputs.dry_run != true }}
+        timeout-minutes: 10
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          RADAR_TENANT:         alagoinhas
+        run: python agora.py --analisar-radio
+
+      - name: Notifica falha no WhatsApp
+        if: failure()
+        env:
+          EVOLUTION_API_URL:  ${{ secrets.EVOLUTION_API_URL }}
+          EVOLUTION_API_KEY:  ${{ secrets.EVOLUTION_API_KEY }}
+          EVOLUTION_INSTANCE: ${{ secrets.EVOLUTION_INSTANCE }}
+          WHATSAPP_NUMBER:    ${{ secrets.EVOLUTION_GROUP_ID }}
+        run: |
+          curl -s -X POST "$EVOLUTION_API_URL/message/sendText/$EVOLUTION_INSTANCE" \
+            -H "Content-Type: application/json" \
+            -H "apikey: $EVOLUTION_API_KEY" \
+            -d "{\"number\":\"$WHATSAPP_NUMBER\",\"text\":\"⚠️ Escuta do Rádio: falha na captação. Verifique o GitHub Actions.\"}" || true
