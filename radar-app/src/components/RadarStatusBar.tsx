@@ -143,14 +143,19 @@ export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
     <div
       className="flex flex-col items-center justify-center overflow-hidden rounded-[28px] px-4 py-6 text-center"
       style={{
-        background: "linear-gradient(165deg, #334155 0%, #1E293B 100%)",
+        // Revisão de 28/07: as duas pontas do degradê antigo (#334155→#1E293B)
+        // ficavam a um passo de distância na escala slate — quase a mesma cor,
+        // sem leitura de degradê. Cinza médio (#475569) até chumbo bem escuro
+        // (#0F172A) dá um gradiente chumbo+cinza de verdade e continua escuro
+        // o bastante pro texto branco por cima (pior caso medido: 4,9:1 AA).
+        background: "linear-gradient(165deg, #475569 0%, #0F172A 100%)",
         minHeight,
         boxShadow: "0 18px 40px -18px rgba(15,23,42,0.65)",
       }}
     >
       <div
         className="text-[13px] uppercase tracking-[0.14em]"
-        style={{ color: "rgba(255,255,255,0.62)", fontWeight: 700 }}
+        style={{ color: "rgba(255,255,255,0.78)", fontWeight: 700 }}
       >
         Coleta
       </div>

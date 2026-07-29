@@ -531,31 +531,26 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                 clima (ícone + frase) vai para a DIREITA dele, em corpo maior.
                 Antes o ícone ficava à esquerda do número e a frase embaixo,
                 sobrando faixa vazia no meio do card. Os chips de contagem
-                seguem fora daqui (25/07): vivem no box de engajamento ao lado. */}
+                seguem fora daqui (25/07): vivem no box de engajamento ao lado.
+                Revisão de 28/07: a porcentagem do IAD passa a aparecer para
+                TODO papel, não só admin — antes o usuário comum via apenas o
+                nome do clima ("Chuva"), sem o número que dá a magnitude por
+                trás do rótulo. */}
             <div className="mt-4 flex min-h-0 flex-1 flex-wrap items-center gap-x-8 gap-y-4">
-              {isAdmin ? (
-                <div className="flex items-start">
-                  <span
-                    className="tnum text-[120px] leading-[0.76] tracking-tighter sm:text-[168px] lg:text-[208px]"
-                    style={{ color: txt1, fontWeight: 200 }}
-                  >
-                    {view.iad}
-                  </span>
-                  <span
-                    className="mt-3 text-5xl sm:text-6xl lg:text-7xl"
-                    style={{ color: txt2, fontWeight: 300 }}
-                  >
-                    %
-                  </span>
-                </div>
-              ) : (
-                <div
-                  className="text-[72px] leading-[0.9] tracking-tight sm:text-[92px]"
+              <div className="flex items-start" aria-label={`Índice de aprovação: ${view.iad}%`}>
+                <span
+                  className="tnum text-[120px] leading-[0.76] tracking-tighter sm:text-[168px] lg:text-[208px]"
                   style={{ color: txt1, fontWeight: 200 }}
                 >
-                  {wx.label}
-                </div>
-              )}
+                  {view.iad}
+                </span>
+                <span
+                  className="mt-3 text-5xl sm:text-6xl lg:text-7xl"
+                  style={{ color: txt2, fontWeight: 300 }}
+                >
+                  %
+                </span>
+              </div>
 
               <div className="flex min-w-0 flex-1 items-center gap-4">
                 <div className="shrink-0" style={{ filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.22))" }}>
