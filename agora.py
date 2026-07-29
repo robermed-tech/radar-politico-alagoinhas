@@ -4983,14 +4983,19 @@ def main():
     if _YOUTUBE_OK:
         _safe("coletor_youtube", _yt.coletar_e_gravar)
 
-    # Escuta do Radio (admin-only no painel). Tambem antes da coleta Instagram,
-    # e pelo mesmo motivo: esta pode encerrar o run cedo. E inerte por si — sem
-    # radio ativa em `sources`, sem GROQ_API_KEY ou fora da faixa horaria do
-    # programa, retorna sem tocar na Apify. A analise roda em seguida e le do
-    # banco, entao ela aproveita tambem captura de execucao anterior que tenha
-    # ficado pendente (ex.: run que caiu depois de gravar).
+    # Escuta do Radio: aqui roda SO A ANALISE, nunca a captura.
+    #
+    # A captura vive no workflow proprio (.github/workflows/radio.yml) porque o
+    # ator grava EM TEMPO REAL: uma captura de 30 min e um run de 30 min. O step
+    # deste pipeline tem timeout de 20 min e o job de 30 (ver agora.yml), entao
+    # capturar aqui derrubaria o ÁGORA inteiro no dia em que o horario de um
+    # programa coincidisse com uma das tres rodadas — levando embora Instagram,
+    # clima, alertas e briefing junto.
+    #
+    # A analise nao tem esse problema: ela le do banco o que o radio.yml gravou,
+    # gasta segundos e ainda recupera captura que ficou pendente (run que caiu
+    # depois de gravar). Sem bloco pendente, retorna sem chamar o modelo.
     if _RADIO_OK:
-        _safe("coletor_radio", _radio.coletar_e_gravar)
         _safe("analise_radio", analisar_radio)
 
     posts = coletar_posts()
