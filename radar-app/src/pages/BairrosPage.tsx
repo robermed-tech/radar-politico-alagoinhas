@@ -106,7 +106,9 @@ export function BairrosPage() {
       series: [
         {
           type: "bar",
-          barMaxWidth: 18,
+          // Sobe com a altura do card (29/07): 18px de barra dentro de um
+          // gráfico de tela cheia deixava fio de cabelo separado por vão.
+          barMaxWidth: 30,
           cursor: "pointer",
           emphasis: { itemStyle: { shadowBlur: 14, shadowColor: "rgba(251,146,60,0.55)" } },
           data: dados.map((b) => ({
@@ -206,9 +208,19 @@ export function BairrosPage() {
                 Clique numa barra para ler os comentários que a formaram
               </div>
             </div>
+            {/* Pedido de 29/07: o gráfico passa a ocupar a tela toda. A altura
+                era 30px por barra (12 bairros = 360px) e sobrava metade da
+                página vazia embaixo. Agora a base é a altura da viewport menos
+                o que fica acima do card (cabeçalho da página + os 4 KPIs +
+                títulos, ~430px), limitada por um teto por barra: com 3 bairros
+                no período o card não estica para 700px com três barras soltas
+                dentro. */}
             <ReactECharts
               option={chartOption}
-              style={{ height: Math.max(220, Math.min(12, bairros.length) * 30) }}
+              style={{
+                height: `min(calc(100vh - 430px), ${Math.min(12, bairros.length) * 60}px)`,
+                minHeight: 280,
+              }}
               notMerge
               onEvents={{
                 // Barra: o nome vem em `name`. Rótulo do eixo (triggerEvent):

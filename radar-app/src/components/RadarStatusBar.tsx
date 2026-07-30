@@ -139,9 +139,13 @@ export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
   // atenção com o clima e o engajamento, que são a leitura principal da tela;
   // continuam inteiras na aba Monitor de coleta da Configuração. O que resta é
   // o sinal de que o sistema está vivo, e o radar cresce para ocupar o espaço.
+  // `h-full` alinha a BASE do radar com a dos dois cards vizinhos: o wrapper é
+  // o item do grid e estica junto com a linha, mas este card parava no seu
+  // próprio conteúdo (~320px) enquanto clima e engajamento crescem com o
+  // texto, deixando o radar "flutuando" acima da linha de base (29/07).
   return (
     <div
-      className="flex flex-col items-center justify-center overflow-hidden rounded-[28px] px-4 py-6 text-center"
+      className="flex h-full flex-col items-center justify-center overflow-hidden rounded-[28px] px-4 py-6 text-center"
       style={{
         // Revisão de 28/07: as duas pontas do degradê antigo (#334155→#1E293B)
         // ficavam a um passo de distância na escala slate — quase a mesma cor,
