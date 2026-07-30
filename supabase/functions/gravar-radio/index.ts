@@ -102,20 +102,33 @@ Deno.serve(async (req) => {
     return json({ error: "Escolha ao menos uma rádio para gravar" }, 400);
   }
 
-  // 3) Confere que as estações são do tenant do chamador e são mesmo rádios.
-  //    Sem isso um body forjado mandaria gravar a fonte de outro tenant — o RLS
-  //    protege a LEITURA, não o que a chave de serviço faz.
+  // 3) Confere que os ids pedidos são mesmo rádios do cadastro. Sem isso um
+  //    body forjado mandaria gravar qualquer fonte — o RLS protege a LEITURA,
+  //    não o que a chave de serviço faz.
   //
-  //    `active` NÃO entra no filtro de propósito: essa coluna governa a captação
-  //    automática no horário do programa, e o painel agora oferece o cadastro
+  //    NÃO existe filtro por tenant aqui: `sources` não tem coluna `tenant_id`
+  //    (só `profiles` tem). O isolamento entre clientes neste produto é por
+  //    PROJETO do Supabase, não por coluna nesta tabela. A primeira versão
+  //    filtrava por `tenant_id` e o PostgREST devolvia 42703 (coluna
+  //    inexistente) — o que fazia o botão acusar "nenhuma das rádios existe no
+  //    cadastro" com quatro rádios cadastradas na tela ao lado.
+  //
+  //    `active` também não entra no filtro, de propósito: essa coluna governa a
+  //    captação automática no horário do programa, e o painel oferece o cadastro
   //    inteiro para gravar sob demanda. Recusar uma estação cadastrada por estar
   //    pausada seria negar um pedido explícito de gravar agora.
-  const { data: fontes } = await admin
+  const { data: fontes, error: erroFontes } = await admin
     .from("sources")
     .select("id, label, handle")
     .eq("platform", "radio")
-    .eq("tenant_id", perfil.tenant_id)
     .in("id", pedidas);
+
+  // Falha de consulta NÃO é "nenhuma encontrada". Confundir as duas foi
+  // exatamente o que mandou o usuário procurar o problema no cadastro, que
+  // estava certo, em vez de na consulta, que estava errada.
+  if (erroFontes) {
+    return json({ error: `Falha ao ler o cadastro de rádios: ${erroFontes.message}` }, 500);
+  }
 
   const validas = (fontes ?? []).map((f) => String(f.id));
   if (validas.length === 0) {
