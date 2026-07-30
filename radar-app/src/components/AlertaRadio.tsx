@@ -83,11 +83,11 @@ export function AlertaRadio({ pauta }: { pauta: RadioPauta }) {
       <EnvioSecretario
         aberto={aberto}
         onFechar={() => setAberto(false)}
-        titulo="Escuta do Rádio"
+        titulo="Rádio Escuta"
         subtitulo="Encaminhar a pauta ao secretário responsável"
         cor="#F97316"
         icone={<IcoRadio className="h-5 w-5" fill="#F97316" />}
-        assunto={`📻 Escuta do Rádio — ${pauta.assunto}`}
+        assunto={`📻 Rádio Escuta — ${pauta.assunto}`}
         mensagemBase={msg}
         tema={pauta.tema ?? "comunicacao"}
         contatoWhatsapp={sec.whatsapp}

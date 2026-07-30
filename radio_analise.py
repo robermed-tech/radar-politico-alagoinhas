@@ -70,6 +70,12 @@ from typing import Callable, NamedTuple
 
 import requests
 
+try:
+    import radio_clipes as _clipes
+    _CLIPES_OK = True
+except Exception:  # modulo ausente nao pode derrubar a analise
+    _CLIPES_OK = False
+
 # Configuracao lida em TEMPO DE CHAMADA, e nao no import: o agora.py chama
 # load_dotenv() DEPOIS de importar este modulo, entao constante lida no import
 # fica vazia quando as credenciais vem de .env. O sintoma e cruel — escrita que
@@ -488,6 +494,25 @@ def analisar_janela(janela: dict, segments: list, ctx: Contexto, cliente, modelo
 
 # ── Orquestração ─────────────────────────────────────────────────────────────
 
+def _gravar_clipes(bloco: dict) -> int:
+    """Recorta e sobe o áudio de cada citação do bloco, e grava o caminho.
+
+    Relê as pautas do banco em vez de usar as linhas montadas em memória porque
+    o `id` é gerado no upsert — e é ele que nomeia o arquivo.
+    """
+    pautas = _supabase_get(
+        "radio_topics",
+        f"transcript_id=eq.{bloco['id']}&audio_clip=is.null"
+        "&select=id,citacao,ts_inicio",
+    )
+    if not pautas:
+        return 0
+    mapa = _clipes.gerar_para_bloco(bloco, pautas)
+    for pid, caminho in mapa.items():
+        _supabase_patch("radio_topics", f"id=eq.{pid}", {"audio_clip": caminho})
+    return len(mapa)
+
+
 def _blocos_pendentes(limite: int, tenant: str = None, refazer: bool = False) -> list[dict]:
     """Blocos captados com sucesso e ainda não analisados.
 
@@ -496,7 +521,7 @@ def _blocos_pendentes(limite: int, tenant: str = None, refazer: bool = False) ->
     """
     filtro = (f"tenant=eq.{tenant or _tenant()}&status=eq.SUCCESS"
               "&transcricao=not.is.null"
-              "&select=id,estacao,programa,inicio_ts,transcricao,segments"
+              "&select=id,estacao,programa,inicio_ts,transcricao,segments,apify_run_id,audio_store_key"
               f"&order=inicio_ts.desc&limit={limite}")
     if not refazer:
         filtro += "&analisado_em=is.null"
@@ -560,6 +585,13 @@ def analisar_pendentes(ctx: Contexto, cliente, modelo: str, limite: int = 20,
         if linhas:
             total_pautas += _supabase_upsert("radio_topics", linhas,
                                              "transcript_id,ts_inicio,assunto")
+            # Clipe de áudio da citação, para conferência no próprio card. Roda
+            # DEPOIS do upsert porque precisa do id que o banco gerou. Falha
+            # aqui não é falha da análise: sem ffmpeg, sem token ou com o áudio
+            # já expirado na Apify (retenção de 3 dias), a pauta continua válida
+            # e a tela mostra "sem áudio" em vez de um player quebrado.
+            if _CLIPES_OK:
+                _gravar_clipes(bloco)
 
         if falhas:
             # Bloco com janela que o modelo não conseguiu ler SEGUE PENDENTE.

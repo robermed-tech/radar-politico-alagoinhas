@@ -64,6 +64,10 @@ export interface RadioPauta {
   score_risco: number;
   urgencia: string | null;
   confianca: number;
+  /** Caminho do clipe de áudio da citação no bucket privado `radio-clipes`.
+   *  NULL = não há áudio para conferir (bloco anterior à migration 012, áudio
+   *  já expirado na Apify ou falha no recorte). */
+  audio_clip: string | null;
 }
 
 /** Rádio cadastrada (linha de `sources` com platform='radio'). */
@@ -113,6 +117,23 @@ export async function fetchPautas(dias: number, limit = 1000): Promise<RadioPaut
     .order("captado_em", { ascending: false })
     .limit(limit);
   return (data as RadioPauta[]) ?? [];
+}
+
+/**
+ * URL assinada, de vida curta, para ouvir o clipe da citação.
+ *
+ * O bucket é PRIVADO de propósito: o clipe pode conter a voz de um ouvinte que
+ * ligou para a rádio e se identificou no ar — alguém que nunca escolheu falar
+ * com este sistema. Uma URL pública ficaria acessível a quem a descobrisse,
+ * para sempre; a assinada expira e só é emitida para quem já está autenticado
+ * (o RLS do bucket recusa a chave anônima sem sessão).
+ */
+export async function urlDoClipe(caminho: string, segundos = 600): Promise<string | null> {
+  const { data, error } = await supabase.storage
+    .from("radio-clipes")
+    .createSignedUrl(caminho, segundos);
+  if (error) return null;
+  return data?.signedUrl ?? null;
 }
 
 export async function fetchRadios(): Promise<RadioFonte[]> {

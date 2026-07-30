@@ -2141,6 +2141,31 @@ def expurgar_pii_radio(dias=None, dry_run=False):
         log(f"[expurgo-radio] {len(linhas)} captura(s) seriam expurgadas (retencao={dias}d)")
         return len(linhas)
 
+    # Os clipes de audio da citacao saem JUNTO. Apagar o texto e deixar a voz
+    # do ouvinte no storage seria pior do que nao ter apagado nada — e o clipe e
+    # o unico artefato do sistema em que a pessoa e reconhecivel pela voz.
+    _ids = [l["id"] for l in linhas if l.get("id")]
+    if _ids:
+        _clipes_alvo = [
+            r["audio_clip"] for r in (_supabase_get(
+                "radio_topics",
+                "transcript_id=in.(" + ",".join(_ids) + ")"
+                "&audio_clip=not.is.null&select=audio_clip&limit=2000",
+            ) or []) if r.get("audio_clip")
+        ]
+        if _clipes_alvo:
+            try:
+                import radio_clipes as _rc
+                _n = _rc.apagar(_clipes_alvo)
+                log(f"[expurgo-radio] {_n} clipe(s) de audio apagados do storage")
+                _supabase_patch(
+                    "radio_topics",
+                    "transcript_id=in.(" + ",".join(_ids) + ")&audio_clip=not.is.null",
+                    {"audio_clip": None},
+                )
+            except Exception as e:
+                log(f"[expurgo-radio] falha ao apagar clipes: {e}")
+
     ok = _supabase_patch("radio_transcripts", base, {
         "transcricao": None,
         "segments": [],
@@ -6495,6 +6520,30 @@ if __name__ == "__main__":
         _n = next((int(a) for a in sys.argv if a.isdigit()), 20)
         analisar_radio(limite=_n, dry_run="--dry-run" in sys.argv,
                        refazer="--refazer" in sys.argv)
+    elif "--clipes-radio" in sys.argv:
+        # Gera os clipes de audio das pautas que ainda nao tem, para os blocos
+        # cujo audio ainda existe na Apify (retencao de 3 dias). Serve para
+        # preencher retroativamente depois de uma analise que rodou sem ffmpeg.
+        if not _RADIO_OK:
+            log("coletor_radio indisponivel (falha de import).")
+        else:
+            import radio_analise as _ra
+            import radio_clipes as _rc
+            if not _rc.ffmpeg_disponivel():
+                log("ffmpeg ausente nesta maquina — rode no GitHub Actions.")
+            else:
+                _n = next((int(a) for a in sys.argv if a.isdigit()), 10)
+                _blocos = _supabase_get(
+                    "radio_transcripts",
+                    f"tenant=eq.{TENANT}&status=eq.SUCCESS&apify_run_id=not.is.null"
+                    "&select=id,estacao,apify_run_id,audio_store_key"
+                    f"&order=inicio_ts.desc&limit={_n}",
+                ) or []
+                _tot = 0
+                for _b in _blocos:
+                    log(f"  → {_b.get('estacao')}")
+                    _tot += _ra._gravar_clipes(_b)
+                log(f"[radio] {_tot} clipe(s) de audio gerados em {len(_blocos)} bloco(s)")
     elif "--expurgar-radio" in sys.argv:
         # --expurgar-radio [N] [--dry-run] → apaga transcricao bruta e segmentos
         # das capturas com mais de N dias (default RETENCAO_RADIO_DIAS=90).
