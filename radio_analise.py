@@ -224,6 +224,50 @@ def _segmentos_ou_texto(transcricao: str, segments: list) -> list[dict]:
     return [{"start": 0.0, "end": 0.0, "text": texto}] if texto else []
 
 
+# Marcadores de que o bloco de fala ACABOU. Publicidade e vinheta são a
+# fronteira natural de assunto no rádio: depois delas vem outra coisa.
+_FRONTEIRA_DE_BLOCO = re.compile(
+    r"\b(oferecimento|patroc[ií]nio|patrocinado|intervalo|comercial|"
+    r"publicidade|vinheta|propaganda|voltamos (?:ja|já|em seguida)|"
+    r"a seguir|proximo bloco|próximo bloco)\b",
+    re.IGNORECASE,
+)
+# Pausa longa entre segmentos = corte de fala, não continuação do mesmo assunto.
+GAP_MAX_SEG = 3.0
+# Quanto a janela pode crescer DEPOIS da última palavra-chave. Medido em 30/07:
+# com 150 s a extensão de um intervalo encostava no seguinte, a fusão encadeava
+# os dois, o próximo estendia de novo, e o bloco virou uma janela de 11 min —
+# truncada em MAX_CHARS_JANELA, com a pauta do Hospital Dantas Bião sumindo
+# dentro dela. O que falta depois de uma fala política não é mais fala política:
+# são uns 2 min de fecho do assunto.
+EXTENSAO_MAX_SEG = 120.0
+# Teto DURO da janela final, aplicado depois da fusão. É o que impede o
+# encadeamento acima: sem ele, cada teto individual é respeitado e a soma não.
+# Uma janela maior que isto não é uma conversa, são várias.
+JANELA_MAX_SEG = 300.0
+
+
+def _estender_ate_fronteira(segs: list[dict], fim: float,
+                            limite: float = EXTENSAO_MAX_SEG) -> float:
+    """Estende o fim da janela enquanto a fala continuar no mesmo bloco.
+
+    Para em três situações, nesta ordem: marcador de publicidade/vinheta (o
+    assunto acabou), pausa maior que `GAP_MAX_SEG` (corte de fala) ou o teto de
+    `limite` segundos (rede de segurança contra engolir o programa inteiro).
+    """
+    teto = fim + limite
+    atual = fim
+    for s in segs:
+        if s["start"] < atual:
+            continue
+        if s["start"] > teto or s["start"] - atual > GAP_MAX_SEG:
+            break
+        if _FRONTEIRA_DE_BLOCO.search(s["text"] or ""):
+            break
+        atual = s["end"]
+    return round(atual, 2)
+
+
 def montar_janelas(transcricao: str, segments: list, gate: Callable[[str], bool],
                    contexto_seg: int = CONTEXTO_SEG,
                    candidato: Callable[[str], bool] | None = None) -> list[dict]:
@@ -256,6 +300,33 @@ def montar_janelas(transcricao: str, segments: list, gate: Callable[[str], bool]
             intervalos[-1][1] = max(intervalos[-1][1], fim)
         else:
             intervalos.append([ini, fim])
+
+    # A conversa costuma continuar depois da última palavra-chave: o locutor já
+    # estabeleceu o assunto e passa a falar em "eles", "isso", "essas pessoas".
+    # Cortar em `contexto_seg` fixo entregava ao modelo meia fala — achado em
+    # 30/07 na pauta do Hospital Dantas Bião, onde 40 s de fatos (o desmentido
+    # do governador, a acusação a "representantes do povo", a entrega de seis
+    # hospitais) ficaram fora da janela e, portanto, fora da análise. Estender
+    # até uma FRONTEIRA de fala é mais fiel ao programa do que aumentar o raio
+    # fixo, que engoliria o intervalo comercial junto.
+    for iv in intervalos:
+        iv[1] = _estender_ate_fronteira(segs, iv[1])
+
+    # Refunde DEPOIS de estender: a extensão pode encostar uma janela na
+    # seguinte, e duas chamadas com texto sobreposto produzem pauta duplicada —
+    # que é o mesmo motivo pelo qual os intervalos já eram fundidos antes.
+    fundidos: list[list[float]] = []
+    for ini, fim in intervalos:
+        if fundidos and ini <= fundidos[-1][1]:
+            fundidos[-1][1] = max(fundidos[-1][1], fim)
+        else:
+            fundidos.append([ini, fim])
+
+    # Teto duro DEPOIS da fusão. Cortar aqui e não na extensão é o que importa:
+    # o teto por intervalo é respeitado individualmente e a soma escapa dele.
+    for iv in fundidos:
+        iv[1] = min(iv[1], iv[0] + JANELA_MAX_SEG)
+    intervalos = fundidos
 
     janelas = []
     for ini, fim in intervalos:
@@ -355,20 +426,41 @@ def intervalo_da_citacao(
     if not faixas:
         return padrao_inicio, padrao_fim
 
-    # Tenta a frase inteira e vai encurtando: o modelo às vezes corta o fim, ou
-    # junta duas falas numa citação só.
-    achado = -1
-    usado = alvo
-    for n in (len(palavras), 12, 8, 6, 4):
-        if n > len(palavras):
-            continue
-        tentativa = " ".join(palavras[:n])
-        achado = texto.find(tentativa)
-        if achado >= 0:
-            usado = tentativa
-            break
-    if achado < 0:
-        return padrao_inicio, padrao_fim
+    # O início vem do PREFIXO e o fim do SUFIXO, procurados separadamente. A
+    # primeira versão encurtava o prefixo até casar e derivava o fim do tamanho
+    # do trecho encontrado — quando a citação inteira não casava por diferença
+    # de pontuação, o fim vinha das 12 primeiras palavras e o clipe cobria um
+    # terço da frase. Medido em 30/07 na citação do Hospital Dantas Bião: a
+    # citação ia até 834 s e o `ts_fim` saía 809 s.
+    achado = texto.find(alvo)
+    if achado >= 0:
+        fim_offset = achado + len(alvo) - 1
+    else:
+        achado = -1
+        for n in (16, 12, 8, 6, 4):
+            if n > len(palavras):
+                continue
+            achado = texto.find(" ".join(palavras[:n]))
+            if achado >= 0:
+                break
+        if achado < 0:
+            return padrao_inicio, padrao_fim
+
+        # Fim pelo sufixo, procurado DEPOIS do início. Cada tentativa mais
+        # curta é menos específica, então a busca começa pela mais longa.
+        fim_offset = -1
+        for n in (16, 12, 8, 6, 4):
+            if n > len(palavras):
+                continue
+            sufixo = " ".join(palavras[-n:])
+            pos = texto.find(sufixo, achado)
+            if pos >= 0:
+                fim_offset = pos + len(sufixo) - 1
+                break
+        if fim_offset < 0:
+            # Sem sufixo reconhecível, o fim sai do tamanho da citação em
+            # caracteres — ainda derivado da frase, nunca de duração fixa.
+            fim_offset = min(len(texto) - 1, achado + len(alvo) - 1)
 
     def _f(v, alt):
         try:
@@ -377,8 +469,7 @@ def intervalo_da_citacao(
             return alt
 
     seg_ini = _segmento_em(faixas, achado)
-    # -1 para cair DENTRO do último caractere do trecho, não no espaço seguinte.
-    seg_fim = _segmento_em(faixas, max(achado, achado + len(usado) - 1))
+    seg_fim = _segmento_em(faixas, max(achado, fim_offset))
 
     inicio = max(0.0, _f((seg_ini or {}).get("start"), padrao_inicio))
     fim = _f((seg_fim or {}).get("end"), padrao_fim)
@@ -409,9 +500,18 @@ def montar_prompt(ctx: Contexto) -> str:
         "publicidade ou recado de ouvinte que so manda abraco.\n\n"
         "PARA CADA PAUTA:\n"
         "  assunto          = titulo curto (ate 60 caracteres)\n"
-        "  resumo           = 2 a 4 frases sobre o que foi dito\n"
-        "  citacao          = trecho LITERAL da transcricao, ate 200 caracteres, "
-        "copiado sem reescrever. Nao parafrasear: a citacao e conferida no audio.\n"
+        "  resumo           = 3 a 5 frases cobrindo o assunto INTEIRO do trecho, "
+        "nao so o comeco. Inclua os fatos verificaveis que aparecerem: quem "
+        "afirmou, quem desmentiu, numeros, nomes de equipamentos e de "
+        "autoridades, e a quem a acusacao foi dirigida.\n"
+        "  citacao          = trecho LITERAL da transcricao, ate 400 caracteres, "
+        "copiado sem reescrever. Nao parafrasear: a citacao e conferida no audio, "
+        "e o painel toca exatamente esse trecho ao lado da frase.\n"
+        "                     Comece no inicio de uma frase e termine no fim de "
+        "outra: citacao cortada no meio soa como se a fala tivesse acabado, e "
+        "quem le o card conclui que nao houve mais nada dito sobre o assunto. "
+        "Se a passagem central tiver varias frases seguidas, pegue todas ate o "
+        "limite, em vez de um pedaco do meio.\n"
         f"  tema             = um de: {temas}. Use vazio se nenhum servir.\n"
         "  localidade       = bairro, povoado, praca ou rua citado. Nome de "
         "equipamento ou programa (posto, CTA, hospital, UPA, escola, creche, "
@@ -499,7 +599,11 @@ def normalizar_pauta(bruta: dict, janela: dict, segments: list, ctx: Contexto) -
         except (TypeError, ValueError):
             return 0
 
-    citacao = _limpar_travessao(bruta.get("citacao"))[:300]
+    # 500 e nao 300: o prompt pede ate 400 caracteres e frases inteiras, e um
+    # corte aqui reintroduziria exatamente o problema que o prompt evita — a
+    # citacao terminando no meio da fala, como se o assunto tivesse acabado.
+    # A folga acomoda o modelo passar um pouco do limite pedido.
+    citacao = _limpar_travessao(bruta.get("citacao"))[:500]
     localidade = ctx.normalizar_localidade(str(bruta.get("localidade") or "")) or None
 
     urgencia = str(bruta.get("urgencia") or "").strip().lower()
@@ -746,8 +850,17 @@ def teste_radio(ctx: Contexto, cliente, modelo: str, limite: int = 3) -> None:
                 marca = "★ interessa" if p["interesse_gestao"] else "  "
                 _log(f"       {marca} [{p['tom_sobre_gestao']}] [{p['voz'] or 'voz?'}] "
                      f"{p['assunto']}{baixa}")
+                # Resumo e citação INTEIROS: este harness existe para julgar a
+                # qualidade da análise, e truncar aqui esconderia exatamente o
+                # defeito que se está procurando — citação que termina no meio
+                # da fala, como se o assunto tivesse acabado ali.
+                if p["resumo"]:
+                    _log(f"           resumo: {p['resumo']}")
                 if p["citacao"]:
-                    _log(f"           \"{p['citacao'][:120]}\" ({p['ts_inicio']:.0f}s)")
+                    _log(f"           citacao ({p['ts_inicio']:.0f}s a {p['ts_fim']:.0f}s): "
+                         f"\"{p['citacao']}\"")
+                if p["motivo_interesse"]:
+                    _log(f"           por que: {p['motivo_interesse']}")
                 if p["confianca"] >= CONFIANCA_MIN_RADIO:
                     est = placar.setdefault(bloco["estacao"], {})
                     est[p["tom_sobre_gestao"]] = est.get(p["tom_sobre_gestao"], 0) + 1
@@ -761,6 +874,36 @@ def teste_radio(ctx: Contexto, cliente, modelo: str, limite: int = 3) -> None:
 
 
 # ── Autoteste das funções puras ──────────────────────────────────────────────
+
+def _teste_extensao_de_janela() -> None:
+    """A janela acompanha a fala até uma fronteira real, não até um raio fixo."""
+    segs = [
+        {"start": 0.0,  "end": 5.0,  "text": "a prefeitura de alagoinhas prometeu asfaltar"},
+        {"start": 5.0,  "end": 9.0,  "text": "e eles nao apareceram ate hoje"},
+        {"start": 9.0,  "end": 13.0, "text": "isso e uma vergonha, o povo esta cansado"},
+        {"start": 13.0, "end": 17.0, "text": "tá aí um oferecimento da Bracel"},
+        {"start": 17.0, "end": 21.0, "text": "agora vamos ouvir uma musica"},
+    ]
+    # Continua enquanto a fala segue, e PARA na publicidade — sem ela, os dois
+    # últimos segmentos (que são outro bloco) entrariam na mesma pauta.
+    assert _estender_ate_fronteira(segs, 5.0) == 13.0
+
+    # Pausa longa corta: 40 s de silêncio não é continuação do mesmo assunto.
+    com_gap = segs[:3] + [{"start": 60.0, "end": 64.0, "text": "outro assunto qualquer"}]
+    assert _estender_ate_fronteira(com_gap, 5.0) == 13.0
+
+    # O teto é rede de segurança contra engolir o programa inteiro.
+    longos = [{"start": float(i), "end": float(i + 1), "text": "fala continua"}
+              for i in range(0, 400)]
+    assert _estender_ate_fronteira(longos, 10.0, limite=30.0) <= 41.0
+
+    # Janelas que a extensão encostou uma na outra são FUNDIDAS: texto
+    # sobreposto em duas chamadas produz pauta duplicada.
+    def gate(t):
+        return "alagoinhas" in t
+    js = montar_janelas("", segs, gate, contexto_seg=1, candidato=lambda t: "prefeitura" in t)
+    assert len(js) == 1, js
+
 
 def _teste_intervalo_citacao() -> None:
     """O clipe de áudio recorta EXATAMENTE a frase citada — não a janela."""
@@ -793,6 +936,30 @@ def _teste_intervalo_citacao() -> None:
     )
     assert ini == 10.0 and 13.5 <= fim <= 21.0, (ini, fim)
 
+    # Caso real (Hospital Dantas Bião, 30/07): a citação atravessa 5 segmentos e
+    # NÃO casa inteira no texto contínuo, porque o modelo reproduz a pontuação
+    # de um jeito e o Whisper de outro. O início tem que vir do prefixo e o fim
+    # do SUFIXO, independentemente — derivar o fim do tamanho do prefixo que
+    # casou dava 1/3 da frase.
+    reais = [
+        {"start": 789.0, "end": 809.1, "text": "E o que e que acontece? Pessoas agindo de forma irresponsavel, chegando a frente do hospital, recebendo informacoes de pessoas que la trabalham, ne?"},
+        {"start": 809.1, "end": 814.6, "text": "e que esta jogando contra a saude do Estado, jogando contra a saude,"},
+        {"start": 814.6, "end": 821.4, "text": "a vida das pessoas, dizendo que o hospital Dantas Biao vai fechar."},
+        {"start": 822.1, "end": 828.6, "text": "Chegam a propagar, dizendo que tem medico com quatro meses sem receber, e mentira."},
+        {"start": 829.2, "end": 834.9, "text": "O governador desmentiu e essas pessoas deveriam ter mais responsabilidade,"},
+    ]
+    cit = ("Pessoas agindo de forma irresponsavel, chegando a frente do hospital, "
+           "recebendo informacoes de pessoas que la trabalham, ne? e que esta jogando "
+           "contra a saude do Estado, jogando contra a saude, a vida das pessoas, "
+           "dizendo que o hospital Dantas Biao vai fechar. Chegam a propagar, dizendo "
+           "que tem medico com quatro meses sem receber, e mentira. O governador desmentiu.")
+    ini, fim = intervalo_da_citacao(reais, cit, 0.0, 9999.0)
+    assert ini == 789.0, ini
+    assert fim == 834.9, fim   # o segmento do "O governador desmentiu"
+    # Sanidade independente: o ritmo de fala resultante tem que ser humano.
+    ppm = len(cit.split()) / (fim - ini) * 60
+    assert 50 <= ppm <= 220, f"{ppm:.0f} palavras/min nao e fala humana"
+
     # Sem casar nada, devolve os padrões — nunca inventa instante.
     assert intervalo_da_citacao(segs, "frase que nao existe no ar", 5.0, 7.0) == (5.0, 7.0)
     assert intervalo_da_citacao(segs, "", 5.0, 7.0) == (5.0, 7.0)
@@ -807,6 +974,7 @@ def _teste_intervalo_citacao() -> None:
 def _autoteste() -> None:
     """Zero rede, zero token: testa janelas, instante e normalização."""
     _teste_intervalo_citacao()
+    _teste_extensao_de_janela()
     segs = [
         {"start": 0,   "end": 10,  "text": "93FM so sucesso, a musica que voce pediu"},
         {"start": 30,  "end": 40,  "text": "Quando voce me aguarda eu posso dancar"},
