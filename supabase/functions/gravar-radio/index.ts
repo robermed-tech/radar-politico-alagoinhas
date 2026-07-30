@@ -32,10 +32,12 @@ const WORKFLOW = "radio.yml";
 const BRANCH = Deno.env.get("GH_REF") ?? "main";
 
 // Teto de minutos por gravação. O ator da Apify grava em TEMPO REAL, então cada
-// minuto pedido é um minuto pago de run — e o step do radio.yml tem timeout de
-// 65 min. O front oferece 15/30/45, mas quem valida é aqui: um body forjado não
-// pode pedir três horas de captura.
-const DURACAO_MAX = 60;
+// minuto pedido é um minuto pago de run. O teto tem que caber no timeout do step
+// do radio.yml (130 min): subir aqui sem subir lá faria o job ser abortado no
+// meio, com a captação inteira virando crédito gasto sem transcrição. O front
+// oferece 15/30/45/90/120, mas quem valida é aqui — um body forjado não pode
+// pedir um dia inteiro de captura.
+const DURACAO_MAX = 120;
 const DURACAO_PADRAO = 30;
 
 const CORS = {

@@ -46,10 +46,14 @@ on:
 jobs:
   captar:
     runs-on: ubuntu-latest
-    # Folga sobre a captação: 30 min de gravação + transcrição + margem. O run
-    # da Apify tem o timeout dele calculado em coletor_radio.py; este aqui é a
-    # rede de segurança do lado do Actions.
-    timeout-minutes: 75
+    # Folga sobre a captação mais longa que o painel oferece (120 min) + a
+    # transcrição + margem. O run da Apify tem o timeout dele calculado em
+    # coletor_radio.py; este aqui é a rede de segurança do lado do Actions.
+    # O limite do GitHub é 6 h por job, então há espaço — mas o teto de duração
+    # do coletor e da Edge Function (120) tem que continuar CABENDO aqui: se um
+    # dia ele subir sem que estes números subam junto, o job é abortado no meio
+    # e a captação inteira vira crédito gasto sem transcrição nenhuma.
+    timeout-minutes: 140
 
     steps:
       - name: Checkout repositório
@@ -65,7 +69,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Captar rádios
-        timeout-minutes: 65
+        timeout-minutes: 130
         env:
           APIFY_API_TOKEN:      ${{ secrets.APIFY_API_TOKEN }}
           # O ator declara groqApiKey como required e NÃO guarda a chave: quem
