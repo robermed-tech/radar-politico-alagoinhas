@@ -13,6 +13,13 @@ import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassArea } from "@/lib/chartTheme";
 import { AlertaCrise } from "@/components/AlertaCrise";
 import { fmtDiaBR } from "@/lib/format";
+import {
+  ComentarioBox,
+  ComentarioTexto,
+  ComentarioMeta,
+  ComentarioChip,
+  tintaSentimento,
+} from "@/components/ComentarioBox";
 import { PeriodoFilter, type Dias } from "@/components/PeriodoFilter";
 
 // ── Métricas do gráfico — apenas Volume ──────────────────────────────────────
@@ -62,12 +69,6 @@ function normStr(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 }
 
-const SENT_COR: Record<string, string> = {
-  negativo: "#EF4444",
-  positivo: "#22C55E",
-  neutro: "#9FB0CC",
-};
-
 /** Lista os comentários crus (texto real) de um tema+subtema selecionado. */
 function ComentariosDrill({
   sel,
@@ -114,17 +115,15 @@ function ComentariosDrill({
       ) : (
         <ul className="space-y-2">
           {lista.map((c, i) => (
-            <li key={i} className="rounded-md border border-line bg-bg-1 p-2.5">
-              <p className="text-[14px] leading-relaxed text-txt-1">{c.texto}</p>
-              <div className="mt-1 flex items-center gap-2 text-[13px] text-txt-3">
-                <span
-                  className="inline-block h-2 w-2 rounded-full"
-                  style={{ background: SENT_COR[c.sentimento] ?? SENT_COR.neutro }}
-                />
-                <span className="frase-cap">{c.sentimento}</span>
-                {c.autor && <span>· @{c.autor}</span>}
-                {c.curtidas > 0 && <span className="ml-auto tnum">♥ {c.curtidas}</span>}
-              </div>
+            <li key={i}>
+              <ComentarioBox>
+                <ComentarioTexto>{c.texto}</ComentarioTexto>
+                <ComentarioMeta>
+                  <ComentarioChip cor={tintaSentimento(c.sentimento)}>{c.sentimento}</ComentarioChip>
+                  {c.autor && <span>@{c.autor}</span>}
+                  {c.curtidas > 0 && <span className="tnum ml-auto">♥ {c.curtidas}</span>}
+                </ComentarioMeta>
+              </ComentarioBox>
             </li>
           ))}
         </ul>

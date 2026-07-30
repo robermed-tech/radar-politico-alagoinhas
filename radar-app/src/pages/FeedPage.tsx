@@ -4,6 +4,12 @@ import { fetchRadar, parseData, filtrarPorPeriodo, sentimentoReacao, type Post }
 import { resumoProsaPost } from "@/lib/resumo";
 import { limparTravessoes } from "@/lib/format";
 import { PostChips } from "@/components/PostChips";
+import {
+  ComentarioBox,
+  ComentarioTexto,
+  ComentarioMeta,
+  TINTA_COMENTARIO_2,
+} from "@/components/ComentarioBox";
 import { IconNewspaper, IconSwords, IconBuilding, IconPerson, IconDocument } from "@/components/icons";
 import { PeriodoFilter, type Dias } from "@/components/PeriodoFilter";
 
@@ -66,18 +72,17 @@ function PostCard({ p }: { p: Post }) {
         <span className="ml-auto shrink-0 text-xs text-txt-3">{tempoRelativo(p.data_post)}</span>
       </div>
       {p.comentarios_destaque && (
-        <div className="quote-box mb-2.5 rounded-lg px-3 py-2">
-          <div className="text-xs font-semibold text-txt-3">Comentário mais curtido</div>
-          <p
-            className="mt-0.5 line-clamp-2 text-sm italic text-txt-1"
-            style={{ fontWeight: 600 }}
-          >
-            "{p.comentarios_destaque}"
-          </p>
+        <ComentarioBox className="mb-2.5">
+          <div className="text-xs font-bold" style={{ color: TINTA_COMENTARIO_2 }}>
+            Comentário mais curtido
+          </div>
+          <div className="mt-0.5 line-clamp-2">
+            <ComentarioTexto>{p.comentarios_destaque}</ComentarioTexto>
+          </div>
           {p.comentarios_destaque_autor && (
-            <span className="text-xs text-txt-3">— @{p.comentarios_destaque_autor}</span>
+            <ComentarioMeta>@{p.comentarios_destaque_autor}</ComentarioMeta>
           )}
-        </div>
+        </ComentarioBox>
       )}
       {resumo && (
         <p className="mb-2.5 line-clamp-2 text-sm text-txt-2">{limparTravessoes(resumo)}</p>

@@ -3,6 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { findSecretario } from "@/config/secretarios";
 import { fetchComentariosPorTema } from "@/lib/data";
 import { EnvioSecretario } from "@/components/EnvioSecretario";
+import {
+  ComentarioBox,
+  ComentarioTexto,
+  ComentarioMeta,
+  TINTA_COMENTARIO_2,
+} from "@/components/ComentarioBox";
 
 interface Props {
   tema: string;
@@ -149,22 +155,25 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
 
         {/* Evidência concreta — o que a população realmente diz sobre o tema */}
         {evidencia && (
-          <div className="mt-3 rounded-xl border border-line bg-bg-2 p-3">
-            <div className="text-[12px] font-bold uppercase tracking-widest text-txt-3">
+          <ComentarioBox className="mt-3">
+            <div
+              className="text-[12px] font-bold uppercase tracking-widest"
+              style={{ color: TINTA_COMENTARIO_2 }}
+            >
               O que a população está dizendo
               {evidencia.subtema && (
-                <span className="ml-1 normal-case text-txt-2">
+                <span className="ml-1 normal-case">
                   · foco em <b className="frase-cap">{evidencia.subtema.replace(/_/g, " ")}</b>
                 </span>
               )}
             </div>
-            <p className="mt-1.5 text-sm italic leading-relaxed text-txt-1">
-              “{evidencia.citacao}”
-            </p>
-            <div className="mt-1 text-[13px] text-txt-3">
-              {evidencia.total} comentário(s) negativo(s) sobre este tema
+            <div className="mt-1.5">
+              <ComentarioTexto>{evidencia.citacao}</ComentarioTexto>
             </div>
-          </div>
+            <ComentarioMeta>
+              {evidencia.total} comentário(s) negativo(s) sobre este tema
+            </ComentarioMeta>
+          </ComentarioBox>
         )}
       </EnvioSecretario>
     </>
