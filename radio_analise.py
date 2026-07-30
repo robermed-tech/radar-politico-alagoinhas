@@ -452,8 +452,16 @@ def normalizar_pauta(bruta: dict, janela: dict, segments: list, ctx: Contexto) -
     }
 
 
-def analisar_janela(janela: dict, segments: list, ctx: Contexto, cliente, modelo: str) -> list[dict]:
-    """Uma chamada ao modelo para uma janela. Devolve as pautas normalizadas."""
+def analisar_janela(janela: dict, segments: list, ctx: Contexto, cliente, modelo: str) -> list[dict] | None:
+    """Uma chamada ao modelo para uma janela.
+
+    Devolve as pautas normalizadas, ou **None quando a chamada FALHOU**. A
+    distinção importa: lista vazia é "o modelo leu e não achou pauta", e None é
+    "o modelo não leu". A primeira versão devolvia [] nos dois casos, e o
+    chamador marcava o bloco como analisado de qualquer jeito — foi assim que
+    uma captação paga de 15 min ficou com zero pautas e sem chance de ser
+    reprocessada, quando a API da Anthropic recusou por falta de credito.
+    """
     try:
         r = cliente.messages.create(
             model=modelo,
@@ -466,7 +474,7 @@ def analisar_janela(janela: dict, segments: list, ctx: Contexto, cliente, modelo
         dados = _parse_json_resposta(r.content[0].text)
     except Exception as e:
         _log(f"      analise da janela falhou ({e})")
-        return []
+        return None
 
     pautas = []
     for bruta in (dados.get("pautas") or []):
@@ -522,9 +530,14 @@ def analisar_pendentes(ctx: Contexto, cliente, modelo: str, limite: int = 20,
              f"{len(janelas)} janela(s) relevante(s)")
 
         linhas = []
+        falhas = 0
         for janela in janelas:
             total_chamadas += 1
-            for p in analisar_janela(janela, segments, ctx, cliente, modelo):
+            pautas_janela = analisar_janela(janela, segments, ctx, cliente, modelo)
+            if pautas_janela is None:
+                falhas += 1
+                continue
+            for p in pautas_janela:
                 p.update({
                     "tenant":        _tenant(),
                     "transcript_id": bloco["id"],
@@ -547,6 +560,18 @@ def analisar_pendentes(ctx: Contexto, cliente, modelo: str, limite: int = 20,
         if linhas:
             total_pautas += _supabase_upsert("radio_topics", linhas,
                                              "transcript_id,ts_inicio,assunto")
+
+        if falhas:
+            # Bloco com janela que o modelo não conseguiu ler SEGUE PENDENTE.
+            # Marcá-lo aqui transformaria uma falha de infraestrutura (sem
+            # crédito, timeout, rate limit) em "analisado e nada relevante", e o
+            # áudio já foi pago: só o reprocessamento recupera o valor dele. O
+            # upsert de radio_topics é idempotente (transcript_id, ts_inicio,
+            # assunto), então reanalisar não duplica o que já entrou.
+            _log(f"    {falhas} de {len(janelas)} janela(s) falharam — bloco segue "
+                 f"pendente para a próxima rodada")
+            continue
+
         # Marca o bloco mesmo sem pauta: "analisado e nada relevante" é
         # resultado, não pendência.
         _supabase_patch("radio_transcripts", f"id=eq.{bloco['id']}", {
