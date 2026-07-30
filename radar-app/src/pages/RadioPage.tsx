@@ -28,6 +28,7 @@ import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
 import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 import { AlertaRadio } from "@/components/AlertaRadio";
 import { AntenaStatusColumn } from "@/components/AntenaSinal";
+import { GravarAgora } from "@/components/GravarAgora";
 import { Card, Feedback } from "@/components/FormCard";
 import { labelBairro } from "@/lib/format";
 import { corTema } from "@/lib/temaColors";
@@ -411,6 +412,11 @@ export function RadioPage() {
         </div>
         <PeriodoFilter dias={dias} onChange={setDias} />
       </div>
+
+      {/* Gravação sob demanda — primeira coisa da página (pedido de 30/07):
+          é ação, e ação vem antes de leitura. O cadastro das estações continua
+          no card "Rádios monitoradas", lá embaixo, intocado. */}
+      <GravarAgora />
 
       {/* Antena captando à esquerda dos indicadores, no mesmo lugar de leitura
           que o radar de coleta ocupa na Estação Meteorológica: primeiro o

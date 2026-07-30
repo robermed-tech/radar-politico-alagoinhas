@@ -374,12 +374,26 @@ def _duracao_da_janela(fontes: list[dict]) -> int:
     return min(duracoes) if duracoes else DURACAO_MIN_DEFAULT
 
 
-def coletar_e_gravar(dry_run: bool = False, ignorar_janela: bool = False) -> dict:
+def coletar_e_gravar(
+    dry_run: bool = False,
+    ignorar_janela: bool = False,
+    somente_ids: list[str] | None = None,
+    duracao_min: int | None = None,
+) -> dict:
     """Ponto de entrada chamado pelo agora.py.
 
     ignorar_janela: só para teste manual — captura mesmo fora do horário do
     programa. Em produção a janela é respeitada, senão o ator grava música.
+
+    somente_ids / duracao_min: gravação sob demanda pedida no painel (botão
+    GRAVAR da Escuta do Rádio). O usuário escolhe as estações e por quanto
+    tempo, e o horário do programa não se aplica — ele está pedindo AGORA.
+    Por isso `somente_ids` implica ignorar a janela: exigir as duas coisas
+    faria o botão falhar em silêncio fora do horário cadastrado, que é
+    justamente quando alguém aperta um botão de gravar.
     """
+    if somente_ids:
+        ignorar_janela = True
     if not _apify_token():
         _log("[radio] APIFY_API_TOKEN ausente — coleta de rádio ignorada")
         return {"fontes": 0, "blocos": 0, "skipped": True}
@@ -391,6 +405,14 @@ def coletar_e_gravar(dry_run: bool = False, ignorar_janela: bool = False) -> dic
         return {"fontes": 0, "blocos": 0, "skipped": True}
 
     fontes = _fontes_ativas()
+    if somente_ids:
+        pedidas = {str(i) for i in somente_ids}
+        fontes = [f for f in fontes if str(f.get("id")) in pedidas]
+        if not fontes:
+            # Estação pedida que não está ativa não é "nada a coletar": é um
+            # pedido que não pode ser atendido, e o log tem que dizer isso.
+            _log(f"[radio] Nenhuma das {len(pedidas)} estacao(oes) pedidas esta ativa")
+            return {"fontes": 0, "blocos": 0, "skipped": True}
     if not fontes:
         _log("[radio] Nenhuma radio ativa — nada a coletar (sistema inerte)")
         return {"fontes": 0, "blocos": 0, "skipped": True}
@@ -411,7 +433,10 @@ def coletar_e_gravar(dry_run: bool = False, ignorar_janela: bool = False) -> dic
         _log(f"[radio] {len(fontes)} radio(s) ativa(s), nenhuma na janela de captura agora")
         return {"fontes": len(fontes), "blocos": 0, "skipped": True}
 
-    duracao = _duracao_da_janela(na_janela)
+    # Duração pedida no painel vence a do cadastro. Teto de 60 min porque cada
+    # minuto de captura é um minuto pago de run na Apify (o ator grava em tempo
+    # real), e o timeout do step do radio.yml é 65.
+    duracao = max(1, min(60, int(duracao_min))) if duracao_min else _duracao_da_janela(na_janela)
     radios_input, fonte_por_nome = [], {}
     for f in na_janela:
         nome = (f.get("label") or f.get("handle") or "").strip()
