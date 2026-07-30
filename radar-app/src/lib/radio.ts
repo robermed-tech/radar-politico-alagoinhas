@@ -187,6 +187,56 @@ export async function deleteRadio(id: string): Promise<string | null> {
   return explainError(error);
 }
 
+// ── Gravação sob demanda ─────────────────────────────────────
+
+export interface GravacaoResultado {
+  ok: boolean;
+  /** Nomes das estações que entraram na gravação. */
+  estacoes: string[];
+  duracao: number;
+  /** Pedidas que a função descartou (inativas ou de outro tenant). */
+  ignoradas: number;
+}
+
+/**
+ * Pede a captação AGORA das rádios escolhidas (botão GRAVAR do painel).
+ *
+ * O disparo passa pela Edge Function `gravar-radio`, e não por um fetch direto
+ * ao GitHub, porque iniciar a captação é acionar o workflow `radio.yml` — e o
+ * token com permissão de Actions não pode viver no bundle do navegador: com ele
+ * exposto, qualquer pessoa com o painel aberto dispararia runs pagos da Apify.
+ * A função confere o papel de admin antes de disparar.
+ */
+export async function gravarAgora(
+  estacoes: string[],
+  duracao: number,
+): Promise<{ erro: string | null; resultado: GravacaoResultado | null }> {
+  if (estacoes.length === 0) {
+    return { erro: "Escolha ao menos uma rádio para gravar.", resultado: null };
+  }
+  const { data, error } = await supabase.functions.invoke("gravar-radio", {
+    body: { estacoes, duracao },
+  });
+
+  if (error) {
+    // `functions.invoke` embrulha o corpo do erro; a mensagem útil (ex.: secret
+    // ausente) está no JSON da resposta, não no `error.message` genérico.
+    let detalhe = "";
+    const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+    try {
+      const corpo = await ctx?.json?.();
+      detalhe = corpo?.error ?? "";
+    } catch {
+      /* resposta sem JSON — fica só a mensagem genérica */
+    }
+    return { erro: detalhe || error.message || "Falha ao iniciar a gravação.", resultado: null };
+  }
+
+  const r = data as GravacaoResultado | { error?: string } | null;
+  if (r && "error" in r && r.error) return { erro: r.error, resultado: null };
+  return { erro: null, resultado: r as GravacaoResultado };
+}
+
 // ── Agregações (puras) ───────────────────────────────────────
 
 /** mm:ss do instante da citação, para conferir no áudio. */

@@ -6349,6 +6349,20 @@ def backfill_comentarios(limite=None):
 
 if __name__ == "__main__":
     import sys
+
+    def _arg_valor(nome: str) -> str | None:
+        """Le `--flag valor` ou `--flag=valor` da linha de comando.
+
+        Os outros modos leem so numeros soltos (`next(a for a in sys.argv if
+        a.isdigit())`), o que nao serve para uma lista de UUIDs de estacao.
+        """
+        for i, a in enumerate(sys.argv):
+            if a == nome and i + 1 < len(sys.argv):
+                return sys.argv[i + 1]
+            if a.startswith(nome + "="):
+                return a.split("=", 1)[1]
+        return None
+
     if "--multi-tenant" in sys.argv:
         main_multi_tenant()
     elif "--teste-sentimento" in sys.argv:
@@ -6464,8 +6478,17 @@ if __name__ == "__main__":
         if not _RADIO_OK:
             log("coletor_radio indisponivel (falha de import).")
         else:
-            _radio.coletar_e_gravar(dry_run="--radio-dry-run" in sys.argv,
-                                    ignorar_janela="--agora" in sys.argv)
+            # --estacoes id1,id2 e --duracao N vem da gravacao sob demanda
+            # pedida no painel (botao GRAVAR da Escuta do Radio), repassados
+            # pelo workflow_dispatch do radio.yml.
+            _ids = _arg_valor("--estacoes")
+            _dur = _arg_valor("--duracao")
+            _radio.coletar_e_gravar(
+                dry_run="--radio-dry-run" in sys.argv,
+                ignorar_janela="--agora" in sys.argv,
+                somente_ids=[i for i in (_ids or "").split(",") if i.strip()] or None,
+                duracao_min=int(_dur) if (_dur or "").isdigit() else None,
+            )
     elif "--analisar-radio" in sys.argv:
         # Analisa e GRAVA as pautas dos blocos pendentes (sem coletar nada).
         # Usar depois de uma captura, ou para reprocessar com --refazer.

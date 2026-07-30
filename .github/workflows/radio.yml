@@ -30,6 +30,18 @@ on:
         description: 'Captar e mostrar sem gravar no banco'
         type: boolean
         default: false
+      # As duas entradas abaixo são o que o botão GRAVAR da tela Escuta do
+      # Rádio preenche (via Edge Function `gravar-radio`). Vazias, o workflow
+      # se comporta exatamente como antes: todas as ativas, na janela e com a
+      # duração do cadastro.
+      estacoes:
+        description: 'IDs das rádios a gravar, separados por vírgula (vazio = todas as ativas)'
+        type: string
+        default: ''
+      duracao:
+        description: 'Minutos de captura (vazio = duração do cadastro)'
+        type: string
+        default: ''
 
 jobs:
   captar:
@@ -68,6 +80,10 @@ jobs:
           ARGS="--radio"
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="--radio-dry-run"; fi
           if [ "${{ inputs.ignorar_janela }}" = "true" ]; then ARGS="$ARGS --agora"; fi
+          # Gravação sob demanda pedida no painel. `--estacoes` já implica
+          # ignorar a janela no coletor: quem apertou GRAVAR quer agora.
+          if [ -n "${{ inputs.estacoes }}" ]; then ARGS="$ARGS --estacoes ${{ inputs.estacoes }}"; fi
+          if [ -n "${{ inputs.duracao }}" ];  then ARGS="$ARGS --duracao ${{ inputs.duracao }}"; fi
           echo "Executando: python agora.py $ARGS"
           python agora.py $ARGS
 
