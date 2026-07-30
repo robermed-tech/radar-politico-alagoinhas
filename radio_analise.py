@@ -571,6 +571,41 @@ def _limpar_travessao(txt: str) -> str:
     return re.sub(r"\s*[—–]\s*", ", ", str(txt or "")).strip()
 
 
+# Pontuação que fecha uma frase falada.
+_FIM_DE_FRASE = ".!?…"
+# Quanto a citação pode crescer para fechar a frase. Passou disto, o que veio
+# depois já é outra oração e completar seria estender a citação por conta
+# própria, não terminá-la.
+MAX_COMPLEMENTO_FRASE = 160
+
+
+def completar_frase(citacao: str, texto_janela: str) -> str:
+    """Estende a citação até o fim da frase, quando ela parou no meio.
+
+    O prompt pede frases inteiras, mas pedir não garante: numa medição de 30/07
+    uma das duas citações voltou terminando em "com profissionais comprometidos",
+    sem pontuação. Citação decepada faz o card parecer que a fala acabou ali —
+    foi essa a queixa que originou a revisão.
+
+    A extensão é deterministica e sai do PRÓPRIO texto da janela: nada é
+    escrito, só se continua copiando o que o locutor disse até o primeiro sinal
+    de fim de frase. Se a citação não for encontrada no texto (o modelo
+    parafraseou, o que o prompt proíbe), devolve como está — completar o que
+    não se achou seria inventar fala.
+    """
+    cit = (citacao or "").strip()
+    if not cit or cit[-1] in _FIM_DE_FRASE or not texto_janela:
+        return cit
+    pos = texto_janela.find(cit)
+    if pos < 0:
+        return cit
+    resto = texto_janela[pos + len(cit):pos + len(cit) + MAX_COMPLEMENTO_FRASE]
+    for i, ch in enumerate(resto):
+        if ch in _FIM_DE_FRASE:
+            return (cit + resto[:i + 1]).strip()
+    return cit
+
+
 def normalizar_pauta(bruta: dict, janela: dict, segments: list, ctx: Contexto) -> dict | None:
     """Valida e normaliza uma pauta devolvida pelo modelo.
 
@@ -604,6 +639,9 @@ def normalizar_pauta(bruta: dict, janela: dict, segments: list, ctx: Contexto) -
     # citacao terminando no meio da fala, como se o assunto tivesse acabado.
     # A folga acomoda o modelo passar um pouco do limite pedido.
     citacao = _limpar_travessao(bruta.get("citacao"))[:500]
+    # O prompt PEDE frase inteira, mas pedir nao garante: aqui a frase e
+    # fechada de forma deterministica, a partir do proprio texto da janela.
+    citacao = completar_frase(citacao, janela.get("texto") or "")
     localidade = ctx.normalizar_localidade(str(bruta.get("localidade") or "")) or None
 
     urgencia = str(bruta.get("urgencia") or "").strip().lower()
@@ -905,6 +943,30 @@ def _teste_extensao_de_janela() -> None:
     assert len(js) == 1, js
 
 
+def _teste_completar_frase() -> None:
+    """Citação que parou no meio é fechada com o texto real, nunca inventada."""
+    janela = ("o trabalho que eles desenvolvem na clinica, o compromisso, "
+              "e uma coisa que se faz com amor com profissionais comprometidos "
+              "e dedicados. Depois disso o locutor mudou de assunto.")
+    # Caso real (30/07): terminava em "comprometidos", sem pontuação.
+    cit = "e uma coisa que se faz com amor com profissionais comprometidos"
+    assert completar_frase(cit, janela).endswith("e dedicados.")
+
+    # Já terminada, não mexe.
+    pronta = "O governador desmentiu."
+    assert completar_frase(pronta, janela) == pronta
+
+    # Citação que não está no texto (paráfrase) fica como veio: completar o que
+    # não se achou seria inventar fala.
+    assert completar_frase("frase inventada pelo modelo", janela) == "frase inventada pelo modelo"
+
+    # Sem fim de frase à vista dentro do limite, devolve como está.
+    longo = "abc " * 200
+    assert completar_frase("abc", "abc " + longo) == "abc"
+
+    assert completar_frase("", janela) == ""
+
+
 def _teste_intervalo_citacao() -> None:
     """O clipe de áudio recorta EXATAMENTE a frase citada — não a janela."""
     segs = [
@@ -975,6 +1037,7 @@ def _autoteste() -> None:
     """Zero rede, zero token: testa janelas, instante e normalização."""
     _teste_intervalo_citacao()
     _teste_extensao_de_janela()
+    _teste_completar_frase()
     segs = [
         {"start": 0,   "end": 10,  "text": "93FM so sucesso, a musica que voce pediu"},
         {"start": 30,  "end": 40,  "text": "Quando voce me aguarda eu posso dancar"},
