@@ -27,6 +27,7 @@ import {
 import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
 import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 import { AlertaRadio } from "@/components/AlertaRadio";
+import { AntenaStatusColumn } from "@/components/AntenaSinal";
 import { Card, Feedback } from "@/components/FormCard";
 import { labelBairro } from "@/lib/format";
 import { corTema } from "@/lib/temaColors";
@@ -393,6 +394,12 @@ export function RadioPage() {
     .reduce((acc, c) => acc + (Number(c.duracao_min) || 0), 0);
   const vozOuvinte = pautas.filter((p) => p.voz === "ouvinte");
 
+  // "Captando" é gravação que DEU certo na janela, não rádio cadastrada: uma
+  // estação cujo stream falhou continua monitorada e não está captando nada
+  // (é a mesma distinção que o card de estação faz entre falha e silêncio).
+  const estacoesCaptadas = estacoes.filter((e) => e.capturas > e.falhas).length;
+  const captando = estacoesCaptadas > 0;
+
   return (
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -405,23 +412,41 @@ export function RadioPage() {
         <PeriodoFilter dias={dias} onChange={setDias} />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi
-          label="Rádios captadas"
-          valor={String(estacoes.filter((e) => e.capturas > e.falhas).length)}
-          hint={`${estacoes.length} monitorada(s) na janela`}
-        />
-        <Kpi label="Minutos transcritos" valor={String(Math.round(minutos))} hint="captação ao vivo" />
-        <Kpi
-          label="Assuntos de interesse"
-          valor={String(deInteresse.length)}
-          hint={`de ${pautas.length} pauta(s) captada(s)`}
-        />
-        <Kpi
-          label="Pressão no rádio"
-          valor={`${placar.critico} × ${placar.favoravel}`}
-          hint="críticas × elogios à gestão"
-        />
+      {/* Antena captando à esquerda dos indicadores, no mesmo lugar de leitura
+          que o radar de coleta ocupa na Estação Meteorológica: primeiro o
+          sinal de que o sistema está ouvindo, depois o que ele ouviu. O card é
+          o gêmeo do radar (AntenaStatusColumn), não uma variação. */}
+      <div className="grid gap-3 lg:grid-cols-6">
+        <div className="lg:col-span-1">
+          <AntenaStatusColumn
+            ativo={captando}
+            legenda={
+              captando
+                ? `${estacoesCaptadas} estação(ões) no ar`
+                : estacoes.length > 0
+                  ? "nenhuma gravação nesta janela"
+                  : "nenhuma rádio cadastrada"
+            }
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-4">
+          <Kpi
+            label="Rádios captadas"
+            valor={String(estacoesCaptadas)}
+            hint={`${estacoes.length} monitorada(s) na janela`}
+          />
+          <Kpi label="Minutos transcritos" valor={String(Math.round(minutos))} hint="captação ao vivo" />
+          <Kpi
+            label="Assuntos de interesse"
+            valor={String(deInteresse.length)}
+            hint={`de ${pautas.length} pauta(s) captada(s)`}
+          />
+          <Kpi
+            label="Pressão no rádio"
+            valor={`${placar.critico} × ${placar.favoravel}`}
+            hint="críticas × elogios à gestão"
+          />
+        </div>
       </div>
 
       {/* A rádio não entra no IAD, e a tela diz isso em vez de deixar o leitor

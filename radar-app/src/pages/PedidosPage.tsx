@@ -5,6 +5,7 @@ import { IconHeart, IconInbox, IconWarningTriangle } from "@/components/icons";
 import { corTema } from "@/lib/temaColors";
 import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 import { labelBairro } from "@/lib/format";
+import { ComentarioBox, ComentarioTexto } from "@/components/ComentarioBox";
 
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde", educacao: "Educação", obras: "Obras", seguranca: "Segurança",
@@ -169,14 +170,12 @@ export function PedidosPage() {
                     )}
                   </div>
                   {/* Comentário em destaque maior e mais pesado (pedido de
-                      27/07) — é a evidência bruta atrás do pedido resumido. */}
+                      27/07) — é a evidência bruta atrás do pedido resumido.
+                      Desde 29/07 no ComentarioBox comum ao painel. */}
                   {p.texto && (
-                    <p
-                      className="mt-2 line-clamp-2 text-sm italic text-txt-2"
-                      style={{ fontWeight: 600 }}
-                    >
-                      "{p.texto}"
-                    </p>
+                    <ComentarioBox className="mt-2">
+                      <ComentarioTexto>{p.texto}</ComentarioTexto>
+                    </ComentarioBox>
                   )}
                 </div>
               );

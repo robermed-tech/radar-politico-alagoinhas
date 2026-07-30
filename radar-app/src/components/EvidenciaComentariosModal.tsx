@@ -2,6 +2,14 @@ import { useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchComentariosPorTema } from "@/lib/data";
+import {
+  ComentarioBox,
+  ComentarioTexto,
+  ComentarioMeta,
+  ComentarioChip,
+  tintaSentimento,
+} from "@/components/ComentarioBox";
+import { COLOR_SENTIMENT } from "@/lib/chartTheme";
 
 interface Props {
   /** Categoria fixa (comments.tema) — ex.: "saude", "obras". Vem de
@@ -16,12 +24,6 @@ interface Props {
   urlsNoPeriodo: Set<string>;
   onClose: () => void;
 }
-
-const SENT_COR: Record<string, string> = {
-  negativo: "#EF4444",
-  positivo: "#22C55E",
-  neutro: "#8593AD",
-};
 
 /**
  * Evidência concreta por trás de um item de "Temas que merecem atenção":
@@ -55,10 +57,10 @@ export function EvidenciaComentariosModal({ tema, tituloTema, urlsNoPeriodo, onC
               <span>{tituloTema}</span>
               {comentarios.length > 0 && (
                 <span className="tnum flex items-center gap-2 text-[13px] font-bold">
-                  <span style={{ color: SENT_COR.negativo }}>
+                  <span style={{ color: COLOR_SENTIMENT.neg }}>
                     {comentarios.filter((c) => c.sentimento === "negativo").length} neg
                   </span>
-                  <span style={{ color: SENT_COR.positivo }}>
+                  <span style={{ color: COLOR_SENTIMENT.pos }}>
                     {comentarios.filter((c) => c.sentimento === "positivo").length} pos
                   </span>
                 </span>
@@ -86,23 +88,19 @@ export function EvidenciaComentariosModal({ tema, tituloTema, urlsNoPeriodo, onC
             </p>
           )}
 
-          {/* Cards em grafite com texto branco — o cinza-sobre-cinza anterior
-              não tinha contraste suficiente (reunião 24/07). */}
+          {/* Cards escuros desde a reunião de 24/07 (o cinza-sobre-cinza não
+              tinha contraste); desde 29/07 é o ComentarioBox comum a todo o
+              painel, com o degradê do radar de coleta. */}
           {comentarios?.map((c, i) => (
-            <div key={i} className="rounded-lg p-3" style={{ background: "#1E293B", border: "1px solid #334155" }}>
+            <ComentarioBox key={i}>
               {/* Comentário maior e mais pesado (pedido de 27/07). */}
-              <p className="text-base leading-relaxed" style={{ color: "#F8FAFC", fontWeight: 600 }}>“{c.texto}”</p>
-              <div className="mt-1.5 flex items-center gap-3 text-[13px]" style={{ color: "#94A3B8" }}>
+              <ComentarioTexto>{c.texto}</ComentarioTexto>
+              <ComentarioMeta>
                 {c.autor && <span>@{c.autor}</span>}
-                <span>{c.curtidas} curtida{c.curtidas === 1 ? "" : "s"}</span>
-                <span
-                  className="font-semibold uppercase"
-                  style={{ color: SENT_COR[c.sentimento] ?? SENT_COR.neutro }}
-                >
-                  {c.sentimento}
-                </span>
-              </div>
-            </div>
+                <span className="tnum">{c.curtidas} curtida{c.curtidas === 1 ? "" : "s"}</span>
+                <ComentarioChip cor={tintaSentimento(c.sentimento)}>{c.sentimento}</ComentarioChip>
+              </ComentarioMeta>
+            </ComentarioBox>
           ))}
         </div>
       </div>

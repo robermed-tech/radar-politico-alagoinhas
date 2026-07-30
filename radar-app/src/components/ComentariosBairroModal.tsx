@@ -1,7 +1,15 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { createPortal } from "react-dom";
 import type { BairroStats, ComentarioBairro } from "@/lib/data";
 import { fmtInt, labelBairro } from "@/lib/format";
+import {
+  ComentarioBox,
+  ComentarioTexto,
+  ComentarioMeta,
+  ComentarioChip,
+  TINTA_COMENTARIO_2,
+  tintaSentimento,
+} from "@/components/ComentarioBox";
 
 const SENT_COR: Record<string, string> = {
   negativo: "#EF4444",
@@ -14,8 +22,6 @@ const SENT_LABEL: Record<string, string> = {
   positivo: "favorável",
   neutro: "neutro",
 };
-
-type Filtro = "todos" | "negativo" | "positivo" | "neutro";
 
 interface Props {
   bairro: BairroStats;
@@ -45,19 +51,16 @@ export function ComentariosBairroModal({
   periodoLabel,
   onClose,
 }: Props) {
-  const [filtro, setFiltro] = useState<Filtro>("todos");
-
-  const lista = useMemo(() => {
-    const arr = filtro === "todos" ? comentarios : comentarios.filter((c) => c.sentimento === filtro);
-    return [...arr].sort((a, b) => (b.curtidas || 0) - (a.curtidas || 0));
-  }, [comentarios, filtro]);
-
-  const abas: { id: Filtro; label: string; n: number; cor?: string }[] = [
-    { id: "todos", label: "Todos", n: bairro.total },
-    { id: "negativo", label: "Críticos", n: bairro.neg, cor: SENT_COR.negativo },
-    { id: "positivo", label: "Favoráveis", n: bairro.pos, cor: SENT_COR.positivo },
-    { id: "neutro", label: "Neutros", n: bairro.neu, cor: SENT_COR.neutro },
-  ];
+  // Revisão de 29/07: os chips "Todos / Críticos / Favoráveis / Neutros" saíram
+  // desta coletânea por pedido do cliente — mesma linha do "Todos" que saiu dos
+  // Pedidos do Povo. A lista mostra tudo, do mais curtido para o menos, e a
+  // decomposição por sentimento continua visível na barra logo acima (mais o
+  // chip de sentimento em cada comentário), então nada de informação se perdeu:
+  // o que saiu foi o controle, não o dado.
+  const lista = useMemo(
+    () => [...comentarios].sort((a, b) => (b.curtidas || 0) - (a.curtidas || 0)),
+    [comentarios]
+  );
 
   const explicacao =
     criterio === "negativo"
@@ -98,58 +101,37 @@ export function ComentariosBairroModal({
           })}
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {abas.map((a) => {
-            const ativo = filtro === a.id;
-            const cor = a.cor ?? "var(--brand)";
-            return (
-              <button
-                key={a.id}
-                onClick={() => setFiltro(a.id)}
-                disabled={a.n === 0}
-                className="rounded-lg px-3 py-1 text-[13px] font-bold transition disabled:cursor-not-allowed disabled:opacity-40"
-                style={
-                  ativo
-                    ? { background: cor, color: "#0B0B0B" }
-                    : { border: "1px solid var(--line)", background: "var(--bg-2)", color: "var(--txt2)" }
-                }
-              >
-                {a.label} ({fmtInt(a.n)})
-              </button>
-            );
-          })}
-        </div>
-
         <div className="mt-3 space-y-2 overflow-y-auto">
           {lista.length === 0 && (
             <p className="text-sm text-txt-3">
-              Nenhum comentário deste tipo para {labelBairro(bairro.localidade)} no período selecionado.
+              Nenhum comentário para {labelBairro(bairro.localidade)} no período selecionado.
             </p>
           )}
           {lista.map((c, i) => (
-            <div key={i} className="rounded-lg p-3" style={{ background: "#1E293B", border: "1px solid #334155" }}>
+            <ComentarioBox key={i}>
               {/* Comentário em destaque maior e mais pesado (pedido de 27/07):
                   é o dado bruto que sustenta o número da barra, e precisa ser
                   o elemento mais fácil de ler do card. */}
-              <p className="text-base leading-relaxed" style={{ color: "#F8FAFC", fontWeight: 600 }}>
-                “{c.texto}”
-              </p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[13px]" style={{ color: "#94A3B8" }}>
+              <ComentarioTexto>{c.texto}</ComentarioTexto>
+              <ComentarioMeta>
                 {c.autor && <span>@{c.autor}</span>}
                 <span className="tnum">
                   {fmtInt(c.curtidas)} curtida{c.curtidas === 1 ? "" : "s"}
                 </span>
-                {c.tema && c.tema !== "outro" && <span className="uppercase">{c.tema}</span>}
-                <span className="font-bold uppercase" style={{ color: SENT_COR[c.sentimento] ?? SENT_COR.neutro }}>
+                {c.tema && c.tema !== "outro" && <ComentarioChip>{c.tema}</ComentarioChip>}
+                <ComentarioChip cor={tintaSentimento(c.sentimento)}>
                   {SENT_LABEL[c.sentimento] ?? c.sentimento}
-                </span>
-              </div>
+                </ComentarioChip>
+              </ComentarioMeta>
               {c.pedido && (
-                <div className="mt-1.5 rounded border border-line px-2 py-1 text-[13px]" style={{ color: "#CBD5E1" }}>
+                <div
+                  className="mt-1.5 rounded px-2 py-1 text-[13px] font-semibold"
+                  style={{ background: "rgba(2,6,23,0.88)", color: TINTA_COMENTARIO_2 }}
+                >
                   Pedido: {c.pedido}
                 </div>
               )}
-            </div>
+            </ComentarioBox>
           ))}
         </div>
       </div>

@@ -13,6 +13,12 @@ import { calcIAD, calcICA } from "@/lib/indices";
 import { KpiStat } from "@/components/KpiStat";
 import { AlertaCrise } from "@/components/AlertaCrise";
 import { AvisoAmostra } from "@/components/AvisoAmostra";
+import {
+  ComentarioBox,
+  ComentarioTexto,
+  ComentarioMeta,
+  TINTA_LINK_COMENTARIO,
+} from "@/components/ComentarioBox";
 import { fmtInt, fmtDiaBR } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, withAlpha, colorByIAD } from "@/lib/chartTheme";
@@ -187,36 +193,37 @@ function ChartLegend() {
   );
 }
 
-function ComentarioRow({ c, color }: { c: Comment; color: string }) {
+/** Um comentário na coluna de vozes. O `color` de sentimento saiu em 29/07: a
+ *  coluna já se anuncia ("Vozes que aprovam"/"que reprovam"), e o box passou a
+ *  ser o ComentarioBox comum a todo o painel. */
+function ComentarioRow({ c }: { c: Comment }) {
   return (
-    <div
-      className="rounded-lg border bg-bg-2 p-3 text-[14px] text-txt-1"
-      style={{ borderColor: `${color}55` }}
-    >
-      <p className="italic">"{c.texto.slice(0, 220)}{c.texto.length > 220 ? "…" : ""}"</p>
-      <div className="mt-2 flex items-center justify-between gap-2 text-[13px]">
-        <span className="text-txt-3">
+    <ComentarioBox>
+      <ComentarioTexto>
+        {c.texto.slice(0, 220)}
+        {c.texto.length > 220 ? "…" : ""}
+      </ComentarioTexto>
+      <ComentarioMeta>
+        <span>
           @{c.username} · em @{c.autor_post}
-          {c.url_post && (
-            <>
-              {" · "}
-              <a
-                href={c.url_post}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-brand hover:underline"
-              >
-                ver post ↗
-              </a>
-            </>
-          )}
         </span>
-        <span className="tnum flex shrink-0 items-center gap-1 font-bold" style={{ color }} title="Curtidas do comentário">
+        {c.url_post && (
+          <a
+            href={c.url_post}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-bold hover:underline"
+            style={{ color: TINTA_LINK_COMENTARIO }}
+          >
+            ver post ↗
+          </a>
+        )}
+        <span className="tnum ml-auto flex shrink-0 items-center gap-1 font-bold" title="Curtidas do comentário">
           <IconHeart size={12} />
           {fmtInt(c.curtidas)} curtidas
         </span>
-      </div>
-    </div>
+      </ComentarioMeta>
+    </ComentarioBox>
   );
 }
 
@@ -556,7 +563,7 @@ export function ApprovalPage() {
               </div>
             )}
             {cms.pos.map((c) => (
-              <ComentarioRow key={c.id} c={c} color="#22C55E" />
+              <ComentarioRow key={c.id} c={c} />
             ))}
           </div>
         </div>
@@ -572,7 +579,7 @@ export function ApprovalPage() {
               </div>
             )}
             {cms.neg.map((c) => (
-              <ComentarioRow key={c.id} c={c} color="#EF4444" />
+              <ComentarioRow key={c.id} c={c} />
             ))}
           </div>
         </div>

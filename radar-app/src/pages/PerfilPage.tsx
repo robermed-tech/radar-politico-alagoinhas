@@ -20,6 +20,13 @@ import { montarRanking } from "@/lib/seguidores";
 import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 import { prepararKeywords, casaRelevancia } from "@/lib/relevancia";
 import { analisarPerfis, extremos, MIN_AMOSTRA, type PerfilAnalise } from "@/lib/analisePerfis";
+import {
+  ComentarioBox,
+  ComentarioTexto,
+  ComentarioMeta,
+  ComentarioChip,
+  tintaSentimento,
+} from "@/components/ComentarioBox";
 
 const COR_CONTRA = COLOR_SENTIMENT.neg;
 const COR_FAVOR = COLOR_SENTIMENT.pos;
@@ -305,6 +312,91 @@ export function PerfilPage() {
         </div>
       )}
 
+      {/* Perfil em verificação + os números dele, imediatamente abaixo da
+          relação completa de perfis monitorados (pedido de 29/07). Antes este
+          bloco vinha depois da tabela de ranking, a meia página do seletor: o
+          usuário clicava num chip no topo e o efeito do clique acontecia fora
+          da tela. Agora selecionar e ler o resultado ficam na mesma dobra.
+          Nome em corpo de título de página (28/07) e categoria em chip neutro
+          (chumbo), não colorido por CAT_COR — mesma doutrina do seletor. */}
+      {perfilAtivo && (
+        <div className="rounded-xl border border-line bg-bg-1 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-[34px] font-extrabold leading-none tracking-tight text-txt-1 sm:text-[42px]">
+                @{perfilAtivo.autor}
+              </span>
+              <span
+                className="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide text-white"
+                style={{ background: CHUMBO }}
+              >
+                {perfilAtivo.categoria || "—"}
+              </span>
+            </div>
+            <span
+              className="rounded-full px-3 py-1.5 text-sm font-bold"
+              style={{ color: NIVEL_COLOR[idx.nivel], background: `${NIVEL_COLOR[idx.nivel]}1A` }}
+            >
+              Risco {NIVEL_LABEL[idx.nivel]}
+            </span>
+          </div>
+          <p className="mt-2 text-[13px] font-semibold text-txt-3">
+            {fmtInt(perfilAtivo.postsGestao)} de {fmtInt(perfilAtivo.posts)} publicações citam
+            as palavras da Relevância
+          </p>
+        </div>
+      )}
+
+      {/* KPIs do perfil selecionado */}
+      {perfilAtivo && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <KpiStat
+            label="Seguidores"
+            value={seguidores ? fmtInt(seguidores.seguidores) : "n/d"}
+            sub={
+              seguidores
+                ? seguidores.delta24h === null
+                  ? "primeira coleta registrada"
+                  : "saldo nas últimas 24h"
+                : "aguardando primeira coleta"
+            }
+            delta={
+              seguidores && seguidores.delta24h !== null
+                ? {
+                    v: seguidores.delta24h,
+                    dir: seguidores.delta24h > 0 ? "up" : seguidores.delta24h < 0 ? "down" : "flat",
+                  }
+                : undefined
+            }
+          />
+          <KpiStat
+            label="Críticas contrárias"
+            value={
+              <span style={{ color: COR_CONTRA, fontWeight: 700 }}>
+                {fmtInt(perfilAtivo.contra)}
+              </span>
+            }
+            sub={`${perfilAtivo.pctContra}% dos que tomam partido`}
+          />
+          <KpiStat
+            label="Manifestações favoráveis"
+            value={
+              <span style={{ color: COR_FAVOR, fontWeight: 700 }}>
+                {fmtInt(perfilAtivo.favor)}
+              </span>
+            }
+            sub={`${100 - perfilAtivo.pctContra}% dos que tomam partido`}
+          />
+          {/* O KPI "O que publica sobre a gestão" saiu na revisão de 27/07:
+              mostrava "7/2 críticas / elogios" duas vezes na mesma tela. */}
+          <KpiStat
+            label="Publicações sobre a gestão"
+            value={fmtInt(perfilAtivo.postsGestao)}
+            sub={`de ${fmtInt(perfilAtivo.posts)} no período`}
+          />
+        </div>
+      )}
+
       {/* O que cada perfil PUBLICA sobre a gestão */}
       <div>
         <div className="section-label mb-2">
@@ -462,128 +554,14 @@ export function PerfilPage() {
         </div>
       ) : (
         <>
-          {/* Cabeçalho do perfil ativo — nome em corpo de título de página
-              (revisão de 28/07): era text-lg, do mesmo tamanho que qualquer
-              rótulo ao redor, fácil de olhar pra tela e não ter certeza de
-              qual perfil está em verificação. Categoria volta a ser um chip
-              neutro (chumbo), não colorido por CAT_COR — mesma doutrina do
-              seletor logo acima. */}
-          {perfilAtivo && (
-            <div className="rounded-xl border border-line bg-bg-1 px-5 py-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="text-[34px] font-extrabold leading-none tracking-tight text-txt-1 sm:text-[42px]">
-                    @{perfilAtivo.autor}
-                  </span>
-                  <span
-                    className="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide text-white"
-                    style={{ background: CHUMBO }}
-                  >
-                    {perfilAtivo.categoria || "—"}
-                  </span>
-                </div>
-                <span
-                  className="rounded-full px-3 py-1.5 text-sm font-bold"
-                  style={{ color: NIVEL_COLOR[idx.nivel], background: `${NIVEL_COLOR[idx.nivel]}1A` }}
-                >
-                  Risco {NIVEL_LABEL[idx.nivel]}
-                </span>
-              </div>
-              <p className="mt-2 text-[13px] font-semibold text-txt-3">
-                {fmtInt(perfilAtivo.postsGestao)} de {fmtInt(perfilAtivo.posts)} publicações citam
-                as palavras da Relevância
-              </p>
-            </div>
-          )}
-
-          {/* KPIs do perfil */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <KpiStat
-              label="Seguidores"
-              value={seguidores ? fmtInt(seguidores.seguidores) : "n/d"}
-              sub={
-                seguidores
-                  ? seguidores.delta24h === null
-                    ? "primeira coleta registrada"
-                    : "saldo nas últimas 24h"
-                  : "aguardando primeira coleta"
-              }
-              delta={
-                seguidores && seguidores.delta24h !== null
-                  ? {
-                      v: seguidores.delta24h,
-                      dir: seguidores.delta24h > 0 ? "up" : seguidores.delta24h < 0 ? "down" : "flat",
-                    }
-                  : undefined
-              }
-            />
-            <KpiStat
-              label="Críticas contrárias"
-              value={
-                <span style={{ color: COR_CONTRA, fontWeight: 700 }}>
-                  {fmtInt(perfilAtivo?.contra ?? 0)}
-                </span>
-              }
-              sub={`${perfilAtivo?.pctContra ?? 0}% dos que tomam partido`}
-            />
-            <KpiStat
-              label="Manifestações favoráveis"
-              value={
-                <span style={{ color: COR_FAVOR, fontWeight: 700 }}>
-                  {fmtInt(perfilAtivo?.favor ?? 0)}
-                </span>
-              }
-              sub={`${100 - (perfilAtivo?.pctContra ?? 0)}% dos que tomam partido`}
-            />
-            {/* O KPI "O que publica sobre a gestão" saiu na revisão de 27/07:
-                mostrava "7/2 críticas / elogios" logo acima da barra "Tom das
-                publicações", que já diz o mesmo com mais clareza e ainda
-                separa as neutras. Dois números para o mesmo fato, e o do KPI
-                era o mais difícil de ler. */}
-            <KpiStat
-              label="Publicações sobre a gestão"
-              value={fmtInt(perfilAtivo?.postsGestao ?? 0)}
-              sub={`de ${fmtInt(perfilAtivo?.posts ?? 0)} no período`}
-            />
-          </div>
-
-          {/* O que o perfil publica x o que recebe, lado a lado. É a leitura
-              que o cliente pediu: fala e reação são coisas diferentes. */}
-          {perfilAtivo && perfilAtivo.postsGestao > 0 && (
-            <div className="rounded-xl border border-line bg-bg-1 p-4">
-              <div className="section-label mb-2">Tom das publicações de @{perfilAtivo.autor}</div>
-              <div className="flex h-4 w-full overflow-hidden rounded-full bg-bg-2">
-                <div
-                  style={{
-                    width: `${(perfilAtivo.fazCritica / perfilAtivo.postsGestao) * 100}%`,
-                    background: COR_CONTRA,
-                  }}
-                />
-                <div
-                  style={{
-                    width: `${(perfilAtivo.fazNeutro / perfilAtivo.postsGestao) * 100}%`,
-                    background: COLOR_SENTIMENT.neu,
-                  }}
-                />
-                <div
-                  style={{
-                    width: `${(perfilAtivo.fazElogio / perfilAtivo.postsGestao) * 100}%`,
-                    background: COR_FAVOR,
-                  }}
-                />
-              </div>
-              <div className="mt-2 flex flex-wrap gap-3 text-xs text-txt-2">
-                <span><b style={{ color: COR_CONTRA }}>{fmtInt(perfilAtivo.fazCritica)}</b> criticam a gestão</span>
-                <span><b style={{ color: COLOR_SENTIMENT.neu }}>{fmtInt(perfilAtivo.fazNeutro)}</b> sem juízo</span>
-                <span><b style={{ color: COR_FAVOR }}>{fmtInt(perfilAtivo.fazElogio)}</b> elogiam a gestão</span>
-                {perfilAtivo.fazCritica + perfilAtivo.fazElogio > 0 && (
-                  <span className="ml-auto text-txt-3">
-                    {perfilAtivo.pctFazCritica}% das que tomam partido são críticas
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
+          {/* O cabeçalho do perfil ativo e os KPIs dele subiram para logo
+              abaixo do seletor (29/07) — ver o bloco no topo desta página.
+              O card "Tom das publicações de @perfil" (barra crítica/neutra/
+              elogio) saiu na mesma revisão, por pedido do cliente: os mesmos
+              três números já aparecem na tabela de ranking, nas colunas
+              "publica criticando"/"publica elogiando". Não recriar sem pedido
+              explícito; `fazNeutro` e `pctFazCritica` continuam calculados em
+              lib/analisePerfis.ts, agora sem consumidor nesta tela. */}
 
           {/* Ranking de seguidores de todos os perfis monitorados (pedido do
               cliente em 25/07): quem tem mais e menos audiência e quanto cada
@@ -601,13 +579,15 @@ export function PerfilPage() {
             ) : (
               <ul className="space-y-2">
                 {negComments.map((c, i) => (
-                  <li key={i} className="rounded-md border border-line bg-bg-2 p-2.5">
-                    <p className="text-base leading-relaxed text-txt-1" style={{ fontWeight: 600 }}>{c.texto}</p>
-                    <div className="mt-1 flex items-center gap-2 text-[13px] text-txt-3">
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: COR_CONTRA }} />
-                      {c.username && <span>@{c.username}</span>}
-                      {(c.curtidas || 0) > 0 && <span className="ml-auto tnum">♥ {c.curtidas}</span>}
-                    </div>
+                  <li key={i}>
+                    <ComentarioBox>
+                      <ComentarioTexto>{c.texto}</ComentarioTexto>
+                      <ComentarioMeta>
+                        <ComentarioChip cor={tintaSentimento("negativo")}>crítico</ComentarioChip>
+                        {c.username && <span>@{c.username}</span>}
+                        {(c.curtidas || 0) > 0 && <span className="tnum ml-auto">♥ {c.curtidas}</span>}
+                      </ComentarioMeta>
+                    </ComentarioBox>
                   </li>
                 ))}
               </ul>
