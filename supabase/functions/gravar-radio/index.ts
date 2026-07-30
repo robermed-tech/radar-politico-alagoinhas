@@ -100,20 +100,24 @@ Deno.serve(async (req) => {
     return json({ error: "Escolha ao menos uma rádio para gravar" }, 400);
   }
 
-  // 3) Confere que as estações são do tenant do chamador, estão ativas e são
-  //    mesmo rádios. Sem isso um body forjado mandaria gravar a fonte de outro
-  //    tenant — o RLS protege a LEITURA, não o que a função de serviço faz.
+  // 3) Confere que as estações são do tenant do chamador e são mesmo rádios.
+  //    Sem isso um body forjado mandaria gravar a fonte de outro tenant — o RLS
+  //    protege a LEITURA, não o que a chave de serviço faz.
+  //
+  //    `active` NÃO entra no filtro de propósito: essa coluna governa a captação
+  //    automática no horário do programa, e o painel agora oferece o cadastro
+  //    inteiro para gravar sob demanda. Recusar uma estação cadastrada por estar
+  //    pausada seria negar um pedido explícito de gravar agora.
   const { data: fontes } = await admin
     .from("sources")
     .select("id, label, handle")
     .eq("platform", "radio")
-    .eq("active", true)
     .eq("tenant_id", perfil.tenant_id)
     .in("id", pedidas);
 
   const validas = (fontes ?? []).map((f) => String(f.id));
   if (validas.length === 0) {
-    return json({ error: "Nenhuma das rádios escolhidas está ativa" }, 400);
+    return json({ error: "Nenhuma das rádios escolhidas existe neste cadastro" }, 400);
   }
 
   const duracao = Math.max(

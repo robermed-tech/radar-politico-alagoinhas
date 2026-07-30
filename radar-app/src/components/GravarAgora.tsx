@@ -3,40 +3,42 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchRadios, gravarAgora, type RadioFonte } from "@/lib/radio";
 
 /**
- * Box de gravação sob demanda — topo da Escuta do Rádio.
+ * Card de gravação sob demanda — canto superior direito da Escuta do Rádio.
  *
- * Pedido de 30/07: um box em destaque com o botão GRAVAR e a escolha de quais
- * rádios captar naquele momento. O cadastro (card "Rádios monitoradas") segue
- * intocado: lá se define QUAIS estações existem e em que horário elas gravam
- * sozinhas; aqui se pede uma captação AGORA, fora daquele horário.
+ * Formato: card QUADRADO na mesma linha do painel da antena e dos indicadores
+ * (revisão de 30/07). A primeira versão era uma faixa retangular de largura
+ * cheia acima de tudo, e ela empurrava a leitura da página inteira para baixo
+ * por causa de um controle que se usa de vez em quando. Como card da linha de
+ * topo, ele fica à mão sem tomar a dobra.
  *
- * Sobre a mecânica: apertar GRAVAR aciona o workflow `radio.yml` pela Edge
- * Function `gravar-radio`. O disparo NÃO pode sair direto do navegador porque
- * exige um token com permissão de Actions, e esse token no bundle daria a
- * qualquer visitante do painel o poder de queimar crédito da Apify. A função
- * confere o papel de admin, valida as estações contra o tenant e só então
- * dispara.
+ * Lista as rádios CADASTRADAS, não só as ativas. `active` governa a captação
+ * automática no horário do programa; pedir uma gravação agora é outra coisa, e
+ * recusar uma estação cadastrada porque ela está pausada seria dizer não a um
+ * pedido explícito. A estação pausada aparece marcada como tal — quem escolhe
+ * precisa saber que ela não grava sozinha —, mas pode ser gravada.
  *
- * Sobre a espera: o ator da Apify grava em TEMPO REAL, então uma captação de 30
- * minutos leva 30 minutos. A tela diz isso em vez de fingir resultado imediato
- * — o texto de sucesso fala em "as pautas aparecem quando a captação terminar",
- * que é a verdade do pipeline.
+ * Mecânica: GRAVAR aciona o workflow `radio.yml` pela Edge Function
+ * `gravar-radio`. O disparo não sai do navegador porque exige um token com
+ * permissão de Actions, e esse token no bundle daria a qualquer visitante do
+ * painel o poder de queimar crédito da Apify.
  *
- * Paleta: o box usa o degradê chumbo→quase-preto que já identifica a escuta
- * (radar de coleta, painel da antena, box de comentário). O botão é laranja da
- * marca com texto quase preto, a receita do card "Engajamento no período" —
- * medido, 8,34:1 na ponta clara e 5,30:1 na escura. Vermelho seria a cor óbvia
- * para "REC", mas neste painel vermelho é sentimento negativo, nunca controle.
+ * Paleta: degradê chumbo→quase-preto (o mesmo do radar de coleta, do painel da
+ * antena e do box de comentário) com o botão em laranja da marca e texto quase
+ * preto — a receita do card "Engajamento no período", medida em 8,34:1 na ponta
+ * clara e 5,30:1 na escura. Vermelho seria o óbvio para "REC", mas neste painel
+ * vermelho é sentimento negativo, nunca controle.
  */
 
 const FUNDO_ESCUTA = "linear-gradient(165deg, #475569 0%, #0F172A 100%)";
-const FUNDO_BOTAO = "linear-gradient(150deg, #FB923C 0%, #EA580C 100%)";
+const FUNDO_LARANJA = "linear-gradient(150deg, #FB923C 0%, #EA580C 100%)";
 const TINTA_PRETA = "#1A0F02";
 const TINTA_CLARA = "#F8FAFC";
 const TINTA_CLARA_2 = "#CBD5E1";
-/** Superfície do card interno de escolha, sobre o degradê. Quase sólido, nunca
- *  um alpha baixo: o degradê varia demais para um translúcido leve compensar. */
-const FUNDO_CARD_INTERNO = "rgba(2,6,23,0.55)";
+/** Superfícies internas sobre o degradê. Quase sólidas, nunca um alpha baixo:
+ *  o degradê varia demais para um translúcido leve compensar. */
+const FUNDO_LISTA = "rgba(2,6,23,0.55)";
+const FUNDO_ITEM = "rgba(2,6,23,0.72)";
+const BORDA = "1px solid rgba(148,163,184,0.30)";
 
 const DURACOES = [15, 30, 45] as const;
 
@@ -51,17 +53,16 @@ export function GravarAgora() {
     staleTime: 60 * 1000,
   });
 
-  const ativas = useMemo(() => radios.filter((r) => r.active), [radios]);
   const [sel, setSel] = useState<string[]>([]);
   const [duracao, setDuracao] = useState<number>(30);
   const [enviando, setEnviando] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
 
-  // Estação pausada não é escolhível: o coletor só grava fonte ativa, e um chip
-  // clicável que o backend descarta em silêncio seria um botão que mente.
+  // Só mantém escolhida estação que ainda existe no cadastro: apagar uma rádio
+  // com ela marcada deixaria um id fantasma no pedido.
   const escolhidas = useMemo(
-    () => sel.filter((id) => ativas.some((r) => r.id === id)),
-    [sel, ativas]
+    () => sel.filter((id) => radios.some((r) => r.id === id)),
+    [sel, radios]
   );
 
   function alternar(id: string) {
@@ -82,133 +83,134 @@ export function GravarAgora() {
     const nomes = resultado?.estacoes?.join(", ") || "as estações escolhidas";
     setMsg({
       ok: true,
-      texto:
-        `Gravando ${nomes} por ${resultado?.duracao ?? duracao} minutos. ` +
-        "A captação é ao vivo, então as pautas aparecem nesta tela quando ela terminar.",
+      texto: `Gravando ${nomes} por ${resultado?.duracao ?? duracao} min. As pautas aparecem quando a captação terminar.`,
     });
     setSel([]);
   }
 
   return (
     <div
-      className="overflow-hidden rounded-[28px] p-5 sm:p-6"
-      style={{ background: FUNDO_ESCUTA, boxShadow: "0 18px 40px -18px rgba(15,23,42,0.65)" }}
+      className="flex h-full w-full flex-col overflow-hidden rounded-[28px] p-5 lg:ml-auto lg:max-w-[380px]"
+      style={{
+        background: FUNDO_ESCUTA,
+        // Piso que mantém a proporção quadrada na coluna de ~380px, mesmo com
+        // o cadastro vazio (quando a lista tem só a frase de estado).
+        minHeight: 340,
+        boxShadow: "0 18px 40px -18px rgba(15,23,42,0.65)",
+      }}
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div
-            className="text-[13px] uppercase tracking-[0.14em]"
-            style={{ color: "rgba(255,255,255,0.78)", fontWeight: 700 }}
-          >
-            Gravar agora
-          </div>
-          <p className="mt-1 max-w-[52ch] text-sm" style={{ color: TINTA_CLARA_2, fontWeight: 500 }}>
-            Captação imediata, fora do horário cadastrado do programa. A gravação é ao
-            vivo: {duracao} minutos pedidos são {duracao} minutos de captação.
-          </p>
-        </div>
-
-        <button
-          onClick={disparar}
-          disabled={escolhidas.length === 0 || enviando}
-          className="shrink-0 rounded-full px-8 py-3 text-[17px] uppercase tracking-[0.08em] transition disabled:cursor-not-allowed disabled:opacity-45"
-          style={{ background: FUNDO_BOTAO, color: TINTA_PRETA, fontWeight: 800 }}
-          title={
-            escolhidas.length === 0
-              ? "Escolha ao menos uma rádio abaixo"
-              : `Gravar ${escolhidas.length} estação(ões) por ${duracao} min`
-          }
+      <div className="flex items-baseline justify-between gap-2">
+        <div
+          className="text-[13px] uppercase tracking-[0.14em]"
+          style={{ color: "rgba(255,255,255,0.78)", fontWeight: 700 }}
         >
-          {enviando ? "Iniciando…" : "Gravar"}
-        </button>
+          Gravar agora
+        </div>
+        <div className="text-[13px]" style={{ color: TINTA_CLARA_2, fontWeight: 600 }}>
+          {escolhidas.length > 0 ? `${escolhidas.length} escolhida(s)` : "escolha abaixo"}
+        </div>
       </div>
 
-      {/* Card de escolha das estações. */}
+      {/* Caixa de escolha das rádios cadastradas. Rola por dentro para o card
+          não crescer com o número de estações. */}
       <div
-        className="mt-4 rounded-2xl p-4"
-        style={{ background: FUNDO_CARD_INTERNO, border: "1px solid rgba(148,163,184,0.30)" }}
+        className="mt-3 min-h-0 flex-1 overflow-y-auto rounded-2xl p-2"
+        style={{ background: FUNDO_LISTA, border: BORDA }}
       >
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div className="text-[13px] uppercase tracking-[0.12em]" style={{ color: TINTA_CLARA, fontWeight: 700 }}>
-            Quais rádios gravar
-          </div>
-          <div className="text-[13px]" style={{ color: TINTA_CLARA_2, fontWeight: 500 }}>
-            {escolhidas.length === 0
-              ? "nenhuma escolhida"
-              : `${escolhidas.length} de ${ativas.length} escolhida(s)`}
-          </div>
-        </div>
-
-        {ativas.length === 0 ? (
-          <p className="mt-2 text-sm" style={{ color: TINTA_CLARA_2, fontWeight: 500 }}>
-            Nenhuma rádio ativa. Cadastre e ative uma estação no card &ldquo;Rádios
+        {radios.length === 0 ? (
+          <p className="p-2 text-[13px] leading-relaxed" style={{ color: TINTA_CLARA_2, fontWeight: 500 }}>
+            Nenhuma rádio cadastrada. Cadastre uma estação no card &ldquo;Rádios
             monitoradas&rdquo;, mais abaixo nesta página.
           </p>
         ) : (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {ativas.map((r) => {
+          <ul className="space-y-1.5">
+            {radios.map((r) => {
               const ativo = escolhidas.includes(r.id);
               return (
-                <button
-                  key={r.id}
-                  onClick={() => alternar(r.id)}
-                  aria-pressed={ativo}
-                  className="rounded-full px-4 py-2 text-sm transition"
-                  style={
-                    ativo
-                      ? { background: FUNDO_BOTAO, color: TINTA_PRETA, fontWeight: 800 }
-                      : {
-                          background: "rgba(2,6,23,0.72)",
-                          color: TINTA_CLARA,
+                <li key={r.id}>
+                  <button
+                    onClick={() => alternar(r.id)}
+                    aria-pressed={ativo}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition"
+                    style={
+                      ativo
+                        ? { background: FUNDO_LARANJA, color: TINTA_PRETA, fontWeight: 800 }
+                        : { background: FUNDO_ITEM, color: TINTA_CLARA, fontWeight: 700, border: BORDA }
+                    }
+                    title={r.config?.programa ? `Programa: ${r.config.programa}` : rotulo(r)}
+                  >
+                    <span
+                      className="inline-block h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: ativo ? TINTA_PRETA : r.active ? "#22C55E" : "#94A3B8" }}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1 truncate">{rotulo(r)}</span>
+                    {/* Pausada pode ser gravada sob demanda; o selo existe para
+                        ninguém achar que ela também grava sozinha. */}
+                    {!r.active && (
+                      <span
+                        className="shrink-0 rounded px-1.5 py-0.5 text-[12px] uppercase"
+                        style={{
+                          background: ativo ? "rgba(26,15,2,0.16)" : "rgba(2,6,23,0.88)",
+                          color: ativo ? TINTA_PRETA : TINTA_CLARA_2,
                           fontWeight: 700,
-                          border: "1px solid rgba(148,163,184,0.34)",
-                        }
-                  }
-                  title={r.config?.programa ? `Programa: ${r.config.programa}` : rotulo(r)}
-                >
-                  {rotulo(r)}
-                </button>
+                        }}
+                      >
+                        pausada
+                      </span>
+                    )}
+                  </button>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
-
-        {/* Duração. Teto de 45 min na tela (a função corta em 60): cada minuto
-            pedido é um minuto pago de run na Apify. */}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="text-[13px]" style={{ color: TINTA_CLARA_2, fontWeight: 600 }}>
-            Duração
-          </span>
-          {DURACOES.map((d) => {
-            const ativo = duracao === d;
-            return (
-              <button
-                key={d}
-                onClick={() => setDuracao(d)}
-                aria-pressed={ativo}
-                className="tnum rounded-lg px-3 py-1.5 text-sm transition"
-                style={
-                  ativo
-                    ? { background: FUNDO_BOTAO, color: TINTA_PRETA, fontWeight: 800 }
-                    : {
-                        background: "rgba(2,6,23,0.72)",
-                        color: TINTA_CLARA,
-                        fontWeight: 700,
-                        border: "1px solid rgba(148,163,184,0.34)",
-                      }
-                }
-              >
-                {d} min
-              </button>
-            );
-          })}
-        </div>
       </div>
 
-      {msg && (
+      {/* Duração. O teto real (60 min) é validado na Edge Function: cada minuto
+          pedido é um minuto pago de run na Apify, que grava em tempo real. */}
+      <div className="mt-3 flex items-center gap-1.5">
+        <span className="mr-auto text-[13px]" style={{ color: TINTA_CLARA_2, fontWeight: 600 }}>
+          Duração
+        </span>
+        {DURACOES.map((d) => {
+          const ativo = duracao === d;
+          return (
+            <button
+              key={d}
+              onClick={() => setDuracao(d)}
+              aria-pressed={ativo}
+              className="tnum rounded-lg px-2.5 py-1 text-[13px] transition"
+              style={
+                ativo
+                  ? { background: FUNDO_LARANJA, color: TINTA_PRETA, fontWeight: 800 }
+                  : { background: FUNDO_ITEM, color: TINTA_CLARA, fontWeight: 700, border: BORDA }
+              }
+            >
+              {d} min
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        onClick={disparar}
+        disabled={escolhidas.length === 0 || enviando}
+        className="mt-3 w-full rounded-full py-3 text-[17px] uppercase tracking-[0.08em] transition disabled:cursor-not-allowed disabled:opacity-45"
+        style={{ background: FUNDO_LARANJA, color: TINTA_PRETA, fontWeight: 800 }}
+        title={
+          escolhidas.length === 0
+            ? "Escolha ao menos uma rádio na lista"
+            : `Gravar ${escolhidas.length} estação(ões) por ${duracao} min`
+        }
+      >
+        {enviando ? "Iniciando…" : "Gravar"}
+      </button>
+
+      {msg ? (
         <div
           role="status"
-          className="mt-4 rounded-xl px-4 py-3 text-sm"
+          className="mt-2 rounded-lg px-3 py-2 text-[13px] leading-snug"
           style={{
             background: "rgba(2,6,23,0.88)",
             color: msg.ok ? "#86EFAC" : "#FCA5A5",
@@ -217,6 +219,11 @@ export function GravarAgora() {
         >
           {msg.texto}
         </div>
+      ) : (
+        <p className="mt-2 text-[12px] leading-snug" style={{ color: TINTA_CLARA_2, fontWeight: 500 }}>
+          Captação ao vivo, fora do horário do programa: {duracao} min pedidos são {duracao} min
+          de gravação.
+        </p>
       )}
     </div>
   );

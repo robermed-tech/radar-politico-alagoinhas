@@ -413,15 +413,14 @@ export function RadioPage() {
         <PeriodoFilter dias={dias} onChange={setDias} />
       </div>
 
-      {/* Gravação sob demanda — primeira coisa da página (pedido de 30/07):
-          é ação, e ação vem antes de leitura. O cadastro das estações continua
-          no card "Rádios monitoradas", lá embaixo, intocado. */}
-      <GravarAgora />
-
-      {/* Antena captando à esquerda dos indicadores, no mesmo lugar de leitura
-          que o radar de coleta ocupa na Estação Meteorológica: primeiro o
-          sinal de que o sistema está ouvindo, depois o que ele ouviu. O card é
-          o gêmeo do radar (AntenaStatusColumn), não uma variação. */}
+      {/* Linha de topo: antena à esquerda (mesmo lugar de leitura que o radar
+          de coleta ocupa na Estação Meteorológica — primeiro o sinal de que o
+          sistema está ouvindo, depois o que ele ouviu), indicadores no meio e,
+          à DIREITA, o card quadrado de gravação sob demanda (30/07). Antes ele
+          era uma faixa de largura cheia acima de tudo, e empurrava a página
+          inteira para baixo por causa de um controle de uso eventual. O
+          cadastro das estações continua no card "Rádios monitoradas", lá
+          embaixo, intocado. */}
       <div className="grid gap-3 lg:grid-cols-6">
         <div className="lg:col-span-1">
           <AntenaStatusColumn
@@ -435,7 +434,9 @@ export function RadioPage() {
             }
           />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-4">
+        {/* Os quatro indicadores em 2×2 para caber na coluna do meio e deixar
+            a linha com a altura de um card quadrado à direita. */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:col-span-3">
           <Kpi
             label="Rádios captadas"
             valor={String(estacoesCaptadas)}
@@ -452,6 +453,9 @@ export function RadioPage() {
             valor={`${placar.critico} × ${placar.favoravel}`}
             hint="críticas × elogios à gestão"
           />
+        </div>
+        <div className="lg:col-span-2">
+          <GravarAgora />
         </div>
       </div>
 

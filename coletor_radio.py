@@ -346,6 +346,23 @@ def _fontes_ativas() -> list[dict]:
     )
 
 
+def _fontes_por_id(ids: list[str]) -> list[dict]:
+    """Rádios do cadastro pelos ids pedidos, ATIVAS OU NÃO.
+
+    Só a gravação sob demanda usa isto (botão GRAVAR do painel). A captação
+    automática continua lendo `_fontes_ativas`: pausar uma estação tem que
+    seguir tirando ela do horário do programa.
+    """
+    limpos = [str(i).strip() for i in ids if str(i).strip()]
+    if not limpos:
+        return []
+    lista = ",".join(limpos)
+    return _supabase_get(
+        "sources",
+        f"platform=eq.radio&id=in.({lista})&select=id,handle,label,config",
+    )
+
+
 def _log_collection(source_id, items_count: int, status: str, dry_run: bool) -> None:
     if dry_run:
         _log(f"    [DRY-RUN] collection_logs: blocos={items_count} status={status}")
@@ -404,15 +421,17 @@ def coletar_e_gravar(
              "Cadastre o secret antes de ativar a coleta de radio.")
         return {"fontes": 0, "blocos": 0, "skipped": True}
 
-    fontes = _fontes_ativas()
     if somente_ids:
-        pedidas = {str(i) for i in somente_ids}
-        fontes = [f for f in fontes if str(f.get("id")) in pedidas]
+        # Gravação sob demanda enxerga o CADASTRO inteiro, não só as ativas:
+        # `active` governa a captação automática no horário do programa, e
+        # recusar uma estação cadastrada porque ela está pausada seria dizer
+        # não a um pedido explícito de gravar agora.
+        fontes = _fontes_por_id(somente_ids)
         if not fontes:
-            # Estação pedida que não está ativa não é "nada a coletar": é um
-            # pedido que não pode ser atendido, e o log tem que dizer isso.
-            _log(f"[radio] Nenhuma das {len(pedidas)} estacao(oes) pedidas esta ativa")
+            _log(f"[radio] Nenhuma das {len(somente_ids)} estacao(oes) pedidas existe no cadastro")
             return {"fontes": 0, "blocos": 0, "skipped": True}
+    else:
+        fontes = _fontes_ativas()
     if not fontes:
         _log("[radio] Nenhuma radio ativa — nada a coletar (sistema inerte)")
         return {"fontes": 0, "blocos": 0, "skipped": True}
