@@ -40,7 +40,18 @@ const FUNDO_LISTA = "rgba(2,6,23,0.55)";
 const FUNDO_ITEM = "rgba(2,6,23,0.72)";
 const BORDA = "1px solid rgba(148,163,184,0.30)";
 
-const DURACOES = [15, 30, 45] as const;
+const DURACOES = [15, 30, 45, 90, 120] as const;
+/**
+ * A partir daqui a captação é longa o bastante para o custo pesar e para a
+ * transcrição entrar em terreno não testado: o maior bloco já transcrito com
+ * sucesso tem 10 minutos, e ninguém sabe ainda como o ator lida com áudio de
+ * duas horas no Whisper. A tela avisa em vez de deixar a pessoa descobrir
+ * depois de pagar a captação inteira.
+ */
+const DURACAO_LONGA = 90;
+/** ~US$ 0,014 por minuto de run, medido no único run de rádio bem-sucedido
+ *  (10,3 min por US$ 0,14). Serve para dar ordem de grandeza, não para cobrar. */
+const USD_POR_MINUTO = 0.014;
 
 function rotulo(r: RadioFonte): string {
   return (r.label || r.handle || "").trim() || "sem nome";
@@ -169,8 +180,8 @@ export function GravarAgora() {
 
       {/* Duração. O teto real (60 min) é validado na Edge Function: cada minuto
           pedido é um minuto pago de run na Apify, que grava em tempo real. */}
-      <div className="mt-3 flex items-center gap-1.5">
-        <span className="mr-auto text-[13px]" style={{ color: TINTA_CLARA_2, fontWeight: 600 }}>
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        <span className="w-full text-[13px]" style={{ color: TINTA_CLARA_2, fontWeight: 600 }}>
           Duração
         </span>
         {DURACOES.map((d) => {
@@ -219,6 +230,11 @@ export function GravarAgora() {
         >
           {msg.texto}
         </div>
+      ) : duracao >= DURACAO_LONGA ? (
+        <p className="mt-2 text-[12px] leading-snug" style={{ color: "#FED7AA", fontWeight: 600 }}>
+          {duracao} min ao vivo custam cerca de US$ {(duracao * USD_POR_MINUTO).toFixed(2)} de
+          Apify por estação, e captação longa ainda não foi testada na transcrição.
+        </p>
       ) : (
         <p className="mt-2 text-[12px] leading-snug" style={{ color: TINTA_CLARA_2, fontWeight: 500 }}>
           Captação ao vivo, fora do horário do programa: {duracao} min pedidos são {duracao} min

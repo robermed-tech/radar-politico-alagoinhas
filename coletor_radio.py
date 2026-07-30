@@ -452,10 +452,12 @@ def coletar_e_gravar(
         _log(f"[radio] {len(fontes)} radio(s) ativa(s), nenhuma na janela de captura agora")
         return {"fontes": len(fontes), "blocos": 0, "skipped": True}
 
-    # Duração pedida no painel vence a do cadastro. Teto de 60 min porque cada
-    # minuto de captura é um minuto pago de run na Apify (o ator grava em tempo
-    # real), e o timeout do step do radio.yml é 65.
-    duracao = max(1, min(60, int(duracao_min))) if duracao_min else _duracao_da_janela(na_janela)
+    # Duração pedida no painel vence a do cadastro. Teto de 120 min (30/07):
+    # cada minuto de captura é um minuto pago de run na Apify, porque o ator
+    # grava em TEMPO REAL. O teto tem que caber no timeout do step do radio.yml
+    # (130 min) — se um dia ele subir aqui sem subir lá, o job seria abortado no
+    # meio e a captação inteira viraria crédito gasto sem transcrição nenhuma.
+    duracao = max(1, min(120, int(duracao_min))) if duracao_min else _duracao_da_janela(na_janela)
     radios_input, fonte_por_nome = [], {}
     for f in na_janela:
         nome = (f.get("label") or f.get("handle") or "").strip()
