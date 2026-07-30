@@ -72,6 +72,18 @@ jobs:
       - name: Instalar dependências
         run: pip install -r requirements.txt
 
+      - name: Instalar ffmpeg
+        # Medido em 30/07: o ubuntu-latest NÃO traz ffmpeg pré-instalado (o
+        # step de clipes registrou "ffmpeg ausente" e saiu sem recortar nada).
+        # Sem ele a pauta é gravada e o card fica sem o botão de ouvir — falha
+        # silenciosa, que é o pior tipo. Leva ~15 s e só roda quando há recorte
+        # a fazer.
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -version | head -1
+
       - name: Captar rádios
         if: ${{ inputs.apenas_clipes != true }}
         timeout-minutes: 130
