@@ -46,6 +46,10 @@ on:
         description: 'Nao capta nada: so gera os clipes de audio das citacoes que ainda nao tem'
         type: boolean
         default: false
+      refazer_clipes:
+        description: 'Com apenas_clipes: refaz tambem os clipes que ja existem (corrige recorte antigo)'
+        type: boolean
+        default: false
 
 jobs:
   captar:
@@ -138,7 +142,7 @@ jobs:
           # nem começa. É exigência do módulo, não deste modo.
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
           RADAR_TENANT:         alagoinhas
-        run: python agora.py --clipes-radio 10
+        run: python agora.py --clipes-radio 10 ${{ inputs.refazer_clipes && '--refazer' || '' }}
 
       - name: Notifica falha no WhatsApp
         if: failure()
