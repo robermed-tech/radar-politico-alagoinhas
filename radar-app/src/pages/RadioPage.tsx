@@ -1,5 +1,5 @@
 /**
- * Escuta do Rádio — seção admin-only.
+ * Rádio Escuta — seção admin-only (chamava-se "Escuta do Rádio" até 30/07).
  *
  * Mostra o que cada rádio cadastrada debateu na janela, quais assuntos
  * interessam ao prefeito e à gestão (e por quê), e permite encaminhar a pauta ao
@@ -28,6 +28,7 @@ import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
 import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 import { AlertaRadio } from "@/components/AlertaRadio";
 import { AntenaStatusColumn } from "@/components/AntenaSinal";
+import { ClipeCitacao } from "@/components/ClipeCitacao";
 import { GravarAgora } from "@/components/GravarAgora";
 import { Card, Feedback } from "@/components/FormCard";
 import { labelBairro } from "@/lib/format";
@@ -126,8 +127,14 @@ function PautaItem({ p }: { p: RadioPauta }) {
       {p.citacao && (
         <div className="mt-2 border-l-2 pl-2.5" style={{ borderColor: "rgba(148,163,184,0.5)" }}>
           <p className="text-sm italic leading-relaxed text-txt-2">“{p.citacao}”</p>
-          <div className="mt-0.5 text-[12px] text-txt-3">
-            aos {fmtInstante(p.ts_inicio)} da captação · transcrição automática
+          {/* O áudio fica na MESMA caixa da citação, colado nela: é a frase
+              que ele confere, e o aviso de "transcrição automática" ao lado é
+              justamente o motivo de existir um botão de ouvir. */}
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <ClipeCitacao caminho={p.audio_clip} />
+            <span className="text-[12px] text-txt-3">
+              aos {fmtInstante(p.ts_inicio)} da captação · transcrição automática
+            </span>
           </div>
         </div>
       )}
@@ -405,7 +412,7 @@ export function RadioPage() {
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Escuta do Rádio</h1>
+          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Rádio Escuta</h1>
           <p className="text-base text-txt-2">
             O que as rádios debateram e o que disso afeta a imagem da gestão · {periodoLabel(dias)}
           </p>

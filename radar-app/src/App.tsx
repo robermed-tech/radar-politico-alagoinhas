@@ -101,7 +101,7 @@ const NAV_MAIN: NavItem[] = [
   // Escuta do Rádio é admin-only (pedido explícito): fica fora do menu para
   // usuário comum, e a página vem embrulhada em RequireAdmin. O RLS da
   // migration 011 é a outra metade — sem ele, esconder o item seria cosmético.
-  { id: "radio",       label: "Escuta do Rádio",       icon: <NIcoRadio /> },
+  { id: "radio",       label: "Rádio Escuta",          icon: <NIcoRadio /> },
   { id: "topics",      label: "Previsões",             icon: <NIcoTrending /> },
   { id: "actions",     label: "Alertas & Ações",       icon: <NIcoBell /> },
   { id: "alerts-hist", label: "Histórico Alertas",     icon: <NIcoAlertHist /> },
