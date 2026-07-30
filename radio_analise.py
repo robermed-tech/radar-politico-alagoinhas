@@ -65,7 +65,7 @@ import json
 import os
 import re
 import unicodedata
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable, NamedTuple
 
 import requests
@@ -575,7 +575,12 @@ def analisar_pendentes(ctx: Contexto, cliente, modelo: str, limite: int = 20,
         # Marca o bloco mesmo sem pauta: "analisado e nada relevante" é
         # resultado, não pendência.
         _supabase_patch("radio_transcripts", f"id=eq.{bloco['id']}", {
-            "analisado_em": datetime.now().isoformat(),
+            # UTC explícito: o Postgres interpreta timestamp sem fuso como UTC,
+            # então `datetime.now()` numa máquina em BRT gravava o campo 3 h no
+            # passado — o bloco de 30/07 ficou com `analisado_em` ANTERIOR ao
+            # próprio `inicio_ts`. No Actions (que roda em UTC) o valor saía
+            # certo, e é por isso que só apareceu ao rodar local.
+            "analisado_em": datetime.now(timezone.utc).isoformat(),
             "janelas_relevantes": len(janelas),
         })
 
