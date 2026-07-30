@@ -42,6 +42,10 @@ on:
         description: 'Minutos de captura (vazio = duração do cadastro)'
         type: string
         default: ''
+      apenas_clipes:
+        description: 'Não capta nada: só gera os clipes de áudio das citações que ainda não têm'
+        type: boolean
+        default: false''
 
 jobs:
   captar:
@@ -69,6 +73,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Captar rádios
+        if: ${{ inputs.apenas_clipes != true }}
         timeout-minutes: 130
         env:
           APIFY_API_TOKEN:      ${{ secrets.APIFY_API_TOKEN }}
@@ -92,15 +97,32 @@ jobs:
           python agora.py $ARGS
 
       - name: Analisar as pautas captadas
-        # Não roda em dry-run: não há bloco gravado para analisar.
-        if: ${{ inputs.dry_run != true }}
-        timeout-minutes: 10
+        # Não roda em dry-run (não há bloco gravado) nem no modo só-clipes.
+        if: ${{ inputs.dry_run != true && inputs.apenas_clipes != true }}
+        timeout-minutes: 15
         env:
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          # O recorte do clipe de áudio da citação baixa o bloco do key-value
+          # store da Apify: sem este token a análise grava a pauta e o card fica
+          # sem o botão de ouvir, silenciosamente.
+          APIFY_API_TOKEN:      ${{ secrets.APIFY_API_TOKEN }}
           RADAR_TENANT:         alagoinhas
         run: python agora.py --analisar-radio
+
+      - name: Gerar clipes de áudio pendentes
+        # Preenche o botão "ouvir o trecho" de pautas que ficaram sem clipe —
+        # análise que rodou antes deste recurso, ou sem o token acima. Só vale
+        # enquanto o áudio existir na Apify: a retenção do plano é de 3 dias.
+        if: ${{ inputs.apenas_clipes == true }}
+        timeout-minutes: 20
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          APIFY_API_TOKEN:      ${{ secrets.APIFY_API_TOKEN }}
+          RADAR_TENANT:         alagoinhas
+        run: python agora.py --clipes-radio 10
 
       - name: Notifica falha no WhatsApp
         if: failure()
