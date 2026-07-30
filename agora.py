@@ -6536,13 +6536,16 @@ if __name__ == "__main__":
                 _blocos = _supabase_get(
                     "radio_transcripts",
                     f"tenant=eq.{TENANT}&status=eq.SUCCESS&apify_run_id=not.is.null"
-                    "&select=id,estacao,apify_run_id,audio_store_key"
+                    "&select=id,estacao,apify_run_id,audio_store_key,segments"
                     f"&order=inicio_ts.desc&limit={_n}",
                 ) or []
+                # --refazer regera clipe que ja existe: serve para corrigir
+                # recorte antigo (o de antes de 30/07 nao era a frase citada).
+                _refazer = "--refazer" in sys.argv
                 _tot = 0
                 for _b in _blocos:
                     log(f"  → {_b.get('estacao')}")
-                    _tot += _ra._gravar_clipes(_b)
+                    _tot += _ra._gravar_clipes(_b, refazer=_refazer)
                 log(f"[radio] {_tot} clipe(s) de audio gerados em {len(_blocos)} bloco(s)")
     elif "--expurgar-radio" in sys.argv:
         # --expurgar-radio [N] [--dry-run] → apaga transcricao bruta e segmentos

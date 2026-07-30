@@ -36,13 +36,19 @@ from pathlib import Path
 import requests
 
 BUCKET = "radio-clipes"
-# Segundos antes e depois do instante da citação. A citação começa em ts_inicio,
-# mas o começo da frase costuma estar um pouco antes do ponto que o segmento
-# marca — e ouvir a frase sem o que veio logo antes atrapalha justamente a
-# conferência de contexto que motiva o recurso.
-MARGEM_ANTES = 4
-MARGEM_DEPOIS = 20
-DURACAO_MAX_CLIPE = 45
+# O clipe é a FRASE CITADA, do começo ao fim, e nada além dela: o áudio existe
+# para conferir a transcrição que está na tela, então ouvir outra coisa derrota
+# o propósito. Os limites vêm de `radio_analise.intervalo_da_citacao`, que acha
+# o intervalo da frase nos segmentos do Whisper.
+#
+# A folga é só técnica: `ffmpeg -c copy` alinha o corte no quadro MP3 mais
+# próximo (~26 ms cada) e o Whisper marca a fronteira do segmento com precisão
+# de décimos. Sem ela a primeira e a última sílaba costumam sair cortadas.
+FOLGA = 0.4
+# Rede de segurança contra intervalo absurdo — casamento que falhe e devolva o
+# padrão (a janela de ~2 min). Não é recorte de conteúdo: nenhuma citação real
+# chega perto disto.
+DURACAO_MAX_CLIPE = 180
 
 
 def _log(msg: str) -> None:
@@ -101,7 +107,23 @@ def baixar_audio_do_bloco(run_id: str, store_key: str, destino: Path) -> bool:
         return False
 
 
-def recortar(origem: Path, ts_inicio: float, destino: Path) -> bool:
+def janela_do_clipe(ts_inicio: float, ts_fim: float) -> tuple[float, float]:
+    """(início, duração) do recorte, a partir do intervalo da citação.
+
+    Função pura, separada do ffmpeg de propósito: é a regra que garante que o
+    áudio corresponde à frase, e regra assim precisa ser testável sem áudio.
+    """
+    ini = max(0.0, float(ts_inicio) - FOLGA)
+    fim = float(ts_fim)
+    if fim <= float(ts_inicio):
+        # Sem fim confiável, um trecho curto em vez de recortar zero segundo —
+        # mas isso é sintoma de casamento falho, não o caminho normal.
+        fim = float(ts_inicio) + 12
+    dur = min(DURACAO_MAX_CLIPE, (fim + FOLGA) - ini)
+    return round(ini, 2), round(max(1.0, dur), 2)
+
+
+def recortar(origem: Path, ts_inicio: float, ts_fim: float, destino: Path) -> bool:
     """Recorta o trecho com ffmpeg, SEM reencodar (`-c copy`).
 
     Sem reencode o corte é instantâneo e não perde qualidade; em compensação o
@@ -109,8 +131,7 @@ def recortar(origem: Path, ts_inicio: float, destino: Path) -> bool:
     alguns centésimos. Para conferir uma frase falada isso é irrelevante, e a
     alternativa (reencodar) custaria segundos de CPU por clipe sem ganho audível.
     """
-    inicio = max(0.0, float(ts_inicio) - MARGEM_ANTES)
-    dur = min(DURACAO_MAX_CLIPE, MARGEM_ANTES + MARGEM_DEPOIS)
+    inicio, dur = janela_do_clipe(ts_inicio, ts_fim)
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
            "-ss", f"{inicio:.2f}", "-t", f"{dur:.2f}", "-i", str(origem),
            "-c", "copy", str(destino)]
@@ -193,7 +214,8 @@ def gerar_para_bloco(bloco: dict, pautas: list[dict]) -> dict[str, str]:
             return {}
         for p in com_citacao:
             clipe = Path(tmp) / f"{p['id']}.mp3"
-            if not recortar(bruto, float(p.get("ts_inicio") or 0), clipe):
+            if not recortar(bruto, float(p.get("ts_inicio") or 0),
+                            float(p.get("ts_fim") or 0), clipe):
                 continue
             destino = f"{bloco['id']}/{p['id']}.mp3"
             if subir(clipe, destino):
@@ -204,11 +226,25 @@ def gerar_para_bloco(bloco: dict, pautas: list[dict]) -> dict[str, str]:
 
 
 if __name__ == "__main__":
-    # Autoteste das partes puras: zero rede, zero token.
-    assert MARGEM_ANTES + MARGEM_DEPOIS <= DURACAO_MAX_CLIPE, \
-        "a janela padrao nao pode estourar o teto do clipe"
+    # Autoteste das partes puras: zero rede, zero token, zero audio.
     assert BUCKET == "radio-clipes"
-    # Instante negativo (citação nos primeiros segundos) não pode virar -ss negativo.
-    assert max(0.0, 1.0 - MARGEM_ANTES) == 0.0
+
+    # O clipe cobre a citação inteira, com a folga técnica nas duas pontas.
+    # Números da citação real do Hospital Dantas Bião (789,0 s a 828,6 s).
+    ini, dur = janela_do_clipe(789.0, 828.6)
+    assert ini == 788.6, ini
+    assert abs(dur - 40.4) < 0.01, dur
+    assert ini + dur >= 828.6, "o fim da citacao tem que caber no clipe"
+
+    # Citação nos primeiros segundos não pode gerar -ss negativo.
+    assert janela_do_clipe(0.2, 3.0)[0] == 0.0
+
+    # Fim ausente ou invertido não zera o clipe (sintoma de casamento falho).
+    assert janela_do_clipe(100.0, 0.0)[1] > 1
+    assert janela_do_clipe(100.0, 90.0)[1] > 1
+
+    # O teto é rede de segurança, não recorte de conteúdo.
+    assert janela_do_clipe(0.0, 10_000.0)[1] == DURACAO_MAX_CLIPE
+
     print("radio_clipes: autoteste OK",
           "| ffmpeg:", "disponivel" if ffmpeg_disponivel() else "AUSENTE nesta maquina")

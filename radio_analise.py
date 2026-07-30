@@ -290,27 +290,99 @@ def priorizar_janelas(janelas: list[dict], maximo: int = MAX_JANELAS_POR_BLOCO) 
 
 
 def ts_da_citacao(segments: list, citacao: str, padrao: float) -> float:
-    """Instante em que a citação começa, achado no segmento que a contém.
+    """Instante em que a citação começa. Atalho para `intervalo_da_citacao`."""
+    return intervalo_da_citacao(segments, citacao, padrao, padrao)[0]
 
-    Cai para `padrao` (o início da janela) quando não acha. Nunca interpola nem
-    estima: instante errado num alerta enviado a secretário é pior que instante
-    aproximado do começo da conversa, porque o secretário vai conferir no áudio.
+
+def _mapa_de_segmentos(segments: list) -> tuple[str, list[tuple[int, int, dict]]]:
+    """Texto normalizado contínuo + onde cada segmento começa e termina nele.
+
+    Casar a citação segmento a segmento não funciona: o Whisper corta em trechos
+    de 3 a 5 segundos, e qualquer frase real atravessa vários. Buscar no texto
+    contínuo e depois mapear a posição de volta para o segmento resolve isso —
+    foi o que um teste com a citação real do Hospital Dantas Bião mostrou, que
+    a versão por segmento não achava nada e caía no padrão (a janela inteira).
+    """
+    partes: list[str] = []
+    faixas: list[tuple[int, int, dict]] = []
+    pos = 0
+    for s in segments or []:
+        if not isinstance(s, dict):
+            continue
+        t = _norm(s.get("text") or "").strip()
+        if not t:
+            continue
+        faixas.append((pos, pos + len(t), s))
+        partes.append(t)
+        pos += len(t) + 1  # o espaço que junta os segmentos
+    return " ".join(partes), faixas
+
+
+def _segmento_em(faixas: list, offset: int) -> dict | None:
+    """Segmento que contém a posição pedida no texto contínuo."""
+    for ini, fim, seg in faixas:
+        if ini <= offset < fim:
+            return seg
+    return faixas[-1][2] if faixas else None
+
+
+def intervalo_da_citacao(
+    segments: list, citacao: str, padrao_inicio: float, padrao_fim: float
+) -> tuple[float, float]:
+    """Começo e fim da CITAÇÃO no áudio — não da janela que a continha.
+
+    É o intervalo que o clipe recorta, e por isso ele precisa cobrir a frase
+    citada e nada além dela. Antes o `ts_fim` gravado era o fim da JANELA (~2
+    min de programa) e o clipe usava uma margem fixa em torno do início: das
+    duas formas o áudio não batia com a frase que está na tela, que é
+    exatamente o que ele existe para conferir.
+
+    O casamento é feito no texto contínuo dos segmentos (ver `_mapa_de_segmentos`)
+    e tolera o modelo ter reproduzido a frase com pontuação diferente: tenta a
+    citação inteira e, se não achar, prefixos cada vez mais curtos. O fim sai do
+    tamanho do trecho encontrado, então acompanha a citação de verdade.
+
+    Sem casar nada, devolve os padrões recebidos: instante inventado num alerta
+    que vai ao secretário é pior que instante aproximado, porque ele confere no
+    áudio.
     """
     alvo = _norm(citacao).strip()
-    if not alvo:
-        return padrao
-    # Compara por um trecho inicial: o modelo costuma reproduzir a citação com
-    # pontuação levemente diferente do segmento.
-    prefixo = " ".join(alvo.split()[:6])
-    if not prefixo:
-        return padrao
-    for s in segments or []:
-        if prefixo and prefixo in _norm(s.get("text") or ""):
-            try:
-                return round(float(s.get("start") or padrao), 2)
-            except (TypeError, ValueError):
-                return padrao
-    return padrao
+    palavras = alvo.split()
+    if not palavras:
+        return padrao_inicio, padrao_fim
+
+    texto, faixas = _mapa_de_segmentos(segments)
+    if not faixas:
+        return padrao_inicio, padrao_fim
+
+    # Tenta a frase inteira e vai encurtando: o modelo às vezes corta o fim, ou
+    # junta duas falas numa citação só.
+    achado = -1
+    usado = alvo
+    for n in (len(palavras), 12, 8, 6, 4):
+        if n > len(palavras):
+            continue
+        tentativa = " ".join(palavras[:n])
+        achado = texto.find(tentativa)
+        if achado >= 0:
+            usado = tentativa
+            break
+    if achado < 0:
+        return padrao_inicio, padrao_fim
+
+    def _f(v, alt):
+        try:
+            return round(float(v), 2)
+        except (TypeError, ValueError):
+            return alt
+
+    seg_ini = _segmento_em(faixas, achado)
+    # -1 para cair DENTRO do último caractere do trecho, não no espaço seguinte.
+    seg_fim = _segmento_em(faixas, max(achado, achado + len(usado) - 1))
+
+    inicio = max(0.0, _f((seg_ini or {}).get("start"), padrao_inicio))
+    fim = _f((seg_fim or {}).get("end"), padrao_fim)
+    return inicio, max(inicio, fim)
 
 
 # ── Prompt ───────────────────────────────────────────────────────────────────
@@ -440,8 +512,11 @@ def normalizar_pauta(bruta: dict, janela: dict, segments: list, ctx: Contexto) -
         "assunto":          assunto,
         "resumo":           _limpar_travessao(bruta.get("resumo"))[:1200] or None,
         "citacao":          citacao or None,
-        "ts_inicio":        ts_da_citacao(segments, citacao, janela["ts_inicio"]),
-        "ts_fim":           janela["ts_fim"],
+        # ts_fim é o fim da CITAÇÃO, não o da janela: é o que delimita o clipe
+        # de áudio, e o clipe tem que ser a frase exibida na tela.
+        **dict(zip(("ts_inicio", "ts_fim"),
+                   intervalo_da_citacao(segments, citacao,
+                                        janela["ts_inicio"], janela["ts_fim"]))),
         "tema":             tema,
         "localidade":       localidade,
         # Sem motivo, o "interesse" nao e verificavel por quem le a tela — e a
@@ -494,19 +569,36 @@ def analisar_janela(janela: dict, segments: list, ctx: Contexto, cliente, modelo
 
 # ── Orquestração ─────────────────────────────────────────────────────────────
 
-def _gravar_clipes(bloco: dict) -> int:
+def _gravar_clipes(bloco: dict, refazer: bool = False) -> int:
     """Recorta e sobe o áudio de cada citação do bloco, e grava o caminho.
 
     Relê as pautas do banco em vez de usar as linhas montadas em memória porque
     o `id` é gerado no upsert — e é ele que nomeia o arquivo.
+
+    O intervalo é RECALCULADO aqui a partir da citação e dos segmentos, e não
+    lido do que está gravado: pautas anteriores a 30/07 têm `ts_fim` igual ao
+    fim da JANELA (~2 min), e recortar por aquele valor daria um clipe que não é
+    a frase. Recalcular corrige o dado velho de passagem — o `ts_fim` correto
+    volta para o banco junto.
     """
-    pautas = _supabase_get(
-        "radio_topics",
-        f"transcript_id=eq.{bloco['id']}&audio_clip=is.null"
-        "&select=id,citacao,ts_inicio",
-    )
+    filtro = f"transcript_id=eq.{bloco['id']}"
+    if not refazer:
+        filtro += "&audio_clip=is.null"
+    pautas = _supabase_get("radio_topics", filtro + "&select=id,citacao,ts_inicio,ts_fim")
     if not pautas:
         return 0
+
+    segments = bloco.get("segments") or []
+    for p in pautas:
+        ini, fim = intervalo_da_citacao(
+            segments, p.get("citacao") or "",
+            float(p.get("ts_inicio") or 0), float(p.get("ts_fim") or 0),
+        )
+        if fim != p.get("ts_fim") or ini != p.get("ts_inicio"):
+            _supabase_patch("radio_topics", f"id=eq.{p['id']}",
+                            {"ts_inicio": ini, "ts_fim": fim})
+        p["ts_inicio"], p["ts_fim"] = ini, fim
+
     mapa = _clipes.gerar_para_bloco(bloco, pautas)
     for pid, caminho in mapa.items():
         _supabase_patch("radio_topics", f"id=eq.{pid}", {"audio_clip": caminho})
@@ -670,8 +762,51 @@ def teste_radio(ctx: Contexto, cliente, modelo: str, limite: int = 3) -> None:
 
 # ── Autoteste das funções puras ──────────────────────────────────────────────
 
+def _teste_intervalo_citacao() -> None:
+    """O clipe de áudio recorta EXATAMENTE a frase citada — não a janela."""
+    segs = [
+        {"start": 10.0, "end": 13.5, "text": "Pessoas agindo de forma irresponsavel,"},
+        {"start": 13.5, "end": 17.2, "text": "chegando a frente do hospital,"},
+        {"start": 17.2, "end": 21.0, "text": "dizendo que o hospital vai fechar."},
+        {"start": 21.0, "end": 26.0, "text": "Vamos para o intervalo comercial."},
+    ]
+    # Citação que atravessa três segmentos: começa no 1o e termina no 3o.
+    ini, fim = intervalo_da_citacao(
+        segs,
+        "Pessoas agindo de forma irresponsavel, chegando a frente do hospital, "
+        "dizendo que o hospital vai fechar.",
+        padrao_inicio=0.0, padrao_fim=999.0,
+    )
+    assert (ini, fim) == (10.0, 21.0), (ini, fim)
+    # O fim NUNCA pode ser o da janela: era esse o bug (clipe de 2 min).
+    assert fim != 999.0
+
+    # Citação de um segmento só.
+    ini, fim = intervalo_da_citacao(segs, "Vamos para o intervalo comercial.", 0.0, 999.0)
+    assert (ini, fim) == (21.0, 26.0), (ini, fim)
+
+    # Sufixo ausente (o modelo cortou o fim da frase): cai na contagem de
+    # palavras e ainda assim devolve um fim derivado do áudio, não da janela.
+    ini, fim = intervalo_da_citacao(
+        segs, "Pessoas agindo de forma irresponsavel, chegando a frente do hospital",
+        0.0, 999.0,
+    )
+    assert ini == 10.0 and 13.5 <= fim <= 21.0, (ini, fim)
+
+    # Sem casar nada, devolve os padrões — nunca inventa instante.
+    assert intervalo_da_citacao(segs, "frase que nao existe no ar", 5.0, 7.0) == (5.0, 7.0)
+    assert intervalo_da_citacao(segs, "", 5.0, 7.0) == (5.0, 7.0)
+    assert intervalo_da_citacao([], "qualquer coisa", 5.0, 7.0) == (5.0, 7.0)
+
+    # O fim nunca fica antes do início.
+    for c in ("Vamos para o intervalo comercial.", "Pessoas agindo de forma irresponsavel,"):
+        i, f = intervalo_da_citacao(segs, c, 0.0, 999.0)
+        assert f >= i
+
+
 def _autoteste() -> None:
     """Zero rede, zero token: testa janelas, instante e normalização."""
+    _teste_intervalo_citacao()
     segs = [
         {"start": 0,   "end": 10,  "text": "93FM so sucesso, a musica que voce pediu"},
         {"start": 30,  "end": 40,  "text": "Quando voce me aguarda eu posso dancar"},
