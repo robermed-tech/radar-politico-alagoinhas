@@ -24,32 +24,6 @@ import { analisarPerfis, extremos, MIN_AMOSTRA, type PerfilAnalise } from "@/lib
 const COR_CONTRA = COLOR_SENTIMENT.neg;
 const COR_FAVOR = COLOR_SENTIMENT.pos;
 
-/**
- * Card de extremo ("quem mais critica…", "quem mais elogia…"). Fundo por
- * GRUPO: tudo que fala de crítica é vermelho, tudo que fala de elogio é
- * verde — antes os cards eram brancos com o @ colorido, e os dois grupos se
- * misturavam numa faixa só.
- *
- * Revisão de 28/07: o degradê escuro com texto claro saiu — destoava do
- * resto do painel. O padrão que o dashboard já usa para card colorido é o
- * box "Engajamento no período" da Estação Meteorológica: gradiente CLARO
- * (150deg, mesma família de cor do início ao fim) com texto quase preto por
- * cima, não o inverso. Aqui é a mesma receita: `#FCA5A5 → #EF4444` (o
- * vermelho de sentimento do painel) e `#86EFAC → #22C55E` (idem, verde),
- * texto em `#1A0F02` (o preto usado nos outros botões/cards em degradê do
- * painel — puro #000 teria contraste igual ou maior, mas esse tom é o que já
- * está em uso, e reaproveitar mantém uma paleta de "preto" só no produto).
- */
-const FUNDO_CRITICA = "linear-gradient(150deg, #FCA5A5 0%, #EF4444 100%)";
-const FUNDO_ELOGIO = "linear-gradient(150deg, #86EFAC 0%, #22C55E 100%)";
-// Preta SÓLIDA em todo lugar, e não com alpha. Medido no harness: o alpha
-// (0,78) passava na ponta clara mas reprovava na escura do vermelho (3,87:1,
-// abaixo do mínimo AA de 4,5) — a mesma pegadinha do texto branco-com-alpha
-// da primeira versão deste componente. Preto sólido mede 5,01:1+ nas duas
-// pontas dos dois gradientes; a hierarquia entre título e valor vem do peso
-// da fonte, não de uma segunda tinta.
-const TINTA_PRETA = "#1A0F02";
-
 const CHUMBO = "#334155";
 
 /**
@@ -73,52 +47,65 @@ const FUNDO_PERFIL_BASE = "linear-gradient(150deg, #334155 0%, #1E293B 55%, #020
 const BRILHO_PERFIL = "linear-gradient(120deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 46%)";
 const BRILHO_PERFIL_ATIVO = "linear-gradient(120deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0) 58%)";
 
+/**
+ * Card de extremo ("quem mais critica…", "quem mais elogia…").
+ *
+ * Revisão de 29/07 (pedido do cliente): o card volta a ser BRANCO — o mesmo
+ * vidro dos outros cards do painel (`bg-bg-1`, que é branco no tema claro e
+ * segue o toggle no escuro) — e quem carrega a cor semântica agora é o @ do
+ * perfil, em corpo grande: verde para elogio, vermelho para crítica. O
+ * gradiente preenchido de 28/07 saiu: com quatro cards coloridos lado a lado
+ * o que o olho lia primeiro era a faixa de cor, e a resposta da tela é QUEM,
+ * não a cor.
+ *
+ * A cor do @ vem dos tokens `--success`/`--danger` (text-success/text-danger),
+ * não do par #22C55E/#EF4444 dos gráficos: sobre fundo branco o verde de
+ * gráfico mede 2,29:1 e reprovaria até o mínimo de 3:1 de texto grande. Os
+ * tokens já são resolvidos por tema (#16A34A/#DC2626 no claro, #4ADE80/#F87171
+ * no escuro) e passam AA nos dois. Verde/vermelho seguem reservados a
+ * sentimento, que é exatamente o que estes quatro cards medem.
+ */
 function CardExtremo({
   titulo,
   perfil,
   valor,
   sufixo,
-  fundo,
+  tom,
   vazio,
 }: {
   titulo: string;
   perfil: PerfilAnalise | null;
   valor?: (p: PerfilAnalise) => string;
   sufixo: string;
-  fundo: string;
+  tom: "critica" | "elogio";
   vazio: string;
 }) {
+  const corTexto = tom === "critica" ? "text-danger" : "text-success";
+  // Fio vertical na cor do grupo: mantém a leitura "esquerda = crítica,
+  // direita = elogio" que o fundo colorido dava, sem inundar o card.
+  const corFio = tom === "critica" ? "var(--danger)" : "var(--success)";
+
   return (
     <div
-      className="card-hover overflow-hidden rounded-xl p-4"
-      style={{ background: fundo, boxShadow: "0 10px 24px -14px rgba(0,0,0,0.35)" }}
+      className="card-hover overflow-hidden rounded-xl border border-line bg-bg-1 p-4"
+      style={{ borderLeftColor: corFio, borderLeftWidth: 4 }}
     >
-      <div
-        className="text-[13px] uppercase tracking-[0.12em]"
-        style={{ color: TINTA_PRETA, fontWeight: 700 }}
-      >
-        {titulo}
-      </div>
+      <div className="section-label">{titulo}</div>
       {perfil ? (
         <>
           <div
-            className="mt-1.5 truncate text-[19px]"
-            style={{ fontWeight: 800, color: TINTA_PRETA }}
+            className={`mt-2 truncate text-[30px] leading-tight tracking-tight sm:text-[38px] ${corTexto}`}
+            style={{ fontWeight: 800 }}
             title={`@${perfil.autor}`}
           >
             @{perfil.autor}
           </div>
-          <div
-            className="tnum mt-0.5 text-sm"
-            style={{ color: TINTA_PRETA, fontWeight: 700 }}
-          >
+          <div className="tnum mt-1 text-base font-bold text-txt-2">
             {valor ? valor(perfil) : ""} {sufixo}
           </div>
         </>
       ) : (
-        <div className="mt-1.5 text-sm" style={{ color: TINTA_PRETA, fontWeight: 600 }}>
-          {vazio}
-        </div>
+        <div className="mt-2 text-sm font-semibold text-txt-2">{vazio}</div>
       )}
     </div>
   );
@@ -333,7 +320,7 @@ export function PerfilPage() {
             perfil={rankFazCritica.maior}
             valor={(p) => `${fmtInt(p.fazCritica)} de ${fmtInt(p.postsGestao)}`}
             sufixo="publicações"
-            fundo={FUNDO_CRITICA}
+            tom="critica"
             vazio="Ninguém publicou sobre a gestão"
           />
           <CardExtremo
@@ -341,7 +328,7 @@ export function PerfilPage() {
             perfil={rankFazElogio.maior}
             valor={(p) => `${fmtInt(p.fazElogio)} de ${fmtInt(p.postsGestao)}`}
             sufixo="publicações"
-            fundo={FUNDO_ELOGIO}
+            tom="elogio"
             vazio="Ninguém publicou sobre a gestão"
           />
         </div>
@@ -359,7 +346,7 @@ export function PerfilPage() {
             perfil={rankContra.maior}
             valor={(p) => `${fmtInt(p.contra)} contrárias · ${p.pctContra}%`}
             sufixo=""
-            fundo={FUNDO_CRITICA}
+            tom="critica"
             vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
           />
           <CardExtremo
@@ -367,7 +354,7 @@ export function PerfilPage() {
             perfil={rankFavor.maior}
             valor={(p) => `${fmtInt(p.favor)} favoráveis · ${100 - p.pctContra}%`}
             sufixo=""
-            fundo={FUNDO_ELOGIO}
+            tom="elogio"
             vazio={`Nenhum perfil com ${MIN_AMOSTRA}+ comentários`}
           />
         </div>

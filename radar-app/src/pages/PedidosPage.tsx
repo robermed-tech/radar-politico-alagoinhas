@@ -104,22 +104,18 @@ export function PedidosPage() {
         </div>
       ) : (
         <>
+          {/* Revisão de 29/07: o chip "Todos" saiu — só os temas ficam na
+              faixa de filtro. O estado "todos" continua sendo o padrão da
+              página (nenhum chip aceso = lista inteira) e clicar de novo no
+              tema aceso volta para ele, então nada de filtro ficou preso. */}
           <div className="flex flex-wrap gap-1.5">
-            <button
-              onClick={() => setTemaSel("todos")}
-              className={`rounded-lg px-3 py-1 text-sm font-semibold transition ${
-                temaSel === "todos" ? "bg-brand text-white" : "border border-line bg-bg-1 text-txt-2 hover:text-txt-1"
-              }`}
-            >
-              Todos ({data.length})
-            </button>
             {porTema.map(([tema, n]) => {
               const cor = corTema(tema);
               const ativo = temaSel === tema;
               return (
                 <button
                   key={tema}
-                  onClick={() => setTemaSel(tema)}
+                  onClick={() => setTemaSel(ativo ? "todos" : tema)}
                   className="rounded-lg px-3 py-1 text-sm font-semibold transition"
                   style={
                     ativo

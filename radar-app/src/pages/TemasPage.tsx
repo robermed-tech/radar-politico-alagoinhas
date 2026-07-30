@@ -3,19 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import {
   fetchDailyThemes,
-  fetchTemasMonitorados,
   fetchSubtemas,
   fetchComentariosPorTema,
   type DailyTheme,
-  type TemaMonitorado,
   type SubtemaStat,
   type ComentarioTema,
 } from "@/lib/data";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassArea } from "@/lib/chartTheme";
 import { AlertaCrise } from "@/components/AlertaCrise";
-import { AssuntosEmAlta } from "@/components/AssuntosEmAlta";
-import { IconTrendUp, IconTrendDown, IconCheckCircle, IconWarningTriangle } from "@/components/icons";
 import { fmtDiaBR } from "@/lib/format";
 import { PeriodoFilter, type Dias } from "@/components/PeriodoFilter";
 
@@ -48,76 +44,6 @@ function direcaoSlope(serie: number[]): "subindo" | "estavel" | "caindo" {
 }
 
 const COR_OUTROS = "#94A3B8";
-
-// ── Laço IRT: recuperação de imagem pós-alerta ───────────────────────────────
-// Vocabulário da reunião de 24/07: "estabilizar" no lugar de "recuperar", e
-// cinza neutro no lugar do vermelho ("não brinca com o vermelho").
-// Revisão de 25/07: "Estabilizado" passou de verde para AMARELO — verde
-// parecia caso encerrado; amarelo comunica "melhorou, mas segue observado".
-const IRT_STATUS: Record<string, { label: string; cor: string }> = {
-  monitorando: { label: "Monitorando",              cor: "#F59E0B" },
-  recuperado:  { label: "Estabilizado",             cor: "#EAB308" },
-  persistente: { label: "Persistente (reavaliar)",  cor: "#94A3B8" },
-};
-const IRT_TEND: Record<string, { label: string; cor: string }> = {
-  em_queda: { label: "em queda", cor: "#22C55E" },
-  estavel:  { label: "estável",  cor: "#9FB0CC" },
-  em_alta:  { label: "em alta",  cor: "#EF4444" },
-};
-
-function TendenciaIcone({ tendencia, status }: { tendencia: string; status: string }) {
-  if (status === "recuperado") return <IconCheckCircle size={14} />;
-  if (status === "persistente") return <IconWarningTriangle size={14} />;
-  if (tendencia === "em_queda") return <IconTrendDown size={14} />;
-  if (tendencia === "em_alta") return <IconTrendUp size={14} />;
-  return null;
-}
-
-/** Temas que dispararam alerta e estão em acompanhamento de recuperação (IRT/Benoit). */
-function PainelRecuperacaoIRT() {
-  const { data } = useQuery({
-    queryKey: ["temas-monitorados"],
-    queryFn: fetchTemasMonitorados,
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-  });
-  const temas: TemaMonitorado[] = (data ?? []).slice(0, 6);
-  if (temas.length === 0) return null;
-
-  return (
-    <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-      <div className="text-sm font-bold">Estabilização pós-alerta</div>
-      <p className="mb-3 text-[12px] text-txt-3">
-        Temas que dispararam alerta ficam em acompanhamento — queda sustentada indica que a resposta funcionou
-      </p>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {temas.map((t) => {
-          const st = IRT_STATUS[t.status] ?? IRT_STATUS.monitorando;
-          const td = IRT_TEND[t.tendencia] ?? IRT_TEND.estavel;
-          return (
-            <div key={t.tema} className="rounded-lg border border-line bg-bg-2 px-3 py-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-bold frase-cap text-txt-1">{t.tema}</span>
-                <span
-                  className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[12px] font-bold uppercase"
-                  style={{ background: `${st.cor}1A`, color: st.cor }}
-                >
-                  <TendenciaIcone tendencia={t.tendencia} status={t.status} />
-                  {st.label}
-                </span>
-              </div>
-              <div className="mt-1 text-[13px] text-txt-3">
-                pico em {fmtDiaBR(t.pico_em)} · volume {t.volume_pico}→{t.volume_atual} posts
-                {" · "}
-                <span className="font-semibold" style={{ color: td.cor }}>{td.label}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 // ── Drill-down de subtemas (comments.subtema) ────────────────────────────────
 const TEMA_LABEL: Record<string, string> = {
@@ -536,11 +462,11 @@ export function TemasPage() {
       {/* Linha do tempo do clima — curva de críticas anotada com o tema que a moveu */}
       <TimelineClima themes={themes} janela={janela} />
 
-      {/* Assuntos que se repetem em 24h (gatilho por volume de subtema) */}
-      <AssuntosEmAlta />
-
-      {/* Laço IRT: recuperação de imagem pós-alerta (só aparece quando há tema monitorado) */}
-      <PainelRecuperacaoIRT />
+      {/* Revisão de 29/07: os cards "Assuntos em alta · 24h" (AssuntosEmAlta) e
+          "Estabilização pós-alerta" (PainelRecuperacaoIRT) saíram desta página
+          por pedido do cliente. O backend segue calculando os dois (temas
+          monitorados e gatilho de volume por subtema); não recriar aqui sem
+          pedido explícito. */}
 
       {/* Drill-down de subtemas (a partir dos comentários) */}
       <PainelSubtemas />
