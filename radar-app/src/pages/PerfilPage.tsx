@@ -10,7 +10,6 @@ import {
   type Post,
 } from "@/lib/data";
 import { fetchKeywords } from "@/lib/admin";
-import { calcIndices, NIVEL_LABEL, NIVEL_COLOR } from "@/lib/indices";
 import { KpiStat } from "@/components/KpiStat";
 import { COLOR_SENTIMENT } from "@/lib/chartTheme";
 import { fmtInt } from "@/lib/format";
@@ -101,7 +100,7 @@ function CardExtremo({
       {perfil ? (
         <>
           <div
-            className={`mt-2 truncate text-[30px] leading-tight tracking-tight sm:text-[38px] ${corTexto}`}
+            className={`mt-2 truncate text-[21px] leading-tight tracking-tight sm:text-[25px] ${corTexto}`}
             style={{ fontWeight: 800 }}
             title={`@${perfil.autor}`}
           >
@@ -229,8 +228,6 @@ export function PerfilPage() {
     () => postsPeriodo.filter((p) => p.autor === autor && casaRelevancia(p, kws)),
     [postsPeriodo, autor, kws]
   );
-  const idx = useMemo(() => calcIndices(postsPerfil), [postsPerfil]);
-
   const urlsPerfil = useMemo(() => new Set(postsPerfil.map((p) => p.url)), [postsPerfil]);
 
   // Críticas em destaque: comentários contrários mais curtidos, restritos às
@@ -295,16 +292,12 @@ export function PerfilPage() {
                   }}
                   title={`${p.categoria} · ${p.postsGestao} publicações sobre a gestão`}
                 >
+                  {/* Revisão de 30/07: o selo com o número de publicações
+                      sobre a gestão saiu do chip. O número continua no
+                      tooltip (title) e, com todas as casas decimais do
+                      contexto, na tabela de ranking logo abaixo — no chip ele
+                      competia com o @, que é o que a pessoa procura ali. */}
                   @{p.autor}
-                  {/* Selo claro (quase sólido) sobre o chip escuro — inverte
-                      o selo escuro da versão colorida, que sumia de vista
-                      num fundo agora igualmente escuro. */}
-                  <span
-                    className="tnum rounded-full px-1.5 py-0.5 text-[12px]"
-                    style={{ background: "rgba(248,250,252,0.92)", color: "#0B1120", fontWeight: 800 }}
-                  >
-                    {p.postsGestao}
-                  </span>
                 </button>
               );
             })}
@@ -333,12 +326,6 @@ export function PerfilPage() {
                 {perfilAtivo.categoria || "—"}
               </span>
             </div>
-            <span
-              className="rounded-full px-3 py-1.5 text-sm font-bold"
-              style={{ color: NIVEL_COLOR[idx.nivel], background: `${NIVEL_COLOR[idx.nivel]}1A` }}
-            >
-              Risco {NIVEL_LABEL[idx.nivel]}
-            </span>
           </div>
           <p className="mt-2 text-[13px] font-semibold text-txt-3">
             {fmtInt(perfilAtivo.postsGestao)} de {fmtInt(perfilAtivo.posts)} publicações citam
