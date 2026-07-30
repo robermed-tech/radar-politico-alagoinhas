@@ -8,7 +8,6 @@ import {
   ComentarioBox,
   ComentarioTexto,
   ComentarioMeta,
-  TINTA_COMENTARIO_2,
 } from "@/components/ComentarioBox";
 import { IconNewspaper, IconSwords, IconBuilding, IconPerson, IconDocument } from "@/components/icons";
 import { PeriodoFilter, type Dias } from "@/components/PeriodoFilter";
@@ -73,9 +72,7 @@ function PostCard({ p }: { p: Post }) {
       </div>
       {p.comentarios_destaque && (
         <ComentarioBox className="mb-2.5">
-          <div className="text-xs font-bold" style={{ color: TINTA_COMENTARIO_2 }}>
-            Comentário mais curtido
-          </div>
+          <div className="text-xs font-bold text-txt-3">Comentário mais curtido</div>
           <div className="mt-0.5 line-clamp-2">
             <ComentarioTexto>{p.comentarios_destaque}</ComentarioTexto>
           </div>

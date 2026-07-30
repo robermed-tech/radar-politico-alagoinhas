@@ -57,6 +57,14 @@
      tokens de vidro padrão (g1/g2), pra não competir com o texto da citação. */
   --quote-bg: rgba(255, 255, 255, 0.025);
   --quote-border: rgba(255, 255, 255, 0.08);
+
+  /* Tintas de sentimento para TEXTO sobre o vidro claro do box de comentário.
+     São diferentes de sent.pos/sent.neg (que são cor de PREENCHIMENTO de
+     gráfico): o verde de gráfico #22C55E mede 3,2:1 sobre a superfície clara e
+     reprovaria num chip de 12px. Medido: 10,57:1 e 6,66:1 aqui no escuro. */
+  --sent-ink-pos: #4ADE80;
+  --sent-ink-neg: #F87171;
+  --sent-ink-link: #FB923C;
 }
 
 /* ── TEMA CLARO ── */
@@ -109,6 +117,14 @@
 
   --quote-bg: rgba(15, 23, 42, 0.03);
   --quote-border: rgba(15, 23, 42, 0.08);
+
+  /* Tintas de sentimento para TEXTO no tema claro. Verde-700 e vermelho-700,
+     não o par de gráfico: medido sobre o vidro do box (#FFFCF9), #22C55E dá
+     2,3:1 e o próprio --success dá 3,22:1, os dois abaixo do AA para o chip de
+     12px. Estes dão 4,91:1, 6,33:1 e 5,07:1. */
+  --sent-ink-pos: #15803D;
+  --sent-ink-neg: #B91C1C;
+  --sent-ink-link: #C2410C;
 }
 
 /* Fallback sólido para navegadores sem backdrop-filter (Firefox < 103):

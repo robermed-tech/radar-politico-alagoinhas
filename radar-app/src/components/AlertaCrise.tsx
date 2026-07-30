@@ -7,7 +7,6 @@ import {
   ComentarioBox,
   ComentarioTexto,
   ComentarioMeta,
-  TINTA_COMENTARIO_2,
 } from "@/components/ComentarioBox";
 
 interface Props {
@@ -156,10 +155,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
         {/* Evidência concreta — o que a população realmente diz sobre o tema */}
         {evidencia && (
           <ComentarioBox className="mt-3">
-            <div
-              className="text-[12px] font-bold uppercase tracking-widest"
-              style={{ color: TINTA_COMENTARIO_2 }}
-            >
+            <div className="text-[12px] font-bold uppercase tracking-widest text-txt-3">
               O que a população está dizendo
               {evidencia.subtema && (
                 <span className="ml-1 normal-case">

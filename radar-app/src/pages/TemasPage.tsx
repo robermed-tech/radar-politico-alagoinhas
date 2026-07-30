@@ -93,7 +93,7 @@ function ComentariosDrill({
   }, [sel, comentarios]);
 
   return (
-    <div className="mt-3 rounded-lg border border-brand/40 bg-bg-2 p-3">
+    <div className="mt-3 rounded-lg border border-brand/40 bg-bg-1 p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="text-sm font-bold text-txt-1">
           {labelTemaSub(sel.tema)} · <span className="frase-cap">{labelSub(sel.subtema)}</span>
@@ -113,7 +113,7 @@ function ComentariosDrill({
           Nenhum comentário com texto classificado para este subtema ainda.
         </p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="max-h-[420px] space-y-2 overflow-y-auto">
           {lista.map((c, i) => (
             <li key={i}>
               <ComentarioBox>
@@ -315,13 +315,22 @@ function PainelSubtemas() {
                   );
                 })}
               </div>
+              {/* Revisão de 30/07: os comentários abrem DENTRO do card do tema
+                  clicado, e não mais numa faixa no rodapé do painel. Lá
+                  embaixo eles ficavam a três cards de distância do subtema que
+                  os havia aberto, e em tela cheia o clique acontecia num canto
+                  e a resposta em outro. */}
+              {sel?.tema === t.tema && (
+                <ComentariosDrill
+                  sel={sel}
+                  comentarios={comentarios}
+                  onFechar={() => setSel(null)}
+                />
+              )}
             </div>
           );
         })}
       </div>
-      {sel && (
-        <ComentariosDrill sel={sel} comentarios={comentarios} onFechar={() => setSel(null)} />
-      )}
     </div>
   );
 }

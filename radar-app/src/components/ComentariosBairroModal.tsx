@@ -7,7 +7,6 @@ import {
   ComentarioTexto,
   ComentarioMeta,
   ComentarioChip,
-  TINTA_COMENTARIO_2,
   tintaSentimento,
 } from "@/components/ComentarioBox";
 
@@ -124,10 +123,7 @@ export function ComentariosBairroModal({
                 </ComentarioChip>
               </ComentarioMeta>
               {c.pedido && (
-                <div
-                  className="mt-1.5 rounded px-2 py-1 text-[13px] font-semibold"
-                  style={{ background: "rgba(2,6,23,0.88)", color: TINTA_COMENTARIO_2 }}
-                >
+                <div className="mt-1.5 rounded border border-line px-2 py-1 text-[13px] font-semibold text-txt-2">
                   Pedido: {c.pedido}
                 </div>
               )}
