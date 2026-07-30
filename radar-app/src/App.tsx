@@ -25,7 +25,6 @@ import { RequireAuth, RequireAdmin } from "@/components/ProtectedRoute";
 import { useAuth } from "@/components/AuthProvider";
 import { signOut } from "@/lib/auth";
 import { PipelineHealthBanner } from "@/components/PipelineHealthBanner";
-import { IconAntena } from "@/components/AntenaSinal";
 import { useHydrateSettings } from "@/lib/settings";
 import { useTrackPresence } from "@/lib/presence";
 
@@ -80,10 +79,14 @@ function NIcoInbox() {
 function NIcoUser() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
 }
-// Escuta do Rádio usa a TORRE de antena (IconAntena), e não o aparelho
-// receptor que estava aqui antes: a seção mostra a captação do que está no ar,
-// não um rádio de mesa. Mesma geometria do painel animado da página, para o
-// item de menu e o card serem lidos como a mesma coisa (29/07).
+// O item de menu da Escuta do Rádio fica com o aparelho RECEPTOR (rádio de
+// mesa), por pedido do cliente em 30/07. A torre de antena chegou a ocupar este
+// lugar em 29/07, para casar com o painel animado da página; o cliente preferiu
+// o rádio de mesa no menu, então os dois desenhos convivem de propósito: o
+// ícone nomeia a seção, e a antena de dentro da página é o estado da captação.
+function NIcoRadio() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m16 3-8 5"/><circle cx="8" cy="14" r="2.5"/><line x1="15" y1="12" x2="18" y2="12"/><line x1="15" y1="16" x2="18" y2="16"/></svg>;
+}
 function NIcoAlertHist() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="12" y1="2" x2="12" y2="4"/></svg>;
 }
@@ -98,7 +101,7 @@ const NAV_MAIN: NavItem[] = [
   // Escuta do Rádio é admin-only (pedido explícito): fica fora do menu para
   // usuário comum, e a página vem embrulhada em RequireAdmin. O RLS da
   // migration 011 é a outra metade — sem ele, esconder o item seria cosmético.
-  { id: "radio",       label: "Escuta do Rádio",       icon: <IconAntena /> },
+  { id: "radio",       label: "Escuta do Rádio",       icon: <NIcoRadio /> },
   { id: "topics",      label: "Previsões",             icon: <NIcoTrending /> },
   { id: "actions",     label: "Alertas & Ações",       icon: <NIcoBell /> },
   { id: "alerts-hist", label: "Histórico Alertas",     icon: <NIcoAlertHist /> },
