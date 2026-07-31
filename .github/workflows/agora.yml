@@ -113,7 +113,17 @@ jobs:
           EVOLUTION_INSTANCE: ${{ secrets.EVOLUTION_INSTANCE }}
           WHATSAPP_NUMBER:    ${{ secrets.EVOLUTION_GROUP_ID }}
         run: |
-          curl -s -X POST "$EVOLUTION_API_URL/message/sendText/$EVOLUTION_INSTANCE" \
+          # `|| true` continua aqui de propósito: o aviso não pode derrubar o
+          # job que já está falhando. O que mudou é que o resultado passou a
+          # APARECER — antes o `-s` mais o `|| true` descartavam status e corpo,
+          # então um canal quebrado (ex.: o 404 da Evolution visto em 31/07)
+          # ficava indistinguível de um aviso entregue.
+          CODIGO=$(curl -s -o /tmp/wa.txt -w "%{http_code}" \
+            -X POST "$EVOLUTION_API_URL/message/sendText/$EVOLUTION_INSTANCE" \
             -H "Content-Type: application/json" \
             -H "apikey: $EVOLUTION_API_KEY" \
-            -d "{\"number\":\"$WHATSAPP_NUMBER\",\"text\":\"⚠️ ÁGORA: falha na execução. Verifique o GitHub Actions.\"}" || true
+            -d "{\"number\":\"$WHATSAPP_NUMBER\",\"text\":\"⚠️ ÁGORA: falha na execução. Verifique o GitHub Actions.\"}") || true
+          echo "WhatsApp (grupo): HTTP $CODIGO"
+          if [ "$CODIGO" != "200" ] && [ "$CODIGO" != "201" ]; then
+            echo "::warning::Aviso ao grupo NAO entregue (HTTP $CODIGO): $(head -c 300 /tmp/wa.txt)"
+          fi

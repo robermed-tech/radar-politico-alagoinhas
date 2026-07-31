@@ -61,7 +61,13 @@ jobs:
     # do coletor e da Edge Function (120) tem que continuar CABENDO aqui: se um
     # dia ele subir sem que estes números subam junto, o job é abortado no meio
     # e a captação inteira vira crédito gasto sem transcrição nenhuma.
-    timeout-minutes: 140
+    #
+    # Subiu de 140 para 230 em 31/07: o overhead de transcrição é proporcional
+    # ao áudio, e a conta antiga (duração + 10 min fixos) não fechava nem no
+    # caso medido de 4 × 30 min, quanto mais no teto de 120. Com a espera do
+    # coletor limitada a 195 min (TETO_ESPERA_SEG), 200 no step e 230 no job
+    # cobrem o pior caso oferecido pelo painel com margem para setup e análise.
+    timeout-minutes: 230
 
     steps:
       - name: Checkout repositório
@@ -90,7 +96,12 @@ jobs:
 
       - name: Captar rádios
         if: ${{ inputs.apenas_clipes != true }}
-        timeout-minutes: 130
+        # Tem que ser MAIOR que TETO_ESPERA_SEG do coletor_radio.py (195 min):
+        # o Python precisa conseguir desistir e imprimir o `--adotar-radio
+        # <run_id>` antes de o Actions matar o job. Se o step vencer primeiro,
+        # o processo morre sem deixar o id, e recuperar a captação já paga
+        # passa a exigir garimpar o console da Apify.
+        timeout-minutes: 200
         env:
           APIFY_API_TOKEN:      ${{ secrets.APIFY_API_TOKEN }}
           # O ator declara groqApiKey como required e NÃO guarda a chave: quem
@@ -152,7 +163,15 @@ jobs:
           EVOLUTION_INSTANCE: ${{ secrets.EVOLUTION_INSTANCE }}
           WHATSAPP_NUMBER:    ${{ secrets.EVOLUTION_GROUP_ID }}
         run: |
-          curl -s -X POST "$EVOLUTION_API_URL/message/sendText/$EVOLUTION_INSTANCE" \
+          # Mesmo motivo do agora.yml: o `|| true` fica (o aviso não derruba o
+          # job), mas status e corpo passam a aparecer no log — senão um canal
+          # quebrado se parece com um aviso entregue.
+          CODIGO=$(curl -s -o /tmp/wa.txt -w "%{http_code}" \
+            -X POST "$EVOLUTION_API_URL/message/sendText/$EVOLUTION_INSTANCE" \
             -H "Content-Type: application/json" \
             -H "apikey: $EVOLUTION_API_KEY" \
-            -d "{\"number\":\"$WHATSAPP_NUMBER\",\"text\":\"⚠️ Escuta do Rádio: falha na captação. Verifique o GitHub Actions.\"}" || true
+            -d "{\"number\":\"$WHATSAPP_NUMBER\",\"text\":\"⚠️ Escuta do Rádio: falha na captação. Verifique o GitHub Actions.\"}") || true
+          echo "WhatsApp (grupo): HTTP $CODIGO"
+          if [ "$CODIGO" != "200" ] && [ "$CODIGO" != "201" ]; then
+            echo "::warning::Aviso ao grupo NAO entregue (HTTP $CODIGO): $(head -c 300 /tmp/wa.txt)"
+          fi

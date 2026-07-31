@@ -887,7 +887,12 @@ def _enviar_whatsapp(mensagem: str, tentativas: int = 2) -> bool:
             r = requests.post(url, headers=headers, json=payload, timeout=15)
             if r.status_code in (200, 201):
                 return True
-            log(f"  WhatsApp: HTTP {r.status_code}{' — retentando' if t == 0 else ' — desistindo'}")
+            # Com o corpo, e não só o status: um 404 da Evolution é ambíguo
+            # entre instância derrubada e número sem WhatsApp, e sem o texto da
+            # resposta não há como separar os dois (ver alerta_suporte.py, que
+            # levou cinco testes cegos em 31/07 por causa disso).
+            log(f"  WhatsApp: HTTP {r.status_code} — {r.text[:300]}"
+                f"{' — retentando' if t == 0 else ' — desistindo'}")
         except Exception as e:
             log(f"  WhatsApp: erro {e}{' — retentando' if t == 0 else ' — desistindo'}")
         if t == 0:
@@ -6653,6 +6658,22 @@ if __name__ == "__main__":
                 somente_ids=[i for i in (_ids or "").split(",") if i.strip()] or None,
                 duracao_min=int(_dur) if (_dur or "").isdigit() else None,
             )
+    elif "--adotar-radio" in sys.argv:
+        # Grava o resultado de um run da Apify que JA terminou, mas cujo
+        # resultado se perdeu (o coletor desistiu antes da hora, o job foi
+        # abortado). A captacao e paga em tempo real: quando isso acontece, o
+        # credito ja foi gasto e a transcricao esta pronta no dataset esperando
+        # alguem le-la. Recuperavel enquanto o dado existir na Apify — a
+        # retencao do plano e de 3 dias, a mesma que limita os clipes.
+        # O run_id sai no log da propria desistencia.
+        if not _RADIO_OK:
+            log("coletor_radio indisponivel (falha de import).")
+        else:
+            _run = _arg_valor("--adotar-radio")
+            if not _run:
+                log("Uso: python agora.py --adotar-radio <run_id> [--dry-run]")
+            else:
+                _radio.adotar_run(_run, dry_run="--dry-run" in sys.argv)
     elif "--analisar-radio" in sys.argv:
         # Analisa e GRAVA as pautas dos blocos pendentes (sem coletar nada).
         # Usar depois de uma captura, ou para reprocessar com --refazer.
