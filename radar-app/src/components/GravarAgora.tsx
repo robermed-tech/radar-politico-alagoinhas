@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchRadios, gravarAgora, type RadioFonte } from "@/lib/radio";
+import {
+  FUNDO_ESCUTA, FUNDO_LARANJA, TINTA_PRETA, TINTA_CLARA, TINTA_CLARA_2,
+  FUNDO_LISTA, FUNDO_ITEM, BORDA, SOMBRA, ALTURA_MIN, ALTURA_MAX,
+} from "@/components/superficieRadio";
 
 /**
  * Card de gravação sob demanda — canto superior direito da Escuta do Rádio.
@@ -26,19 +30,10 @@ import { fetchRadios, gravarAgora, type RadioFonte } from "@/lib/radio";
  * antena e do box de comentário) com o botão em laranja da marca e texto quase
  * preto — a receita do card "Engajamento no período", medida em 8,34:1 na ponta
  * clara e 5,30:1 na escura. Vermelho seria o óbvio para "REC", mas neste painel
- * vermelho é sentimento negativo, nunca controle.
+ * vermelho é sentimento negativo, nunca controle. As constantes moram em
+ * `superficieRadio.ts` desde que o card "Rádios monitoradas" passou a usar a
+ * mesma superfície: duas cópias só ficam iguais até alguém mexer numa delas.
  */
-
-const FUNDO_ESCUTA = "linear-gradient(165deg, #475569 0%, #0F172A 100%)";
-const FUNDO_LARANJA = "linear-gradient(150deg, #FB923C 0%, #EA580C 100%)";
-const TINTA_PRETA = "#1A0F02";
-const TINTA_CLARA = "#F8FAFC";
-const TINTA_CLARA_2 = "#CBD5E1";
-/** Superfícies internas sobre o degradê. Quase sólidas, nunca um alpha baixo:
- *  o degradê varia demais para um translúcido leve compensar. */
-const FUNDO_LISTA = "rgba(2,6,23,0.55)";
-const FUNDO_ITEM = "rgba(2,6,23,0.72)";
-const BORDA = "1px solid rgba(148,163,184,0.30)";
 
 const DURACOES = [15, 30, 45, 90, 120] as const;
 /**
@@ -106,8 +101,12 @@ export function GravarAgora() {
         background: FUNDO_ESCUTA,
         // Piso que mantém a proporção quadrada na coluna de ~380px, mesmo com
         // o cadastro vazio (quando a lista tem só a frase de estado).
-        minHeight: 340,
-        boxShadow: "0 18px 40px -18px rgba(15,23,42,0.65)",
+        minHeight: ALTURA_MIN,
+        // Mesmo teto do card "Rádios monitoradas": teto diferente entre os dois
+        // deixa faixa vazia embaixo do mais baixo, porque o grid dimensiona a
+        // linha pelo item mais alto.
+        maxHeight: ALTURA_MAX,
+        boxShadow: SOMBRA,
       }}
     >
       <div className="flex items-baseline justify-between gap-2">
@@ -131,7 +130,7 @@ export function GravarAgora() {
         {radios.length === 0 ? (
           <p className="p-2 text-[13px] leading-relaxed" style={{ color: TINTA_CLARA_2, fontWeight: 500 }}>
             Nenhuma rádio cadastrada. Cadastre uma estação no card &ldquo;Rádios
-            monitoradas&rdquo;, mais abaixo nesta página.
+            monitoradas&rdquo;, ao lado.
           </p>
         ) : (
           <ul className="space-y-1.5">

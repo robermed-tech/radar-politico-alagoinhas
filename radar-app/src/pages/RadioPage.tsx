@@ -17,11 +17,10 @@
  * 3. Citação é transcrição automática, com instante para conferir no áudio.
  */
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
-  fetchCapturas, fetchPautas, fetchRadios, addRadio, toggleRadio, deleteRadio,
-  validarStream, resumirPorEstacao, cruzarTemas, pautasCoordenadas, placarTom,
-  fmtInstante, CONFIANCA_MIN_RADIO,
+  fetchCapturas, fetchPautas, resumirPorEstacao, cruzarTemas, pautasCoordenadas,
+  placarTom, fmtInstante, CONFIANCA_MIN_RADIO,
   type RadioPauta, type EstacaoResumo,
 } from "@/lib/radio";
 import { fetchRadar, filtrarPorPeriodo } from "@/lib/data";
@@ -30,7 +29,7 @@ import { AlertaRadio } from "@/components/AlertaRadio";
 import { AntenaStatusColumn } from "@/components/AntenaSinal";
 import { ClipeCitacao } from "@/components/ClipeCitacao";
 import { GravarAgora } from "@/components/GravarAgora";
-import { Card, Feedback } from "@/components/FormCard";
+import { RadiosMonitoradas } from "@/components/RadiosMonitoradas";
 import { labelBairro } from "@/lib/format";
 import { corTema } from "@/lib/temaColors";
 
@@ -61,8 +60,6 @@ const VOZ_LABEL: Record<string, string> = {
   locutor: "locutor", ouvinte: "ouvinte",
   entrevistado: "entrevistado", reportagem: "reportagem",
 };
-
-const DIAS_SEMANA = ["seg", "ter", "qua", "qui", "sex", "sab", "dom"];
 
 function Kpi({ label, valor, hint }: { label: string; valor: string; hint?: string }) {
   return (
@@ -208,158 +205,6 @@ function CardEstacao({ r }: { r: EstacaoResumo }) {
   );
 }
 
-/** Cadastro das rádios. Vive aqui, e não na tela Fontes, porque a Fontes é
- *  aberta a qualquer usuário e esta funcionalidade é do admin. */
-function CadastroRadios() {
-  const qc = useQueryClient();
-  const { data: radios = [] } = useQuery({ queryKey: ["radios"], queryFn: fetchRadios });
-  const [stream, setStream] = useState("");
-  const [nome, setNome] = useState("");
-  const [programa, setPrograma] = useState("");
-  const [hora, setHora] = useState("");
-  const [duracao, setDuracao] = useState("30");
-  const [dias, setDias] = useState<string[]>(["seg", "ter", "qua", "qui", "sex"]);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-
-  const previa = stream.trim() ? validarStream(stream) : null;
-
-  async function run(fn: () => Promise<string | null>, sucesso: string) {
-    const err = await fn();
-    setMsg(err ? { ok: false, text: err } : { ok: true, text: sucesso });
-    if (!err) qc.invalidateQueries({ queryKey: ["radios"] });
-  }
-
-  function adicionar() {
-    if (!stream.trim()) return;
-    void run(
-      () => addRadio(stream, nome, {
-        programa: programa.trim() || undefined,
-        hora_inicio: hora.trim() || undefined,
-        duracao_min: Number(duracao) > 0 ? Number(duracao) : undefined,
-        dias: dias.length ? dias : undefined,
-      }),
-      "✔ Rádio cadastrada (pausada — ative para começar a captar)"
-    ).then(() => { setStream(""); setNome(""); setPrograma(""); });
-  }
-
-  return (
-    <Card title="Rádios monitoradas">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <input
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          placeholder="Nome da estação (ex: 93 FM Bahia)"
-          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
-        />
-        <input
-          value={stream}
-          onChange={(e) => setStream(e.target.value)}
-          placeholder="URL do stream (.m3u8, .mp3, /stream…)"
-          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
-        />
-        <input
-          value={programa}
-          onChange={(e) => setPrograma(e.target.value)}
-          placeholder="Programa (opcional)"
-          className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
-        />
-        <div className="flex gap-2">
-          <input
-            value={hora}
-            onChange={(e) => setHora(e.target.value)}
-            placeholder="Início 07:00"
-            className="w-full rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
-          />
-          <input
-            value={duracao}
-            onChange={(e) => setDuracao(e.target.value)}
-            placeholder="min"
-            className="w-24 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
-          />
-        </div>
-      </div>
-
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {DIAS_SEMANA.map((d) => {
-          const ativo = dias.includes(d);
-          return (
-            <button
-              key={d}
-              onClick={() => setDias((v) => (ativo ? v.filter((x) => x !== d) : [...v, d]))}
-              className="rounded-md px-2.5 py-1 text-xs font-semibold transition"
-              style={ativo
-                ? { background: "var(--brand)", color: "#1A0F02", fontWeight: 700 }
-                : { border: "1px solid var(--line)", color: "var(--txt2)" }}
-            >
-              {d}
-            </button>
-          );
-        })}
-      </div>
-
-      {previa?.error && <p className="mt-2 text-xs text-risk-crit">{previa.error}</p>}
-      {previa?.aviso && <p className="mt-2 text-xs" style={{ color: "#F59E0B" }}>{previa.aviso}</p>}
-
-      <p className="mt-2 text-xs text-txt-3">
-        A captação é ao vivo: o sistema grava no horário do programa e transcreve. Fora da
-        faixa horária cadastrada nada é gravado, para não captar bloco musical e publicidade.
-        Rádio nova nasce pausada.
-      </p>
-
-      <div className="mt-2 flex items-center gap-3">
-        <button
-          onClick={adicionar}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:opacity-90"
-        >
-          Adicionar
-        </button>
-        <Feedback msg={msg} />
-      </div>
-
-      <div className="mt-3 space-y-1.5">
-        {radios.map((r) => (
-          <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
-            <div className="min-w-0">
-              <span className={r.active ? "font-semibold text-txt-1" : "text-txt-3"}>
-                {r.label ?? r.handle}
-              </span>
-              {r.config?.programa && <span className="ml-1 text-txt-3">· {r.config.programa}</span>}
-              {r.config?.hora_inicio && (
-                <span className="ml-1 text-txt-3">
-                  · {r.config.hora_inicio} ({r.config.duracao_min ?? 30} min)
-                </span>
-              )}
-              {!r.active && (
-                <span className="ml-2 text-[12px] uppercase tracking-wide text-txt-3">pausada</span>
-              )}
-              <div className="truncate text-[12px] text-txt-3">{r.handle}</div>
-            </div>
-            <div className="flex shrink-0 items-center gap-3">
-              <button
-                onClick={() => run(() => toggleRadio(r.id, !r.active), r.active ? "✔ Pausada" : "✔ Ativada")}
-                className="text-xs font-semibold text-txt-3 hover:text-txt-1"
-              >
-                {r.active ? "Pausar" : "Ativar"}
-              </button>
-              <button
-                onClick={() => run(() => deleteRadio(r.id), "✔ Removida")}
-                className="text-xs font-semibold text-risk-crit hover:underline"
-              >
-                Remover
-              </button>
-            </div>
-          </div>
-        ))}
-        {radios.length === 0 && (
-          <p className="text-sm text-txt-3">
-            Nenhuma rádio cadastrada. Cadastre a estação e o horário do programa para começar.
-          </p>
-        )}
-      </div>
-    </Card>
-  );
-}
-
 export function RadioPage() {
   const [dias, setDias] = useState<Dias>(7);
 
@@ -422,12 +267,19 @@ export function RadioPage() {
 
       {/* Linha de topo: antena à esquerda (mesmo lugar de leitura que o radar
           de coleta ocupa na Estação Meteorológica — primeiro o sinal de que o
-          sistema está ouvindo, depois o que ele ouviu), indicadores no meio e,
-          à DIREITA, o card quadrado de gravação sob demanda (30/07). Antes ele
-          era uma faixa de largura cheia acima de tudo, e empurrava a página
-          inteira para baixo por causa de um controle de uso eventual. O
-          cadastro das estações continua no card "Rádios monitoradas", lá
-          embaixo, intocado. */}
+          sistema está ouvindo, depois o que ele ouviu), o CADASTRO das estações
+          no meio e, à direita, o card de gravação sob demanda.
+
+          O cadastro subiu para cá em 30/07, a pedido do cliente: ele vivia num
+          card claro no rodapé da página, a uma rolagem inteira do botão GRAVAR,
+          e as duas coisas que se faz nesta tela (definir quais rádios existem e
+          pedir uma captação avulsa) ficavam em pontas opostas. As perguntas
+          continuam separadas — lá se define o horário em que a estação grava
+          sozinha, aqui se pede uma gravação agora —, só que agora lado a lado.
+
+          Os quatro indicadores desceram para a linha seguinte, em 4 colunas: o
+          espaço que ocupavam aqui é o do cadastro, e eles são leitura, não
+          controle. */}
       <div className="grid gap-3 lg:grid-cols-6">
         <div className="lg:col-span-1">
           <AntenaStatusColumn
@@ -441,29 +293,31 @@ export function RadioPage() {
             }
           />
         </div>
-        {/* Os quatro indicadores em 2×2 para caber na coluna do meio e deixar
-            a linha com a altura de um card quadrado à direita. */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:col-span-3">
-          <Kpi
-            label="Rádios captadas"
-            valor={String(estacoesCaptadas)}
-            hint={`${estacoes.length} monitorada(s) na janela`}
-          />
-          <Kpi label="Minutos transcritos" valor={String(Math.round(minutos))} hint="captação ao vivo" />
-          <Kpi
-            label="Assuntos de interesse"
-            valor={String(deInteresse.length)}
-            hint={`de ${pautas.length} pauta(s) captada(s)`}
-          />
-          <Kpi
-            label="Pressão no rádio"
-            valor={`${placar.critico} × ${placar.favoravel}`}
-            hint="críticas × elogios à gestão"
-          />
+        <div className="lg:col-span-3">
+          <RadiosMonitoradas />
         </div>
         <div className="lg:col-span-2">
           <GravarAgora />
         </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Kpi
+          label="Rádios captadas"
+          valor={String(estacoesCaptadas)}
+          hint={`${estacoes.length} monitorada(s) na janela`}
+        />
+        <Kpi label="Minutos transcritos" valor={String(Math.round(minutos))} hint="captação ao vivo" />
+        <Kpi
+          label="Assuntos de interesse"
+          valor={String(deInteresse.length)}
+          hint={`de ${pautas.length} pauta(s) captada(s)`}
+        />
+        <Kpi
+          label="Pressão no rádio"
+          valor={`${placar.critico} × ${placar.favoravel}`}
+          hint="críticas × elogios à gestão"
+        />
       </div>
 
       {/* A rádio não entra no IAD, e a tela diz isso em vez de deixar o leitor
@@ -503,8 +357,9 @@ export function RadioPage() {
         <div className="rounded-xl border border-line bg-bg-1 p-5">
           <div className="text-lg font-extrabold text-txt-1">Nenhuma captação nesta janela</div>
           <p className="mt-1 text-sm text-txt-2">
-            Cadastre as rádios abaixo e ative as que devem ser captadas. A gravação acontece no
-            horário do programa, ao vivo, e a transcrição vem em seguida.
+            Cadastre as rádios no card &ldquo;Rádios monitoradas&rdquo;, acima, e ative as que devem
+            ser captadas. A gravação acontece no horário do programa, ao vivo, e a transcrição vem
+            em seguida.
           </p>
         </div>
       )}
@@ -537,8 +392,6 @@ export function RadioPage() {
           </p>
         </div>
       )}
-
-      <CadastroRadios />
     </div>
   );
 }
