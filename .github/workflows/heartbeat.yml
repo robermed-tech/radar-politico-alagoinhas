@@ -19,6 +19,10 @@ on:
         description: 'Disparar um alerta de TESTE pro numero cadastrado (ignora saude real do pipeline)'
         type: boolean
         default: false
+      diagnostico:
+        description: 'Nao envia nada: testa host, instancia e numero em separado e diz onde esta a falha'
+        type: boolean
+        default: false
 
 jobs:
   heartbeat:
@@ -36,7 +40,22 @@ jobs:
       - name: Instalar dependencias minimas
         run: pip install requests
 
+      # Separado do step de baixo de propósito: o diagnóstico não envia
+      # mensagem nenhuma, então pode ser rodado à vontade enquanto se conserta
+      # o canal, sem torrar tentativa de entrega nem poluir o alerta_historico.
+      - name: Diagnosticar o canal de alerta
+        if: ${{ inputs.diagnostico == true }}
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          RADAR_TENANT:         alagoinhas
+          EVOLUTION_API_URL:    ${{ secrets.EVOLUTION_API_URL }}
+          EVOLUTION_API_KEY:    ${{ secrets.EVOLUTION_API_KEY }}
+          EVOLUTION_INSTANCE:   ${{ secrets.EVOLUTION_INSTANCE }}
+        run: python alerta_suporte.py --diagnostico
+
       - name: Checar saude do pipeline ÁGORA
+        if: ${{ inputs.diagnostico != true }}
         env:
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

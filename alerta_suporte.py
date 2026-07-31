@@ -309,6 +309,107 @@ def disparar(origem: str, motivo: str, tenant: str = None, forcar: bool = False,
     return False
 
 
+def diagnosticar(tenant: str = None) -> int:
+    """Separa as camadas que um HTTP 404 sozinho confunde.
+
+    "Não recebi o alerta" tem causas muito diferentes, e o envio devolve o
+    mesmo 404 para várias delas: o servidor da Evolution não existe mais, a
+    instância foi removida, a instância existe mas está desconectada do
+    WhatsApp, ou o número cadastrado simplesmente não tem WhatsApp. Chutar
+    entre essas hipóteses custou uma tarde em 31/07 — daí testar uma por vez,
+    de fora para dentro, parando na primeira que falha.
+
+    Nunca imprime a URL nem a apikey: o veredito não precisa delas, e o log do
+    Actions é público neste repo.
+
+    Retorna 0 se o caminho inteiro está de pé.
+    """
+    url_base = os.environ.get("EVOLUTION_API_URL", "").rstrip("/")
+    api_key = os.environ.get("EVOLUTION_API_KEY", "")
+    instance = os.environ.get("EVOLUTION_INSTANCE", "radar")
+    cfg = _carregar_config_suporte(tenant or _tenant_padrao())
+    numero = _numero_normalizado((cfg.get("alerta_suporte_numero") or "").strip())
+
+    print("=== Diagnostico do alerta de suporte ===")
+    print(f"  [1/4] Configuracao: EVOLUTION_API_URL {'ok' if url_base else 'AUSENTE'}, "
+          f"EVOLUTION_API_KEY {'ok' if api_key else 'AUSENTE'}, "
+          f"instancia '{instance}', "
+          f"numero cadastrado {'ok (' + str(len(numero)) + ' digitos)' if numero else 'AUSENTE'}")
+    if not url_base or not api_key:
+        print("  VEREDITO: SISTEMA — falta credencial da Evolution API nos secrets.")
+        return 1
+    if not numero:
+        print("  VEREDITO: NUMERO — nenhum numero em Configuracoes > Alerta de Suporte.")
+        return 1
+
+    # 2. O host existe? "Application not found" aqui é a plataforma de
+    #    hospedagem respondendo, não a Evolution — ou seja, o servidor sumiu.
+    try:
+        r = requests.get(url_base, timeout=15)
+        corpo = r.text[:200]
+        print(f"  [2/4] Host responde: HTTP {r.status_code} — {corpo}")
+        host_sumiu = ("Application not found" in corpo
+                      or (r.status_code == 404 and "not found" in corpo.lower()))
+        if host_sumiu:
+            print("  VEREDITO: SISTEMA — o servidor da Evolution API nao existe "
+                  "mais neste endereco. Reprovisione a instancia ou atualize o "
+                  "secret EVOLUTION_API_URL. O numero cadastrado nao tem "
+                  "nenhuma relacao com esta falha.")
+            return 1
+    except Exception as e:
+        print(f"  [2/4] Host inacessivel: {e}")
+        print("  VEREDITO: SISTEMA — o endereco da Evolution API nao responde.")
+        return 1
+
+    # 3. A instância existe e está conectada ao WhatsApp?
+    try:
+        r = requests.get(f"{url_base}/instance/connectionState/{instance}",
+                         headers={"apikey": api_key}, timeout=15)
+        print(f"  [3/4] Instancia '{instance}': HTTP {r.status_code} — {r.text[:200]}")
+        if r.status_code == 404:
+            print(f"  VEREDITO: SISTEMA — a instancia '{instance}' nao existe "
+                  "neste servidor (confira o secret EVOLUTION_INSTANCE).")
+            return 1
+        estado = ""
+        try:
+            d = r.json()
+            estado = str((d.get("instance") or d).get("state") or "")
+        except Exception:
+            pass
+        if estado and estado != "open":
+            print(f"  VEREDITO: SISTEMA — a instancia existe mas esta '{estado}', "
+                  "nao conectada ao WhatsApp. Reconecte lendo o QR code.")
+            return 1
+    except Exception as e:
+        print(f"  [3/4] Erro ao consultar a instancia: {e}")
+        return 1
+
+    # 4. Só agora faz sentido perguntar do número: as camadas de baixo estão de pé.
+    try:
+        r = requests.post(f"{url_base}/chat/whatsappNumbers/{instance}",
+                          headers={"apikey": api_key, "Content-Type": "application/json"},
+                          json={"numbers": [numero]}, timeout=15)
+        print(f"  [4/4] Numero cadastrado: HTTP {r.status_code} — {r.text[:300]}")
+        existe = None
+        try:
+            itens = r.json()
+            if isinstance(itens, list) and itens:
+                existe = bool(itens[0].get("exists"))
+        except Exception:
+            pass
+        if existe is False:
+            print("  VEREDITO: NUMERO — o servidor e a instancia estao de pe, mas "
+                  "este numero nao tem WhatsApp. Confira o DDD e o nono digito "
+                  "em Configuracoes > Alerta de Suporte.")
+            return 1
+    except Exception as e:
+        print(f"  [4/4] Erro ao checar o numero: {e}")
+        return 1
+
+    print("  VEREDITO: o caminho inteiro esta de pe — servidor, instancia e numero.")
+    return 0
+
+
 if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
@@ -320,6 +421,9 @@ if __name__ == "__main__":
             if a.startswith(nome + "="):
                 return a.split("=", 1)[1]
         return default
+
+    if "--diagnostico" in sys.argv:
+        sys.exit(diagnosticar())
 
     _origem = _arg_valor("--origem", "manual")
     _motivo = _arg_valor("--motivo", "sem detalhe (chamada manual/backstop)")
