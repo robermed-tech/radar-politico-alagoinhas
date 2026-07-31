@@ -61,6 +61,8 @@ jobs:
           TWILIO_ACCOUNT_SID:   ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN:    ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_FROM_NUMBER:   ${{ secrets.TWILIO_FROM_NUMBER }}
+          CALLMEBOT_APIKEY:     ${{ secrets.CALLMEBOT_APIKEY }}
+          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
           # O agora.py dispara o alerta de dentro do próprio except, então o
           # canal de reserva precisa do token aqui também — não só no backstop.
           GITHUB_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
@@ -102,6 +104,8 @@ jobs:
           TWILIO_ACCOUNT_SID:   ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN:    ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_FROM_NUMBER:   ${{ secrets.TWILIO_FROM_NUMBER }}
+          CALLMEBOT_APIKEY:     ${{ secrets.CALLMEBOT_APIKEY }}
+          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
           # Canal de reserva (issue no repo). Injetado pelo Actions, não é
           # secret a cadastrar.
           GITHUB_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
