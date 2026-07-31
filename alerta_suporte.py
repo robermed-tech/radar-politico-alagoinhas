@@ -202,6 +202,20 @@ def _whatsapp_evolution(numero: str, texto: str, tentativas: int = 2) -> bool:
     return False
 
 
+def _variantes_numero_br(numero: str) -> list[str]:
+    """O numero como veio e, para celular BR de DDD > 30, tambem sem o nono
+    digito. Ordem: como veio primeiro (e o que o admin cadastrou)."""
+    variantes = [numero]
+    # 55 + DDD (2) + 9 + 8 digitos = 13; o nono digito e sempre um 9 logo
+    # depois do DDD. DDDs 11-30 mantem o 9 no JID; acima disso o WhatsApp
+    # registra sem.
+    if (len(numero) == 13 and numero.startswith("55")
+            and numero[4] == "9" and numero[2:4].isdigit()
+            and int(numero[2:4]) > 30):
+        variantes.append(numero[:4] + numero[5:])
+    return variantes
+
+
 def _whatsapp_callmebot(numero: str, texto: str) -> bool:
     """Provedor 2: CallMeBot (gratuito, para alerta pessoal).
 
@@ -219,25 +233,36 @@ def _whatsapp_callmebot(numero: str, texto: str) -> bool:
     apikey = os.environ.get("CALLMEBOT_APIKEY", "")
     if not apikey:
         return False
-    try:
-        r = requests.get(
-            "https://api.callmebot.com/whatsapp.php",
-            params={"phone": "+" + numero, "apikey": apikey, "text": texto},
-            timeout=30,
-        )
-        # A API poe o resultado no CORPO (HTML) e o status varia ate no erro
-        # (apikey invalida veio com 203, medido em 31/07) — por isso o
-        # veredito e pelo texto, aceitando qualquer 2xx.
-        corpo = r.text.lower()
-        if 200 <= r.status_code < 300 and ("queued" in corpo or "message sent" in corpo):
-            return True
-        # O veredito da API vem DEPOIS do eco da mensagem enviada — logar o
-        # comeco do corpo mostrava so o nosso proprio texto de volta e
-        # escondia o motivo real (aprendido no teste de 31/07).
-        print(f"  [alerta_suporte] WhatsApp/CallMeBot: HTTP {r.status_code} — "
-              f"fim da resposta: ...{r.text[-400:]}")
-    except Exception as e:
-        print(f"  [alerta_suporte] WhatsApp/CallMeBot: erro {e}")
+    # Numero brasileiro de DDD > 30 existe DUAS vezes: com o nono digito (como
+    # as pessoas o escrevem) e sem (como o WhatsApp o registra internamente —
+    # o mesmo JID sem nono digito ja documentado no _enviar_whatsapp da
+    # Evolution). O CallMeBot amarra a apikey ao numero como o WhatsApp o ve,
+    # entao a chave valida pode recusar a forma com 9 e aceitar a sem 9.
+    # Medido em 31/07: apikey correta, numero com 9 -> "APIKey is invalid".
+    # Tentar as duas formas custa no maximo um GET a mais.
+    for fone in _variantes_numero_br(numero):
+        try:
+            r = requests.get(
+                "https://api.callmebot.com/whatsapp.php",
+                params={"phone": "+" + fone, "apikey": apikey, "text": texto},
+                timeout=30,
+            )
+            # A API poe o resultado no CORPO (HTML) e o status varia ate no
+            # erro (apikey invalida veio com 203, medido em 31/07) — por isso
+            # o veredito e pelo texto, aceitando qualquer 2xx.
+            corpo = r.text.lower()
+            if 200 <= r.status_code < 300 and ("queued" in corpo or "message sent" in corpo):
+                if fone != numero:
+                    print(f"  [alerta_suporte] WhatsApp/CallMeBot: entregue na "
+                          f"variante sem o nono digito ({len(fone)} digitos).")
+                return True
+            # O veredito da API vem DEPOIS do eco da mensagem enviada — logar
+            # o comeco do corpo mostrava so o nosso proprio texto de volta e
+            # escondia o motivo real (aprendido no teste de 31/07).
+            print(f"  [alerta_suporte] WhatsApp/CallMeBot ({len(fone)} digitos): "
+                  f"HTTP {r.status_code} — fim da resposta: ...{r.text[-300:]}")
+        except Exception as e:
+            print(f"  [alerta_suporte] WhatsApp/CallMeBot: erro {e}")
     return False
 
 
