@@ -41,6 +41,7 @@ Variáveis de ambiente:
   RADAR_TENANT           — tenant (padrão: alagoinhas)
 """
 
+import math
 import os
 import time
 import requests
@@ -92,6 +93,35 @@ TOLERANCIA_MIN = 20
 
 # A Apify limita concurrency a 4 no input_schema deste ator.
 MAX_CONCURRENCY = 4
+
+# Folga sobre o tempo de GRAVAÇÃO, para esperar o ator transcrever cada bloco e
+# subir o áudio ao key-value store.
+#
+# Era uma folga fixa de 600 s, e 600 s não bastaram: medido em 31/07/26, um run
+# de 4 estações × 30 min levou 41min51s (2511 s), ou seja 711 s de overhead. O
+# coletor desistiu aos 2400 s e o run terminou SUCCEEDED 102 segundos depois —
+# crédito pago, transcrição pronta no dataset, zero bloco gravado. Esse é o pior
+# desfecho possível deste módulo, pior que recusar a captação na largada.
+#
+# Daí a folga passar a ser proporcional ao áudio gravado (o Whisper transcreve o
+# que foi capturado, então o overhead cresce junto) em vez de constante. Esperar
+# demais não custa nada além de um job ocioso; esperar de menos joga fora
+# crédito que já foi gasto. Na medição acima o overhead foi 0,40 × o tempo de
+# gravação, e a fração abaixo dá ~25% de margem sobre isso.
+FOLGA_BASE_SEG = 600
+FRACAO_OVERHEAD = 0.5
+
+# Teto da espera, alinhado ao `timeout-minutes` do step "Captar rádios" do
+# radio.yml (200 min). Fica DELIBERADAMENTE abaixo dele: se o Actions matar o
+# job primeiro, o processo morre sem imprimir o id do run, e aí o resgate exige
+# garimpar o console da Apify. Desistindo antes, o coletor ainda registra o
+# `--adotar-radio <run_id>` no log.
+#
+# Se este número subir, o `timeout-minutes` do step (e o do job) tem que subir
+# junto — a mesma regra dos três lugares que guardam o teto de 120 min de
+# duração, e pelo mesmo motivo: números que divergem fazem o job ser abortado
+# no meio de uma gravação já paga.
+TETO_ESPERA_SEG = 195 * 60
 
 _DIAS_SEMANA = ("seg", "ter", "qua", "qui", "sex", "sab", "dom")
 
@@ -346,6 +376,18 @@ def _fontes_ativas() -> list[dict]:
     )
 
 
+def _fontes_todas() -> list[dict]:
+    """Cadastro inteiro de rádios, ativas ou não.
+
+    Usado só pelo resgate de um run já pago (`adotar_run`): o bloco a recuperar
+    pode ser de uma estação pausada depois da captação, e nesse caso o áudio
+    existe e foi cobrado — filtrar por `active` aqui descartaria de novo o que
+    já se perdeu uma vez.
+    """
+    return _supabase_get(
+        "sources", "platform=eq.radio&select=id,handle,label,config")
+
+
 def _fontes_por_id(ids: list[str]) -> list[dict]:
     """Rádios do cadastro pelos ids pedidos, ATIVAS OU NÃO.
 
@@ -389,6 +431,131 @@ def _duracao_da_janela(fontes: list[dict]) -> int:
         if d > 0:
             duracoes.append(d)
     return min(duracoes) if duracoes else DURACAO_MIN_DEFAULT
+
+
+def _timeout_da_espera(n_estacoes: int, duracao_min: int) -> int:
+    """Quanto esperar pelo run da Apify, em segundos.
+
+    Duas coisas que a folga fixa anterior ignorava:
+
+    1. `concurrency` tem teto de 4 (MAX_CONCURRENCY). Com mais de 4 estações o
+       ator grava em LOTES, e o run dura `duracao × nº de lotes` — não `duracao`.
+       Com 8 estações cadastradas a espera antiga terminaria antes mesmo de a
+       segunda leva começar a transcrever.
+    2. O overhead de transcrição cresce com o tamanho do áudio, não é constante
+       (ver FRACAO_OVERHEAD).
+    """
+    lotes = math.ceil(max(1, n_estacoes) / MAX_CONCURRENCY)
+    gravacao_seg = max(1, duracao_min) * 60 * lotes
+    pedido = int(gravacao_seg * (1 + FRACAO_OVERHEAD)) + FOLGA_BASE_SEG
+    if pedido > TETO_ESPERA_SEG:
+        # Acontece com muitas estações em captação longa (ex.: 8 × 120 min
+        # pediria mais de 6 h, além do teto de job do próprio GitHub). Avisar
+        # alto: aqui a captação provavelmente SERÁ perdida, e quem estiver
+        # lendo o log precisa saber que o resgate pelo run_id é esperado, não
+        # um imprevisto.
+        _log(f"    ⚠ espera calculada ({pedido // 60} min) passa do teto de "
+             f"{TETO_ESPERA_SEG // 60} min — o run pode terminar depois da "
+             "desistencia; use --adotar-radio para recuperar")
+        return TETO_ESPERA_SEG
+    return pedido
+
+
+def _processar_brutos(
+    brutos: list,
+    run_id: str,
+    fonte_por_nome: dict,
+    fontes: list[dict],
+    dry_run: bool,
+) -> dict:
+    """Normaliza e grava os blocos de um run que já terminou.
+
+    Separado de `coletar_e_gravar` para que `adotar_run` possa reaproveitar
+    exatamente este caminho: um run pago cujo resultado se perdeu (timeout,
+    job abortado) não deve depender de uma segunda implementação para ser
+    recuperado — seria a chance de o resgate divergir da produção justamente
+    no dia em que ele importa.
+    """
+    linhas, falhas = [], 0
+    for item in brutos:
+        fonte = fonte_por_nome.get((_pega(item, "radio", padrao="") or "").strip())
+        linha = normalizar_bloco(item, fonte)
+        if not linha:
+            _log(f"    ⚠ bloco sem estacao/horario — ignorado: {str(item)[:120]}")
+            continue
+        linha["apify_run_id"] = run_id
+        linha["raw"] = item
+        if linha["status"] != "SUCCESS":
+            falhas += 1
+            _log(f"    ⚠ {linha['estacao']}: status {linha['status']} "
+                 "(gravado como nao captada)")
+        linhas.append(linha)
+
+    if dry_run:
+        for l in linhas:
+            _log(f"    [DRY-RUN] {l['estacao']} | {l['inicio_ts']} | {l['status']} | "
+                 f"{l['palavras']} palavras | {len(l['segments'])} segmentos")
+            if l["transcricao"]:
+                _log(f"              inicio: {l['transcricao'][:160]}…")
+        _log(f"    [DRY-RUN] {len(linhas)} bloco(s) NAO gravados")
+        return {"fontes": len(fontes), "blocos": len(linhas), "skipped": False,
+                "dry_run": True}
+
+    n = _supabase_upsert("radio_transcripts", linhas, "tenant,estacao,inicio_ts")
+    _log(f"    Gravados: {n} bloco(s) ({falhas} com falha de captura)")
+    for f in fontes:
+        nome = (f.get("label") or f.get("handle") or "").strip()
+        desta = [l for l in linhas if l["estacao"] == nome]
+        ok = any(l["status"] == "SUCCESS" for l in desta)
+        _log_collection(f.get("id"), len(desta),
+                        "ok" if ok else ("erro" if desta else "vazio"), dry_run)
+
+    return {"fontes": len(fontes), "blocos": n, "falhas": falhas, "skipped": False}
+
+
+def adotar_run(run_id: str, dry_run: bool = False) -> dict:
+    """Grava o resultado de um run da Apify que JÁ terminou.
+
+    Existe porque a captação é paga em tempo real: quando o coletor desiste
+    antes da hora (timeout curto, job abortado pelo Actions), o crédito já foi
+    gasto e a transcrição fica pronta no dataset, sem ninguém para lê-la. Isso
+    é recuperável enquanto o dado existir na Apify — a retenção do plano é de
+    3 dias, a mesma janela que limita o recorte dos clipes de áudio.
+
+    Enxerga o cadastro inteiro, e não só as estações na janela horária: o run
+    a resgatar pode ser de outro horário, e recusá-lo por isso descartaria de
+    novo o que já foi pago.
+    """
+    if not _apify_token():
+        _log("[radio] APIFY_API_TOKEN ausente — nao da para adotar o run")
+        return {"fontes": 0, "blocos": 0, "skipped": True}
+
+    url = f"{APIFY_BASE}/actor-runs/{run_id}"
+    try:
+        r = requests.get(url, params={"token": _apify_token()}, timeout=30)
+        if r.status_code != 200:
+            _log(f"[radio] Run {run_id}: HTTP {r.status_code} — {r.text[:160]}")
+            return {"fontes": 0, "blocos": 0, "skipped": True}
+        data = r.json().get("data", {})
+    except Exception as e:
+        _log(f"[radio] Erro ao consultar run {run_id}: {e}")
+        return {"fontes": 0, "blocos": 0, "skipped": True}
+
+    status = data.get("status")
+    if status != "SUCCEEDED":
+        _log(f"[radio] Run {run_id} esta {status} — so run SUCCEEDED tem dataset a adotar")
+        return {"fontes": 0, "blocos": 0, "skipped": True}
+
+    fontes = _fontes_todas()
+    fonte_por_nome = {(f.get("label") or f.get("handle") or "").strip(): f
+                      for f in fontes}
+    brutos = _apify_buscar_resultados(data.get("defaultDatasetId"))
+    _log(f"=== Adotando run {run_id} — {len(brutos)} bloco(s) bruto(s)"
+         f"{' [DRY-RUN]' if dry_run else ''} ===")
+    if not brutos:
+        _log("    Dataset vazio ou fora da retencao (3 dias) — nada a recuperar")
+        return {"fontes": len(fontes), "blocos": 0, "skipped": True}
+    return _processar_brutos(brutos, run_id, fonte_por_nome, fontes, dry_run)
 
 
 def coletar_e_gravar(
@@ -475,53 +642,23 @@ def coletar_e_gravar(
             _log_collection(f.get("id"), 0, "erro", dry_run)
         return {"fontes": len(na_janela), "blocos": 0, "erros": len(na_janela), "skipped": False}
 
-    # O run dura a captura inteira mais o tempo de transcrição. A folga de 10
-    # min cobre o Whisper e a subida do áudio ao KV store.
-    timeout = duracao * 60 + 600
+    timeout = _timeout_da_espera(len(radios_input), duracao)
     _log(f"    Run {run_id} iniciado — aguardando ate {timeout // 60} min "
          "(a gravacao acontece em tempo real)")
     dataset_id = _apify_aguardar_run(run_id, timeout=timeout)
+    if not dataset_id:
+        # A desistência não descarta o run: ele pode terminar depois, e o
+        # crédito já foi gasto. Registrar o id aqui é o que torna o resgate
+        # possível — sem ele, achar o run exige garimpar o console da Apify.
+        _log(f"    Para recuperar quando o run terminar (retencao de 3 dias na "
+             f"Apify): python agora.py --adotar-radio {run_id}")
     brutos = _apify_buscar_resultados(dataset_id) if dataset_id else []
     _log(f"    {len(brutos)} bloco(s) bruto(s)")
 
     if dry_run and brutos:
         _log(f"    [DRY-RUN] chaves do 1º bloco cru: {sorted(brutos[0].keys())}")
 
-    linhas, falhas = [], 0
-    for item in brutos:
-        fonte = fonte_por_nome.get((_pega(item, "radio", padrao="") or "").strip())
-        linha = normalizar_bloco(item, fonte)
-        if not linha:
-            _log(f"    ⚠ bloco sem estacao/horario — ignorado: {str(item)[:120]}")
-            continue
-        linha["apify_run_id"] = run_id
-        linha["raw"] = item
-        if linha["status"] != "SUCCESS":
-            falhas += 1
-            _log(f"    ⚠ {linha['estacao']}: status {linha['status']} "
-                 "(gravado como nao captada)")
-        linhas.append(linha)
-
-    if dry_run:
-        for l in linhas:
-            _log(f"    [DRY-RUN] {l['estacao']} | {l['inicio_ts']} | {l['status']} | "
-                 f"{l['palavras']} palavras | {len(l['segments'])} segmentos")
-            if l["transcricao"]:
-                _log(f"              inicio: {l['transcricao'][:160]}…")
-        _log(f"    [DRY-RUN] {len(linhas)} bloco(s) NAO gravados")
-        return {"fontes": len(na_janela), "blocos": len(linhas), "skipped": False,
-                "dry_run": True}
-
-    n = _supabase_upsert("radio_transcripts", linhas, "tenant,estacao,inicio_ts")
-    _log(f"    Gravados: {n} bloco(s) ({falhas} com falha de captura)")
-    for f in na_janela:
-        nome = (f.get("label") or f.get("handle") or "").strip()
-        desta = [l for l in linhas if l["estacao"] == nome]
-        ok = any(l["status"] == "SUCCESS" for l in desta)
-        _log_collection(f.get("id"), len(desta),
-                        "ok" if ok else ("erro" if desta else "vazio"), dry_run)
-
-    return {"fontes": len(na_janela), "blocos": n, "falhas": falhas, "skipped": False}
+    return _processar_brutos(brutos, run_id, fonte_por_nome, na_janela, dry_run)
 
 
 # ── Execução isolada / autoteste ─────────────────────────────────────────────
@@ -558,6 +695,23 @@ def _autoteste() -> None:
                                {"config": {"duracao_min": 25}}]) == 25
     assert _duracao_da_janela([{"config": {}}]) == DURACAO_MIN_DEFAULT
     assert _duracao_da_janela([{"config": {"duracao_min": "abc"}}]) == DURACAO_MIN_DEFAULT
+
+    # Espera pelo run: o caso real que quebrou em 31/07 (4 estações × 30 min)
+    # levou 2511 s e a espera antiga era de 2400 s. A nova tem que cobrir isso.
+    assert _timeout_da_espera(4, 30) > 2511
+    # Uma estação a mais que o teto de concorrência vira DOIS lotes, e o run
+    # passa a durar duas capturas — a espera precisa dobrar junto.
+    assert _timeout_da_espera(5, 30) > 2 * 30 * 60
+    assert _timeout_da_espera(5, 30) > _timeout_da_espera(4, 30)
+    # Dentro do mesmo lote, mais estações não alongam o run (gravam em paralelo).
+    assert _timeout_da_espera(1, 30) == _timeout_da_espera(4, 30)
+    # Cresce com a duração, e nunca é menor que o tempo de gravação.
+    assert _timeout_da_espera(1, 120) > _timeout_da_espera(1, 30)
+    assert _timeout_da_espera(1, 120) > 120 * 60
+    # Zero estação não pode virar timeout negativo nem divisão por zero.
+    assert _timeout_da_espera(0, 30) > 0
+    # O teto vale mesmo no pior caso, senão o coletor esperaria além do job.
+    assert _timeout_da_espera(8, 120) == TETO_ESPERA_SEG
 
     # Normalização: bloco sem estação ou sem horário não tem chave e é recusado.
     assert normalizar_bloco({"radio": "X"}, None) is None

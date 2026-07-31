@@ -180,7 +180,15 @@ def _enviar_whatsapp(numero: str, texto: str, tentativas: int = 2) -> bool:
             r = requests.post(url, headers=headers, json=payload, timeout=15)
             if r.status_code in (200, 201):
                 return True
-            print(f"  [alerta_suporte] WhatsApp: HTTP {r.status_code}"
+            # O corpo da resposta é o que distingue as causas: um 404 da
+            # Evolution API tanto pode ser "instância inexistente ou
+            # desconectada" quanto "este número não tem WhatsApp" (nos DDDs
+            # > 30 o JID brasileiro perde o nono dígito, e é armadilha
+            # conhecida). Logar só o status deixou um alerta que não entregava
+            # nada sem diagnóstico possível — cinco testes seguidos em 31/07
+            # renderam a mesma linha "HTTP 404" e nenhuma pista.
+            print(f"  [alerta_suporte] WhatsApp: HTTP {r.status_code} — "
+                  f"{r.text[:300]}"
                   f"{' — retentando' if t == 0 else ' — desistindo'}")
         except Exception as e:
             print(f"  [alerta_suporte] WhatsApp: erro {e}"
