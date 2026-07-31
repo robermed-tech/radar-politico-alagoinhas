@@ -133,7 +133,7 @@ export function EnvioSecretario({
               key={c}
               onClick={() => setCanal(c)}
               className={`rounded px-3 py-1.5 text-xs font-semibold transition-all ${
-                canal === c ? "bg-brand text-white" : "text-txt-3 hover:text-txt-1"
+                canal === c ? "bg-brand text-brand-ink" : "text-txt-3 hover:text-txt-1"
               }`}
             >
               {c === "whatsapp" ? "WhatsApp" : "E-mail"}

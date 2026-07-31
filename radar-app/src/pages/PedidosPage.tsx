@@ -81,7 +81,7 @@ export function PedidosPage() {
             <button
               onClick={() => setSoRevisar((v) => !v)}
               className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
-                soRevisar ? "border-transparent bg-brand text-white" : "border-line bg-bg-1 text-txt-2 hover:text-txt-1"
+                soRevisar ? "border-transparent bg-brand text-brand-ink" : "border-line bg-bg-1 text-txt-2 hover:text-txt-1"
               }`}
               title="Comentários com baixa confiança (ironia/ambiguidade) — vale conferência humana"
             >

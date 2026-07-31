@@ -49,27 +49,26 @@ export function PeriodoFilter({ dias, onChange, ariaLabel = "Período de anális
             }`}
             // Tinta escura sobre o laranja, e não branca: é a decisão de
             // contraste da reunião de 24/07, já usada na pílula ativa do menu
-            // e no box de engajamento. Branco sobre #FB923C mede 2,26:1 e
-            // reprova no AA (mínimo 4,5); com #1A0F02 passa folgado.
+            // e no box de engajamento. Branco sobre #F79641 mede 2,24:1 e
+            // reprova no AA (mínimo 4,5); com #1A0F02 mede 8,44:1.
             //
-            // O laranja é o MESMO degradê dos botões de duração do card
-            // "Gravar agora" (`FUNDO_LARANJA`), e não o `var(--brand)` chapado
-            // que estava aqui: o token muda de tom entre o tema claro (#FB923C)
-            // e o escuro (#EA580C), então a mesma tela mostrava dois laranjas
-            // diferentes lado a lado. O cliente apontou isso em 30/07 usando o
-            // botão "30 min" como referência. Contraste com #1A0F02: 8,34:1 na
-            // ponta clara e 5,30:1 na escura.
+            // `var(--brand)` chapado, e não um degradê: até 30/07 o token
+            // mudava de tom entre o tema claro e o escuro, e um degradê
+            // hardcoded (dois stops fixos) foi o jeito de disfarçar isso —
+            // só que aí o mesmo botão passou a ter dois tons DENTRO de si
+            // mesmo, e cada tela que precisava do "mesmo laranja" replicava
+            // um degradê ligeiramente diferente (a queixa de 31/07: os
+            // botões de período e o "Mais citados" do Feed liam como dois
+            // laranjas distintos lado a lado). Desde a revisão de 31/07,
+            // `--brand` é um hex único (#F79641) nos dois temas — o botão
+            // fica chapado e casa com qualquer outro botão de marca da tela.
             //
             // O peso vem inline porque a diretriz tipográfica global do
             // index.css rebaixa `font-bold` para 400 com !important — classe
             // de peso aqui não teria efeito nenhum.
             style={
               ativo
-                ? {
-                    background: "linear-gradient(150deg, #FB923C 0%, #EA580C 100%)",
-                    color: "#1A0F02",
-                    fontWeight: 800,
-                  }
+                ? { background: "var(--brand)", color: "#1A0F02", fontWeight: 800 }
                 : { fontWeight: 600 }
             }
           >

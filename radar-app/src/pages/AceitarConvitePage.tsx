@@ -35,7 +35,7 @@ export function AceitarConvitePage({ onDone }: { onDone: () => void }) {
         <div className="mb-8 flex items-center gap-3">
           <span
             className="grid h-10 w-10 place-items-center rounded-2xl text-xl font-bold text-white"
-            style={{ background: "linear-gradient(150deg, #FB923C, #EA580C)" }}
+            style={{ background: "var(--brand)" }}
           >
             ◉
           </span>

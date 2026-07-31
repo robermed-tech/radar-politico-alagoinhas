@@ -67,7 +67,7 @@ function ConfigUrl({ onSaved }: { onSaved: () => void }) {
             onSaved();
           }}
           disabled={!url.trim()}
-          className="mt-3 w-full rounded-lg bg-brand py-2.5 font-bold text-white disabled:opacity-50"
+          className="mt-3 w-full rounded-lg bg-brand py-2.5 font-bold text-brand-ink disabled:opacity-50"
         >
           Conectar
         </button>
@@ -215,7 +215,7 @@ export function CommandCenter() {
                 key={p.dias}
                 onClick={() => setDias(p.dias)}
                 className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
-                  dias === p.dias ? "bg-brand text-white" : "text-txt-2 hover:text-txt-1"
+                  dias === p.dias ? "bg-brand text-brand-ink" : "text-txt-2 hover:text-txt-1"
                 }`}
               >
                 {p.label}
@@ -345,7 +345,7 @@ export function CommandCenter() {
                 key={p.dias}
                 onClick={() => setDias(p.dias)}
                 className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
-                  dias === p.dias ? "bg-brand text-white" : "text-txt-2 hover:text-txt-1"
+                  dias === p.dias ? "bg-brand text-brand-ink" : "text-txt-2 hover:text-txt-1"
                 }`}
               >
                 {p.label}

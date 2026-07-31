@@ -80,7 +80,7 @@ function Campo({
       value={valor}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`rounded-xl px-3 py-2 text-sm outline-none transition placeholder:text-[#94A3B8] focus:border-[#FB923C] ${largura ?? "w-full"}`}
+      className={`rounded-xl px-3 py-2 text-sm outline-none transition placeholder:text-[#94A3B8] focus:border-brand ${largura ?? "w-full"}`}
       style={{ background: FUNDO_ITEM, border: BORDA, color: TINTA_CLARA, fontWeight: 600 }}
     />
   );
@@ -270,7 +270,7 @@ export function RadiosMonitoradas() {
                     border: BORDA,
                     // Anel, e não mudança de fundo: o item em edição precisa
                     // continuar legível enquanto o formulário acima o mostra.
-                    boxShadow: sel ? "0 0 0 2px #FB923C" : undefined,
+                    boxShadow: sel ? "0 0 0 2px var(--brand)" : undefined,
                   }}
                 >
                   <span

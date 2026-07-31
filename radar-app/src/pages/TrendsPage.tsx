@@ -376,7 +376,7 @@ export function TrendsPage() {
                 key={d}
                 onClick={() => setJanela(d)}
                 className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
-                  janela === d ? "bg-brand text-white" : "text-txt-2 hover:text-txt-1"
+                  janela === d ? "bg-brand text-brand-ink" : "text-txt-2 hover:text-txt-1"
                 }`}
               >
                 {d}d

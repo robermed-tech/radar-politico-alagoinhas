@@ -133,7 +133,7 @@ function SourcesSection() {
       <div className="mt-2 flex items-center gap-3">
         <button
           onClick={adicionar}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:opacity-90"
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-ink transition hover:opacity-90"
         >
           Adicionar
         </button>

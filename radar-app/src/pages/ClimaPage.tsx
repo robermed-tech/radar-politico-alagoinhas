@@ -595,9 +595,13 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setPublicacoesAbertas(true); }}
           className="reveal reveal-4 group relative cursor-pointer overflow-hidden rounded-[28px] p-7 transition-transform duration-200 hover:-translate-y-0.5 lg:col-span-2"
           style={{
-            background: "linear-gradient(150deg, #FB923C 0%, #EA580C 100%)",
+            // Chapado, e não degradê: `--brand` é um hex único nos dois temas
+            // desde 31/07, então o preenchimento sólido já é a cor de marca
+            // certa nas duas telas, sem precisar de dois stops para disfarçar
+            // a troca de tom entre tema claro e escuro.
+            background: "var(--brand)",
             minHeight: 320,
-            boxShadow: "0 18px 40px -14px rgba(234,88,12,0.5)",
+            boxShadow: "0 18px 40px -14px rgba(247,150,65,0.5)",
           }}
           aria-label="Ver as publicações analisadas no período"
         >
