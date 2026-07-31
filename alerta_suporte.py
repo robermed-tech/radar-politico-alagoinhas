@@ -411,8 +411,17 @@ def diagnosticar(tenant: str = None) -> int:
 
 
 if __name__ == "__main__":
-    from dotenv import load_dotenv
-    load_dotenv()
+    # python-dotenv é conveniência de máquina local: serve para ler o .env
+    # quando se roda na mão. Em CI as variáveis já chegam como ambiente de
+    # verdade, e o heartbeat.yml instala só `requests` — importar sem proteção
+    # fazia o script morrer no import antes de diagnosticar coisa alguma,
+    # justamente no lugar em que ele existe para rodar. Mesmo padrão do
+    # coletor_radio.py.
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
 
     def _arg_valor(nome: str, default: str = "") -> str:
         for i, a in enumerate(sys.argv):
