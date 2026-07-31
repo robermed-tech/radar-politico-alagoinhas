@@ -166,12 +166,12 @@ def montar_mensagem(origem: str, motivo: str, longa: bool = True) -> str:
     return texto[:300]
 
 
-def _enviar_whatsapp(numero: str, texto: str, tentativas: int = 2) -> bool:
+def _whatsapp_evolution(numero: str, texto: str, tentativas: int = 2) -> bool:
+    """Provedor 1: Evolution API (auto-hospedada). O caminho original."""
     url_base = os.environ.get("EVOLUTION_API_URL", "")
     api_key = os.environ.get("EVOLUTION_API_KEY", "")
     instance = os.environ.get("EVOLUTION_INSTANCE", "radar")
-    if not url_base or not api_key or not numero:
-        print("  [alerta_suporte] WhatsApp nao configurado (Evolution API ou numero ausente) — pulando.")
+    if not url_base or not api_key:
         return False
     if not url_base.startswith("https://"):
         print("  [alerta_suporte] EVOLUTION_API_URL deve usar HTTPS — envio bloqueado.")
@@ -191,14 +191,122 @@ def _enviar_whatsapp(numero: str, texto: str, tentativas: int = 2) -> bool:
             # conhecida). Logar só o status deixou um alerta que não entregava
             # nada sem diagnóstico possível — cinco testes seguidos em 31/07
             # renderam a mesma linha "HTTP 404" e nenhuma pista.
-            print(f"  [alerta_suporte] WhatsApp: HTTP {r.status_code} — "
+            print(f"  [alerta_suporte] WhatsApp/Evolution: HTTP {r.status_code} — "
                   f"{r.text[:300]}"
                   f"{' — retentando' if t == 0 else ' — desistindo'}")
         except Exception as e:
-            print(f"  [alerta_suporte] WhatsApp: erro {e}"
+            print(f"  [alerta_suporte] WhatsApp/Evolution: erro {e}"
                   f"{' — retentando' if t == 0 else ' — desistindo'}")
         if t == 0:
             _time.sleep(3)
+    return False
+
+
+def _whatsapp_callmebot(numero: str, texto: str) -> bool:
+    """Provedor 2: CallMeBot (gratuito, para alerta pessoal).
+
+    É o caminho de menor atrito quando o destino é UM número fixo — o caso
+    exato deste alerta: o dono do número manda uma mensagem única de opt-in ao
+    bot ("I allow callmebot to send me messages"), recebe uma apikey pessoal, e
+    a partir daí um GET simples entrega no WhatsApp dele. Sem servidor nosso,
+    sem mensalidade, sem QR code para renovar (a fragilidade que derrubou a
+    Evolution).
+
+    A apikey é atrelada AO número que fez o opt-in — por isso o serviço só
+    funciona para o alerta de suporte (destino fixo), nunca para mandar a
+    terceiros como o "Alertar Secretário".
+    """
+    apikey = os.environ.get("CALLMEBOT_APIKEY", "")
+    if not apikey:
+        return False
+    try:
+        r = requests.get(
+            "https://api.callmebot.com/whatsapp.php",
+            params={"phone": "+" + numero, "apikey": apikey, "text": texto},
+            timeout=30,
+        )
+        # A API poe o resultado no CORPO (HTML) e o status varia ate no erro
+        # (apikey invalida veio com 203, medido em 31/07) — por isso o
+        # veredito e pelo texto, aceitando qualquer 2xx.
+        corpo = r.text.lower()
+        if 200 <= r.status_code < 300 and ("queued" in corpo or "message sent" in corpo):
+            return True
+        print(f"  [alerta_suporte] WhatsApp/CallMeBot: HTTP {r.status_code} — {r.text[:300]}")
+    except Exception as e:
+        print(f"  [alerta_suporte] WhatsApp/CallMeBot: erro {e}")
+    return False
+
+
+def _whatsapp_twilio(numero: str, texto: str) -> bool:
+    """Provedor 3: Twilio WhatsApp. Reusa as MESMAS credenciais do SMS
+    (TWILIO_*), mais TWILIO_WHATSAPP_FROM (ex.: 'whatsapp:+14155238886', o
+    numero do sandbox, ou um numero proprio aprovado). Se o admin criar a
+    conta Twilio para o SMS, ganhar o WhatsApp e so um secret a mais."""
+    sid = os.environ.get("TWILIO_ACCOUNT_SID", "")
+    token = os.environ.get("TWILIO_AUTH_TOKEN", "")
+    remetente = os.environ.get("TWILIO_WHATSAPP_FROM", "")
+    if not sid or not token or not remetente:
+        return False
+    if not remetente.startswith("whatsapp:"):
+        remetente = "whatsapp:" + remetente
+    try:
+        r = requests.post(
+            f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json",
+            auth=(sid, token),
+            data={"To": f"whatsapp:+{numero}", "From": remetente, "Body": texto},
+            timeout=15,
+        )
+        if r.status_code in (200, 201):
+            return True
+        print(f"  [alerta_suporte] WhatsApp/Twilio: HTTP {r.status_code} — {r.text[:300]}")
+    except Exception as e:
+        print(f"  [alerta_suporte] WhatsApp/Twilio: erro {e}")
+    return False
+
+
+# Ordem de tentativa: Evolution primeiro (canal original, sem limite de
+# formato), depois CallMeBot (gratuito, feito para destino fixo), depois
+# Twilio. O primeiro que entregar encerra — o objetivo é UMA mensagem no
+# WhatsApp do admin, não três. O predicado de configuração é separado do
+# envio para o log conseguir dizer "nenhum provedor configurado" (aviso de
+# setup) sem confundir com "configurado e falhou" (incidente).
+_PROVEDORES_WHATSAPP = (
+    ("evolution",
+     lambda: bool(os.environ.get("EVOLUTION_API_URL") and os.environ.get("EVOLUTION_API_KEY")),
+     _whatsapp_evolution),
+    ("callmebot",
+     lambda: bool(os.environ.get("CALLMEBOT_APIKEY")),
+     _whatsapp_callmebot),
+    ("twilio",
+     lambda: bool(os.environ.get("TWILIO_ACCOUNT_SID")
+                  and os.environ.get("TWILIO_AUTH_TOKEN")
+                  and os.environ.get("TWILIO_WHATSAPP_FROM")),
+     _whatsapp_twilio),
+)
+
+
+def _enviar_whatsapp(numero: str, texto: str) -> bool:
+    """Tenta os provedores em ordem e para no primeiro que entrega.
+
+    Multi-provedor desde 31/07: o incidente da Evolution mostrou que amarrar o
+    canal WhatsApp a um unico servico reintroduz o ponto unico de falha que o
+    canal de reserva (issue) tinha acabado de tirar do sistema como um todo.
+    Cada provedor se auto-desativa quando faltam as credenciais dele, entao o
+    que o admin configurar passa a valer sem mudanca de codigo.
+    """
+    if not numero:
+        print("  [alerta_suporte] WhatsApp: numero ausente — pulando.")
+        return False
+    configurados = [(nome, envia) for nome, tem_credencial, envia
+                    in _PROVEDORES_WHATSAPP if tem_credencial()]
+    if not configurados:
+        print("  [alerta_suporte] WhatsApp: nenhum provedor configurado "
+              "(Evolution, CallMeBot ou Twilio) — pulando.")
+        return False
+    for nome, envia in configurados:
+        if envia(numero, texto):
+            print(f"  [alerta_suporte] WhatsApp entregue via {nome}.")
+            return True
     return False
 
 
@@ -438,15 +546,26 @@ def diagnosticar(tenant: str = None) -> int:
     cfg = _carregar_config_suporte(tenant or _tenant_padrao())
     numero = _numero_normalizado((cfg.get("alerta_suporte_numero") or "").strip())
 
+    provedores = [nome for nome, tem_credencial, _ in _PROVEDORES_WHATSAPP
+                  if tem_credencial()]
     print("=== Diagnostico do alerta de suporte ===")
-    print(f"  [1/4] Configuracao: EVOLUTION_API_URL {'ok' if url_base else 'AUSENTE'}, "
-          f"EVOLUTION_API_KEY {'ok' if api_key else 'AUSENTE'}, "
-          f"instancia '{instance}', "
+    print(f"  [1/4] Configuracao: provedores WhatsApp com credencial: "
+          f"{', '.join(provedores) if provedores else 'NENHUM'} | "
           f"numero cadastrado {'ok (' + str(len(numero)) + ' digitos)' if numero else 'AUSENTE'}")
-    if not url_base or not api_key:
-        return veredito("SISTEMA — falta credencial da Evolution API nos secrets.")
     if not numero:
         return veredito("NUMERO — nenhum numero em Configuracoes > Alerta de Suporte.")
+    if not provedores:
+        return veredito("SISTEMA — nenhum provedor de WhatsApp tem credencial "
+                        "nos secrets (Evolution, CallMeBot ou Twilio).")
+    if "evolution" not in provedores:
+        # As camadas 2-4 são específicas da Evolution (host, instância,
+        # número via API dela). CallMeBot/Twilio não expõem checagem sem
+        # enviar de verdade — para esses, o teste honesto é o botão
+        # "Enviar teste" da UI.
+        return veredito(
+            f"configuracao presente ({', '.join(provedores)}). Estes provedores "
+            "nao tem checagem sem envio — use o botao 'Enviar teste' da UI "
+            "para validar a entrega.", ok=True)
 
     # 2. O host existe? "Application not found" aqui é a plataforma de
     #    hospedagem respondendo, não a Evolution — ou seja, o servidor sumiu.
