@@ -28,6 +28,13 @@ jobs:
   heartbeat:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # O canal de reserva do alerta_suporte abre (ou comenta em) uma issue
+    # quando WhatsApp e SMS falham. Sem esta permissão o GITHUB_TOKEN é
+    # read-only e a reserva falharia calada — que é exatamente o defeito que
+    # ela existe para corrigir.
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Checkout do repositorio
         uses: actions/checkout@v4
@@ -68,4 +75,7 @@ jobs:
           TWILIO_AUTH_TOKEN:    ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_FROM_NUMBER:   ${{ secrets.TWILIO_FROM_NUMBER }}
           TESTE_ALERTA:         ${{ inputs.teste_alerta }}
+          # Canal de reserva (issue no repo). O Actions injeta este token
+          # sozinho — não é secret a cadastrar.
+          GITHUB_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
         run: python heartbeat_check.py
