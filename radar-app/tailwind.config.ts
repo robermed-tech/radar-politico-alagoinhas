@@ -24,10 +24,17 @@ export default {
         },
         line: { DEFAULT: "var(--line)", strong: "var(--line-strong)", card: "var(--border-card)" },
         txt: { 1: "var(--txt1)", 2: "var(--txt2)", 3: "var(--txt3)" },
-        // Marca — laranja de interação, sensível a tema. accent é alias de brand
+        // Marca — laranja de interação, único hex nos dois temas desde 31/07
+        // (ver o comentário de --brand no index.css). accent é alias de brand
         // (mesma cor, dois nomes) para reaproveitar os 40+ usos existentes de
-        // bg-brand/text-brand sem duplicar o token.
-        brand: { DEFAULT: "var(--brand)", 2: "#FB923C" },
+        // bg-brand/text-brand sem duplicar o token. `ink` é a tinta quase
+        // preta para texto SOBRE um preenchimento brand (mesmo par que
+        // `lime.ink` já usava): branco sobre #F79641 mede 2,24:1 e reprova o
+        // AA; `ink` mede 8,44:1. `2` e `skycard` eram cópias hardcoded do
+        // brand de antes da unificação (uma delas presa ao tom do tema
+        // escuro) — viram alias do token único para não haver uma terceira
+        // fonte de laranja no app.
+        brand: { DEFAULT: "var(--brand)", 2: "var(--brand)", ink: "#1A0F02" },
         accent: "var(--accent)",
         risk: { low: "#22C55E", mod: "#EAB308", high: "#EF8C00", crit: "#EF4444" },
         sent: { pos: "#22C55E", neu: "#64748B", neg: "#EF4444" },
@@ -38,7 +45,7 @@ export default {
         danger: "var(--danger)",
         // Acentos do estilo "clean" (referência) — agora em laranja
         lime: { DEFAULT: "#BEDB1D", ink: "#1A2400" },
-        skycard: { DEFAULT: "#FB923C", deep: "#EA580C" },
+        skycard: { DEFAULT: "var(--brand)", deep: "var(--brand)" },
       },
       fontFamily: {
         sans: ["Plus Jakarta Sans", "system-ui", "sans-serif"],

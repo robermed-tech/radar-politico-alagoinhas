@@ -9,16 +9,23 @@
  * "Igual" aqui quer dizer o mesmo degradê, as mesmas superfícies internas e a
  * mesma tinta, não um parecido.
  *
- * Os valores vêm medidos (ver o cabeçalho do GravarAgora): tinta quase preta
- * sobre o laranja mede 8,34:1 na ponta clara e 5,30:1 na escura; as superfícies
- * internas são quase sólidas de propósito, porque o degradê por baixo varia
- * demais para um alpha baixo compensar.
+ * Os valores vêm medidos: tinta quase preta sobre `var(--brand)` mede 8,44:1;
+ * as superfícies internas são quase sólidas de propósito, porque o degradê
+ * chumbo por baixo varia demais para um alpha baixo compensar.
  */
 
 /** Degradê chumbo→quase-preto: o mesmo do radar de coleta e do painel da antena. */
 export const FUNDO_ESCUTA = "linear-gradient(165deg, #475569 0%, #0F172A 100%)";
-/** Laranja da marca em degradê claro — a receita do card "Engajamento no período". */
-export const FUNDO_LARANJA = "linear-gradient(150deg, #FB923C 0%, #EA580C 100%)";
+/**
+ * Laranja da marca, chapado. Até 31/07 era um degradê de dois tons — a mesma
+ * receita do antigo card "Engajamento no período". Com `--brand` virando um
+ * hex único nos dois temas (revisão de 31/07, pedido do cliente para não
+ * haver diferença de tom entre botões), o degradê deixou de ter função: ele
+ * mesmo introduzia variação de tom dentro de um único botão. Preenchimento
+ * chapado com `var(--brand)` garante que este botão case, pixel a pixel, com
+ * qualquer outro botão de marca do painel.
+ */
+export const FUNDO_LARANJA = "var(--brand)";
 /** Tinta sobre o laranja. Sólida, nunca preto com alpha: o alpha passa numa
  *  ponta do degradê e reprova na outra. */
 export const TINTA_PRETA = "#1A0F02";

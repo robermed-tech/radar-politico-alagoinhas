@@ -27,12 +27,12 @@ import {
  * painel o poder de queimar crédito da Apify.
  *
  * Paleta: degradê chumbo→quase-preto (o mesmo do radar de coleta, do painel da
- * antena e do box de comentário) com o botão em laranja da marca e texto quase
- * preto — a receita do card "Engajamento no período", medida em 8,34:1 na ponta
- * clara e 5,30:1 na escura. Vermelho seria o óbvio para "REC", mas neste painel
- * vermelho é sentimento negativo, nunca controle. As constantes moram em
- * `superficieRadio.ts` desde que o card "Rádios monitoradas" passou a usar a
- * mesma superfície: duas cópias só ficam iguais até alguém mexer numa delas.
+ * antena e do box de comentário) com o botão em laranja da marca (`var(--brand)`,
+ * chapado) e texto quase preto — medido em 8,44:1 de contraste. Vermelho seria
+ * o óbvio para "REC", mas neste painel vermelho é sentimento negativo, nunca
+ * controle. As constantes moram em `superficieRadio.ts` desde que o card
+ * "Rádios monitoradas" passou a usar a mesma superfície: duas cópias só ficam
+ * iguais até alguém mexer numa delas.
  */
 
 const DURACOES = [15, 30, 45, 90, 120] as const;

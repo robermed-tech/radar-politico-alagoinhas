@@ -146,7 +146,7 @@ export function BairrosPage() {
                   key={id}
                   onClick={() => setOrdem(id)}
                   className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
-                    ordem === id ? "bg-brand text-white" : "text-txt-2 hover:text-txt-1"
+                    ordem === id ? "bg-brand text-brand-ink" : "text-txt-2 hover:text-txt-1"
                   }`}
                 >
                   {label}

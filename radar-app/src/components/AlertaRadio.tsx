@@ -69,9 +69,11 @@ export function AlertaRadio({ pauta }: { pauta: RadioPauta }) {
         onClick={() => setAberto(true)}
         className="flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition hover:opacity-90 active:scale-95"
         style={{
-          // Degradê claro com tinta quase preta — a receita do card de
-          // engajamento, e não fundo escuro com texto claro (revisão de 28/07).
-          background: "linear-gradient(150deg, #FDBA74 0%, #F97316 100%)",
+          // Laranja de marca chapado com tinta quase preta — e não fundo
+          // escuro com texto claro (revisão de 28/07), nem degradê (`--brand`
+          // é hex único desde 31/07, então preenchimento sólido já é a cor
+          // certa nos dois temas).
+          background: "var(--brand)",
           color: "#1A0F02",
         }}
         aria-label={`Alertar secretário sobre a pauta ${pauta.assunto}`}

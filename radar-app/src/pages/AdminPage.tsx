@@ -117,7 +117,7 @@ export function AdminPage() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-              tab === t.id ? "bg-brand text-white" : "text-txt-2 hover:bg-bg-2 hover:text-txt-1"
+              tab === t.id ? "bg-brand text-brand-ink" : "text-txt-2 hover:bg-bg-2 hover:text-txt-1"
             }`}
           >
             {t.label}
@@ -188,7 +188,7 @@ function ScoreSection() {
       <div className="mt-4 flex items-center gap-3">
         <button
           onClick={salvar}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:opacity-90"
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-ink transition hover:opacity-90"
         >
           Salvar pesos
         </button>
@@ -408,7 +408,7 @@ function ColetaMonitorSection() {
               key={r}
               onClick={() => setFiltroRede(r)}
               className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
-                filtroRede === r ? "bg-brand text-white" : "text-txt-2 hover:bg-bg-2 hover:text-txt-1"
+                filtroRede === r ? "bg-brand text-brand-ink" : "text-txt-2 hover:bg-bg-2 hover:text-txt-1"
               }`}
             >
               {r === "todas" ? "Todas" : REDE_META[r]?.label ?? r}
@@ -485,7 +485,7 @@ function InviteLinkBox({ email, link }: { email: string; link: string }) {
         />
         <button
           onClick={copiar}
-          className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white transition hover:opacity-90"
+          className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-brand-ink transition hover:opacity-90"
         >
           {copied ? "Copiado!" : "Copiar"}
         </button>
@@ -573,7 +573,7 @@ function UsersSection() {
           <button
             onClick={convidar}
             disabled={busy}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-ink transition hover:opacity-90 disabled:opacity-50"
           >
             {busy ? "Gerando link…" : "Convidar"}
           </button>
@@ -697,7 +697,7 @@ function ClimateSection() {
       </div>
 
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={salvar} className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:opacity-90">
+        <button onClick={salvar} className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-ink transition hover:opacity-90">
           Salvar limiares
         </button>
         <Feedback msg={msg} />

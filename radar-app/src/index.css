@@ -37,10 +37,17 @@
   --glass-btn-hover: rgba(255, 255, 255, 0.12);
 
   /* Marca — laranja, reservado para interação/marca (nunca estado de alerta;
-     isso continua sendo trabalho de lib/weather.ts e chartTheme.ts). */
-  --brand: #FB923C;
+     isso continua sendo trabalho de lib/weather.ts e chartTheme.ts).
+     Um hex só, igual nos dois temas (revisão de 31/07): antes o token
+     trocava de tom entre claro e escuro (#FB923C aqui, #EA580C no
+     .theme-light), e cada botão que precisava do MESMO laranja nas duas
+     telas tinha que reimplementar um degradê à parte para disfarçar a
+     troca — foi assim que o PeriodoFilter e o "Mais citados" do Feed
+     acabaram em tons visivelmente diferentes um do outro. Com um hex
+     único, todo botão de marca usa esta variável direto, sem degradê. */
+  --brand: #F79641;
   --accent: var(--brand);
-  --brand-glow: rgba(251, 146, 60, 0.34);
+  --brand-glow: rgba(247, 150, 65, 0.34);
   --gradient-hero: linear-gradient(90deg, #FBBF24, #FB923C, #F87171);
 
   /* Semânticas genéricas de UI (distintas do sistema de clima/risco). */
@@ -101,9 +108,12 @@
   --glass-btn-border: rgba(15, 23, 42, 0.10);
   --glass-btn-hover: rgba(255, 255, 255, 0.95);
 
-  --brand: #EA580C;
+  /* Mesmo hex do tema escuro (#F79641) — ver o comentário da marca no bloco
+     .theme-dark acima. Só o glow muda de intensidade entre os temas, nunca
+     a cor do botão em si. */
+  --brand: #F79641;
   --accent: var(--brand);
-  --brand-glow: rgba(234, 88, 12, 0.22);
+  --brand-glow: rgba(247, 150, 65, 0.22);
   --gradient-hero: linear-gradient(90deg, #FBBF24, #F97316, #E11D48);
 
   --success: #16A34A;
