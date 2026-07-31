@@ -65,6 +65,16 @@ export interface NotificationConfig {
   subtema_ativo: boolean;
   canal_whats: boolean;
   canal_email: boolean;
+  /**
+   * Alerta de Suporte (31/07/26): WhatsApp/SMS para o número que o admin
+   * cadastrar aqui, disparado pelo backend assim que o pipeline ÁGORA parar
+   * (exceção não tratada, timeout, coleta zerada 2x seguidas ou o cron
+   * simplesmente não disparar). Aditivo ao alerta de grupo que já existia
+   * (EVOLUTION_GROUP_ID) — não substitui.
+   */
+  alerta_suporte_numero: string;
+  alerta_suporte_whatsapp: boolean;
+  alerta_suporte_sms: boolean;
 }
 
 export interface TenantSettings {
@@ -91,6 +101,20 @@ export async function saveSettings(
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("tenant_id", TENANT);
   return explainError(error);
+}
+
+/**
+ * Dispara um alerta de TESTE para o número cadastrado em Alerta de Suporte,
+ * via Edge Function (que confere admin e aciona o workflow heartbeat.yml —
+ * o envio de verdade roda no backend, com os secrets do Evolution/Twilio,
+ * nunca no navegador). Não confirma entrega, só que o disparo foi aceito;
+ * o teste real é a mensagem chegar no WhatsApp/SMS cadastrado.
+ */
+export async function testarAlertaSuporte(): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke("testar-alerta-suporte", { body: {} });
+  if (error) return await extractFunctionError(error, "Falha ao disparar o teste.");
+  if (data?.error) return data.error as string;
+  return null;
 }
 
 // ── relevance_keywords ───────────────────────────────────────

@@ -30,6 +30,15 @@ try:
 except Exception:
     _INSTAGRAPI_OK = False
 
+# Alerta de suporte (WhatsApp/SMS pro numero que o admin cadastrar em
+# Configuracoes). So le env em tempo de CHAMADA (nunca em constante de
+# modulo) -- ver o cabecalho de alerta_suporte.py para o motivo.
+try:
+    import alerta_suporte as _alerta
+    _ALERTA_SUPORTE_OK = True
+except Exception:
+    _ALERTA_SUPORTE_OK = False
+
 # Coletor YouTube (subsistema novo multi-plataforma). Fica inerte enquanto não
 # houver fonte YouTube ativa na tabela `sources` — ver coletor_youtube.py.
 try:
@@ -5176,6 +5185,13 @@ def main():
                 f"{os.environ.get('GITHUB_REPOSITORY','')}/actions/runs/{_run_id}"
             )
         _safe("alerta_coleta_vazia", _enviar_whatsapp, _msg_coleta_vazia)
+        # Aditivo ao alerta acima (que vai pro grupo fixo): manda tambem pro
+        # numero que o admin cadastrou em Configuracoes > Alerta de Suporte,
+        # se houver um. Coleta vazia e "parado" do ponto de vista do produto
+        # mesmo sem excecao nenhuma ter subido (main() retorna normalmente).
+        if _ALERTA_SUPORTE_OK:
+            _safe("alerta_suporte_coleta_vazia", _alerta.disparar,
+                  "coleta_vazia", "0 posts coletados do Instagram nesta execucao")
         return
 
     _safe("log_coleta_ig_posts", _registrar_coleta, "instagram", "posts", len(posts), "ok")
@@ -6685,4 +6701,21 @@ if __name__ == "__main__":
         else:
             _yt.coletar_e_gravar(dry_run="--youtube-dry-run" in sys.argv)
     else:
-        main()
+        # Producao (agora.yml roda "python agora.py" sem flags). Qualquer
+        # excecao nao tratada dispara o alerta de suporte com o erro REAL
+        # antes de propagar -- e o unico ponto que tem esse detalhe em maos;
+        # o backstop do agora.yml (ver .github/workflows/agora.yml), que roda
+        # se o processo for morto pelo timeout antes de chegar aqui, so
+        # consegue um motivo generico. O marcador evita os dois alertarem em
+        # dobro pro mesmo incidente quando o except abaixo E' alcancado.
+        try:
+            main()
+        except Exception as _e:
+            if _ALERTA_SUPORTE_OK:
+                try:
+                    _alerta.disparar("agora_py", f"{type(_e).__name__}: {_e}")
+                    with open(".alerta_suporte_enviado", "w") as _f:
+                        _f.write("1")
+                except Exception as _e2:
+                    log(f"  [alerta_suporte] falhou ao notificar ({_e2})")
+            raise

@@ -6,11 +6,19 @@ name: Radar Politico — Heartbeat
 # perceber, porque nesse caso o agora.py simplesmente nunca é executado.
 on:
   schedule:
-    # A cada 4h — cobre com folga o ciclo de 3x/dia do agora.yml (08h/14h/19h
-    # BRT; maior intervalo é o noturno 19h->08h = 13h) sem gerar alerta a
-    # cada pequeno atraso normal do runner do GitHub.
-    - cron: '0 */4 * * *'
+    # A cada 15min (offset de :00 pra fugir do congestionamento de topo de
+    # hora do GitHub) — cobre o pedido de monitoramento 24/7 com deteccao
+    # praticamente imediata do cron do agora.yml sumindo. O LIMIAR_HORAS
+    # (15h, ver heartbeat_check.py) e quem decide se ha alerta de verdade;
+    # rodar mais vezes so deixa a deteccao mais fina, nao mais alarmista —
+    # o job e uma unica leitura no Supabase, gasta segundos.
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
+    inputs:
+      teste_alerta:
+        description: 'Disparar um alerta de TESTE pro numero cadastrado (ignora saude real do pipeline)'
+        type: boolean
+        default: false
 
 jobs:
   heartbeat:
@@ -37,4 +45,8 @@ jobs:
           EVOLUTION_API_KEY:    ${{ secrets.EVOLUTION_API_KEY }}
           EVOLUTION_INSTANCE:   ${{ secrets.EVOLUTION_INSTANCE }}
           WHATSAPP_NUMBER:      ${{ secrets.EVOLUTION_GROUP_ID }}
+          TWILIO_ACCOUNT_SID:   ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN:    ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM_NUMBER:   ${{ secrets.TWILIO_FROM_NUMBER }}
+          TESTE_ALERTA:         ${{ inputs.teste_alerta }}
         run: python heartbeat_check.py
