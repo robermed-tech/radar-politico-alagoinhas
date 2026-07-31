@@ -11,6 +11,7 @@ import {
   calcKpis, resumoPorRede, volumePorHora,
 } from "@/lib/collection";
 import { fetchServiceStatus } from "@/lib/data";
+import { DEFAULT_NOTIFICATION } from "@/lib/settings";
 import { type Role } from "@/lib/auth";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
@@ -722,7 +723,14 @@ function SuporteSection() {
   const [draft, setDraft] = useState<NotificationConfig | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [testando, setTestando] = useState(false);
-  const nc = draft ?? data?.notification_config ?? null;
+  // Merge com os defaults é OBRIGATÓRIO, não conveniência: a linha de
+  // tenant_settings foi semeada na migration 002, muito antes destes campos
+  // existirem, então `notification_config` no banco real não traz nenhum
+  // `alerta_suporte_*`. Sem o merge, `nc.alerta_suporte_numero` é undefined e
+  // o `.replace()` logo abaixo estoura em tempo de render — como não há error
+  // boundary, o React desmonta a árvore e a aba inteira some da tela. Mesmo
+  // padrão de useNotificationConfig() em lib/settings.ts.
+  const nc = draft ?? (data ? { ...DEFAULT_NOTIFICATION, ...data.notification_config } : null);
 
   if (!nc) return <div className="text-sm text-txt-2">Carregando…</div>;
 
