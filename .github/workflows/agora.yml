@@ -30,6 +30,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Executar ÁGORA
+        id: executar_agora
         timeout-minutes: 20
         env:
           APIFY_API_TOKEN:      ${{ secrets.APIFY_API_TOKEN }}
@@ -48,9 +49,16 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           AUTOR_HASH_SALT:      ${{ secrets.AUTOR_HASH_SALT }}
           RADAR_TENANT:         alagoinhas
+          # Alerta de suporte admin-configuravel (Configuracoes > Alerta de
+          # Suporte). TWILIO_* ficam vazios ate o admin criar a conta/secret —
+          # alerta_suporte.py degrada em log, sem quebrar o pipeline.
+          TWILIO_ACCOUNT_SID:   ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN:    ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM_NUMBER:   ${{ secrets.TWILIO_FROM_NUMBER }}
         run: python agora.py
 
       - name: Verificar se dados foram gravados no Supabase
+        id: verificar_supabase
         env:
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -66,7 +74,38 @@ jobs:
           fi
           echo "Supabase OK (HTTP $STATUS)"
 
-      - name: Notifica falha no WhatsApp
+      # Backstop do alerta de suporte: cobre os casos que o proprio agora.py
+      # NAO consegue reportar sozinho (processo morto pelo timeout antes de
+      # rodar qualquer except, crash no import, ou o post-check do Supabase
+      # falhando com agora.py já tendo saído 0). Quando agora.py CONSEGUIU
+      # capturar a excecao internamente, ele grava o marcador abaixo e ja
+      # mandou um alerta mais especifico — este step so preenche a lacuna,
+      # nunca duplica.
+      - name: Alerta de suporte (WhatsApp/SMS do numero cadastrado pelo admin)
+        if: failure()
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          RADAR_TENANT:         alagoinhas
+          EVOLUTION_API_URL:    ${{ secrets.EVOLUTION_API_URL }}
+          EVOLUTION_API_KEY:    ${{ secrets.EVOLUTION_API_KEY }}
+          EVOLUTION_INSTANCE:   ${{ secrets.EVOLUTION_INSTANCE }}
+          TWILIO_ACCOUNT_SID:   ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN:    ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM_NUMBER:   ${{ secrets.TWILIO_FROM_NUMBER }}
+        run: |
+          if [ -f .alerta_suporte_enviado ]; then
+            echo "agora.py ja enviou um alerta especifico para este incidente — pulando duplicata."
+          else
+            if [ "${{ steps.executar_agora.outcome }}" = "failure" ]; then
+              MOTIVO="Step 'Executar AGORA' falhou ou excedeu o timeout de 20min — o processo foi encerrado pelo GitHub Actions antes de conseguir reportar o erro real."
+            else
+              MOTIVO="agora.py terminou sem lancar erro, mas a checagem pos-run nao confirmou dados novos no Supabase (step 'Verificar se dados foram gravados no Supabase')."
+            fi
+            python alerta_suporte.py --origem agora_yml_backstop --motivo "$MOTIVO" || true
+          fi
+
+      - name: Notifica falha no WhatsApp (grupo)
         if: failure()
         env:
           EVOLUTION_API_URL:  ${{ secrets.EVOLUTION_API_URL }}

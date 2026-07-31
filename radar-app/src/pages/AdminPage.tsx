@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactECharts from "echarts-for-react";
 import {
-  fetchSettings, saveSettings,
+  fetchSettings, saveSettings, testarAlertaSuporte,
   fetchUsers, inviteUser, setUserRole, deleteUser,
-  type ScoreWeights, type ClimateThresholds,
+  type ScoreWeights, type ClimateThresholds, type NotificationConfig,
 } from "@/lib/admin";
 import {
   fetchCollectionLogsHoje, fetchFontesUnificadas,
@@ -23,13 +23,17 @@ import { Card, Feedback } from "@/components/FormCard";
 // lateral, abertas a qualquer usuário (ver RelevanciaPage/FontesPage e a
 // migration 007). Sobra aqui o que continua restrito ao administrador —
 // score, limiares de clima, usuários e o monitor de coleta.
-type Tab = "score" | "monitor" | "usuarios" | "clima";
+// 31/07: "Alerta de Suporte" entra como aba nova — o número que recebe o
+// aviso de "pipeline parou" só pode ser trocado por quem já está dentro
+// desta página (admin-only por herança do RequireAdmin em App.tsx).
+type Tab = "score" | "monitor" | "usuarios" | "clima" | "suporte";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "score", label: "Score" },
   { id: "monitor", label: "Monitor de coleta" },
   { id: "usuarios", label: "Usuários" },
   { id: "clima", label: "Clima" },
+  { id: "suporte", label: "Alerta de Suporte" },
 ];
 
 
@@ -129,6 +133,7 @@ export function AdminPage() {
       {tab === "monitor" && <ColetaMonitorSection />}
       {tab === "usuarios" && <UsersSection />}
       {tab === "clima" && <ClimateSection />}
+      {tab === "suporte" && <SuporteSection />}
     </div>
   );
 }
@@ -699,6 +704,105 @@ function ClimateSection() {
       <div className="mt-4 flex items-center gap-3">
         <button onClick={salvar} className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-ink transition hover:opacity-90">
           Salvar limiares
+        </button>
+        <Feedback msg={msg} />
+      </div>
+    </Card>
+  );
+}
+
+// ── Alerta de Suporte ────────────────────────────────────────
+// Numero (WhatsApp e/ou SMS) que recebe o aviso automatico assim que o
+// pipeline ÁGORA parar — ver alerta_suporte.py. Aditivo ao alerta de grupo
+// que ja existia (EVOLUTION_GROUP_ID): nao substitui, so soma um destino
+// que o admin controla sem depender de secret do GitHub.
+function SuporteSection() {
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ["admin-settings"], queryFn: fetchSettings });
+  const [draft, setDraft] = useState<NotificationConfig | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [testando, setTestando] = useState(false);
+  const nc = draft ?? data?.notification_config ?? null;
+
+  if (!nc) return <div className="text-sm text-txt-2">Carregando…</div>;
+
+  async function salvar() {
+    const err = await saveSettings({ notification_config: nc! });
+    if (err) return setMsg({ ok: false, text: err });
+    setMsg({ ok: true, text: "✔ Alerta de suporte salvo" });
+    qc.invalidateQueries({ queryKey: ["admin-settings"] });
+  }
+
+  async function testar() {
+    setTestando(true);
+    setMsg(null);
+    const err = await testarAlertaSuporte();
+    setTestando(false);
+    setMsg(
+      err
+        ? { ok: false, text: err }
+        : { ok: true, text: "✔ Teste disparado — confira o WhatsApp/SMS cadastrado em alguns segundos" }
+    );
+  }
+
+  const numeroValido = nc.alerta_suporte_numero.replace(/\D/g, "").length >= 10;
+  const podeTestar = numeroValido && (nc.alerta_suporte_whatsapp || nc.alerta_suporte_sms) && !testando;
+
+  return (
+    <Card title="Alerta de suporte — quando o Radar parar">
+      <p className="mb-3 text-xs text-txt-3">
+        Assim que o pipeline ÁGORA parar de funcionar — travar, dar erro ou simplesmente não rodar no
+        horário esperado — um aviso automático é enviado para este número, explicando o motivo provável
+        e sugerindo uma correção. O monitoramento roda 24h por dia, todos os dias, por dois vigias
+        independentes: o próprio pipeline (avisa na hora, de dentro do erro) e um heartbeat externo que
+        confere a cada 15 minutos se o cron ainda está disparando.
+      </p>
+      <div className="space-y-3">
+        <label className="block text-sm">
+          <span className="mb-1 block text-txt-2">Número (WhatsApp e/ou SMS, com DDD)</span>
+          <input
+            type="tel"
+            value={nc.alerta_suporte_numero}
+            onChange={(e) => setDraft({ ...nc, alerta_suporte_numero: e.target.value })}
+            placeholder="75 9 9999-0000"
+            className="w-full max-w-xs rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
+          />
+        </label>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2 text-sm text-txt-2">
+            <input
+              type="checkbox"
+              checked={nc.alerta_suporte_whatsapp}
+              onChange={(e) => setDraft({ ...nc, alerta_suporte_whatsapp: e.target.checked })}
+              className="h-4 w-4 accent-brand"
+            />
+            WhatsApp
+          </label>
+          <label className="flex items-center gap-2 text-sm text-txt-2">
+            <input
+              type="checkbox"
+              checked={nc.alerta_suporte_sms}
+              onChange={(e) => setDraft({ ...nc, alerta_suporte_sms: e.target.checked })}
+              className="h-4 w-4 accent-brand"
+            />
+            SMS
+          </label>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          onClick={salvar}
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-ink transition hover:opacity-90"
+        >
+          Salvar
+        </button>
+        <button
+          onClick={testar}
+          disabled={!podeTestar}
+          title={numeroValido ? "" : "Cadastre um número válido primeiro"}
+          className="rounded-lg border border-line bg-bg-2 px-4 py-2 text-sm font-semibold text-txt-1 transition hover:bg-bg-3 disabled:opacity-40"
+        >
+          {testando ? "Enviando…" : "Enviar teste"}
         </button>
         <Feedback msg={msg} />
       </div>

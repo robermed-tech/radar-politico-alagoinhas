@@ -24,6 +24,9 @@ export const DEFAULT_NOTIFICATION: NotificationConfig = {
   subtema_ativo: false,
   canal_whats: true,
   canal_email: false,
+  alerta_suporte_numero: "",
+  alerta_suporte_whatsapp: true,
+  alerta_suporte_sms: false,
 };
 
 /**
