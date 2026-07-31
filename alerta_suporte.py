@@ -42,6 +42,10 @@ import requests
 # cada tick.
 JANELA_DEDUP_MIN_PADRAO = 60
 
+# Rótulo da issue usada como canal de reserva. Serve para achar o incidente já
+# aberto e comentar nele, em vez de abrir uma issue nova a cada disparo.
+ROTULO_ISSUE = "alerta-suporte"
+
 
 def _supabase_url() -> str:
     return os.environ.get("SUPABASE_URL", "").rstrip("/")
@@ -229,6 +233,75 @@ def _enviar_sms(numero: str, texto: str) -> bool:
         return False
 
 
+def _enviar_github_issue(origem: str, motivo: str, sugestao: str) -> bool:
+    """Canal de RESERVA: abre (ou comenta em) uma issue no próprio repositório.
+
+    Existe por causa do incidente de 31/07: o servidor da Evolution API sumiu,
+    e com ele o único caminho de aviso do sistema cujo trabalho é avisar. Um
+    alerta de suporte com um canal só tem o mesmo ponto único de falha que ele
+    deveria estar vigiando.
+
+    Escolhido porque é o único canal que **não depende de nada a mais**: usa o
+    GITHUB_TOKEN que o Actions já injeta em todo run, sem conta nova, sem
+    secret novo, sem serviço para manter no ar. O GitHub notifica o dono do
+    repo por e-mail e pelo app no celular. Não substitui o WhatsApp — que é
+    mais imediato e é o que o admin pediu — mas garante que um incidente nunca
+    fique sem destinatário.
+
+    Reaproveita a issue aberta em vez de criar uma por disparo: numa
+    indisponibilidade longa o heartbeat roda a cada 15 min, e isso viraria uma
+    enxurrada de issues sobre o mesmo incidente. Cada novo disparo é um
+    comentário, e o histórico do incidente fica num lugar só.
+    """
+    token = os.environ.get("GITHUB_TOKEN", "")
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+    if not token or not repo:
+        # Fora do Actions (execução local) não há nem token nem repo: silêncio
+        # aqui é o certo, senão todo teste local reclamaria de algo que não se
+        # aplica.
+        return False
+
+    api = f"https://api.github.com/repos/{repo}"
+    headers = {"Authorization": f"Bearer {token}",
+               "Accept": "application/vnd.github+json"}
+    corpo = (f"**Origem:** {origem}\n\n"
+             f"**Motivo:** {motivo.strip() or 'não identificado'}\n\n"
+             f"**Sugestão:** {sugestao}\n\n"
+             f"_{datetime.now(timezone.utc).strftime('%d/%m %H:%M UTC')}_")
+    link = _link_do_run()
+    if link:
+        corpo += f"\n\nRun: {link}"
+
+    try:
+        r = requests.get(f"{api}/issues", headers=headers,
+                         params={"state": "open", "labels": ROTULO_ISSUE,
+                                 "per_page": "1"}, timeout=15)
+        aberta = r.json()[0] if (r.status_code == 200 and r.json()) else None
+    except Exception as e:
+        print(f"  [alerta_suporte] GitHub: nao foi possivel procurar issue aberta ({e})")
+        aberta = None
+
+    try:
+        if aberta:
+            r = requests.post(f"{api}/issues/{aberta['number']}/comments",
+                              headers=headers, json={"body": corpo}, timeout=15)
+            if r.status_code in (200, 201):
+                print(f"  [alerta_suporte] GitHub: comentado na issue "
+                      f"#{aberta['number']} (incidente ja aberto).")
+                return True
+        else:
+            r = requests.post(f"{api}/issues", headers=headers, timeout=15,
+                              json={"title": f"[alerta de suporte] {origem}",
+                                    "body": corpo, "labels": [ROTULO_ISSUE]})
+            if r.status_code in (200, 201):
+                print(f"  [alerta_suporte] GitHub: issue #{r.json().get('number')} aberta.")
+                return True
+        print(f"  [alerta_suporte] GitHub: HTTP {r.status_code} — {r.text[:200]}")
+    except Exception as e:
+        print(f"  [alerta_suporte] GitHub: erro {e}")
+    return False
+
+
 def _ja_alertado_recentemente(tenant: str, janela_min: int) -> bool:
     url, key = _supabase_url(), _supabase_key()
     if not url or not key:
@@ -298,6 +371,13 @@ def disparar(origem: str, motivo: str, tenant: str = None, forcar: bool = False,
     if usa_sms:
         if _enviar_sms(numero, montar_mensagem(origem, motivo, longa=False)):
             canais_ok.append("sms")
+
+    # Reserva: só entra quando os canais que o admin escolheu falharam todos.
+    # Enquanto o WhatsApp funciona, não polui o repositório com issue nenhuma —
+    # e no dia em que ele cai, o incidente continua tendo destinatário.
+    if not canais_ok:
+        if _enviar_github_issue(origem, motivo, sugerir_correcao(motivo)):
+            canais_ok.append("github_issue")
 
     if canais_ok:
         _registrar_alerta(tenant, f"[{origem}] {motivo}"[:2000], ",".join(canais_ok))

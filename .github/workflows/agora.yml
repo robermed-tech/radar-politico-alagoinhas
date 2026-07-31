@@ -15,6 +15,12 @@ jobs:
   agora:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # O canal de reserva do alerta_suporte abre (ou comenta em) uma issue
+    # quando WhatsApp e SMS falham. Sem esta permissão o GITHUB_TOKEN é
+    # read-only e a reserva falharia calada — o defeito que ela corrige.
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: Checkout repositório
@@ -55,6 +61,9 @@ jobs:
           TWILIO_ACCOUNT_SID:   ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN:    ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_FROM_NUMBER:   ${{ secrets.TWILIO_FROM_NUMBER }}
+          # O agora.py dispara o alerta de dentro do próprio except, então o
+          # canal de reserva precisa do token aqui também — não só no backstop.
+          GITHUB_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
         run: python agora.py
 
       - name: Verificar se dados foram gravados no Supabase
@@ -93,6 +102,9 @@ jobs:
           TWILIO_ACCOUNT_SID:   ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN:    ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_FROM_NUMBER:   ${{ secrets.TWILIO_FROM_NUMBER }}
+          # Canal de reserva (issue no repo). Injetado pelo Actions, não é
+          # secret a cadastrar.
+          GITHUB_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -f .alerta_suporte_enviado ]; then
             echo "agora.py ja enviou um alerta especifico para este incidente — pulando duplicata."
