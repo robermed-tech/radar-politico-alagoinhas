@@ -53,6 +53,7 @@ COMENTARIOS_POR_POST = 200 # máximo de comentários por post
 DIAS_ATRAS         = 2     # coleta posts dos últimos N dias
 SLEEP_ENTRE_PERFIS = (1.0, 3.0)   # segundos (min, max) entre perfis
 SLEEP_ENTRE_POSTS  = (0.5, 1.5)   # segundos entre coletas de comentário
+LIMIAR_BLOQUEIO_CONSECUTIVO = 2   # "429 esgotado" seguidos antes de desistir do lote
 
 
 # ── Login e sessão ─────────────────────────────────────────────────────────────
@@ -181,6 +182,15 @@ def coletar_posts(perfis: list[str], dias_atras: int = DIAS_ATRAS) -> list[dict]
 
 # ── Coleta de métricas de perfil (seguidores) ─────────────────────────────────
 
+def _e_bloqueio_sessao(erro: Exception) -> bool:
+    """Reconhece o retry do urllib3 esgotado por 429 (ex.: 'Max retries
+    exceeded ... too many 429 error responses'), diferente do RateLimitError
+    tipado do instagrapi. Esse padrao sinaliza bloqueio da SESSAO inteira,
+    nao um tropeco pontual de um unico perfil."""
+    msg = str(erro).lower()
+    return "429" in msg or "too many" in msg
+
+
 def coletar_perfis(perfis: list[str]) -> list[dict]:
     """
     Lê os contadores públicos de cada perfil: seguidores, seguindo e nº de
@@ -200,8 +210,9 @@ def coletar_perfis(perfis: list[str]) -> list[dict]:
 
     cl = criar_cliente()
     coletados = []
+    falhas_seguidas = 0
 
-    for username in perfis:
+    for idx, username in enumerate(perfis):
         try:
             info = cl.user_info_by_username(username)
             coletados.append({
@@ -211,14 +222,33 @@ def coletar_perfis(perfis: list[str]) -> list[dict]:
                 "postsCount":     int(info.media_count or 0),
             })
             print(f"  @{username}: {info.follower_count} seguidores")
+            falhas_seguidas = 0
             time.sleep(random.uniform(*SLEEP_ENTRE_PERFIS))
         except UserNotFound:
             print(f"  ⚠ @{username}: perfil não encontrado ou privado")
+            falhas_seguidas = 0
         except RateLimitError:
             print("  ⚠ Rate limit atingido — pausando 60s...")
             time.sleep(60)
+            falhas_seguidas = 0
         except Exception as e:
             print(f"  ⚠ Erro ao ler @{username}: {e}")
+            # Insistir perfil a perfil repete o mesmo estouro de retries em
+            # cada um. Em 30/07 isso consumiu o resto do timeout-minutes do
+            # step "Executar AGORA" e matou o run inteiro DEPOIS de posts,
+            # comentarios e boletim ja terem sido gravados — o pipeline_health
+            # (gravado so no fim do script) nunca chegava a atualizar, e o
+            # dashboard acusava "radar parado" com dado novo la no banco.
+            if _e_bloqueio_sessao(e):
+                falhas_seguidas += 1
+                if falhas_seguidas >= LIMIAR_BLOQUEIO_CONSECUTIVO:
+                    restantes = len(perfis) - idx - 1
+                    print(f"  ⚠ {falhas_seguidas} bloqueios seguidos — sessao "
+                          f"limitada pelo Instagram, abortando ({restantes} "
+                          "perfis restantes ficam sem ponto novo neste run)")
+                    break
+            else:
+                falhas_seguidas = 0
 
     print(f"  Total: {len(coletados)}/{len(perfis)} perfis com métricas.")
     return coletados
