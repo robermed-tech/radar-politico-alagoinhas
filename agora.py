@@ -1935,6 +1935,7 @@ def analisar_comentarios_haiku(post, cidadaos_ordenados, cliente):
             resp = cliente.messages.create(
                 model=MODELO_ANALISTA,
                 max_tokens=200 + 120 * len(lote),
+                temperature=0,
                 system=PROMPT_COMENTARIOS,
                 messages=[{"role": "user", "content": montar_prompt_comentarios(post, lote, offset)}],
             )
@@ -2758,6 +2759,123 @@ def recalcular_sentimento_posts(dry_run=False):
 
     log(f"[recalc-sentimento] {'(dry-run) ' if dry_run else ''}"
         f"posts com comentarios: {len(agg)}, atualizados: {n_atualizados}")
+
+
+def reparar_sentimento_oposicao(dry_run=False):
+    """Reclassifica comentarios de cidadao gravados 'positivo' em posts de
+    perfis de OPOSICAO — o unico jeito de "elogio a gestao vindo de post de
+    oposicao" acontecer de verdade e defender a gestao de uma critica; simples
+    apoio ao opositor e NEUTRO (PROMPT_COMENTARIOS, regra 1).
+
+    POR QUE ISTO EXISTE (achado em 30/07): a chamada de `analisar_comentarios_
+    haiku` nunca fixava `temperature`, rodando no default da API (1.0). Num
+    comentario limitrofe ("Vereador vc falou tudo", num post do vereador
+    opositor sobre o Hospital Dantas Bião) a MESMA entrada, o MESMO prompt,
+    saiu positivo na producao e neutro em 4 de 4 repeticoes com temperature=0
+    — nao era a regra que estava errada, era a amostragem. A chamada ja leva
+    temperature=0 (ver analisar_comentarios_haiku); esta funcao conserta o que
+    ja foi gravado com o comportamento antigo.
+
+    Reclassifica o POST INTEIRO (todos os comentarios de cidadao do post, no
+    mesmo lote e ordem que a producao usaria), nao so a linha suspeita: rodar
+    o mesmo texto por um caminho diferente do de producao seria uma segunda
+    forma de classificar o mesmo dado. So GRAVA sentimento e confianca_tema, e
+    so quando o valor novo diverge do gravado.
+
+    `--reparar-sentimento-oposicao --dry-run` -> mostra o que mudaria; CHAMA o
+        modelo (Haiku, temperature=0) mas nao grava nada — e o unico jeito de
+        prever o resultado, porque a decisao depende do modelo, nao so do texto.
+    `--reparar-sentimento-oposicao`           -> grava, e recalcula os agregados
+        dos posts afetados (comentarios_pct_pos/neg) em seguida.
+
+    Custo: so Anthropic (Haiku), escopado aos posts que hoje tem pelo menos um
+    comentario suspeito — nao varre a base inteira.
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log("[reparar-sentimento-oposicao] SUPABASE ausente.")
+        return
+    if not ANTHROPIC_KEY:
+        log("[reparar-sentimento-oposicao] ANTHROPIC_API_KEY ausente.")
+        return
+    from urllib.parse import quote
+
+    suspeitos = _supabase_get(
+        "comments",
+        f"tenant=eq.{TENANT}&tipo=eq.cidadao&categoria_post=eq.Oposicao"
+        f"&sentimento=eq.positivo&select=url_post&limit=2000",
+    ) or []
+    urls = sorted({c["url_post"] for c in suspeitos if c.get("url_post")})
+    if not urls:
+        log("[reparar-sentimento-oposicao] Nenhum comentario positivo em post de oposicao.")
+        return
+    log(f"[reparar-sentimento-oposicao] {len(suspeitos)} comentario(s) suspeito(s) "
+        f"em {len(urls)} post(s). Reclassificando cada post inteiro…")
+
+    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    mudancas = []
+    for url in urls:
+        posts = _supabase_get(
+            "posts",
+            f"tenant=eq.{TENANT}&url=eq.{quote(url, safe='')}&select=url,autor,categoria,caption",
+        )
+        if not posts:
+            continue
+        post = posts[0]
+        coments = _supabase_get(
+            "comments",
+            f"tenant=eq.{TENANT}&tipo=eq.cidadao&url_post=eq.{quote(url, safe='')}"
+            f"&select=id,username,texto,curtidas,sentimento,confianca_tema"
+            f"&order=curtidas.desc&limit=200",
+        ) or []
+        coments = [c for c in coments if (c.get("texto") or "").strip()]
+        if not coments:
+            continue
+
+        analise_por_i = analisar_comentarios_haiku(post, coments, cliente)
+        for idx, c in enumerate(coments):
+            item = analise_por_i.get(idx)
+            if not item:
+                continue
+            novo_sent = item.get("sentimento")
+            if novo_sent not in ("positivo", "negativo", "neutro"):
+                continue
+            try:
+                nova_conf = int(item.get("confianca_tema") or 0)
+            except (TypeError, ValueError):
+                nova_conf = 0
+            antigo_sent = (c.get("sentimento") or "neutro").lower()
+            if novo_sent != antigo_sent:
+                mudancas.append({
+                    "id": c["id"], "autor": post.get("autor", ""),
+                    "antes": antigo_sent, "depois": novo_sent,
+                    "conf_antes": c.get("confianca_tema"), "conf_depois": nova_conf,
+                    "texto": c.get("texto", ""),
+                })
+
+    if not mudancas:
+        log("[reparar-sentimento-oposicao] Reclassificado, e nada mudou — "
+            "os comentarios suspeitos ja bateriam com o criterio atual.")
+        return
+
+    log(f"\n[reparar-sentimento-oposicao] {len(mudancas)} comentario(s) mudariam:\n")
+    for m in mudancas:
+        t = " ".join(m["texto"].split())[:120]
+        log(f"  @{m['autor']:<20} {m['antes']:>8} -> {m['depois']:<8} "
+            f"[conf {m['conf_antes']} -> {m['conf_depois']}] {t!r}")
+
+    if dry_run:
+        log("\n[reparar-sentimento-oposicao] --dry-run: nada gravado.")
+        return
+
+    gravados = 0
+    for m in mudancas:
+        if _supabase_patch(
+            "comments", f"id=eq.{m['id']}&tenant=eq.{TENANT}",
+            {"sentimento": m["depois"], "confianca_tema": m["conf_depois"]},
+        ):
+            gravados += 1
+    log(f"\n[reparar-sentimento-oposicao] {gravados}/{len(mudancas)} gravados.")
+    recalcular_sentimento_posts(dry_run=False)
 
 
 def expurgar_pii(dias=None, dry_run=False):
@@ -6477,6 +6595,11 @@ if __name__ == "__main__":
         # partir da tabela `comments`. Custo zero de creditos. Use --dry-run
         # para so imprimir o que mudaria, sem gravar.
         recalcular_sentimento_posts(dry_run="--dry-run" in sys.argv)
+    elif "--reparar-sentimento-oposicao" in sys.argv:
+        # Conserta comentario "positivo" em post de oposicao que so era apoio
+        # ao opositor (achado em 30/07: variancia de amostragem, ver o
+        # docstring de reparar_sentimento_oposicao). Custo: so Anthropic.
+        reparar_sentimento_oposicao(dry_run="--dry-run" in sys.argv)
     elif "--expurgar-pii" in sys.argv:
         # --expurgar-pii [N] [--dry-run]  → apaga texto e @ do autor dos
         # comentarios com mais de N dias (default RETENCAO_PII_DIAS=180),
