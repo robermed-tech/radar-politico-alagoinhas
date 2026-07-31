@@ -231,7 +231,11 @@ def _whatsapp_callmebot(numero: str, texto: str) -> bool:
         corpo = r.text.lower()
         if 200 <= r.status_code < 300 and ("queued" in corpo or "message sent" in corpo):
             return True
-        print(f"  [alerta_suporte] WhatsApp/CallMeBot: HTTP {r.status_code} — {r.text[:300]}")
+        # O veredito da API vem DEPOIS do eco da mensagem enviada — logar o
+        # comeco do corpo mostrava so o nosso proprio texto de volta e
+        # escondia o motivo real (aprendido no teste de 31/07).
+        print(f"  [alerta_suporte] WhatsApp/CallMeBot: HTTP {r.status_code} — "
+              f"fim da resposta: ...{r.text[-400:]}")
     except Exception as e:
         print(f"  [alerta_suporte] WhatsApp/CallMeBot: erro {e}")
     return False
