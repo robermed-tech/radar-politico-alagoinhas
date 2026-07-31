@@ -52,12 +52,24 @@ export function PeriodoFilter({ dias, onChange, ariaLabel = "Período de anális
             // e no box de engajamento. Branco sobre #FB923C mede 2,26:1 e
             // reprova no AA (mínimo 4,5); com #1A0F02 passa folgado.
             //
+            // O laranja é o MESMO degradê dos botões de duração do card
+            // "Gravar agora" (`FUNDO_LARANJA`), e não o `var(--brand)` chapado
+            // que estava aqui: o token muda de tom entre o tema claro (#FB923C)
+            // e o escuro (#EA580C), então a mesma tela mostrava dois laranjas
+            // diferentes lado a lado. O cliente apontou isso em 30/07 usando o
+            // botão "30 min" como referência. Contraste com #1A0F02: 8,34:1 na
+            // ponta clara e 5,30:1 na escura.
+            //
             // O peso vem inline porque a diretriz tipográfica global do
             // index.css rebaixa `font-bold` para 400 com !important — classe
             // de peso aqui não teria efeito nenhum.
             style={
               ativo
-                ? { background: "var(--brand)", color: "#1A0F02", fontWeight: 700 }
+                ? {
+                    background: "linear-gradient(150deg, #FB923C 0%, #EA580C 100%)",
+                    color: "#1A0F02",
+                    fontWeight: 800,
+                  }
                 : { fontWeight: 600 }
             }
           >

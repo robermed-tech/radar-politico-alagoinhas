@@ -198,6 +198,33 @@ export async function addRadio(
   return explainError(error);
 }
 
+/**
+ * Edita uma rádio já cadastrada (nome, stream, programa, dias, horário e
+ * duração). Passa pela MESMA validação do cadastro: uma URL de página de player
+ * colada aqui faria a captação falhar exatamente como faria no insert, e a
+ * gravação já teria sido paga quando o erro aparecesse.
+ *
+ * O `config` é gravado inteiro, então o chamador manda o objeto completo — o
+ * `peso` da estação inclusive, senão editar o horário zeraria a audiência.
+ */
+export async function updateRadio(
+  id: string,
+  streamRaw: string,
+  nome: string,
+  config: RadioConfig,
+): Promise<string | null> {
+  const v = validarStream(streamRaw);
+  if (v.error) return v.error;
+  if (!nome.trim()) return "Informe o nome da estação.";
+
+  const { error } = await supabase
+    .from("sources")
+    .update({ handle: v.url, label: nome.trim(), config: { peso: 1, ...config } })
+    .eq("id", id);
+  if (error?.code === "23505") return "Já existe outra rádio cadastrada com esse stream.";
+  return explainError(error);
+}
+
 export async function toggleRadio(id: string, active: boolean): Promise<string | null> {
   const { error } = await supabase.from("sources").update({ active }).eq("id", id);
   return explainError(error);
