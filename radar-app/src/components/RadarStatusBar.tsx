@@ -145,7 +145,7 @@ export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
   // texto, deixando o radar "flutuando" acima da linha de base (29/07).
   return (
     <div
-      className="flex h-full flex-col items-center justify-center overflow-hidden rounded-[28px] px-4 py-6 text-center"
+      className="flex h-full flex-col items-center justify-center overflow-hidden rounded-[28px] px-6 py-8 text-center"
       style={{
         // Revisão de 28/07: as duas pontas do degradê antigo (#334155→#1E293B)
         // ficavam a um passo de distância na escala slate — quase a mesma cor,
@@ -158,23 +158,28 @@ export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
       }}
     >
       <div
-        className="text-[13px] uppercase tracking-[0.14em]"
+        className="text-sm uppercase tracking-[0.16em]"
         style={{ color: "rgba(255,255,255,0.78)", fontWeight: 700 }}
       >
         Coleta
       </div>
 
-      <div className="my-7">
-        <RadarSweep ativo={ativo} size={168} />
+      {/* Ícone e texto sobem junto com os da AntenaStatusColumn (31/07):
+          as duas são gêmeas de propósito, e um pedido de "aumentar a antena"
+          só é honesto se o radar cresce a mesma proporção, senão as duas
+          voltam a divergir e o "igual" que o cliente pediu em 29/07 quebra de
+          novo — 150→210 na antena é ×1,4; aqui 168→235 mantém a mesma razão. */}
+      <div className="my-9">
+        <RadarSweep ativo={ativo} size={235} />
       </div>
 
-      <div className="flex items-center justify-center gap-2">
-        <span className="text-[17px] leading-tight text-white" style={{ fontWeight: 800 }}>
+      <div className="flex items-center justify-center gap-2.5">
+        <span className="text-[21px] leading-tight text-white" style={{ fontWeight: 800 }}>
           {ativo ? "Em varredura" : "Ocioso"}
         </span>
         <span
-          className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-          style={{ background: cor, boxShadow: `0 0 8px ${cor}` }}
+          className="inline-block h-3 w-3 shrink-0 rounded-full"
+          style={{ background: cor, boxShadow: `0 0 10px ${cor}` }}
         />
       </div>
     </div>

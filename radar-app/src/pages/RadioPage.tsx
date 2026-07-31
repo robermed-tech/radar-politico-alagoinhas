@@ -30,6 +30,7 @@ import { AntenaStatusColumn } from "@/components/AntenaSinal";
 import { ClipeCitacao } from "@/components/ClipeCitacao";
 import { GravarAgora } from "@/components/GravarAgora";
 import { RadiosMonitoradas } from "@/components/RadiosMonitoradas";
+import { GaugeTema } from "@/components/GaugeTema";
 import { labelBairro } from "@/lib/format";
 import { corTema } from "@/lib/temaColors";
 
@@ -280,8 +281,17 @@ export function RadioPage() {
           Os quatro indicadores desceram para a linha seguinte, em 4 colunas: o
           espaço que ocupavam aqui é o do cadastro, e eles são leitura, não
           controle. */}
-      <div className="grid gap-3 lg:grid-cols-6">
-        <div className="lg:col-span-1">
+      {/* Colunas por TAMANHO EXPLÍCITO, não por fração de 6: antena e Gravar
+          Agora têm largura própria (a antena cresceu em 31/07 e precisa de
+          piso; o card de gravar é fixo em 380px, ver GravarAgora), e o
+          Rádios Monitoradas é a única coluna FLEXÍVEL — absorve toda a
+          sobra. Com `lg:grid-cols-6` fracionário, os 380px fixos do card de
+          gravar sobravam dentro de uma coluna de 2/6 mais larga que isso em
+          telas grandes, e o vão vazio entre os dois cards era exatamente
+          essa sobra. Coluna flexível em vez de fração fixa fecha o vão
+          fechando o cálculo, não escondendo o sintoma. */}
+      <div className="grid gap-3 lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)_380px]">
+        <div>
           <AntenaStatusColumn
             ativo={captando}
             legenda={
@@ -293,10 +303,10 @@ export function RadioPage() {
             }
           />
         </div>
-        <div className="lg:col-span-3">
+        <div>
           <RadiosMonitoradas />
         </div>
-        <div className="lg:col-span-2">
+        <div>
           <GravarAgora />
         </div>
       </div>
@@ -313,11 +323,13 @@ export function RadioPage() {
           valor={String(deInteresse.length)}
           hint={`de ${pautas.length} pauta(s) captada(s)`}
         />
-        <Kpi
-          label="Pressão no rádio"
-          valor={`${placar.critico} × ${placar.favoravel}`}
-          hint="críticas × elogios à gestão"
-        />
+        {/* Mesmo velocímetro do Termômetro por tema (Estação Meteorológica),
+            sem forquilha: o número grande "N × M" saiu, o gauge já mostra a
+            proporção crítica/elogio no arco e repete as contagens embaixo
+            (vermelho = crítica, verde = elogio, a mesma convenção do resto
+            do painel). `neg`/`pos` do componente são genéricos de propósito
+            — aqui valem como crítica/elogio à gestão. */}
+        <GaugeTema label="Pressão no rádio" neg={placar.critico} pos={placar.favoravel} />
       </div>
 
       {/* A rádio não entra no IAD, e a tela diz isso em vez de deixar o leitor

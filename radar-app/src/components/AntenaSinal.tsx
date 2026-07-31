@@ -87,7 +87,7 @@ export function IconAntena({ size = 16 }: { size?: number }) {
  * referência, que precisa continuar legível com `prefers-reduced-motion`) e uma
  * camada acesa por cima, que é a que pulsa.
  */
-function AntenaCaptando({ ativo, size = 150 }: { ativo: boolean; size?: number }) {
+function AntenaCaptando({ ativo, size = 210 }: { ativo: boolean; size?: number }) {
   const cor = ativo ? "#22C55E" : "#F59E0B";
   // Origem do zoom no foco da antena, não no centro do quadro: a onda tem que
   // nascer da ponta da torre.
@@ -151,6 +151,10 @@ function AntenaCaptando({ ativo, size = 150 }: { ativo: boolean; size?: number }
  * mesma linha de status com o ponto luminoso. O cliente pediu "igual ao do
  * radar", e igual aqui quer dizer o mesmo card, não um card parecido — daí as
  * cores e as medidas serem as mesmas em vez de novas.
+ *
+ * Ícone, texto e respiro (padding/margens) subiram junto em 31/07 — pedido
+ * era só sobre esta antena, mas as duas ficam desalinhadas de novo se só uma
+ * cresce, então o `RadarStatusColumn` recebeu o mesmo aumento proporcional.
  */
 export function AntenaStatusColumn({
   ativo,
@@ -164,7 +168,7 @@ export function AntenaStatusColumn({
   const cor = ativo ? "#22C55E" : "#F59E0B";
   return (
     <div
-      className="flex h-full flex-col items-center justify-center overflow-hidden rounded-[28px] px-4 py-6 text-center"
+      className="flex h-full flex-col items-center justify-center overflow-hidden rounded-[28px] px-6 py-8 text-center"
       style={{
         background: "linear-gradient(165deg, #475569 0%, #0F172A 100%)",
         minHeight,
@@ -172,27 +176,27 @@ export function AntenaStatusColumn({
       }}
     >
       <div
-        className="text-[13px] uppercase tracking-[0.14em]"
+        className="text-sm uppercase tracking-[0.16em]"
         style={{ color: "rgba(255,255,255,0.78)", fontWeight: 700 }}
       >
         Escuta
       </div>
 
-      <div className="my-6">
+      <div className="my-8">
         <AntenaCaptando ativo={ativo} />
       </div>
 
-      <div className="flex items-center justify-center gap-2">
-        <span className="text-[17px] leading-tight text-white" style={{ fontWeight: 800 }}>
+      <div className="flex items-center justify-center gap-2.5">
+        <span className="text-[21px] leading-tight text-white" style={{ fontWeight: 800 }}>
           {ativo ? "Captando sinal" : "Sem captação"}
         </span>
         <span
-          className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-          style={{ background: cor, boxShadow: `0 0 8px ${cor}` }}
+          className="inline-block h-3 w-3 shrink-0 rounded-full"
+          style={{ background: cor, boxShadow: `0 0 10px ${cor}` }}
         />
       </div>
       {legenda && (
-        <div className="mt-1.5 text-[13px]" style={{ color: "rgba(255,255,255,0.72)", fontWeight: 600 }}>
+        <div className="mt-2 text-[15px]" style={{ color: "rgba(255,255,255,0.72)", fontWeight: 600 }}>
           {legenda}
         </div>
       )}
