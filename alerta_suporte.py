@@ -304,8 +304,22 @@ def disparar(origem: str, motivo: str, tenant: str = None, forcar: bool = False,
         print(f"  [alerta_suporte] Enviado via {', '.join(canais_ok)}.")
         return True
 
+    # Quando o canal de aviso é o que está quebrado, ninguém fica sabendo pelo
+    # próprio canal — foi o que aconteceu em 31/07: o servidor da Evolution
+    # tinha sumido e o alerta de suporte falhava em silêncio, justamente o
+    # sistema cujo trabalho é não deixar falha passar despercebida.
+    #
+    # `::error::` faz o GitHub destacar a linha na interface e incluí-la no
+    # e-mail de falha do workflow, que ele já manda ao dono do repo sem
+    # nenhuma infraestrutura nossa. É o único caminho de aviso que não depende
+    # de nada que possamos ter deixado cair.
     print("  [alerta_suporte] Nenhum canal configurado enviou com sucesso "
           "(ver mensagens acima).")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(f"::error::Canal de alerta FORA DO AR — o aviso '{origem}' nao "
+              "foi entregue a ninguem. Rode o workflow Heartbeat com a opcao "
+              "'diagnostico' para ver em qual camada esta a falha (servidor, "
+              "instancia ou numero).")
     return False
 
 
@@ -324,6 +338,20 @@ def diagnosticar(tenant: str = None) -> int:
 
     Retorna 0 se o caminho inteiro está de pé.
     """
+    def veredito(texto: str, ok: bool = False) -> int:
+        """Imprime o veredito e, no Actions, marca a linha como erro.
+
+        `::error::` sobe o texto para a interface do run e para o e-mail de
+        falha que o GitHub já manda ao dono do repo — o único aviso que não
+        depende do canal que pode estar quebrado. Sem isso, o diagnóstico de um
+        canal caído só existiria dentro do log, que ninguém abre justamente
+        quando não recebeu notificação nenhuma.
+        """
+        print(f"  VEREDITO: {texto}")
+        if not ok and os.environ.get("GITHUB_ACTIONS") == "true":
+            print(f"::error::Alerta de suporte — {texto}")
+        return 0 if ok else 1
+
     url_base = os.environ.get("EVOLUTION_API_URL", "").rstrip("/")
     api_key = os.environ.get("EVOLUTION_API_KEY", "")
     instance = os.environ.get("EVOLUTION_INSTANCE", "radar")
@@ -336,11 +364,9 @@ def diagnosticar(tenant: str = None) -> int:
           f"instancia '{instance}', "
           f"numero cadastrado {'ok (' + str(len(numero)) + ' digitos)' if numero else 'AUSENTE'}")
     if not url_base or not api_key:
-        print("  VEREDITO: SISTEMA — falta credencial da Evolution API nos secrets.")
-        return 1
+        return veredito("SISTEMA — falta credencial da Evolution API nos secrets.")
     if not numero:
-        print("  VEREDITO: NUMERO — nenhum numero em Configuracoes > Alerta de Suporte.")
-        return 1
+        return veredito("NUMERO — nenhum numero em Configuracoes > Alerta de Suporte.")
 
     # 2. O host existe? "Application not found" aqui é a plataforma de
     #    hospedagem respondendo, não a Evolution — ou seja, o servidor sumiu.
@@ -351,15 +377,14 @@ def diagnosticar(tenant: str = None) -> int:
         host_sumiu = ("Application not found" in corpo
                       or (r.status_code == 404 and "not found" in corpo.lower()))
         if host_sumiu:
-            print("  VEREDITO: SISTEMA — o servidor da Evolution API nao existe "
-                  "mais neste endereco. Reprovisione a instancia ou atualize o "
-                  "secret EVOLUTION_API_URL. O numero cadastrado nao tem "
-                  "nenhuma relacao com esta falha.")
-            return 1
+            return veredito(
+                "SISTEMA — o servidor da Evolution API nao existe mais neste "
+                "endereco. Reprovisione a instancia ou atualize o secret "
+                "EVOLUTION_API_URL. O numero cadastrado nao tem nenhuma "
+                "relacao com esta falha.")
     except Exception as e:
         print(f"  [2/4] Host inacessivel: {e}")
-        print("  VEREDITO: SISTEMA — o endereco da Evolution API nao responde.")
-        return 1
+        return veredito("SISTEMA — o endereco da Evolution API nao responde.")
 
     # 3. A instância existe e está conectada ao WhatsApp?
     try:
@@ -367,9 +392,8 @@ def diagnosticar(tenant: str = None) -> int:
                          headers={"apikey": api_key}, timeout=15)
         print(f"  [3/4] Instancia '{instance}': HTTP {r.status_code} — {r.text[:200]}")
         if r.status_code == 404:
-            print(f"  VEREDITO: SISTEMA — a instancia '{instance}' nao existe "
-                  "neste servidor (confira o secret EVOLUTION_INSTANCE).")
-            return 1
+            return veredito(f"SISTEMA — a instancia '{instance}' nao existe neste "
+                            "servidor (confira o secret EVOLUTION_INSTANCE).")
         estado = ""
         try:
             d = r.json()
@@ -377,9 +401,8 @@ def diagnosticar(tenant: str = None) -> int:
         except Exception:
             pass
         if estado and estado != "open":
-            print(f"  VEREDITO: SISTEMA — a instancia existe mas esta '{estado}', "
-                  "nao conectada ao WhatsApp. Reconecte lendo o QR code.")
-            return 1
+            return veredito(f"SISTEMA — a instancia existe mas esta '{estado}', nao "
+                            "conectada ao WhatsApp. Reconecte lendo o QR code.")
     except Exception as e:
         print(f"  [3/4] Erro ao consultar a instancia: {e}")
         return 1
@@ -398,16 +421,16 @@ def diagnosticar(tenant: str = None) -> int:
         except Exception:
             pass
         if existe is False:
-            print("  VEREDITO: NUMERO — o servidor e a instancia estao de pe, mas "
-                  "este numero nao tem WhatsApp. Confira o DDD e o nono digito "
-                  "em Configuracoes > Alerta de Suporte.")
-            return 1
+            return veredito(
+                "NUMERO — o servidor e a instancia estao de pe, mas este numero "
+                "nao tem WhatsApp. Confira o DDD e o nono digito em "
+                "Configuracoes > Alerta de Suporte.")
     except Exception as e:
         print(f"  [4/4] Erro ao checar o numero: {e}")
         return 1
 
-    print("  VEREDITO: o caminho inteiro esta de pe — servidor, instancia e numero.")
-    return 0
+    return veredito("o caminho inteiro esta de pe — servidor, instancia e numero.",
+                    ok=True)
 
 
 if __name__ == "__main__":
