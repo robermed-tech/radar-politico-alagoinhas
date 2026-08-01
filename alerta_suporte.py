@@ -120,6 +120,17 @@ def sugerir_correcao(motivo: str) -> str:
     if tem("instagram") and tem("login", "session", "senha", "password"):
         return ("Login/sessão do Instagram falhou. Gere uma sessão nova e "
                 "atualize o secret IG_SESSION_JSON.")
+    # Antes do ramo de chave invalida: o erro de credito vem como HTTP 400
+    # ("credit balance is too low") e nao como 401, mas o texto do motivo pode
+    # carregar as duas coisas — e a correcao certa e comprar credito, nao
+    # trocar o secret (incidente de 01/08/26: run "success" com toda analise
+    # em default e o painel parado, porque so o modelo estava fora do ar).
+    if tem("anthropic", "claude") and tem("credit balance", "too low",
+                                          "sem credito", "credito esgotado",
+                                          "insufficient credit", "billing"):
+        return ("Credito da API da Anthropic esgotou. Adicione creditos em "
+                "console.anthropic.com > Billing. Ate la o pipeline coleta, mas "
+                "grava analise default — o painel NAO recebe analise nova.")
     if tem("anthropic", "claude") and tem("529", "overloaded", "timeout", "timed out"):
         return ("API da Anthropic pode estar instável/sobrecarregada. Geralmente "
                 "se resolve sozinho no próximo run; se persistir, confira "
