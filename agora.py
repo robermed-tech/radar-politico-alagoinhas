@@ -5,7 +5,7 @@
 |                                                               |
 |  Pipeline:                                                    |
 |    Apify -> Comentarios -> Memoria -> Claude Haiku             |
-|    -> Sheets -> WhatsApp                                      |
+|    -> Supabase -> WhatsApp                                    |
 |                                                               |
 |  Execucao: GitHub Actions 4x/dia                              |
 |  Autor: Roberio / robermed-tech                               |
@@ -20,8 +20,6 @@ import math
 import requests
 from datetime import datetime, timedelta
 from anthropic import Anthropic
-import gspread
-from google.oauth2.service_account import Credentials
 from boletim import gerar_boletim
 
 try:
@@ -329,11 +327,10 @@ def normalizar_localidade(valor: str, mapa_bairros: dict, tenant: str = None) ->
 
 APIFY_TOKEN      = os.environ.get("APIFY_API_TOKEN", "")
 ANTHROPIC_KEY    = os.environ["ANTHROPIC_API_KEY"]
-SPREADSHEET_ID   = os.environ.get("SPREADSHEET_ID") or os.environ.get("GOOGLE_SHEET_ID", "")  # lazy: so exigido em conectar_sheets()
 EVOLUTION_URL    = os.environ.get("EVOLUTION_API_URL", "")
 EVOLUTION_KEY    = os.environ.get("EVOLUTION_API_KEY", "")
 WHATSAPP_NUMBER  = os.environ.get("WHATSAPP_NUMBER", "")
-# Supabase (Fase 2 — dual-write). Se vazio, o dual-write é ignorado (Sheets segue normal).
+# Supabase: fonte unica de gravacao e leitura (o Google Sheets saiu do fluxo em 01/08/2026).
 SUPABASE_URL     = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY     = os.environ.get("SUPABASE_SERVICE_KEY", "")
 TENANT           = os.environ.get("RADAR_TENANT", "alagoinhas")
@@ -874,36 +871,6 @@ def filtrar_relevante(caption, categoria_filtro):
     passou, _ = _motivo_relevancia(caption, categoria_filtro)
     return passou
 
-def conectar_sheets():
-    if not SPREADSHEET_ID:
-        raise ValueError("SPREADSHEET_ID nao configurado")
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS", "")
-    if not creds_json:
-        _cred_file = os.environ.get("GOOGLE_CREDENTIALS_FILE", "service_account.json")
-        if os.path.exists(_cred_file):
-            with open(_cred_file, "r", encoding="utf-8") as f:
-                creds_json = f.read()
-        else:
-            raise ValueError("GOOGLE_CREDENTIALS nao configurado")
-    creds_dict = json.loads(creds_json)
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive",
-    ]
-    creds  = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-    client = gspread.authorize(creds)
-    return client.open_by_key(SPREADSHEET_ID)
-
-def garantir_aba(planilha, nome, cabecalho):
-    try:
-        aba = planilha.worksheet(nome)
-        return aba
-    except gspread.exceptions.WorksheetNotFound:
-        aba = planilha.add_worksheet(title=nome, rows=5000, cols=len(cabecalho))
-        aba.append_row(cabecalho)
-        log(f"  Aba '{nome}' criada")
-        return aba
-
 # ==============================================================
 # APIFY - FUNCOES AUXILIARES
 # ==============================================================
@@ -1285,52 +1252,64 @@ def coletar_comentarios(posts):
 # MODULO 3 - MEMORIA CONTEXTUAL
 # ==============================================================
 
-def carregar_memoria(planilha):
+def carregar_memoria():
+    """Contexto politico dos ultimos 7 dias, lido do Supabase (tabela posts).
+
+    Substitui a leitura da aba Briefing_Diario do Google Sheets (removido do
+    fluxo em 01/08/2026): o conteudo e o mesmo que a planilha recebia, agregado
+    por dia a partir dos proprios posts ja analisados — score medio de imagem,
+    tema (narrativa) dominante e queixa mais citada. As abas Feedback e Padroes
+    (alimentacao manual, sem uso) morreram junto com a planilha.
+    """
     log("=== MODULO 3 - Carregando memoria ===")
-    blocos = []
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log("  Supabase ausente — memoria vazia")
+        return "Sem historico anterior."
 
+    # posts.data_post e TEXT em dd/mm/yyyy (nao filtra com gte no PostgREST);
+    # o recorte de 7 dias e feito aqui, via _dia_iso, depois de trazer as
+    # linhas mais recentes por atualizado_em.
+    corte = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
     try:
-        aba = planilha.worksheet("Briefing_Diario")
-        linhas = aba.get_all_records()
-        recentes = linhas[-7:] if len(linhas) >= 7 else linhas
-        if recentes:
-            blocos.append("=== CONTEXTO POLITICO DOS ULTIMOS 7 DIAS ===")
-            for l in recentes:
-                data   = l.get("data", "")
-                score  = l.get("score_medio_imagem", "")
-                narr   = l.get("narrativa_dominante", "")
-                queixa = l.get("queixa_top", "")
-                blocos.append(f"  {data} | Score imagem: {score} | Narrativa: {narr} | Queixa: {queixa}")
+        rows = _supabase_get(
+            "posts",
+            f"tenant=eq.{TENANT}"
+            f"&select=data_post,score_imagem,tema,queixa_dominante"
+            f"&order=atualizado_em.desc&limit=600"
+        ) or []
     except Exception as e:
-        log(f"  Briefing_Diario: {e}")
+        log(f"  posts (memoria): {e} — memoria vazia")
+        return "Sem historico anterior."
 
-    try:
-        aba = planilha.worksheet("Feedback")
-        linhas = aba.get_all_records()
-        uteis   = [l for l in linhas if str(l.get("valor","")).lower() == "util"][-5:]
-        inuteis = [l for l in linhas if str(l.get("valor","")).lower() == "inutil"][-5:]
-        if uteis or inuteis:
-            blocos.append("\n=== APRENDIZADO DE FEEDBACKS ===")
-            for l in uteis:
-                blocos.append(f"  + UTIL: {l.get('url','')} | {l.get('resumo','')}")
-            for l in inuteis:
-                blocos.append(f"  - INUTIL: {l.get('url','')} | {l.get('resumo','')}")
-    except Exception:
-        pass
+    by_day = {}
+    for r in rows:
+        d = _dia_iso(r.get("data_post", ""))
+        if d and d >= corte:
+            by_day.setdefault(d, []).append(r)
 
-    try:
-        aba = planilha.worksheet("Padroes")
-        linhas = aba.get_all_records()
-        ativos = [l for l in linhas if str(l.get("status","")).lower() == "ativo"][-3:]
-        if ativos:
-            blocos.append("\n=== PADROES ATIVOS ===")
-            for l in ativos:
-                blocos.append(f"  {l.get('padrao','')}: {l.get('perfis_envolvidos','')}")
-    except Exception:
-        pass
+    blocos = []
+    if by_day:
+        blocos.append("=== CONTEXTO POLITICO DOS ULTIMOS 7 DIAS ===")
+        for d in sorted(by_day):
+            ps = by_day[d]
+            scores = [p.get("score_imagem") for p in ps if p.get("score_imagem") is not None]
+            score = round(sum(scores) / len(scores), 1) if scores else ""
+            temas, queixas = {}, {}
+            for p in ps:
+                t = (p.get("tema") or "").strip()
+                if t:
+                    temas[t] = temas.get(t, 0) + 1
+                q = (p.get("queixa_dominante") or "").strip()
+                if q:
+                    queixas[q] = queixas.get(q, 0) + 1
+            narr   = max(temas, key=temas.get) if temas else ""
+            queixa = max(queixas, key=queixas.get) if queixas else ""
+            data_br = f"{d[8:10]}/{d[5:7]}/{d[0:4]}"
+            blocos.append(f"  {data_br} | Score imagem: {score} | Narrativa: {narr} | Queixa: {queixa}")
 
+    n_posts = sum(len(v) for v in by_day.values())
     memoria = "\n".join(blocos) if blocos else "Sem historico anterior."
-    log(f"  Memoria carregada: {len(blocos)} blocos")
+    log(f"  Memoria carregada: {len(blocos)} blocos ({n_posts} posts de 7 dias)")
     return memoria
 
 # ==============================================================
@@ -2534,7 +2513,7 @@ def deve_disparar_alerta(score_risco: int, post: dict) -> bool:
     return True
 
 def motivo_do_alerta(score_risco: int, post: dict) -> str:
-    """Explica em texto por que o post disparou alerta (Sheets + WhatsApp)."""
+    """Explica em texto por que o post disparou alerta (Supabase + WhatsApp)."""
     if score_risco >= SCORE_RISCO_ALERTA:
         return f"Score risco {score_risco} >= {SCORE_RISCO_ALERTA}"
     tracao = "tendencia em alta" if post.get("tendencia") == "crescendo" else "engajamento alto"
@@ -2544,124 +2523,11 @@ def motivo_do_alerta(score_risco: int, post: dict) -> str:
 
 
 # ==============================================================
-# MODULO 5 - GRAVACAO NO SHEETS
+# MODULO 5 - GRAVACAO NO SUPABASE
 # ==============================================================
-
-CABECALHO_RADAR = [
-    "url", "data_post", "autor", "categoria",
-    "curtidas", "comentarios_total", "total_cidadaos", "total_politicos",
-    "sentimento_post", "sentimento_comentarios",
-    "comentarios_pct_pos", "comentarios_pct_neg",
-    "score_imagem", "score_risco", "risco_crise",
-    "queixa_dominante", "elogio_dominante",
-    "comentarios_destaque", "comentarios_destaque_curtidas", "comentarios_destaque_autor", "resumo",
-    "padrao_detectado", "tema", "atribuicao", "tendencia",
-    "urgencia", "sugestao_acao", "janela_acao",
-    "caption", "atualizado_em",
-    # camada de inteligencia SCCT (Coombs / Benoit)
-    "cluster_crise", "responsabilidade_atribuida", "confianca",
-    "abordagem_recomendada", "por_que_funciona", "motivo_alerta",
-]
-
-CABECALHO_COMENTARIOS = [
-    "url_post", "autor_post", "categoria_post", "data_post",
-    "comentario_id", "username", "tipo", "texto", "curtidas", "data_comentario",
-    "atualizado_em"
-]
-
-CABECALHO_BRIEFING = [
-    "data", "hora", "score_medio_imagem", "score_medio_risco",
-    "posts_analisados", "comentarios_cidadaos",
-    "narrativa_dominante", "queixa_top", "perfil_mais_ativo",
-    "posts_urgencia_alta", "alertas_enviados"
-]
-
-def gravar_no_sheets(planilha, posts_analisados, comentarios_por_post):
-    log("=== MODULO 5 - Gravando no Sheets ===")
-    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
-
-    # Aba Radar
-    aba_radar = garantir_aba(planilha, "Radar", CABECALHO_RADAR)
-    existentes = set()
-    try:
-        todas = aba_radar.get_all_records()
-        existentes = {r.get("url", "") for r in todas}
-    except Exception:
-        pass
-
-    # Acumula as linhas novas e grava em UM único append_rows (1 chamada de API
-    # em vez de N) — evita o erro 429 (cota de escrita/min do Google Sheets).
-    linhas_radar = []
-    for p in posts_analisados:
-        if p["url"] in existentes:
-            continue
-        linha = [
-            p.get("url", ""), p.get("data_post", ""), p.get("autor", ""),
-            p.get("categoria", ""), p.get("curtidas", 0), p.get("comentarios_total", 0),
-            p.get("total_cidadaos", 0), p.get("total_politicos", 0),
-            p.get("sentimento_post", ""), p.get("sentimento_comentarios", ""),
-            p.get("comentarios_pct_pos", 0), p.get("comentarios_pct_neg", 0),
-            p.get("score_imagem", 50), p.get("score_risco", 0),
-            p.get("risco_crise", "baixo"),
-            p.get("queixa_dominante", ""), p.get("elogio_dominante", ""),
-            p.get("comentarios_destaque", ""),
-            p.get("comentarios_destaque_curtidas", 0),
-            p.get("comentarios_destaque_autor", ""),
-            p.get("resumo", ""),
-            p.get("padrao_detectado", ""), p.get("tema", ""),
-            p.get("atribuicao", ""), p.get("tendencia", "estavel"),
-            p.get("urgencia", "baixa"),
-            p.get("sugestao_acao", ""), p.get("janela_acao", ""),
-            p.get("caption", "")[:200], agora,
-            # SCCT
-            p.get("cluster_crise", "nenhum"), p.get("responsabilidade_atribuida", 0),
-            p.get("confianca", 0), p.get("abordagem_recomendada", ""),
-            p.get("por_que_funciona", ""), p.get("motivo_alerta", ""),
-        ]
-        linhas_radar.append(linha)
-        existentes.add(p["url"])
-    if linhas_radar:
-        aba_radar.append_rows(linhas_radar, value_input_option="RAW")
-    novos_radar = len(linhas_radar)
-
-    log(f"  Radar: {novos_radar} posts novos gravados")
-
-    # Aba Comentarios_Analisados
-    aba_coments = garantir_aba(planilha, "Comentarios_Analisados", CABECALHO_COMENTARIOS)
-    ids_existentes = set()
-    try:
-        todas_c = aba_coments.get_all_records()
-        ids_existentes = {str(r.get("comentario_id", "")) for r in todas_c}
-    except Exception:
-        pass
-
-    linhas_coments = []
-    for post in posts_analisados:
-        url = post["url"]
-        comentarios = comentarios_por_post.get(url, [])
-        for c in comentarios:
-            cid = str(c.get("id", ""))
-            if cid and cid in ids_existentes:
-                continue
-            linha_c = [
-                url, post.get("autor", ""), post.get("categoria", ""),
-                post.get("data_post", ""), cid, c.get("username", ""),
-                c.get("tipo", ""), c.get("texto", ""), c.get("curtidas", 0),
-                c.get("data", ""), agora,
-            ]
-            linhas_coments.append(linha_c)
-            if cid:
-                ids_existentes.add(cid)
-    if linhas_coments:
-        aba_coments.append_rows(linhas_coments, value_input_option="RAW")
-    novos_coments = len(linhas_coments)
-
-    log(f"  Comentarios: {novos_coments} novos gravados")
-    return novos_radar, novos_coments
-
-# ==============================================================
-# MODULO 5c - DUAL-WRITE SUPABASE (opcional, nao quebra se ausente)
-# ==============================================================
+# (Ate 01/08/2026 o modulo 5 gravava no Google Sheets e este bloco era o
+#  "5c - dual-write". O Sheets saiu do fluxo; o Supabase, que ja era a
+#  fonte do dashboard, virou o unico destino.)
 
 def _supabase_upsert(tabela, linhas, on_conflict):
     """Upsert via PostgREST. Retorna qtd gravada ou 0 em falha/desativado.
@@ -3063,11 +2929,11 @@ def expurgar_pii(dias=None, dry_run=False):
 
 
 def gravar_no_supabase(posts_analisados, comentarios_por_post):
-    """Espelha os dados no Postgres do Supabase. Sheets continua como fonte da verdade."""
+    """Grava posts e comentarios no Postgres do Supabase (destino unico)."""
     if not SUPABASE_URL or not SUPABASE_KEY:
-        log("  Supabase OFF (dual-write ignorado) — dashboard NAO sera atualizado")
+        log("  Supabase OFF — dashboard NAO sera atualizado")
         return
-    log("=== MODULO 5c - Dual-write Supabase ===")
+    log("=== MODULO 5 - Gravando no Supabase ===")
     agora = datetime.now().isoformat()
 
     # Tom ja gravado, por URL. O pipeline reprocessa os mesmos posts a cada
@@ -4752,57 +4618,6 @@ def gravar_daily_themes(posts_analisados):
     log(f"  Daily themes: {n} (dia, tema) atualizados")
 
 # ==============================================================
-# MODULO 5b - BRIEFING DIARIO
-# ==============================================================
-
-def atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas_enviados):
-    log("=== MODULO 5b - Atualizando briefing ===")
-    if not posts_analisados:
-        log("  Nenhum post para resumir")
-        return
-
-    aba = garantir_aba(planilha, "Briefing_Diario", CABECALHO_BRIEFING)
-
-    scores_img   = [p.get("score_imagem", 50) for p in posts_analisados]
-    scores_risco = [p.get("score_risco", 0) for p in posts_analisados]
-    score_medio_img   = round(sum(scores_img) / len(scores_img), 1)
-    score_medio_risco = round(sum(scores_risco) / len(scores_risco), 1)
-
-    temas = {}
-    for p in posts_analisados:
-        t = p.get("tema", "")
-        if t: temas[t] = temas.get(t, 0) + 1
-    narrativa = max(temas, key=temas.get) if temas else ""
-
-    queixas = {}
-    for p in posts_analisados:
-        q = p.get("queixa_dominante", "")
-        if q: queixas[q] = queixas.get(q, 0) + 1
-    queixa_top = max(queixas, key=queixas.get) if queixas else ""
-
-    perfis_c = {}
-    for p in posts_analisados:
-        a = p.get("autor", "")
-        if a: perfis_c[a] = perfis_c.get(a, 0) + 1
-    perfil_ativo = max(perfis_c, key=perfis_c.get) if perfis_c else ""
-
-    urg_alta = sum(1 for p in posts_analisados if p.get("urgencia") == "alta")
-    total_cid = sum(
-        len([c for c in comentarios_por_post.get(p["url"], []) if c["tipo"] == "cidadao"])
-        for p in posts_analisados
-    )
-
-    now = datetime.now()
-    linha = [
-        now.strftime("%d/%m/%Y"), now.strftime("%H:%M"),
-        score_medio_img, score_medio_risco,
-        len(posts_analisados), total_cid,
-        narrativa, queixa_top, perfil_ativo, urg_alta, alertas_enviados,
-    ]
-    aba.append_row(linha, value_input_option="RAW")
-    log(f"  Briefing gravado | Score imagem: {score_medio_img} | Risco: {score_medio_risco}")
-
-# ==============================================================
 # MODULO 6 - ALERTAS WHATSAPP
 # ==============================================================
 
@@ -5181,22 +4996,19 @@ def main():
     log(f"|  AGORA iniciando - {inicio.strftime('%d/%m/%Y %H:%M:%S')}              |")
     log("+======================================================+")
 
-    # Aviso crítico: sem Supabase, o dashboard (que lê o Postgres) NÃO atualiza.
-    # Foi exatamente essa a causa do dashboard "congelar" rodando localmente.
+    # Sem Supabase nao ha destino nenhum (o Google Sheets saiu do fluxo em
+    # 01/08/2026): rodar gastaria credito Apify/Anthropic para gravar em lugar
+    # algum. Abortar aqui e mais barato que descobrir depois.
     if not SUPABASE_URL or not SUPABASE_KEY:
         log("  " + "!" * 54)
-        log("  ! ATENCAO: SUPABASE_URL/SUPABASE_SERVICE_KEY ausentes.")
-        log("  ! Os dados irao SOMENTE para o Google Sheets.")
-        log("  ! O dashboard (Radar Comando) NAO sera atualizado!")
+        log("  ! SUPABASE_URL/SUPABASE_SERVICE_KEY ausentes.")
+        log("  ! O Supabase e o UNICO destino dos dados — sem ele o run")
+        log("  ! gastaria credito sem gravar nada. Pipeline encerrado.")
         log("  " + "!" * 54)
-
-    log("  Conectando ao Google Sheets...")
-    planilha = conectar_sheets()
-    log(f"  Conectado: {planilha.title}")
+        return
 
     # Carrega estado anterior dos posts para detectar mudanças reais (dedup de alertas).
-    # Supabase é a fonte primária; Sheets é fallback caso Supabase esteja indisponível.
-    # Sentinel None = carregamento falhou nas duas fontes; bloqueia alertas para evitar spam
+    # Sentinel None = carregamento falhou; bloqueia alertas para evitar spam
     # (se existentes_radar virasse {} por falha, todo post pareceria "novo" e todo alerta disparava).
     # Estrutura: {url: {"comentarios_total": int, "score_risco": int, "queixa_dominante": str}}
     def _snap(r):
@@ -5207,27 +5019,15 @@ def main():
         }
 
     existentes_radar = None
-    if SUPABASE_URL and SUPABASE_KEY:
-        try:
-            rows = _supabase_get(
-                "posts",
-                f"tenant=eq.{TENANT}&select=url,comentarios_total,score_risco,queixa_dominante"
-            )
-            existentes_radar = {r["url"]: _snap(r) for r in rows if r.get("url")}
-            log(f"  {len(existentes_radar)} posts carregados do Supabase")
-        except Exception as e:
-            log(f"  Supabase existentes: falha ({e}) — tentando Sheets como fallback")
-    if existentes_radar is None:
-        try:
-            aba_r = garantir_aba(planilha, "Radar", CABECALHO_RADAR)
-            existentes_radar = {
-                r["url"]: _snap(r)
-                for r in aba_r.get_all_records()
-                if r.get("url")
-            }
-            log(f"  {len(existentes_radar)} posts carregados do Sheets (fallback)")
-        except Exception as e:
-            log(f"  Sheets tambem falhou ({e}) — alertas suspensos neste run para evitar spam")
+    try:
+        rows = _supabase_get(
+            "posts",
+            f"tenant=eq.{TENANT}&select=url,comentarios_total,score_risco,queixa_dominante"
+        )
+        existentes_radar = {r["url"]: _snap(r) for r in rows if r.get("url")}
+        log(f"  {len(existentes_radar)} posts carregados do Supabase")
+    except Exception as e:
+        log(f"  Supabase existentes: falha ({e}) — alertas suspensos neste run para evitar spam")
 
     # Coleta YouTube (subsistema novo). Roda ANTES da coleta Instagram porque
     # esta pode encerrar o run cedo (coleta vazia). É inerte por si: sem fonte
@@ -5302,18 +5102,11 @@ def main():
     _safe("log_coleta_ig_coments", _registrar_coleta, "instagram", "comments",
           _total_coments_ig, "ok" if _total_coments_ig else "vazio")
 
-    memoria = carregar_memoria(planilha)
+    memoria = carregar_memoria()
     # Falha em carregar bairros aborta o run (RuntimeError) — nao gravamos
     # localidade='nao_identificado' em massa por indisponibilidade do Supabase.
     mapa_bairros = carregar_bairros(abortar_em_falha=True)
     posts_analisados = analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros)
-    # Sheets é legado e tem cota de escrita/min (erro 429). NÃO pode derrubar o
-    # dual-write do Supabase, que é o que alimenta o dashboard (Radar Comando).
-    try:
-        novos_radar, novos_coments = gravar_no_sheets(planilha, posts_analisados, comentarios_por_post)
-    except Exception as e:
-        log(f"  Sheets FALHOU ({e}) — seguindo; o dashboard usa o Supabase")
-        novos_radar, novos_coments = 0, 0
     # Cada etapa secundaria roda isolada (_safe): se uma falhar, as demais e os
     # ALERTAS (saida mais critica, por ultimo) continuam.
     _safe("creditos_apify", verificar_creditos_apify)                               # alerta quando creditos > 80%
@@ -5384,10 +5177,6 @@ def main():
             enviar_update_coments(p, motivos_update[p["url"]])
     # Laço IRT: registra picos dos temas alertados e mede recuperação nos runs seguintes
     _safe("irt_temas", atualizar_temas_monitorados, posts_analisados, temas_alertados)
-    try:
-        atualizar_briefing(planilha, posts_analisados, comentarios_por_post, alertas)
-    except Exception as e:
-        log(f"  Briefing no Sheets falhou ({e}) — ignorado (nao afeta o dashboard)")
 
     # Ultima etapa que olha o modelo: se o run inteiro rodou com a Anthropic
     # fora do ar (credito esgotado/chave invalida), tudo acima gravou defaults
@@ -5401,7 +5190,7 @@ def main():
     log(f"|  AGORA concluido                                      |")
     log(f"|  Posts coletados:    {len(posts):<4}                          |")
     log(f"|  Posts analisados:   {len(posts_analisados):<4}                          |")
-    log(f"|  Comentarios novos:  {novos_coments:<4}                          |")
+    log(f"|  Comentarios coletados: {_total_coments_ig:<4}                       |")
     log(f"|  Alertas enviados:   {alertas:<4}                          |")
     log(f"|  Duracao:            {duracao}s                           |")
     log("+======================================================+")
@@ -6034,14 +5823,12 @@ def main_retroanalise():
                 "data":     c.get("data_comentario", ""),
             })
 
-    # Memoria contextual (sheets; tolerado falhar)
+    # Memoria contextual (Supabase; tolerado falhar)
     memoria = ""
     try:
-        planilha = conectar_sheets()
-        memoria  = carregar_memoria(planilha)
-        log("  Memoria carregada do Sheets.")
+        memoria = carregar_memoria()
     except Exception as e:
-        log(f"  Sheets indisponivel ({e}) — memoria vazia")
+        log(f"  Memoria indisponivel ({e}) — memoria vazia")
 
     # Separa por categoria
     posts_oposicao_raw = [p for p in todos_posts_raw
@@ -6442,8 +6229,7 @@ def teste_localidade(limite=50):
 def reprocessar():
     """Busca os últimos 20 posts do Supabase e re-analisa com Claude (upsert).
     Não depende do Apify ter um run recente sem erros 429.
-    Não coleta comentários novos; usa caption já gravado.
-    Não grava no Google Sheets."""
+    Não coleta comentários novos; usa caption já gravado."""
     if not SUPABASE_URL or not SUPABASE_KEY:
         print("[reprocessar] SUPABASE_URL / SUPABASE_SERVICE_KEY não configurados.")
         return
@@ -6496,7 +6282,7 @@ def backfill_comentarios(limite=None):
     nos defaults ('outro'/'nao_identificado'/null). Este backfill le o texto que
     ja esta la, roda o mesmo analisar_comentarios_haiku por post, aplica a mesma
     normalizacao de analisar_com_agora e faz upsert por id. Nao toca em posts,
-    Sheets, alertas ou coleta. Idempotente: rodar de novo so re-classifica.
+    alertas ou coleta. Idempotente: rodar de novo so re-classifica.
 
     autor_hash e populado para TODOS os comentarios (LGPD); a classificacao
     tematica (tema/subtema/localidade/pedido/confianca) so para tipo=cidadao —
