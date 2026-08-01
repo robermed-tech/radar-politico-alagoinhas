@@ -45,8 +45,6 @@ jobs:
           IG_PROXY:             ${{ secrets.IG_PROXY }}
           IG_SESSION_JSON:      ${{ secrets.IG_SESSION_JSON }}
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
-          SPREADSHEET_ID:       ${{ secrets.GOOGLE_SHEET_ID }}
-          GOOGLE_CREDENTIALS:   ${{ secrets.GOOGLE_SA_JSON }}
           EVOLUTION_API_URL:    ${{ secrets.EVOLUTION_API_URL }}
           EVOLUTION_API_KEY:    ${{ secrets.EVOLUTION_API_KEY }}
           EVOLUTION_INSTANCE:   ${{ secrets.EVOLUTION_INSTANCE }}
