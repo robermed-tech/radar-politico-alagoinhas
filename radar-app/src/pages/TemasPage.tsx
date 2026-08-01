@@ -467,10 +467,11 @@ export function TemasPage() {
         <PeriodoFilter dias={janela} onChange={setJanela} />
       </div>
 
-      {/* Linha do tempo do clima — curva de críticas anotada com o tema que a moveu */}
-      <TimelineClima themes={themes} janela={janela} />
+      {/* Revisão de 01/08 (pedido do cliente, print com traço vermelho):
+          "Dentro de cada tema" e a linha Subindo/Caindo subiram para o topo
+          da página; a linha do tempo do clima desceu para o rodapé.
 
-      {/* Revisão de 29/07: os cards "Assuntos em alta · 24h" (AssuntosEmAlta) e
+          Revisão de 29/07: os cards "Assuntos em alta · 24h" (AssuntosEmAlta) e
           "Estabilização pós-alerta" (PainelRecuperacaoIRT) saíram desta página
           por pedido do cliente. O backend segue calculando os dois (temas
           monitorados e gatilho de volume por subtema); não recriar aqui sem
@@ -535,6 +536,9 @@ export function TemasPage() {
           </div>
         </div>
       </div>
+
+      {/* Linha do tempo do clima — curva de críticas anotada com o tema que a moveu */}
+      <TimelineClima themes={themes} janela={janela} />
 
     </div>
   );

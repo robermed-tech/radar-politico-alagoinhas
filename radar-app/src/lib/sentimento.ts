@@ -42,3 +42,26 @@ export function comSentimentoConfiavel<T extends { sentimento?: string; confianc
 ): T {
   return sentimentoConfiavel(c) ? c : { ...c, sentimento: "neutro" };
 }
+
+/**
+ * Piso de confiança para DESTACAR um comentário como voz individual ("Vozes
+ * que aprovam"/"que reprovam" da Aprovação). Mais alto que o CONFIANCA_MIN
+ * da contagem de propósito: no agregado, um comentário fronteiriço é 1 voto
+ * em centenas; em destaque, ele vira UMA citação com a chancela da tela.
+ *
+ * O caso que originou o piso (01/08): dois elogios a um vereador de oposição
+ * ("vcs tem que virar prefeito e vice urgente") gravados como positivo com
+ * confiança exatamente 50 — o limiar mínimo — apareceram em "Vozes que
+ * aprovam" como se elogiassem a gestão. Fronteira de 50 é palpite; palpite
+ * não vira vitrine.
+ *
+ * Diferença deliberada do sentimentoConfiavel: confiança 0/ausente (comentário
+ * anterior ao campo) NÃO passa aqui. Na contagem esse escape evita descartar a
+ * base antiga; numa citação individual, "nunca medido" não é credencial.
+ */
+export const CONFIANCA_MIN_DESTAQUE = 70;
+
+export function vozDestacavel(c: { confianca_tema?: number }): boolean {
+  const conf = Number(c.confianca_tema ?? 0);
+  return Number.isFinite(conf) && conf >= CONFIANCA_MIN_DESTAQUE;
+}

@@ -14,7 +14,7 @@ import { KpiStat } from "@/components/KpiStat";
 import { COLOR_SENTIMENT } from "@/lib/chartTheme";
 import { fmtInt } from "@/lib/format";
 import { InfluencersSection } from "@/pages/InfluencersPage";
-import { RankingSeguidores, CAT_COR } from "@/components/RankingSeguidores";
+import { RankingSeguidores } from "@/components/RankingSeguidores";
 import { montarRanking } from "@/lib/seguidores";
 import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 import { prepararKeywords, casaRelevancia } from "@/lib/relevancia";
@@ -113,17 +113,6 @@ function CardExtremo({
       ) : (
         <div className="mt-2 text-sm font-semibold text-txt-2">{vazio}</div>
       )}
-    </div>
-  );
-}
-
-/** Barra dupla favorável/contrária de um perfil na tabela de ranking. */
-function BarraLados({ contra, favor }: { contra: number; favor: number }) {
-  const total = contra + favor || 1;
-  return (
-    <div className="flex h-2 w-full overflow-hidden rounded-full bg-bg-2">
-      <div style={{ width: `${(contra / total) * 100}%`, background: COR_CONTRA }} />
-      <div style={{ width: `${(favor / total) * 100}%`, background: COR_FAVOR }} />
     </div>
   );
 }
@@ -439,101 +428,10 @@ export function PerfilPage() {
         </div>
       </div>
 
-      {/* Ranking completo */}
-      <div className="rounded-xl border border-line bg-bg-1 p-4">
-        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-          <div className="section-label">Ranking dos perfis monitorados</div>
-          <div className="text-[13px] text-txt-3">
-            {fmtInt(totalGeral.contra)} críticas contrárias · {fmtInt(totalGeral.favor)} favoráveis
-            no período
-          </div>
-        </div>
-        {ativos.length === 0 ? (
-          <p className="text-sm text-txt-3">
-            Nenhum perfil publicou sobre a gestão {periodoLabel(dias)}. Amplie o período acima.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-left">
-              <thead>
-                <tr className="text-[12px] font-bold uppercase tracking-wide text-txt-3">
-                  <th className="pb-2 pr-3 font-bold">Perfil</th>
-                  <th className="pb-2 pr-3 text-right font-bold">Publicações<br />sobre a gestão</th>
-                  <th className="pb-2 pr-3 text-right font-bold">Publica<br />criticando</th>
-                  <th className="pb-2 pr-3 text-right font-bold">Publica<br />elogiando</th>
-                  <th className="pb-2 pr-3 text-right font-bold">Recebe<br />críticas</th>
-                  <th className="pb-2 pr-3 text-right font-bold">Recebe<br />elogios</th>
-                  <th className="pb-2 pr-3 text-right font-bold">Saldo<br />recebido</th>
-                  <th className="pb-2 w-32 font-bold">Reação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ativos.map((p) => {
-                  const cor = CAT_COR[p.categoria] ?? "#64748B";
-                  const poucaAmostra = p.contra + p.favor < MIN_AMOSTRA;
-                  return (
-                    <tr
-                      key={p.autor}
-                      onClick={() => setSel(p.autor)}
-                      className={`cursor-pointer border-t border-line text-sm transition hover:bg-bg-2 ${
-                        p.autor === autor ? "bg-bg-2" : ""
-                      }`}
-                    >
-                      <td className="py-2 pr-3">
-                        <span className="flex items-center gap-2">
-                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: cor }} />
-                          <span className="font-bold text-txt-1">@{p.autor}</span>
-                        </span>
-                      </td>
-                      <td className="tnum py-2 pr-3 text-right font-bold text-txt-1">
-                        {fmtInt(p.postsGestao)}
-                        <span className="ml-1 text-[12px] font-semibold text-txt-3">/{fmtInt(p.posts)}</span>
-                      </td>
-                      <td
-                        className="tnum py-2 pr-3 text-right font-bold"
-                        style={{ color: p.fazCritica ? COR_CONTRA : "var(--txt3)" }}
-                      >
-                        {fmtInt(p.fazCritica)}
-                      </td>
-                      <td
-                        className="tnum py-2 pr-3 text-right font-bold"
-                        style={{ color: p.fazElogio ? COR_FAVOR : "var(--txt3)" }}
-                      >
-                        {fmtInt(p.fazElogio)}
-                      </td>
-                      <td className="tnum py-2 pr-3 text-right font-bold" style={{ color: COR_CONTRA }}>
-                        {fmtInt(p.contra)}
-                      </td>
-                      <td className="tnum py-2 pr-3 text-right font-bold" style={{ color: COR_FAVOR }}>
-                        {fmtInt(p.favor)}
-                      </td>
-                      <td
-                        className="tnum py-2 pr-3 text-right font-bold"
-                        style={{ color: p.saldo > 0 ? COR_FAVOR : p.saldo < 0 ? COR_CONTRA : "var(--txt3)" }}
-                      >
-                        {p.saldo > 0 ? "+" : ""}
-                        {fmtInt(p.saldo)}
-                      </td>
-                      <td className="py-2">
-                        {poucaAmostra ? (
-                          <span className="text-[12px] font-semibold text-txt-3">amostra pequena</span>
-                        ) : (
-                          <BarraLados contra={p.contra} favor={p.favor} />
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className="mt-2 text-[13px] text-txt-3">
-          Perfis com menos de {MIN_AMOSTRA} comentários que tomam partido ficam fora dos
-          rankings de críticas: com dois ou três comentários, qualquer perfil vira o
-          &ldquo;mais crítico&rdquo; da cidade.
-        </p>
-      </div>
+      {/* A tabela "Ranking dos perfis monitorados" saiu em 01/08 (pedido do
+          cliente, print com X vermelho). Os números dela continuam calculados
+          em lib/analisePerfis.ts e resumidos nos cards de extremo acima e nos
+          KPIs do perfil selecionado. Não recriar sem pedido explícito. */}
 
       {analise.length === 0 ? (
         <div className="rounded-xl border border-line bg-bg-1 p-6 text-sm text-txt-2">
@@ -543,10 +441,8 @@ export function PerfilPage() {
         <>
           {/* O cabeçalho do perfil ativo e os KPIs dele subiram para logo
               abaixo do seletor (29/07) — ver o bloco no topo desta página.
-              O card "Tom das publicações de @perfil" (barra crítica/neutra/
-              elogio) saiu na mesma revisão, por pedido do cliente: os mesmos
-              três números já aparecem na tabela de ranking, nas colunas
-              "publica criticando"/"publica elogiando". Não recriar sem pedido
+              O card "Tom das publicações de @perfil" saiu na mesma revisão, e
+              a tabela de ranking saiu em 01/08. Não recriar sem pedido
               explícito; `fazNeutro` e `pctFazCritica` continuam calculados em
               lib/analisePerfis.ts, agora sem consumidor nesta tela. */}
 
