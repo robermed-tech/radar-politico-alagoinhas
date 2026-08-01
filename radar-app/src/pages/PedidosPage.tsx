@@ -105,11 +105,17 @@ export function PedidosPage() {
         </div>
       ) : (
         <>
-          {/* Revisão de 29/07: o chip "Todos" saiu — só os temas ficam na
-              faixa de filtro. O estado "todos" continua sendo o padrão da
-              página (nenhum chip aceso = lista inteira) e clicar de novo no
-              tema aceso volta para ele, então nada de filtro ficou preso. */}
-          <div className="flex flex-wrap gap-1.5">
+          {/* Revisão de 01/08 (pedido do cliente, com prévia aprovada): os
+              chips viraram BOTÕES GRANDES retangulares — nome do tema
+              centralizado e contagem logo abaixo, lado a lado numa grade que
+              quebra conforme a tela. As cores continuam vindo de corTema.
+              A regra da revisão de 29/07 segue valendo: sem chip "Todos", o
+              estado padrão é a lista inteira e clicar de novo no tema aceso
+              (ou no ✕ do box) volta para ela — nenhum filtro fica preso. */}
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}
+          >
             {porTema.map(([tema, n]) => {
               const cor = corTema(tema);
               const ativo = temaSel === tema;
@@ -117,20 +123,72 @@ export function PedidosPage() {
                 <button
                   key={tema}
                   onClick={() => setTemaSel(ativo ? "todos" : tema)}
-                  className="rounded-lg px-3 py-1 text-sm font-semibold transition"
+                  className="flex min-h-[72px] flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-2 transition"
                   style={
                     ativo
-                      ? { background: cor, color: "#0B0B0B" }
+                      ? {
+                          background: cor,
+                          color: "#0B0B0B",
+                          // Anel de destaque separado do botão pela cor da
+                          // página, para funcionar nos dois temas.
+                          boxShadow: `0 0 0 2px var(--bg-page), 0 0 0 3.5px ${cor}`,
+                        }
                       : { border: `1px solid ${cor}55`, background: `${cor}14`, color: cor }
                   }
                 >
-                  {labelTema(tema)} ({n})
+                  <span className="text-base font-extrabold leading-tight">{labelTema(tema)}</span>
+                  <span className="tnum text-sm font-semibold" style={{ opacity: 0.85 }}>
+                    {n} {n === 1 ? "pedido" : "pedidos"}
+                  </span>
                 </button>
               );
             })}
           </div>
 
-          <div className="space-y-2">
+          {/* Com um tema selecionado, a lista abre DENTRO de um box moldurado
+              na cor do tema, com cabeçalho e ✕. Sem tema, a lista completa
+              continua solta na página, como sempre foi. */}
+          {temaSel !== "todos" && (
+            <div
+              className="overflow-hidden rounded-xl bg-bg-1"
+              style={{ border: `1.5px solid ${corTema(temaSel)}` }}
+            >
+              <div
+                className="flex items-center justify-between gap-2 px-4 py-2.5"
+                style={{
+                  background: `${corTema(temaSel)}14`,
+                  borderBottom: `1px solid ${corTema(temaSel)}33`,
+                }}
+              >
+                <span className="text-sm font-bold text-txt-1">
+                  Pedidos sobre{" "}
+                  <span style={{ color: corTema(temaSel) }}>{labelTema(temaSel)}</span> ·{" "}
+                  <span className="tnum">{pedidos.length}</span> no período
+                </span>
+                <button
+                  onClick={() => setTemaSel("todos")}
+                  className="rounded px-2 py-0.5 text-[13px] text-txt-3 transition hover:text-txt-1"
+                  aria-label="Fechar e voltar para todos os temas"
+                >
+                  ✕ fechar
+                </button>
+              </div>
+              <ListaPedidos pedidos={pedidos} className="p-3" />
+            </div>
+          )}
+
+          {temaSel === "todos" && <ListaPedidos pedidos={pedidos} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Cards de pedido — o mesmo desenho de sempre, usado solto na página (sem
+ *  filtro) ou dentro do box do tema selecionado. */
+function ListaPedidos({ pedidos, className = "" }: { pedidos: Pedido[]; className?: string }) {
+  return (
+    <div className={`space-y-2 ${className}`}>
             {pedidos.map((p, i) => {
               const revisar = (p.confianca_tema ?? 0) < CONF_REVISAR;
               const cor = corTema(p.tema);
@@ -185,9 +243,6 @@ export function PedidosPage() {
                 Nenhum pedido neste filtro.
               </div>
             )}
-          </div>
-        </>
-      )}
     </div>
   );
 }
