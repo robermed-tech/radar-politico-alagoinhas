@@ -24,6 +24,7 @@ import { useThemeStore } from "@/stores/theme";
 import { chartInk, withAlpha, colorByIAD } from "@/lib/chartTheme";
 import { IconInbox, IconTrendUp, IconTrendDown, IconHeart, IconWarningTriangle } from "@/components/icons";
 import { PeriodoFilter, periodoLabel as rotuloPeriodo, type Dias } from "@/components/PeriodoFilter";
+import { vozDestacavel } from "@/lib/sentimento";
 
 interface AprovBucket {
   rotulo: string;
@@ -316,8 +317,16 @@ export function ApprovalPage() {
     });
     // fetchComments já vem ordenado por curtidas desc; reforça por segurança.
     lista = [...lista].sort((a, b) => (b.curtidas || 0) - (a.curtidas || 0));
-    const pos = lista.filter((c) => c.sentimento === "positivo").slice(0, 5);
-    const neg = lista.filter((c) => c.sentimento === "negativo").slice(0, 5);
+    // Vitrine exige confiança >= CONFIANCA_MIN_DESTAQUE (70), acima do piso de
+    // 50 da contagem: comentário fronteiriço (ex.: elogio a opositor gravado
+    // como positivo com conf 50) parava em "Vozes que aprovam" como se
+    // elogiasse a gestão. Ver lib/sentimento.ts::vozDestacavel.
+    const pos = lista
+      .filter((c) => c.sentimento === "positivo" && vozDestacavel(c))
+      .slice(0, 5);
+    const neg = lista
+      .filter((c) => c.sentimento === "negativo" && vozDestacavel(c))
+      .slice(0, 5);
     return { pos, neg };
   }, [coms, filtroVoz, diasVozes]);
 
