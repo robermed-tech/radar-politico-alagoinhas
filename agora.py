@@ -564,6 +564,99 @@ def _safe(nome, fn, *args, **kwargs):
         log(traceback.format_exc().strip())
         return None
 
+# ── Saude das chamadas a Anthropic ────────────────────────────────
+# Incidente de 01/08/26: o credito da API esgotou no meio do dia, TODAS as
+# chamadas ao modelo do run das 18:03 UTC falharam com HTTP 400 "credit
+# balance is too low", e o pipeline gravou _DEFAULTS_ANALISE em tudo — run
+# "success", painel sem analise nova, e o Alerta de Suporte mudo, porque nao
+# houve excecao nao tratada nem coleta vazia (a Apify funcionou). Cada falha
+# individual e engolida de proposito (um lote perdido nao pode derrubar o
+# run); o que faltava era alguem OLHAR O CONJUNTO no fim. Este contador faz
+# isso: toda chamada passa por _cliente_anthropic(), e _verificar_saude_
+# anthropic() decide no fim do main() se o run inteiro rodou sem modelo.
+_SAUDE_ANTHROPIC = {"ok": 0, "falha_credito": 0, "falha_outra": 0, "ultimo_erro": ""}
+
+# Falhas de credito/chave por run a partir das quais o alerta dispara mesmo
+# com sucessos anteriores: esse erro e deterministico (nao e 529 transitorio),
+# entao 3 ocorrencias ja significam "esgotou no meio do run e nada mais passa".
+_LIMIAR_FALHAS_CREDITO = 3
+
+def _zerar_saude_anthropic():
+    _SAUDE_ANTHROPIC.update(ok=0, falha_credito=0, falha_outra=0, ultimo_erro="")
+
+def _erro_anthropic_de_credito(e):
+    """Erro deterministico de conta (credito esgotado ou chave invalida), que
+    vai falhar igual em toda chamada seguinte — diferente de 529/timeout, que
+    e transitorio e nao justifica alerta."""
+    m = str(e).lower()
+    return any(p in m for p in (
+        "credit balance",          # 400 "credit balance is too low"
+        "insufficient credit",
+        "billing",
+        "invalid x-api-key",       # 401 authentication_error
+        "authentication_error",
+    ))
+
+class _MessagesMonitorado:
+    """Proxy fino sobre client.messages que so conta sucesso/falha — a excecao
+    segue subindo para o try/except de cada chamador, exatamente como antes."""
+    def __init__(self, inner):
+        self._inner = inner
+
+    def create(self, *args, **kwargs):
+        try:
+            r = self._inner.create(*args, **kwargs)
+        except Exception as e:
+            if _erro_anthropic_de_credito(e):
+                _SAUDE_ANTHROPIC["falha_credito"] += 1
+            else:
+                _SAUDE_ANTHROPIC["falha_outra"] += 1
+            _SAUDE_ANTHROPIC["ultimo_erro"] = str(e)[:400]
+            raise
+        _SAUDE_ANTHROPIC["ok"] += 1
+        return r
+
+class _ClienteMonitorado:
+    def __init__(self, cli):
+        self._cli = cli
+        self.messages = _MessagesMonitorado(cli.messages)
+
+    def __getattr__(self, nome):
+        return getattr(self._cli, nome)
+
+def _cliente_anthropic():
+    """Ponto unico de criacao do cliente Anthropic. Todo call site usa esta
+    funcao (nunca Anthropic() direto) para a contagem de saude enxergar o run
+    inteiro — a chave continua lida em tempo de chamada, via ANTHROPIC_KEY."""
+    return _ClienteMonitorado(Anthropic(api_key=ANTHROPIC_KEY))
+
+def _verificar_saude_anthropic():
+    """No fim do main(): se o run rodou com o modelo fora do ar por credito ou
+    chave, avisa o admin. O run NAO passa a falhar por isso — o objetivo e
+    avisar que o painel parou de receber analise nova, nao derrubar a coleta."""
+    ok = _SAUDE_ANTHROPIC["ok"]
+    cred = _SAUDE_ANTHROPIC["falha_credito"]
+    if cred == 0:
+        return
+    # "Todas" (ok == 0) cobre o run pequeno; o limiar cobre o credito que
+    # esgota no MEIO do run, quando as primeiras chamadas ainda passaram.
+    if ok > 0 and cred < _LIMIAR_FALHAS_CREDITO:
+        log(f"  [saude_anthropic] {cred} falha(s) de credito/chave com {ok} "
+            "sucesso(s) — abaixo do limiar, sem alerta.")
+        return
+    motivo = (
+        f"Anthropic: {cred} chamada(s) ao modelo falharam por credito/chave "
+        f"neste run ({ok} com sucesso) — o pipeline gravou analise DEFAULT e o "
+        f"painel parou de receber analise nova. Ultimo erro: "
+        f"{_SAUDE_ANTHROPIC['ultimo_erro']}"
+    )
+    log(f"  [saude_anthropic] {motivo}")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(f"::warning::{motivo}")
+    if _ALERTA_SUPORTE_OK:
+        # Dedup pela janela do alerta_historico, como os demais disparos.
+        _alerta.disparar("anthropic_sem_credito", motivo)
+
 def timestamp_para_data(ts):
     try:
         if isinstance(ts, (int, float)):
@@ -2108,7 +2201,7 @@ def analisar_radio(limite=20, dry_run=False, refazer=False, mapa_bairros=None):
     if not _RADIO_OK:
         log("  radio_analise indisponivel (falha de import).")
         return {"blocos": 0, "pautas": 0, "chamadas": 0}
-    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    cliente = _cliente_anthropic()
     return _radio_an.analisar_pendentes(
         _contexto_radio(mapa_bairros), cliente, MODELO_ANALISTA,
         limite=limite, dry_run=dry_run, refazer=refazer,
@@ -2121,7 +2214,7 @@ def teste_radio(limite=3):
     if not _RADIO_OK:
         log("radio_analise indisponivel (falha de import).")
         return
-    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    cliente = _cliente_anthropic()
     _radio_an.teste_radio(_contexto_radio(), cliente, MODELO_ANALISTA, limite=limite)
 
 
@@ -2196,7 +2289,7 @@ def expurgar_pii_radio(dias=None, dry_run=False):
 def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
     log(f"=== MODULO 4 - Analisando com o AGORA (triagem 2 niveis | limiar={LIMIAR_TRIAGEM}) ===")
     log(f"    Triagem: {MODELO_ANALISTA} | Profundo: {MODELO_PROFUNDO} | Comentarios: {MODELO_ANALISTA}")
-    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    cliente = _cliente_anthropic()
     resultado = []
     n_profundo = n_rapido = n_tom_novo = 0
 
@@ -2825,7 +2918,7 @@ def reparar_sentimento_oposicao(dry_run=False):
     log(f"[reparar-sentimento-oposicao] {len(suspeitos)} comentario(s) suspeito(s) "
         f"em {len(urls)} post(s). Reclassificando cada post inteiro…")
 
-    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    cliente = _cliente_anthropic()
     mudancas = []
     for url in urls:
         posts = _supabase_get(
@@ -3409,7 +3502,7 @@ essa base.
 Maximo 3 itens por lista. Seja especifico ao contexto de Alagoinhas."""
 
     try:
-        cliente = Anthropic(api_key=ANTHROPIC_KEY)
+        cliente = _cliente_anthropic()
         resp = cliente.messages.create(
             model=MODELO_PROFUNDO,
             max_tokens=1500,
@@ -3548,7 +3641,7 @@ def _registrar_agente(agente, modelo, gatilho, input_ref, tokens_in, tokens_out)
 
 def _chamar_claude(modelo, system, prompt, max_tokens=1200):
     """Chama Claude com fallback p/ Haiku se o modelo configurado falhar."""
-    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    cliente = _cliente_anthropic()
     try:
         r = cliente.messages.create(model=modelo, max_tokens=max_tokens,
                                     system=system, messages=[{"role": "user", "content": prompt}])
@@ -5081,6 +5174,9 @@ def gravar_boletim_climatico(posts_analisados):
 
 def main():
     inicio = datetime.now()
+    # Contagem por run (no multi-tenant, por tenant): sem o reset, falha de
+    # credito de um tenant contaminaria o veredito do seguinte.
+    _zerar_saude_anthropic()
     log("+======================================================+")
     log(f"|  AGORA iniciando - {inicio.strftime('%d/%m/%Y %H:%M:%S')}              |")
     log("+======================================================+")
@@ -5293,6 +5389,11 @@ def main():
     except Exception as e:
         log(f"  Briefing no Sheets falhou ({e}) — ignorado (nao afeta o dashboard)")
 
+    # Ultima etapa que olha o modelo: se o run inteiro rodou com a Anthropic
+    # fora do ar (credito esgotado/chave invalida), tudo acima gravou defaults
+    # sem nenhuma excecao subir — este e o unico ponto que enxerga o conjunto.
+    _safe("saude_anthropic", _verificar_saude_anthropic)
+
     fim = datetime.now()
     duracao = (fim - inicio).seconds
     log("")
@@ -5398,7 +5499,7 @@ def teste_sentimento(max_posts=8, so_divergencias=True):
         print("[teste-sentimento] Nenhum post encontrado.")
         return
 
-    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    cliente = _cliente_anthropic()
     from urllib.parse import quote
 
     mudou, igual = [], 0
@@ -5627,7 +5728,7 @@ def teste_tom(max_posts=20, categoria=None):
         print(f"[teste-tom] Nenhum post{' de ' + categoria if categoria else ''} com legenda.")
         return
 
-    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    cliente = _cliente_anthropic()
     print(f"[teste-tom] {len(posts)} publicacoes — tom classificado agora x gravado\n")
 
     placar = {}
@@ -5701,7 +5802,7 @@ def reclassificar_tom(limite=500, dry_run=False, refazer=False):
         print("[tom] ANTHROPIC_API_KEY ausente.")
         return
 
-    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    cliente = _cliente_anthropic()
     print(f"[tom] Classificando {len(pendentes)} publicacoes…")
     placar, gravados = {}, 0
     for i, p in enumerate(pendentes, 1):
@@ -5754,7 +5855,7 @@ def teste_triagem(max_posts=6, categoria="oposicao"):
         print(f"[teste-triagem] Nenhum post da categoria '{categoria}'.")
         return
 
-    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    cliente = _cliente_anthropic()
     print(f"[teste-triagem] {len(posts)} posts de '{categoria}' — comparando triagem atual x gravado\n")
     print(f"  {'perfil':<24} {'score':>12} {'%favoravel':>22} {'%critico':>20}")
 
@@ -6438,7 +6539,7 @@ def backfill_comentarios(limite=None):
         por_post.setdefault(url, []).append(c)
     log(f"  {len(por_post)} posts distintos.")
 
-    cliente = Anthropic(api_key=ANTHROPIC_KEY)
+    cliente = _cliente_anthropic()
     # 3 listas de formato HOMOGENEO — o PostgREST exige que todas as linhas de
     # um mesmo upsert em lote tenham exatamente as mesmas chaves (senao da
     # PGRST102 "All object keys must match" e o LOTE INTEIRO falha ao gravar,
