@@ -224,7 +224,7 @@ Antes de mexer em qualquer critério de sentimento, medir com `python agora.py -
 ### Texto
 
 - **Nunca usar travessão (—) em texto gerado ou exibido.** Os prompts do `agora.py` proíbem na origem; `limparTravessoes()` (radar-app/src/lib/format.ts) limpa textos antigos na exibição. Vale também para textos novos de UI.
-- **Vocabulário**: "comentários analisados" (não "vozes ouvidas"); "estabilizar/estabilizado" (não "recuperar/recuperado"); "Sugestões genéricas a serem avaliadas por especialista" (nunca "o que deveria ter sido feito" — a plataforma sugere, não prescreve).
+- **Vocabulário**: "comentários analisados" (não "vozes ouvidas"); "estabilizar/estabilizado" (não "recuperar/recuperado"); "Sugestões a serem avaliadas por especialista" (o "genéricas" saiu do título em 01/08 a pedido do cliente; nunca "o que deveria ter sido feito" — a plataforma sugere, não prescreve).
 - **Sentence case, não Title Case**: usar a classe `.frase-cap` (index.css), nunca o `capitalize` do Tailwind — ele deixava "Instagram E Facebook Da Prefeitura", com preposição maiúscula no meio da frase.
 - **Data em prosa é dd/mm/aa, nunca ISO cru.** `lib/format.ts::fmtDataBR("2026-07-28")` → `"28/07/26"`. Datas de gráfico continuam em `fmtDiaBR` (dd/mm, sem ano — o eixo não tem espaço para o ano). Não exibir `briefing.dia` nem qualquer coluna `*_em`/`data_*` direto do banco: é ISO e já vazou pra tela pelo menos uma vez.
 

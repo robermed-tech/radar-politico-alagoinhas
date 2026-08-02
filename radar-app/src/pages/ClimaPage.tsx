@@ -323,8 +323,9 @@ function RecomendacoesPeriodo({
 }) {
   if (!recomendacoes?.length) return null;
   const rotulo = periodo === "semana" ? "na semana" : periodo === "mes" ? "no mês" : "hoje";
-  // Título único definido na reunião de 24/07 — a plataforma não prescreve o
-  // que "deveria" ser feito; oferece sugestões genéricas que um humano avalia.
+  // Título definido na reunião de 24/07 (sem "genéricas" desde 01/08, pedido do
+  // cliente) — a plataforma não prescreve o que "deveria" ser feito; oferece
+  // sugestões que um humano avalia.
   return (
     <div className="rounded-[28px] border border-line bg-bg-1 p-6">
       {/* Corpo e peso maiores que o padrão de seção (pedido de 27/07): é a
@@ -336,7 +337,7 @@ function RecomendacoesPeriodo({
         className="mb-1.5 uppercase tracking-[0.1em] text-txt-1"
         style={{ fontSize: 17, fontWeight: 800 }}
       >
-        Sugestões genéricas a serem avaliadas por especialista
+        Sugestões a serem avaliadas por especialista
       </div>
       <p className="mb-4 text-txt-2" style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.5 }}>
         Baseadas em protocolos de gestão de crise de imagem e nos temas que merecem atenção {rotulo}.
@@ -677,9 +678,9 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
         )
       )}
 
-      {briefing && <RecomendacoesPeriodo recomendacoes={briefing.recomendacoes} periodo={periodo} />}
-
       <TermometroTemas allPosts={data!.data} dias={dias} />
+
+      {briefing && <RecomendacoesPeriodo recomendacoes={briefing.recomendacoes} periodo={periodo} />}
 
       {publicacoesAbertas && (
         <PublicacoesModal
