@@ -467,9 +467,11 @@ export function TemasPage() {
         <PeriodoFilter dias={janela} onChange={setJanela} />
       </div>
 
-      {/* Revisão de 01/08 (pedido do cliente, print com traço vermelho):
-          "Dentro de cada tema" e a linha Subindo/Caindo subiram para o topo
-          da página; a linha do tempo do clima desceu para o rodapé.
+      {/* Ordem vigente (2ª revisão de 01/08, confirmada com o cliente):
+          Linha do tempo do clima no topo -> Subindo/Caindo -> Dentro de cada
+          tema no rodapé. A 1ª revisão do mesmo dia tinha subido o "Dentro de
+          cada tema" ao topo; o cliente pediu a troca entre ele e a linha do
+          tempo em seguida.
 
           Revisão de 29/07: os cards "Assuntos em alta · 24h" (AssuntosEmAlta) e
           "Estabilização pós-alerta" (PainelRecuperacaoIRT) saíram desta página
@@ -477,8 +479,8 @@ export function TemasPage() {
           monitorados e gatilho de volume por subtema); não recriar aqui sem
           pedido explícito. */}
 
-      {/* Drill-down de subtemas (a partir dos comentários) */}
-      <PainelSubtemas />
+      {/* Linha do tempo do clima — curva de críticas anotada com o tema que a moveu */}
+      <TimelineClima themes={themes} janela={janela} />
 
       {/* Subindo + Caindo lado a lado */}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -537,8 +539,8 @@ export function TemasPage() {
         </div>
       </div>
 
-      {/* Linha do tempo do clima — curva de críticas anotada com o tema que a moveu */}
-      <TimelineClima themes={themes} janela={janela} />
+      {/* Drill-down de subtemas (a partir dos comentários) */}
+      <PainelSubtemas />
 
     </div>
   );
