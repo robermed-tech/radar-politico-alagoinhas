@@ -245,16 +245,26 @@ mudaram ao encostar no real:
 4. **O cron parou de mirar o horário do programa** (03/08/2026). Medido nos
    três últimos agendamentos das 10:00 UTC: disparos às 11:52, 12:00 e 12:55 —
    atraso crônico de 1h52 a 2h55, contra 20 min de tolerância. A espera passou
-   para o lado que controla o relógio: quatro crons escalonados ANTES do
-   programa e o coletor dorme até a janela abrir (`--aguardar 45` /
-   `minutos_ate_abrir`), com `_ja_captada_hoje` + `concurrency` no workflow
-   garantindo uma captura paga por dia. No mesmo diagnóstico caiu um bug
+   para o lado que controla o relógio: uma grade uniforme de crons de meia em
+   meia hora (06h-22h30 de Alagoinhas) e o coletor dorme até a janela abrir
+   (`--aguardar 45` / `minutos_ate_abrir`) — cada chegada cobre 65 min, então
+   qualquer horário cadastrado fica coberto sem ajustar cron, com
+   `_ja_captada_na_janela` + `concurrency` garantindo uma captura paga por
+   janela de programa. No mesmo diagnóstico caiu um bug
    latente de fuso: a janela era comparada com `datetime.now()` naive (UTC no
    runner), e "07:00" cadastrado abriria às 04:00 de Brasília; agora a hora é
    sempre a local do tenant (`RADAR_TZ`, default `America/Bahia`, fallback
    UTC-3 fixo). O bug nunca disparou em produção porque as estações estavam
    cadastradas sem `hora_inicio` — o fallback antigo capturava a qualquer
    hora, mascarando os dois problemas de uma vez.
+5. **`config.programas` é uma lista** (03/08/2026). A spec previa um programa
+   por estação (`{programa, hora_inicio, ...}` na raiz do config); o cliente
+   apontou que a mesma rádio tem vários programas em horários diferentes.
+   Cada item de `programas` é `{nome, hora_inicio, duracao_min, dias}` e vale
+   como janela de captação própria: duração e nome gravado vêm do programa NO
+   AR, e a trava anti-captura-dupla passou a ser por janela (por dia
+   bloquearia o programa da tarde depois do da manhã). O formato antigo
+   continua sendo lido como grade de um item, nos dois lados.
 
 Também apareceu um bug de configuração que valeu comentário no código: o
 `agora.py` chama `load_dotenv()` depois dos imports, então constante de

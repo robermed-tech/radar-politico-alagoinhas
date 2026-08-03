@@ -294,65 +294,115 @@ def _hhmm_para_minutos(valor: str) -> int | None:
     return h * 60 + m
 
 
-def dentro_da_janela(config: dict | None, agora: datetime) -> tuple[bool, str]:
-    """Decide se AGORA é hora de capturar este programa. Devolve (pode, motivo).
+def _programas_de(config: dict | None) -> list[dict]:
+    """A grade de programas da estação, no formato novo ou no legado.
 
-    Fonte sem `hora_inicio` cadastrado NÃO entra na captação automática — só
-    grava sob demanda (botão GRAVAR do painel, que passa por `somente_ids` e
-    nem consulta esta função). A regra do produto é gravar apenas no horário
-    pré-determinado do programa ou quando alguém pede: capturar "a cada
+    Formato novo (03/08): `config.programas` é uma LISTA de
+    `{nome, hora_inicio, duracao_min, dias}` — uma mesma rádio tem vários
+    programas em horários diferentes, e cada um é uma janela de captação
+    própria. Formato legado: os mesmos campos soltos na raiz do config
+    (`programa`/`hora_inicio`/...), que valem como grade de um programa só.
+    Programa sem `hora_inicio` parseável é descartado aqui: sem horário não há
+    janela, e a captação automática é só por janela (regra de 03/08).
+    """
+    cfg = config or {}
+    brutos = cfg.get("programas")
+    if not isinstance(brutos, list):
+        brutos = [{
+            "nome": cfg.get("programa"),
+            "hora_inicio": cfg.get("hora_inicio"),
+            "duracao_min": cfg.get("duracao_min"),
+            "dias": cfg.get("dias"),
+        }]
+    validos = []
+    for p in brutos:
+        if not isinstance(p, dict):
+            continue
+        if _hhmm_para_minutos(p.get("hora_inicio") or "") is None:
+            continue
+        validos.append({
+            "nome": (p.get("nome") or "").strip() or None,
+            "hora_inicio": p.get("hora_inicio"),
+            "duracao_min": p.get("duracao_min"),
+            "dias": p.get("dias") or [],
+        })
+    return validos
+
+
+def _programa_roda_hoje(prog: dict, agora: datetime) -> bool:
+    dias = prog.get("dias") or []
+    if not dias:
+        return True
+    hoje = _DIAS_SEMANA[agora.weekday()]
+    return hoje in [str(d).strip().lower()[:3] for d in dias]
+
+
+def programa_no_ar(config: dict | None, agora: datetime) -> dict | None:
+    """O programa cuja janela de INÍCIO está aberta agora, ou None.
+
+    A janela vai de hora_inicio até hora_inicio + TOLERANCIA_MIN: é o momento
+    de COMEÇAR a gravar, não a duração da gravação — a captura em si se
+    estende por duracao_min depois disso. Com grade múltipla, cada programa é
+    uma janela independente; o primeiro que casar decide (grades sensatas não
+    têm dois programas abrindo no mesmo instante).
+    """
+    atual = agora.hour * 60 + agora.minute
+    for p in _programas_de(config):
+        if not _programa_roda_hoje(p, agora):
+            continue
+        inicio = _hhmm_para_minutos(p["hora_inicio"])
+        if inicio is not None and inicio <= atual <= inicio + TOLERANCIA_MIN:
+            return p
+    return None
+
+
+def dentro_da_janela(config: dict | None, agora: datetime) -> tuple[bool, str]:
+    """Decide se AGORA é hora de capturar esta estação. Devolve (pode, motivo).
+
+    Estação sem NENHUM programa com horário cadastrado NÃO entra na captação
+    automática — só grava sob demanda (botão GRAVAR do painel, que passa por
+    `somente_ids` e nem consulta esta função). A regra do produto é gravar
+    apenas no horário pré-determinado ou quando alguém pede: capturar "a cada
     execução" por omissão de cadastro gravaria a grade musical, que é o
     material que o portão de relevância existe para não pagar. O motivo
     devolvido aparece no log, então a estação não fica muda sem explicação.
-
-    A janela vai de hora_inicio até hora_inicio + TOLERANCIA_MIN. Ela é o
-    momento de COMEÇAR a gravar, não a duração da gravação: a captura em si se
-    estende por duracao_min depois disso.
     """
-    cfg = config or {}
-    inicio = _hhmm_para_minutos(cfg.get("hora_inicio") or "")
-    if inicio is None:
-        return False, ("sem faixa horaria cadastrada — cadastre o horario do "
-                       "programa ou use o botao GRAVAR do painel")
+    programas = _programas_de(config)
+    if not programas:
+        return False, ("sem programa com horario cadastrado — cadastre a grade "
+                       "ou use o botao GRAVAR do painel")
 
-    dias = cfg.get("dias") or []
-    if dias:
-        hoje = _DIAS_SEMANA[agora.weekday()]
-        if hoje not in [str(d).strip().lower()[:3] for d in dias]:
-            return False, f"hoje ({hoje}) fora dos dias do programa"
+    prog = programa_no_ar(config, agora)
+    if prog:
+        rotulo = prog.get("nome") or prog["hora_inicio"]
+        return True, f"dentro da janela de {rotulo} ({prog['hora_inicio']} +{TOLERANCIA_MIN}min)"
 
-    atual = agora.hour * 60 + agora.minute
-    if inicio <= atual <= inicio + TOLERANCIA_MIN:
-        return True, f"dentro da janela {cfg.get('hora_inicio')} (+{TOLERANCIA_MIN}min)"
-    return False, f"fora da janela {cfg.get('hora_inicio')} (agora {agora:%H:%M})"
+    grade = ", ".join(p["hora_inicio"] for p in programas)
+    return False, f"fora das janelas da grade [{grade}] (agora {agora:%H:%M})"
 
 
 def minutos_ate_abrir(config: dict | None, agora: datetime) -> int | None:
-    """Minutos até a janela DESTE programa abrir hoje. Existe por causa do
-    atraso crônico do cron do GitHub (medido em 03/08: +1h52 a +2h55 nos três
-    últimos agendamentos): o radio.yml passou a disparar ANTES do programa e o
-    coletor espera a janela abrir, em vez de exigir que o agendador acerte um
-    alvo de 20 minutos que ele comprovadamente não acerta.
+    """Minutos até a PRÓXIMA janela desta estação abrir hoje. Existe por causa
+    do atraso crônico do cron do GitHub (medido em 03/08: +1h52 a +2h55 nos
+    três últimos agendamentos): o radio.yml passou a disparar ANTES do programa
+    e o coletor espera a janela abrir, em vez de exigir que o agendador acerte
+    um alvo de 20 minutos que ele comprovadamente não acerta.
 
-    Devolve 0 se a janela já está aberta, None quando não há o que esperar
-    hoje (sem hora_inicio, dia fora da grade, ou janela de hoje já passada —
-    esperar o programa de AMANHÃ seria um job de 20h, não uma espera).
+    Devolve 0 se alguma janela já está aberta, None quando não há o que
+    esperar hoje (nenhum programa com horário, dia fora da grade, ou todas as
+    janelas de hoje já passadas — esperar o programa de AMANHÃ seria um job de
+    20h, não uma espera). Com grade múltipla vale a janela MAIS PRÓXIMA.
     """
-    cfg = config or {}
-    inicio = _hhmm_para_minutos(cfg.get("hora_inicio") or "")
-    if inicio is None:
-        return None
-
-    dias = cfg.get("dias") or []
-    if dias:
-        hoje = _DIAS_SEMANA[agora.weekday()]
-        if hoje not in [str(d).strip().lower()[:3] for d in dias]:
-            return None
-
     atual = agora.hour * 60 + agora.minute
-    if atual > inicio + TOLERANCIA_MIN:
-        return None
-    return max(0, inicio - atual)
+    faltas = []
+    for p in _programas_de(config):
+        if not _programa_roda_hoje(p, agora):
+            continue
+        inicio = _hhmm_para_minutos(p["hora_inicio"])
+        if inicio is None or atual > inicio + TOLERANCIA_MIN:
+            continue
+        faltas.append(max(0, inicio - atual))
+    return min(faltas) if faltas else None
 
 
 # ── Normalização campo-a-campo ───────────────────────────────────────────────
@@ -397,11 +447,24 @@ def normalizar_bloco(item: dict, fonte: dict | None) -> dict | None:
     segments = _pega(item, "segments", padrao=[]) or []
     transcricao = _pega(item, "transcription", "text", padrao="") or ""
 
+    # Nome do programa: o que estava NO AR quando a captura começou. A fonte
+    # traz `_no_ar` quando a captação veio da janela; no resgate (adotar_run)
+    # ele é derivado do próprio horário do bloco; o legado (config.programa)
+    # fica de último, para linha antiga continuar igual.
+    no_ar = (fonte or {}).get("_no_ar")
+    if not no_ar:
+        try:
+            dt_local = datetime.fromisoformat(inicio).astimezone(_tz_tenant())
+            no_ar = programa_no_ar(cfg, dt_local)
+        except ValueError:
+            no_ar = None
+    programa = (no_ar or {}).get("nome") or cfg.get("programa")
+
     return {
         "tenant":               _tenant(),
         "source_id":            (fonte or {}).get("id"),
         "estacao":              estacao,
-        "programa":             cfg.get("programa"),
+        "programa":             programa,
         "stream_url":           _pega(item, "streamUrl", "url", padrao=""),
         "inicio_ts":            inicio,
         "duracao_min":          _pega(item, "durationMinutes", padrao=None),
@@ -481,12 +544,17 @@ def _log_collection(source_id, items_count: int, status: str, dry_run: bool) -> 
 
 def _duracao_da_janela(fontes: list[dict]) -> int:
     """Uma chamada de ator cobre várias estações com UMA duração. Usa a MENOR
-    duração cadastrada entre as estações da janela: gravar além do fim do
-    programa mais curto captaria a grade musical seguinte, e é mais barato."""
+    duração entre os programas NO AR das estações da janela (`_no_ar`, posto
+    pelo filtro de coletar_e_gravar): gravar além do fim do programa mais
+    curto captaria a grade musical seguinte, e é mais barato. Com grade
+    múltipla a duração é a do programa que abriu a janela, não a de outro
+    horário da mesma rádio; o config raiz fica de fallback para o legado."""
     duracoes = []
     for f in fontes:
+        prog = f.get("_no_ar") or {}
         try:
-            d = int(((f.get("config") or {}).get("duracao_min")) or 0)
+            d = int(prog.get("duracao_min")
+                    or ((f.get("config") or {}).get("duracao_min")) or 0)
         except (TypeError, ValueError):
             d = 0
         if d > 0:
@@ -619,21 +687,31 @@ def adotar_run(run_id: str, dry_run: bool = False) -> dict:
     return _processar_brutos(brutos, run_id, fonte_por_nome, fontes, dry_run)
 
 
-def _ja_captada_hoje(fonte: dict, agora: datetime) -> bool:
-    """True se a estação já tem bloco captado HOJE (dia local do tenant).
+def _ja_captada_na_janela(fonte: dict, prog: dict, agora: datetime) -> bool:
+    """True se a estação já tem bloco captado NESTA janela de programa, hoje.
 
     É a trava que permite ao radio.yml ter vários crons escalonados sem pagar
     duas capturas: o primeiro run que entrar na janela grava, e os demais saem
     aqui em segundos. O UNIQUE do banco impede linha duplicada, mas só DEPOIS
     de o crédito da Apify já ter sido gasto — a trava tem que vir antes.
+
+    O recorte é POR JANELA, não por dia: com a grade múltipla (03/08), a
+    captura do programa da manhã não pode bloquear o da tarde na mesma rádio.
+    A folga de 10 min antes do início absorve relógio de runner e o instante
+    `recordedAt` do ator, que fica a segundos do pedido.
     """
     sid = fonte.get("id")
-    if not sid:
+    inicio = _hhmm_para_minutos((prog or {}).get("hora_inicio") or "")
+    if not sid or inicio is None:
         return False
-    hoje0 = agora.replace(hour=0, minute=0, second=0, microsecond=0)
+    abre = agora.replace(hour=inicio // 60, minute=inicio % 60,
+                         second=0, microsecond=0)
+    de = abre - timedelta(minutes=10)
+    ate = abre + timedelta(minutes=TOLERANCIA_MIN + 10)
     linhas = _supabase_get(
         "radio_transcripts",
-        f"source_id=eq.{sid}&inicio_ts=gte.{hoje0.isoformat()}&select=id&limit=1",
+        f"source_id=eq.{sid}&inicio_ts=gte.{de.isoformat()}"
+        f"&inicio_ts=lte.{ate.isoformat()}&select=id&limit=1",
     )
     return bool(linhas)
 
@@ -715,11 +793,16 @@ def coletar_e_gravar(
         if not pode:
             _log(f"  · {rotulo}: {motivo}")
             continue
+        # O programa que abriu a janela viaja com a fonte: dita a duração da
+        # captura e o nome gravado no bloco (grade múltipla, 03/08).
+        prog = programa_no_ar(f.get("config"), agora)
         # Trava anti-captura-dupla: com varios crons escalonados no radio.yml,
-        # so o primeiro run que entra na janela paga a gravacao do dia.
-        if _ja_captada_hoje(f, agora):
-            _log(f"  · {rotulo}: ja captada hoje — outro run chegou primeiro")
+        # so o primeiro run que entra na janela paga a gravacao desta janela.
+        if prog and _ja_captada_na_janela(f, prog, agora):
+            _log(f"  · {rotulo}: janela de {prog.get('nome') or prog['hora_inicio']} "
+                 "ja captada — outro run chegou primeiro")
             continue
+        f["_no_ar"] = prog
         na_janela.append(f)
     if not na_janela:
         _log(f"[radio] {len(fontes)} radio(s) ativa(s), nenhuma na janela de captura agora")
@@ -813,6 +896,36 @@ def _autoteste() -> None:
     assert minutos_ate_abrir(cfg8, dom_8h) is None
     assert minutos_ate_abrir({}, seg_8h) is None
     assert minutos_ate_abrir(None, seg_8h) is None
+
+    # Grade MÚLTIPLA (03/08): vários programas na mesma rádio, cada um com a
+    # sua janela. O formato legado (campos na raiz) vira grade de um item.
+    grade = {"programas": [
+        {"nome": "Manhã Total", "hora_inicio": "08:00", "duracao_min": 60,
+         "dias": ["seg", "ter", "qua", "qui", "sex"]},
+        {"nome": "Tarde Livre", "hora_inicio": "14:00", "duracao_min": 30},
+        {"hora_inicio": "7h30"},  # inválido: descartado por não parsear
+    ]}
+    assert len(_programas_de(grade)) == 2
+    assert len(_programas_de({"programa": "Único", "hora_inicio": "09:00"})) == 1
+    assert _programas_de({"programa": "Sem hora"}) == []
+    # Cada janela abre no seu horário, e o programa certo é identificado.
+    assert dentro_da_janela(grade, seg_8h)[0] is True
+    assert programa_no_ar(grade, seg_8h)["nome"] == "Manhã Total"
+    tarde = seg_8h.replace(hour=14, minute=5)
+    assert dentro_da_janela(grade, tarde)[0] is True
+    assert programa_no_ar(grade, tarde)["nome"] == "Tarde Livre"
+    assert dentro_da_janela(grade, seg_8h.replace(hour=11))[0] is False
+    # Domingo: o da manhã tem grade seg-sex, o da tarde roda todo dia.
+    assert programa_no_ar(grade, dom_8h) is None
+    assert programa_no_ar(grade, dom_8h.replace(hour=14)) is not None
+    # A espera mira a janela MAIS PRÓXIMA de hoje; passada a da manhã, a
+    # próxima é a da tarde (e não None, como seria na grade de um programa).
+    assert minutos_ate_abrir(grade, seg_8h - timedelta(minutes=60)) == 60
+    assert minutos_ate_abrir(grade, seg_8h.replace(hour=8, minute=30)) == 330
+    assert minutos_ate_abrir(grade, seg_8h.replace(hour=14, minute=40)) is None
+    # A duração da captura é a do programa NO AR, não a de outro horário.
+    assert _duracao_da_janela([{"_no_ar": {"duracao_min": 30}, "config": grade}]) == 30
+    assert _duracao_da_janela([{"config": {"duracao_min": 45}}]) == 45
 
     # Fuso do tenant: America/Bahia é UTC-3 o ano inteiro (sem horário de
     # verão desde 2019), e o fallback fixo tem que dar o mesmo resultado.

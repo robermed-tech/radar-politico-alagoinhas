@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadios, gravarAgora, type RadioFonte } from "@/lib/radio";
+import { fetchRadios, gravarAgora, programasDe, type RadioFonte } from "@/lib/radio";
 import {
   FUNDO_ESCUTA, FUNDO_LARANJA, TINTA_PRETA, TINTA_CLARA, TINTA_CLARA_2,
   FUNDO_LISTA, FUNDO_ITEM, BORDA, SOMBRA, ALTURA_MIN, ALTURA_MAX,
@@ -147,7 +147,11 @@ export function GravarAgora() {
                         ? { background: FUNDO_LARANJA, color: TINTA_PRETA, fontWeight: 800 }
                         : { background: FUNDO_ITEM, color: TINTA_CLARA, fontWeight: 700, border: BORDA }
                     }
-                    title={r.config?.programa ? `Programa: ${r.config.programa}` : rotulo(r)}
+                    title={
+                      programasDe(r.config).filter((p) => p.nome).length
+                        ? `Programas: ${programasDe(r.config).map((p) => p.nome).filter(Boolean).join(", ")}`
+                        : rotulo(r)
+                    }
                   >
                     <span
                       className="inline-block h-2 w-2 shrink-0 rounded-full"

@@ -82,13 +82,43 @@ export interface RadioFonte {
   created_at: string;
 }
 
+/** Um programa da grade da estação — cada um é uma janela de captação. */
+export interface ProgramaRadio {
+  nome?: string;
+  hora_inicio?: string;
+  duracao_min?: number;
+  dias?: string[];
+}
+
 export interface RadioConfig {
+  /** Grade de programas (formato de 03/08): a mesma rádio tem vários
+   * programas em horários diferentes, e cada um grava na própria janela. */
+  programas?: ProgramaRadio[];
+  /** Campos legados (grade de um programa só). O coletor entende os dois
+   * formatos; a tela grava sempre no novo. */
   programa?: string;
   dias?: string[];
   hora_inicio?: string;
   duracao_min?: number;
   /** Peso de audiência. Nasce 1: sem dado de audiência, ponderar é inventar. */
   peso?: number;
+}
+
+/** Grade normalizada para exibição: formato novo, ou o legado embrulhado como
+ * grade de um item. Espelha `coletor_radio._programas_de` — exceto que aqui
+ * programa sem horário é mantido (a tela precisa mostrá-lo como "sob
+ * demanda"), enquanto o coletor o descarta por não haver janela. */
+export function programasDe(config: RadioConfig | null): ProgramaRadio[] {
+  if (Array.isArray(config?.programas)) return config.programas;
+  if (config?.programa || config?.hora_inicio) {
+    return [{
+      nome: config.programa,
+      hora_inicio: config.hora_inicio,
+      duracao_min: config.duracao_min,
+      dias: config.dias,
+    }];
+  }
+  return [];
 }
 
 function desdeISO(dias: number): string {
