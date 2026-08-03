@@ -379,3 +379,107 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
   .raindrop { animation: none; opacity: 0.18; transform: translate3d(0, 140px, 0); }
 }
+
+/* ── Modal noturno (shell único de todo pop-up do painel) ──────────────────
+   Linha visual fixa em azul-marinho profundo, IGUAL nos dois temas: pop-up é
+   um momento de foco, e a leitura em telão não pode depender do tema da
+   página (mesmo princípio do box "Publicações analisadas" preto fixo).
+   O componente ModalShell aplica `theme-dark` na subárvore, então todo
+   conteúdo interno que usa tokens (bg-2, line, txt-*, sent-ink-*) resolve nos
+   valores escuros já auditados de contraste — nada aqui reimplementa cor de
+   texto de comentário. Estes estilos cuidam só da CASCA. */
+.modal-fundo {
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: modal-fundo-surgir 0.18s ease-out;
+}
+.modal-caixa {
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(96, 130, 195, 0.16) 0%, transparent 60%),
+    linear-gradient(180deg, #14203A 0%, #0C1527 52%, #0A111F 100%);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  /* Fio de luz na aresta superior, como na referência: o brilho vem de cima. */
+  box-shadow:
+    inset 0 1px 0 rgba(226, 232, 240, 0.22),
+    0 42px 90px -28px rgba(0, 0, 0, 0.8),
+    0 8px 24px -8px rgba(0, 0, 0, 0.6);
+  animation: modal-caixa-surgir 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Tinta padrão da subárvore. `theme-dark` troca as VARIÁVEIS, mas não define
+     `color` — sem esta linha, todo texto sem classe explícita herda a tinta do
+     body (quase preta no tema claro) e some no fundo escuro. Foi assim que o
+     campo de contato do "Alertar Secretário" ficou ilegível: o textarea ao lado
+     tinha `text-txt-1` na classe e aparecia, o input não tinha e sumia. Vale
+     para todo elemento de formulário, que além disso não herda cor por conta
+     própria em vários navegadores — a mesma pegadinha já vista no <button>. */
+  color: var(--txt1);
+}
+.modal-caixa input,
+.modal-caixa textarea,
+.modal-caixa select {
+  color: var(--txt1);
+}
+/* A caixa recebe foco programático ao abrir (tabindex="-1"), só para ancorar a
+   navegação por teclado dentro do modal — ela não é um controle. Sem esta
+   regra, o `:focus-visible` global desenha um anel laranja de 2px em volta do
+   pop-up INTEIRO sempre que ele é aberto pelo teclado, e o quadro fica com
+   moldura laranja. Os controles de dentro (botões, campos) continuam com o
+   anel: é lá que a navegação por Tab precisa dele. */
+.modal-caixa:focus-visible {
+  outline: none;
+}
+/* Barra de rolagem da lista dentro do pop-up. O `color-scheme: dark` da
+   subárvore já escurece a nativa, mas ela continua sendo a barra larga do
+   sistema no meio de um cartão de cantos arredondados. Aqui ela vira um fio
+   discreto sobre o fundo do painel. */
+.modal-caixa ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.modal-caixa ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal-caixa ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+.modal-caixa ::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+  background-clip: padding-box;
+}
+@keyframes modal-fundo-surgir {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-caixa-surgir {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-fundo, .modal-caixa { animation: none; }
+}
+/* Painel interno: um degrau mais escuro que a casca, como o corpo de texto da
+   referência. Filho direto de texto herda tinta clara pelos tokens do tema. */
+.modal-painel {
+  background: rgba(2, 8, 23, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+/* Botão primário do modal: pílula clara com texto quase preto (a receita de
+   contraste do painel: fundo claro + tinta escura, nunca o contrário). */
+.modal-botao-primario {
+  background: linear-gradient(150deg, #FFFFFF 0%, #E2E8F4 100%);
+  color: #0B1426;
+  box-shadow: 0 10px 24px -10px rgba(226, 232, 244, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+.modal-botao-primario:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -10px rgba(226, 232, 244, 0.45);
+}
+.modal-botao-primario:disabled { opacity: 0.4; }
+.modal-botao-primario:focus-visible {
+  outline: 2px solid #E2E8F4;
+  outline-offset: 2px;
+}

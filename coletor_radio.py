@@ -11,6 +11,9 @@ Fluxo:
   2. Filtra pela FAIXA HORÁRIA de cada programa (config.hora_inicio/dias).
      O ator grava ao vivo: rodar fora do horário do programa captaria música e
      publicidade, que é o que 90% da grade toca (medido no primeiro teste real).
+     Estação sem hora_inicio cadastrado fica FORA da captação automática — a
+     regra do produto é gravar só no horário pré-determinado ou sob demanda
+     (botão GRAVAR do painel); gravação 24h ou "a cada execução" não existe.
   3. Uma única chamada de ator para todas as estações da janela, com
      concurrency = nº de estações, para o run durar UM programa e não N.
   4. Normaliza campo-a-campo e grava em `radio_transcripts`; resumo em
@@ -124,6 +127,31 @@ FRACAO_OVERHEAD = 0.5
 TETO_ESPERA_SEG = 195 * 60
 
 _DIAS_SEMANA = ("seg", "ter", "qua", "qui", "sex", "sab", "dom")
+
+
+def _tz_tenant():
+    """Fuso do TENANT, nunca o relógio do runner.
+
+    O `hora_inicio` é cadastrado na hora local de Alagoinhas, mas o coletor
+    rodava `datetime.now()` naive: no GitHub Actions (UTC) a janela "07:00"
+    abria às 04:00 de Brasília, e nenhum cron pontual salvaria — bug latente
+    achado em 03/08, mascarado porque as estações estavam sem horário
+    cadastrado (e o fallback antigo capturava sempre).
+
+    America/Bahia não tem horário de verão desde 2019, então o fallback de
+    UTC-3 fixo é exato quando o banco de fusos não está disponível (Windows
+    sem tzdata instalado).
+    """
+    nome = os.environ.get("RADAR_TZ", "America/Bahia")
+    try:
+        from zoneinfo import ZoneInfo
+        return ZoneInfo(nome)
+    except Exception:
+        return timezone(timedelta(hours=-3), "BRT")
+
+
+def _agora_local() -> datetime:
+    return datetime.now(_tz_tenant())
 
 
 def _log(msg: str) -> None:
@@ -269,9 +297,13 @@ def _hhmm_para_minutos(valor: str) -> int | None:
 def dentro_da_janela(config: dict | None, agora: datetime) -> tuple[bool, str]:
     """Decide se AGORA é hora de capturar este programa. Devolve (pode, motivo).
 
-    Fonte sem `hora_inicio` cadastrado captura sempre — quem não configurou
-    janela pediu captura a cada execução, e recusar por omissão deixaria a
-    estação muda sem dizer por quê.
+    Fonte sem `hora_inicio` cadastrado NÃO entra na captação automática — só
+    grava sob demanda (botão GRAVAR do painel, que passa por `somente_ids` e
+    nem consulta esta função). A regra do produto é gravar apenas no horário
+    pré-determinado do programa ou quando alguém pede: capturar "a cada
+    execução" por omissão de cadastro gravaria a grade musical, que é o
+    material que o portão de relevância existe para não pagar. O motivo
+    devolvido aparece no log, então a estação não fica muda sem explicação.
 
     A janela vai de hora_inicio até hora_inicio + TOLERANCIA_MIN. Ela é o
     momento de COMEÇAR a gravar, não a duração da gravação: a captura em si se
@@ -280,7 +312,8 @@ def dentro_da_janela(config: dict | None, agora: datetime) -> tuple[bool, str]:
     cfg = config or {}
     inicio = _hhmm_para_minutos(cfg.get("hora_inicio") or "")
     if inicio is None:
-        return True, "sem faixa horaria cadastrada"
+        return False, ("sem faixa horaria cadastrada — cadastre o horario do "
+                       "programa ou use o botao GRAVAR do painel")
 
     dias = cfg.get("dias") or []
     if dias:
@@ -292,6 +325,34 @@ def dentro_da_janela(config: dict | None, agora: datetime) -> tuple[bool, str]:
     if inicio <= atual <= inicio + TOLERANCIA_MIN:
         return True, f"dentro da janela {cfg.get('hora_inicio')} (+{TOLERANCIA_MIN}min)"
     return False, f"fora da janela {cfg.get('hora_inicio')} (agora {agora:%H:%M})"
+
+
+def minutos_ate_abrir(config: dict | None, agora: datetime) -> int | None:
+    """Minutos até a janela DESTE programa abrir hoje. Existe por causa do
+    atraso crônico do cron do GitHub (medido em 03/08: +1h52 a +2h55 nos três
+    últimos agendamentos): o radio.yml passou a disparar ANTES do programa e o
+    coletor espera a janela abrir, em vez de exigir que o agendador acerte um
+    alvo de 20 minutos que ele comprovadamente não acerta.
+
+    Devolve 0 se a janela já está aberta, None quando não há o que esperar
+    hoje (sem hora_inicio, dia fora da grade, ou janela de hoje já passada —
+    esperar o programa de AMANHÃ seria um job de 20h, não uma espera).
+    """
+    cfg = config or {}
+    inicio = _hhmm_para_minutos(cfg.get("hora_inicio") or "")
+    if inicio is None:
+        return None
+
+    dias = cfg.get("dias") or []
+    if dias:
+        hoje = _DIAS_SEMANA[agora.weekday()]
+        if hoje not in [str(d).strip().lower()[:3] for d in dias]:
+            return None
+
+    atual = agora.hour * 60 + agora.minute
+    if atual > inicio + TOLERANCIA_MIN:
+        return None
+    return max(0, inicio - atual)
 
 
 # ── Normalização campo-a-campo ───────────────────────────────────────────────
@@ -558,11 +619,31 @@ def adotar_run(run_id: str, dry_run: bool = False) -> dict:
     return _processar_brutos(brutos, run_id, fonte_por_nome, fontes, dry_run)
 
 
+def _ja_captada_hoje(fonte: dict, agora: datetime) -> bool:
+    """True se a estação já tem bloco captado HOJE (dia local do tenant).
+
+    É a trava que permite ao radio.yml ter vários crons escalonados sem pagar
+    duas capturas: o primeiro run que entrar na janela grava, e os demais saem
+    aqui em segundos. O UNIQUE do banco impede linha duplicada, mas só DEPOIS
+    de o crédito da Apify já ter sido gasto — a trava tem que vir antes.
+    """
+    sid = fonte.get("id")
+    if not sid:
+        return False
+    hoje0 = agora.replace(hour=0, minute=0, second=0, microsecond=0)
+    linhas = _supabase_get(
+        "radio_transcripts",
+        f"source_id=eq.{sid}&inicio_ts=gte.{hoje0.isoformat()}&select=id&limit=1",
+    )
+    return bool(linhas)
+
+
 def coletar_e_gravar(
     dry_run: bool = False,
     ignorar_janela: bool = False,
     somente_ids: list[str] | None = None,
     duracao_min: int | None = None,
+    aguardar_min: int = 0,
 ) -> dict:
     """Ponto de entrada chamado pelo agora.py.
 
@@ -575,6 +656,11 @@ def coletar_e_gravar(
     Por isso `somente_ids` implica ignorar a janela: exigir as duas coisas
     faria o botão falhar em silêncio fora do horário cadastrado, que é
     justamente quando alguém aperta um botão de gravar.
+
+    aguardar_min: quanto tempo (minutos) o run pode DORMIR esperando a janela
+    de algum programa abrir. É a resposta ao atraso crônico do cron do GitHub
+    (ver minutos_ate_abrir): o workflow dispara antes do horário e espera aqui.
+    Zero mantém o comportamento antigo (decide só com o relógio de agora).
     """
     if somente_ids:
         ignorar_janela = True
@@ -603,7 +689,22 @@ def coletar_e_gravar(
         _log("[radio] Nenhuma radio ativa — nada a coletar (sistema inerte)")
         return {"fontes": 0, "blocos": 0, "skipped": True}
 
-    agora = datetime.now()
+    # Hora LOCAL do tenant, nunca o relógio do runner (ver _tz_tenant).
+    agora = _agora_local()
+
+    # Run que chegou cedo espera a janela abrir (o cron do GitHub atrasa horas;
+    # disparar antes e dormir aqui é o único jeito de começar a gravar na hora
+    # certa do programa). A espera acontece ANTES do filtro, uma vez só.
+    if not ignorar_janela and aguardar_min > 0:
+        aberturas = [m for f in fontes
+                     if (m := minutos_ate_abrir(f.get("config"), agora)) is not None]
+        proxima = min(aberturas) if aberturas else None
+        if proxima and 0 < proxima <= aguardar_min:
+            _log(f"[radio] janela mais proxima abre em {proxima} min "
+                 f"({agora:%H:%M} local) — aguardando para gravar na hora do programa")
+            time.sleep(proxima * 60 + 15)
+            agora = _agora_local()
+
     na_janela = []
     for f in fontes:
         if ignorar_janela:
@@ -611,10 +712,15 @@ def coletar_e_gravar(
             continue
         pode, motivo = dentro_da_janela(f.get("config"), agora)
         rotulo = f.get("label") or f.get("handle")
-        if pode:
-            na_janela.append(f)
-        else:
+        if not pode:
             _log(f"  · {rotulo}: {motivo}")
+            continue
+        # Trava anti-captura-dupla: com varios crons escalonados no radio.yml,
+        # so o primeiro run que entra na janela paga a gravacao do dia.
+        if _ja_captada_hoje(f, agora):
+            _log(f"  · {rotulo}: ja captada hoje — outro run chegou primeiro")
+            continue
+        na_janela.append(f)
     if not na_janela:
         _log(f"[radio] {len(fontes)} radio(s) ativa(s), nenhuma na janela de captura agora")
         return {"fontes": len(fontes), "blocos": 0, "skipped": True}
@@ -674,9 +780,14 @@ def _autoteste() -> None:
     seg_8h = datetime(2026, 7, 27, 8, 0)      # segunda-feira
     dom_8h = datetime(2026, 8, 2, 8, 0)       # domingo
 
-    # Sem config: captura sempre (quem não configurou não pediu restrição).
-    assert dentro_da_janela(None, seg_8h)[0] is True
-    assert dentro_da_janela({}, seg_8h)[0] is True
+    # Sem config ou sem hora_inicio: NÃO entra na captação automática. A regra
+    # do produto é gravar só no horário pré-determinado ou sob demanda (botão
+    # GRAVAR, que passa por somente_ids e nem consulta esta função).
+    assert dentro_da_janela(None, seg_8h)[0] is False
+    assert dentro_da_janela({}, seg_8h)[0] is False
+    assert dentro_da_janela({"dias": ["seg"]}, seg_8h)[0] is False
+    # O motivo aponta o caminho (cadastrar horário ou gravar sob demanda).
+    assert "GRAVAR" in dentro_da_janela({}, seg_8h)[1]
 
     cfg = {"hora_inicio": "08:00", "dias": ["seg", "ter", "qua", "qui", "sex"]}
     assert dentro_da_janela(cfg, seg_8h)[0] is True
@@ -689,6 +800,24 @@ def _autoteste() -> None:
     assert dentro_da_janela(cfg, dom_8h)[0] is False
     # Grade só de fim de semana.
     assert dentro_da_janela({"hora_inicio": "08:00", "dias": ["sab", "dom"]}, dom_8h)[0] is True
+
+    # Espera pela janela: quanto falta para o programa de hoje abrir.
+    cfg8 = {"hora_inicio": "08:00", "dias": ["seg", "ter", "qua", "qui", "sex"]}
+    assert minutos_ate_abrir(cfg8, seg_8h - timedelta(minutes=90)) == 90
+    assert minutos_ate_abrir(cfg8, seg_8h) == 0
+    # Dentro da tolerância a janela conta como aberta (0), não como perdida.
+    assert minutos_ate_abrir(cfg8, seg_8h + timedelta(minutes=15)) == 0
+    # Janela de hoje já passou: não há o que esperar (amanhã é outro run).
+    assert minutos_ate_abrir(cfg8, seg_8h + timedelta(minutes=40)) is None
+    # Dia fora da grade e cadastro sem horário: nada a esperar.
+    assert minutos_ate_abrir(cfg8, dom_8h) is None
+    assert minutos_ate_abrir({}, seg_8h) is None
+    assert minutos_ate_abrir(None, seg_8h) is None
+
+    # Fuso do tenant: America/Bahia é UTC-3 o ano inteiro (sem horário de
+    # verão desde 2019), e o fallback fixo tem que dar o mesmo resultado.
+    _agora_tz = datetime.now(_tz_tenant())
+    assert _agora_tz.utcoffset() == timedelta(hours=-3)
 
     # Duração da janela: a menor cadastrada manda; sem cadastro, o default.
     assert _duracao_da_janela([{"config": {"duracao_min": 60}},
@@ -741,5 +870,14 @@ if __name__ == "__main__":
         _autoteste()
         raise SystemExit(0)
 
+    def _valor_de(flag: str) -> str | None:
+        if flag in sys.argv:
+            i = sys.argv.index(flag)
+            if i + 1 < len(sys.argv):
+                return sys.argv[i + 1]
+        return None
+
+    _ag = _valor_de("--aguardar")
     coletar_e_gravar(dry_run="--dry-run" in sys.argv or "--dry" in sys.argv,
-                     ignorar_janela="--agora" in sys.argv)
+                     ignorar_janela="--agora" in sys.argv,
+                     aguardar_min=int(_ag) if (_ag or "").isdigit() else 0)

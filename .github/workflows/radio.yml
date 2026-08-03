@@ -13,13 +13,31 @@ name: Escuta do Rádio — captação
 
 on:
   schedule:
-    # O cron precisa BATER com o `hora_inicio` cadastrado na tela Escuta do
-    # Rádio (BRT = UTC-3). O coletor tem 20 min de tolerância para atraso do
-    # agendador; fora dessa janela ele não captura nada, de propósito, para não
-    # gravar bloco musical.
+    # O cron do GitHub NÃO é pontual: nos três últimos agendamentos das
+    # 10:00 UTC ele disparou 11:52, 12:00 e 12:55 (medido em 03/08/2026) —
+    # atraso de 1h52 a 2h55, muito além dos 20 min de tolerância do coletor.
+    # Mirar o horário do programa é mirar um alvo que o agendador não acerta.
     #
-    # 07:00 BRT = 10:00 UTC — programa da manhã (ajuste conforme o cadastro)
-    - cron: '0 10 * * 1-5'
+    # A estratégia é outra: disparos ESCALONADOS ANTES do programa, e o
+    # coletor espera a janela abrir (`--aguardar 45`, ver minutos_ate_abrir no
+    # coletor_radio.py). O primeiro run que alcançar a janela grava; os outros
+    # saem em segundos pela trava "já captada hoje". Para a janela de 07:00
+    # BRT (10:00 UTC), os quatro disparos abaixo cobrem qualquer atraso de 0 a
+    # ~3h13 com espera máxima de 45 min:
+    #
+    #   07:07 UTC (04:07 BRT) — cobre atraso de 2h08 a 3h13
+    #   08:07 UTC (05:07 BRT) — cobre atraso de 1h08 a 2h13
+    #   09:07 UTC (06:07 BRT) — cobre atraso de 0h08 a 1h13
+    #   09:37 UTC (06:37 BRT) — cobre atraso de 0h00 a 0h43
+    #
+    # (minuto :07/:37 de propósito: o pico de atraso é no minuto :00, o mais
+    # disputado da fila do GitHub.) Se o `hora_inicio` cadastrado mudar, estes
+    # crons precisam andar junto — a mesma regra de antes, agora com ~3h de
+    # margem em vez de 20 min.
+    - cron: '7 7 * * 1-5'
+    - cron: '7 8 * * 1-5'
+    - cron: '7 9 * * 1-5'
+    - cron: '37 9 * * 1-5'
   workflow_dispatch:
     inputs:
       ignorar_janela:
@@ -51,6 +69,14 @@ on:
         type: boolean
         default: false
 
+# Um run de captação por vez. Sem isto, dois crons escalonados que chegassem
+# perto da janela dormiriam JUNTOS, acordariam juntos e os dois pagariam
+# gravação — a trava "já captada hoje" só enxerga bloco depois que o primeiro
+# grava. Enfileirado, o segundo roda depois e a trava o dispensa em segundos.
+concurrency:
+  group: escuta-radio
+  cancel-in-progress: false
+
 jobs:
   captar:
     runs-on: ubuntu-latest
@@ -64,10 +90,11 @@ jobs:
     #
     # Subiu de 140 para 230 em 31/07: o overhead de transcrição é proporcional
     # ao áudio, e a conta antiga (duração + 10 min fixos) não fechava nem no
-    # caso medido de 4 × 30 min, quanto mais no teto de 120. Com a espera do
-    # coletor limitada a 195 min (TETO_ESPERA_SEG), 200 no step e 230 no job
-    # cobrem o pior caso oferecido pelo painel com margem para setup e análise.
-    timeout-minutes: 230
+    # caso medido de 4 × 30 min, quanto mais no teto de 120. E de 230 para 275
+    # em 03/08: o run agendado pode dormir até 45 min esperando a janela
+    # (`--aguardar 45`), então a conta vira 45 de espera + 195 do
+    # TETO_ESPERA_SEG + margem — 245 no step e 275 no job.
+    timeout-minutes: 275
 
     steps:
       - name: Checkout repositório
@@ -96,12 +123,13 @@ jobs:
 
       - name: Captar rádios
         if: ${{ inputs.apenas_clipes != true }}
-        # Tem que ser MAIOR que TETO_ESPERA_SEG do coletor_radio.py (195 min):
-        # o Python precisa conseguir desistir e imprimir o `--adotar-radio
-        # <run_id>` antes de o Actions matar o job. Se o step vencer primeiro,
-        # o processo morre sem deixar o id, e recuperar a captação já paga
-        # passa a exigir garimpar o console da Apify.
-        timeout-minutes: 200
+        # Tem que ser MAIOR que a espera pela janela (45 min do --aguardar) +
+        # TETO_ESPERA_SEG do coletor_radio.py (195 min): o Python precisa
+        # conseguir desistir e imprimir o `--adotar-radio <run_id>` antes de o
+        # Actions matar o job. Se o step vencer primeiro, o processo morre sem
+        # deixar o id, e recuperar a captação já paga passa a exigir garimpar
+        # o console da Apify.
+        timeout-minutes: 245
         env:
           APIFY_API_TOKEN:      ${{ secrets.APIFY_API_TOKEN }}
           # O ator declara groqApiKey como required e NÃO guarda a chave: quem
@@ -120,6 +148,10 @@ jobs:
           # ignorar a janela no coletor: quem apertou GRAVAR quer agora.
           if [ -n "${{ inputs.estacoes }}" ]; then ARGS="$ARGS --estacoes ${{ inputs.estacoes }}"; fi
           if [ -n "${{ inputs.duracao }}" ];  then ARGS="$ARGS --duracao ${{ inputs.duracao }}"; fi
+          # Run agendado chega ANTES do programa (crons escalonados, ver topo
+          # do arquivo) e espera a janela abrir. Disparo manual não espera:
+          # quem disparou na mão quer resposta agora.
+          if [ "${{ github.event_name }}" = "schedule" ]; then ARGS="$ARGS --aguardar 45"; fi
           echo "Executando: python agora.py $ARGS"
           python agora.py $ARGS
 

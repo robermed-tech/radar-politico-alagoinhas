@@ -8,6 +8,7 @@ import {
   FUNDO_ESCUTA, FUNDO_LARANJA, TINTA_PRETA, TINTA_CLARA, TINTA_CLARA_2,
   FUNDO_LISTA, FUNDO_ITEM, BORDA, SOMBRA, ALTURA_MIN, ALTURA_MAX,
 } from "@/components/superficieRadio";
+import { ConfirmaModal } from "@/components/ConfirmaModal";
 
 /**
  * Cadastro das rádios monitoradas — card da LINHA DE TOPO da Rádio Escuta
@@ -143,9 +144,12 @@ export function RadiosMonitoradas() {
     if (ok) setForm(VAZIO);
   }
 
+  // Pop-up de confirmação na linha visual do painel (03/08), no lugar do
+  // window.confirm nativo, que era o único box fora do padrão.
+  const [removendo, setRemovendo] = useState<RadioFonte | null>(null);
+
   async function remover(r: RadioFonte) {
-    const nome = r.label ?? r.handle;
-    if (!window.confirm(`Remover ${nome} do monitoramento? As pautas já captadas continuam na tela.`)) return;
+    setRemovendo(null);
     const ok = await run(() => deleteRadio(r.id), "✔ Removida");
     if (ok && editando === r.id) cancelar();
   }
@@ -296,7 +300,7 @@ export function RadiosMonitoradas() {
                       {r.config?.programa ? `${r.config.programa} · ` : ""}
                       {r.config?.hora_inicio
                         ? `${r.config.hora_inicio} (${r.config.duracao_min ?? 30} min)`
-                        : "sem horário, capta sempre"}
+                        : "sem horário · só grava sob demanda"}
                       {r.config?.dias?.length ? ` · ${r.config.dias.join(" ")}` : ""}
                     </div>
                     <div className="truncate text-[12px]" style={{ color: "#94A3B8", fontWeight: 500 }} title={r.handle}>
@@ -326,7 +330,7 @@ export function RadiosMonitoradas() {
                       {r.active ? "Pausar" : "Ativar"}
                     </button>
                     <button
-                      onClick={() => remover(r)}
+                      onClick={() => setRemovendo(r)}
                       className="rounded-lg px-2.5 py-1 text-[13px] transition"
                       style={{ background: "rgba(2,6,23,0.88)", color: "#FCA5A5", fontWeight: 700, border: BORDA }}
                     >
@@ -339,6 +343,16 @@ export function RadiosMonitoradas() {
           </ul>
         )}
       </div>
+
+      {removendo && (
+        <ConfirmaModal
+          titulo={`Remover ${removendo.label ?? removendo.handle}?`}
+          mensagem="A estação sai do monitoramento e da captação automática. As pautas já captadas continuam na tela."
+          rotuloConfirmar="Remover estação"
+          onConfirmar={() => void remover(removendo)}
+          onCancelar={() => setRemovendo(null)}
+        />
+      )}
     </div>
   );
 }
