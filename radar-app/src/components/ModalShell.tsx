@@ -47,16 +47,48 @@ export function ModalShell({
   const caixaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const aoTeclar = (e: KeyboardEvent) => { if (e.key === "Escape") onFechar(); };
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onFechar(); return; }
+      // Tab preso dentro do modal. Sem isso, o Tab passa do último botão do
+      // pop-up para os controles da PÁGINA atrás dele — que está coberta pelo
+      // véu e é justamente o que o modal pediu para o usuário ignorar. Quem
+      // navega por teclado perdia o foco de vista e não tinha como voltar.
+      if (e.key !== "Tab") return;
+      const caixa = caixaRef.current;
+      if (!caixa) return;
+      const focaveis = Array.from(
+        caixa.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => el.offsetParent !== null);
+      if (focaveis.length === 0) { e.preventDefault(); return; }
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      const atual = document.activeElement;
+      // O foco começa na própria caixa (tabindex -1), que não está na lista:
+      // nesse estado o Shift+Tab tem que ir para o ÚLTIMO, e não escapar.
+      if (!e.shiftKey && (atual === ultimo || !caixa.contains(atual))) {
+        e.preventDefault();
+        primeiro.focus();
+      } else if (e.shiftKey && (atual === primeiro || atual === caixa)) {
+        e.preventDefault();
+        ultimo.focus();
+      }
+    };
     document.addEventListener("keydown", aoTeclar);
     // Trava a rolagem da página atrás do modal (e devolve o valor anterior ao
     // fechar, para não pisar num overflow customizado de outra camada).
     const anterior = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // Quem abriu o modal recebe o foco de volta ao fechar — senão o usuário de
+    // teclado volta para o topo do documento e precisa refazer o caminho até o
+    // botão que acabou de acionar.
+    const origem = document.activeElement as HTMLElement | null;
     caixaRef.current?.focus();
     return () => {
       document.removeEventListener("keydown", aoTeclar);
       document.body.style.overflow = anterior;
+      if (origem?.isConnected) origem.focus();
     };
   }, [onFechar]);
 

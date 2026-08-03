@@ -405,6 +405,49 @@ button:disabled {
     0 42px 90px -28px rgba(0, 0, 0, 0.8),
     0 8px 24px -8px rgba(0, 0, 0, 0.6);
   animation: modal-caixa-surgir 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Tinta padrão da subárvore. `theme-dark` troca as VARIÁVEIS, mas não define
+     `color` — sem esta linha, todo texto sem classe explícita herda a tinta do
+     body (quase preta no tema claro) e some no fundo escuro. Foi assim que o
+     campo de contato do "Alertar Secretário" ficou ilegível: o textarea ao lado
+     tinha `text-txt-1` na classe e aparecia, o input não tinha e sumia. Vale
+     para todo elemento de formulário, que além disso não herda cor por conta
+     própria em vários navegadores — a mesma pegadinha já vista no <button>. */
+  color: var(--txt1);
+}
+.modal-caixa input,
+.modal-caixa textarea,
+.modal-caixa select {
+  color: var(--txt1);
+}
+/* A caixa recebe foco programático ao abrir (tabindex="-1"), só para ancorar a
+   navegação por teclado dentro do modal — ela não é um controle. Sem esta
+   regra, o `:focus-visible` global desenha um anel laranja de 2px em volta do
+   pop-up INTEIRO sempre que ele é aberto pelo teclado, e o quadro fica com
+   moldura laranja. Os controles de dentro (botões, campos) continuam com o
+   anel: é lá que a navegação por Tab precisa dele. */
+.modal-caixa:focus-visible {
+  outline: none;
+}
+/* Barra de rolagem da lista dentro do pop-up. O `color-scheme: dark` da
+   subárvore já escurece a nativa, mas ela continua sendo a barra larga do
+   sistema no meio de um cartão de cantos arredondados. Aqui ela vira um fio
+   discreto sobre o fundo do painel. */
+.modal-caixa ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.modal-caixa ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal-caixa ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+.modal-caixa ::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+  background-clip: padding-box;
 }
 @keyframes modal-fundo-surgir {
   from { opacity: 0; }
