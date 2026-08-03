@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { createPortal } from "react-dom";
 import type { BairroStats, ComentarioBairro } from "@/lib/data";
 import { fmtInt, labelBairro } from "@/lib/format";
+import { ModalShell, ModalPainel } from "@/components/ModalShell";
 import {
   ComentarioBox,
   ComentarioTexto,
@@ -41,6 +41,8 @@ interface Props {
  * O ponto do drill-down é auditoria: a barra diz "6 menções, 100% negativas" e
  * esta tela mostra exatamente quais frases produziram esse número, para que a
  * assessoria possa conferir em vez de acreditar.
+ *
+ * Casca visual: ModalShell (linha única de pop-up do painel, 03/08).
  */
 export function ComentariosBairroModal({
   bairro,
@@ -66,72 +68,61 @@ export function ComentariosBairroModal({
       ? `${posicao}º mais crítico · ${bairro.pctNeg}% dos comentários com local são críticas`
       : `${posicao}º mais citado · ${fmtInt(bairro.total)} menç${bairro.total === 1 ? "ão" : "ões"} no período`;
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.8)" }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+  return (
+    <ModalShell
+      onFechar={onClose}
+      larguraMax="max-w-xl"
+      chip="Mapa da cidade"
+      titulo={labelBairro(bairro.localidade)}
+      subtitulo={`${explicacao} · ${periodoLabel}`}
+      icone={
+        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+      }
     >
-      <div className="flex max-h-[84vh] w-full max-w-xl flex-col rounded-2xl border border-line bg-bg-1 p-5 shadow-2xl">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="truncate text-xl font-extrabold text-txt-1">{labelBairro(bairro.localidade)}</div>
-            <div className="mt-0.5 text-[13px] font-semibold text-txt-3">
-              {explicacao} · {periodoLabel}
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="shrink-0 cursor-pointer rounded-lg p-1 text-txt-3 transition hover:text-txt-1"
-            aria-label="Fechar"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Barra de composição: o número da coluna, decomposto. */}
-        <div className="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-bg-2">
+      {/* Barra de composição: o número da coluna, decomposto. */}
+      <ModalPainel className="!p-3">
+        <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-bg-2">
           {(["negativo", "neutro", "positivo"] as const).map((s) => {
             const n = s === "negativo" ? bairro.neg : s === "positivo" ? bairro.pos : bairro.neu;
             const pct = bairro.total ? (n / bairro.total) * 100 : 0;
             return pct > 0 ? <div key={s} style={{ width: `${pct}%`, background: SENT_COR[s] }} /> : null;
           })}
         </div>
+      </ModalPainel>
 
-        <div className="mt-3 space-y-2 overflow-y-auto">
-          {lista.length === 0 && (
-            <p className="text-sm text-txt-3">
-              Nenhum comentário para {labelBairro(bairro.localidade)} no período selecionado.
-            </p>
-          )}
-          {lista.map((c, i) => (
-            <ComentarioBox key={i}>
-              {/* Comentário em destaque maior e mais pesado (pedido de 27/07):
-                  é o dado bruto que sustenta o número da barra, e precisa ser
-                  o elemento mais fácil de ler do card. */}
-              <ComentarioTexto>{c.texto}</ComentarioTexto>
-              <ComentarioMeta>
-                {c.autor && <span>@{c.autor}</span>}
-                <span className="tnum">
-                  {fmtInt(c.curtidas)} curtida{c.curtidas === 1 ? "" : "s"}
-                </span>
-                {c.tema && c.tema !== "outro" && <ComentarioChip>{c.tema}</ComentarioChip>}
-                <ComentarioChip cor={tintaSentimento(c.sentimento)}>
-                  {SENT_LABEL[c.sentimento] ?? c.sentimento}
-                </ComentarioChip>
-              </ComentarioMeta>
-              {c.pedido && (
-                <div className="mt-1.5 rounded border border-line px-2 py-1 text-[13px] font-semibold text-txt-2">
-                  Pedido: {c.pedido}
-                </div>
-              )}
-            </ComentarioBox>
-          ))}
-        </div>
+      <div className="mt-3 space-y-2">
+        {lista.length === 0 && (
+          <p className="text-sm text-txt-3">
+            Nenhum comentário para {labelBairro(bairro.localidade)} no período selecionado.
+          </p>
+        )}
+        {lista.map((c, i) => (
+          <ComentarioBox key={i}>
+            {/* Comentário em destaque maior e mais pesado (pedido de 27/07):
+                é o dado bruto que sustenta o número da barra, e precisa ser
+                o elemento mais fácil de ler do card. */}
+            <ComentarioTexto>{c.texto}</ComentarioTexto>
+            <ComentarioMeta>
+              {c.autor && <span>@{c.autor}</span>}
+              <span className="tnum">
+                {fmtInt(c.curtidas)} curtida{c.curtidas === 1 ? "" : "s"}
+              </span>
+              {c.tema && c.tema !== "outro" && <ComentarioChip>{c.tema}</ComentarioChip>}
+              <ComentarioChip cor={tintaSentimento(c.sentimento)}>
+                {SENT_LABEL[c.sentimento] ?? c.sentimento}
+              </ComentarioChip>
+            </ComentarioMeta>
+            {c.pedido && (
+              <div className="mt-1.5 rounded border border-line px-2 py-1 text-[13px] font-semibold text-txt-2">
+                Pedido: {c.pedido}
+              </div>
+            )}
+          </ComentarioBox>
+        ))}
       </div>
-    </div>,
-    document.body
+    </ModalShell>
   );
 }

@@ -14,10 +14,14 @@
  * O envio continua MANUAL, decisão da reunião de 24/07: o componente abre o
  * WhatsApp ou o cliente de e-mail com o texto pronto, e quem aperta enviar é a
  * pessoa. Nada é disparado por conta própria.
+ *
+ * Casca visual: ModalShell (linha única de pop-up do painel, 03/08). O botão
+ * de enviar é a pílula clara do padrão, não mais verde/azul por canal: verde e
+ * vermelho ficam reservados para sentimento, e o canal já está dito no rótulo.
  */
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { logMessageSend } from "@/lib/admin";
+import { ModalShell, ModalBotaoPrimario } from "@/components/ModalShell";
 
 export interface EnvioSecretarioProps {
   aberto: boolean;
@@ -25,7 +29,7 @@ export interface EnvioSecretarioProps {
   /** Título do modal (ex.: "Alerta de Crise"). */
   titulo: string;
   subtitulo: string;
-  /** Cor de destaque do cabeçalho. */
+  /** Cor de destaque do tile do ícone. */
   cor?: string;
   /** Ícone do cabeçalho. */
   icone: React.ReactNode;
@@ -91,119 +95,89 @@ export function EnvioSecretario({
 
   if (!aberto) return null;
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.8)" }}
-      onClick={(e) => e.target === e.currentTarget && onFechar()}
-    >
-      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-line bg-bg-1 p-5 shadow-2xl">
-        {/* Cabeçalho */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <div
-              className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl"
-              style={{ background: `${cor}1F` }}
-            >
-              {icone}
-            </div>
-            <div>
-              <div className="font-extrabold text-txt-1">{titulo}</div>
-              <div className="text-[13px] text-txt-3">{subtitulo}</div>
-            </div>
-          </div>
-          <button
-            onClick={onFechar}
-            className="cursor-pointer rounded-lg p-1 text-txt-3 transition hover:text-txt-1"
-            aria-label="Fechar"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Contexto específico da origem */}
-        {children}
-
-        {/* Canal */}
-        <div className="mt-4 flex w-fit gap-0.5 rounded-lg border border-line bg-bg-2 p-0.5">
-          {(["whatsapp", "email"] as const).map((c) => (
-            <button
-              key={c}
-              onClick={() => setCanal(c)}
-              className={`rounded px-3 py-1.5 text-xs font-semibold transition-all ${
-                canal === c ? "bg-brand text-brand-ink" : "text-txt-3 hover:text-txt-1"
-              }`}
-            >
-              {c === "whatsapp" ? "WhatsApp" : "E-mail"}
-            </button>
-          ))}
-        </div>
-
-        {/* Contato */}
-        <div className="mt-3">
-          <label className="mb-1 block text-[13px] font-semibold uppercase tracking-wide text-txt-3">
-            {canal === "email" ? "E-mail do(a) secretário(a)" : "WhatsApp com DDD"}
-          </label>
-          <input
-            type={canal === "email" ? "email" : "tel"}
-            value={contato}
-            onChange={(e) => setContato(e.target.value)}
-            placeholder={canal === "email" ? "secretario@prefeitura.ba.gov.br" : "75 9 9999-0000"}
-            className="w-full rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none transition focus:border-brand"
-          />
-        </div>
-
-        {/* Mensagem */}
-        <div className="mt-3">
-          <div className="mb-1 flex items-center justify-between">
-            <label className="text-[13px] font-semibold uppercase tracking-wide text-txt-3">
-              Mensagem
-            </label>
-            <button
-              onClick={() => { setEditado(false); setMensagem(mensagemBase); }}
-              className="text-[12px] font-semibold text-brand hover:underline"
-            >
-              ↺ Regenerar
-            </button>
-          </div>
-          <textarea
-            value={mensagem}
-            onChange={(e) => { setEditado(true); setMensagem(e.target.value); }}
-            rows={6}
-            className="w-full resize-none rounded-lg border border-line bg-bg-2 px-3 py-2 text-xs leading-relaxed text-txt-1 outline-none transition focus:border-brand"
-            style={{ fontFamily: "JetBrains Mono, monospace" }}
-          />
-        </div>
-
-        {/* Ações */}
-        <div className="mt-4 flex items-center gap-2">
+  return (
+    <ModalShell
+      onFechar={onFechar}
+      chip="Envio ao secretário"
+      titulo={titulo}
+      subtitulo={subtitulo}
+      icone={icone}
+      corIcone={cor}
+      rodape={
+        <>
           {feedback && !feedback.startsWith("✓") && (
             <p className="flex-1 text-xs text-risk-crit">{feedback}</p>
           )}
           <button
             onClick={copiar}
             title="Copiar texto"
-            className="rounded-lg border border-line bg-bg-2 px-3 py-2.5 text-sm transition hover:bg-bg-3"
+            className="rounded-xl border border-line bg-bg-2 px-3 py-2.5 text-sm font-semibold text-txt-1 transition hover:bg-bg-3"
           >
-            {feedback === "✓ Copiado!" ? "✓" : "📋"}
+            {feedback === "✓ Copiado!" ? "✓ Copiado" : "Copiar"}
           </button>
-          <button
-            onClick={enviar}
-            disabled={!contato.trim()}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-40"
-            style={{ background: canal === "whatsapp" ? "#16A34A" : "#2563EB" }}
-          >
+          <ModalBotaoPrimario onClick={enviar} disabled={!contato.trim()}>
             {feedback?.startsWith("✓ Abrindo")
               ? "✓ Abrindo…"
               : canal === "whatsapp"
-              ? "💬 Enviar WhatsApp"
-              : "📧 Enviar E-mail"}
+              ? "Enviar WhatsApp"
+              : "Enviar e-mail"}
+          </ModalBotaoPrimario>
+        </>
+      }
+    >
+      {/* Contexto específico da origem */}
+      {children}
+
+      {/* Canal */}
+      <div className="mt-4 flex w-fit gap-0.5 rounded-lg border border-line bg-bg-2 p-0.5">
+        {(["whatsapp", "email"] as const).map((c) => (
+          <button
+            key={c}
+            onClick={() => setCanal(c)}
+            className={`rounded px-3 py-1.5 text-xs font-semibold transition-all ${
+              canal === c ? "bg-brand text-brand-ink" : "text-txt-3 hover:text-txt-1"
+            }`}
+          >
+            {c === "whatsapp" ? "WhatsApp" : "E-mail"}
+          </button>
+        ))}
+      </div>
+
+      {/* Contato */}
+      <div className="mt-3">
+        <label className="mb-1 block text-[13px] font-semibold uppercase tracking-wide text-txt-3">
+          {canal === "email" ? "E-mail do(a) secretário(a)" : "WhatsApp com DDD"}
+        </label>
+        <input
+          type={canal === "email" ? "email" : "tel"}
+          value={contato}
+          onChange={(e) => setContato(e.target.value)}
+          placeholder={canal === "email" ? "secretario@prefeitura.ba.gov.br" : "75 9 9999-0000"}
+          className="w-full rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none transition focus:border-brand"
+        />
+      </div>
+
+      {/* Mensagem */}
+      <div className="mt-3">
+        <div className="mb-1 flex items-center justify-between">
+          <label className="text-[13px] font-semibold uppercase tracking-wide text-txt-3">
+            Mensagem
+          </label>
+          <button
+            onClick={() => { setEditado(false); setMensagem(mensagemBase); }}
+            className="text-[12px] font-semibold text-brand hover:underline"
+          >
+            ↺ Regenerar
           </button>
         </div>
+        <textarea
+          value={mensagem}
+          onChange={(e) => { setEditado(true); setMensagem(e.target.value); }}
+          rows={6}
+          className="w-full resize-none rounded-lg border border-line bg-bg-2 px-3 py-2 text-xs leading-relaxed text-txt-1 outline-none transition focus:border-brand"
+          style={{ fontFamily: "JetBrains Mono, monospace" }}
+        />
       </div>
-    </div>,
-    document.body
+    </ModalShell>
   );
 }

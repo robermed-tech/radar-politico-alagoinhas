@@ -18,6 +18,7 @@ import { chartInk, glassBar } from "@/lib/chartTheme";
 import { IconWarningTriangle } from "@/components/icons";
 import { useOnlineUserIds } from "@/lib/presence";
 import { Card, Feedback } from "@/components/FormCard";
+import { ConfirmaModal } from "@/components/ConfirmaModal";
 
 // Reunião de 24/07: as abas "Fontes (coleta)" e "Notificações" saíram.
 // Revisão de 25/07: "Relevância" e "Fontes" viraram páginas próprias na barra
@@ -542,8 +543,12 @@ function UsersSection() {
     if (!err) refresh();
   }
 
-  async function excluir(id: string, label: string) {
-    if (!window.confirm(`Excluir ${label}? Essa ação não pode ser desfeita.`)) return;
+  // Pop-up de confirmação na linha visual do painel (03/08), no lugar do
+  // window.confirm nativo.
+  const [excluindo, setExcluindo] = useState<{ id: string; label: string } | null>(null);
+
+  async function excluir(id: string) {
+    setExcluindo(null);
     const err = await deleteUser(id);
     setMsg(err ? { ok: false, text: err } : { ok: true, text: "✔ Usuário excluído" });
     if (!err) refresh();
@@ -630,7 +635,7 @@ function UsersSection() {
                     <option value="admin">Admin</option>
                   </select>
                   <button
-                    onClick={() => excluir(u.id, u.full_name || u.email || "")}
+                    onClick={() => setExcluindo({ id: u.id, label: u.full_name || u.email || "" })}
                     className="text-xs font-semibold text-risk-crit hover:underline"
                   >
                     Excluir
@@ -642,6 +647,16 @@ function UsersSection() {
           {users?.length === 0 && <p className="text-sm text-txt-3">Nenhum usuário.</p>}
         </div>
       </Card>
+
+      {excluindo && (
+        <ConfirmaModal
+          titulo={`Excluir ${excluindo.label}?`}
+          mensagem="O acesso ao painel é revogado na hora. Essa ação não pode ser desfeita."
+          rotuloConfirmar="Excluir usuário"
+          onConfirmar={() => void excluir(excluindo.id)}
+          onCancelar={() => setExcluindo(null)}
+        />
+      )}
     </div>
   );
 }
