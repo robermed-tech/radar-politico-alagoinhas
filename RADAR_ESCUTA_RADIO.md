@@ -234,6 +234,14 @@ mudaram ao encostar no real:
    usuário do tenant, e a funcionalidade é admin-only: o cadastro foi para
    dentro da própria Escuta do Rádio, e a tela Fontes passou a filtrar
    `platform !== "radio"`. A tabela `sources` continua sendo a mesma.
+3. **Estação sem `hora_inicio` saiu da captação automática** (revisão de
+   03/08/2026). A primeira versão de `dentro_da_janela` tratava a omissão como
+   "captura a cada execução". A regra do produto ficou explícita: gravar SÓ no
+   horário pré-determinado do programa ou sob demanda (botão GRAVAR) — nunca
+   24h nem por omissão de cadastro, por economia (cada minuto captado é run
+   pago na Apify + transcrição + análise) e por precisão (fora do programa a
+   grade é música e publicidade). Estação sem horário aparece no cadastro como
+   "só grava sob demanda" e o log da coleta diz o motivo e o caminho.
 
 Também apareceu um bug de configuração que valeu comentário no código: o
 `agora.py` chama `load_dotenv()` depois dos imports, então constante de

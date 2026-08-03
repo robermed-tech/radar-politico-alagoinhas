@@ -11,6 +11,9 @@ Fluxo:
   2. Filtra pela FAIXA HORÁRIA de cada programa (config.hora_inicio/dias).
      O ator grava ao vivo: rodar fora do horário do programa captaria música e
      publicidade, que é o que 90% da grade toca (medido no primeiro teste real).
+     Estação sem hora_inicio cadastrado fica FORA da captação automática — a
+     regra do produto é gravar só no horário pré-determinado ou sob demanda
+     (botão GRAVAR do painel); gravação 24h ou "a cada execução" não existe.
   3. Uma única chamada de ator para todas as estações da janela, com
      concurrency = nº de estações, para o run durar UM programa e não N.
   4. Normaliza campo-a-campo e grava em `radio_transcripts`; resumo em
@@ -269,9 +272,13 @@ def _hhmm_para_minutos(valor: str) -> int | None:
 def dentro_da_janela(config: dict | None, agora: datetime) -> tuple[bool, str]:
     """Decide se AGORA é hora de capturar este programa. Devolve (pode, motivo).
 
-    Fonte sem `hora_inicio` cadastrado captura sempre — quem não configurou
-    janela pediu captura a cada execução, e recusar por omissão deixaria a
-    estação muda sem dizer por quê.
+    Fonte sem `hora_inicio` cadastrado NÃO entra na captação automática — só
+    grava sob demanda (botão GRAVAR do painel, que passa por `somente_ids` e
+    nem consulta esta função). A regra do produto é gravar apenas no horário
+    pré-determinado do programa ou quando alguém pede: capturar "a cada
+    execução" por omissão de cadastro gravaria a grade musical, que é o
+    material que o portão de relevância existe para não pagar. O motivo
+    devolvido aparece no log, então a estação não fica muda sem explicação.
 
     A janela vai de hora_inicio até hora_inicio + TOLERANCIA_MIN. Ela é o
     momento de COMEÇAR a gravar, não a duração da gravação: a captura em si se
@@ -280,7 +287,8 @@ def dentro_da_janela(config: dict | None, agora: datetime) -> tuple[bool, str]:
     cfg = config or {}
     inicio = _hhmm_para_minutos(cfg.get("hora_inicio") or "")
     if inicio is None:
-        return True, "sem faixa horaria cadastrada"
+        return False, ("sem faixa horaria cadastrada — cadastre o horario do "
+                       "programa ou use o botao GRAVAR do painel")
 
     dias = cfg.get("dias") or []
     if dias:
@@ -674,9 +682,14 @@ def _autoteste() -> None:
     seg_8h = datetime(2026, 7, 27, 8, 0)      # segunda-feira
     dom_8h = datetime(2026, 8, 2, 8, 0)       # domingo
 
-    # Sem config: captura sempre (quem não configurou não pediu restrição).
-    assert dentro_da_janela(None, seg_8h)[0] is True
-    assert dentro_da_janela({}, seg_8h)[0] is True
+    # Sem config ou sem hora_inicio: NÃO entra na captação automática. A regra
+    # do produto é gravar só no horário pré-determinado ou sob demanda (botão
+    # GRAVAR, que passa por somente_ids e nem consulta esta função).
+    assert dentro_da_janela(None, seg_8h)[0] is False
+    assert dentro_da_janela({}, seg_8h)[0] is False
+    assert dentro_da_janela({"dias": ["seg"]}, seg_8h)[0] is False
+    # O motivo aponta o caminho (cadastrar horário ou gravar sob demanda).
+    assert "GRAVAR" in dentro_da_janela({}, seg_8h)[1]
 
     cfg = {"hora_inicio": "08:00", "dias": ["seg", "ter", "qua", "qui", "sex"]}
     assert dentro_da_janela(cfg, seg_8h)[0] is True
