@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchRadios, addRadio, updateRadio, toggleRadio, deleteRadio, validarStream,
-  type RadioFonte, type RadioConfig,
+  programasDe, type RadioFonte, type RadioConfig, type ProgramaRadio,
 } from "@/lib/radio";
 import {
   FUNDO_ESCUTA, FUNDO_LARANJA, TINTA_PRETA, TINTA_CLARA, TINTA_CLARA_2,
@@ -34,37 +34,62 @@ import { ConfirmaModal } from "@/components/ConfirmaModal";
 const DIAS_SEMANA = ["seg", "ter", "qua", "qui", "sex", "sab", "dom"];
 const DIAS_UTEIS = ["seg", "ter", "qua", "qui", "sex"];
 
-interface Form {
+/** Um programa no formulário. Cada um é uma janela de captação própria:
+ * a mesma rádio tem vários programas em horários diferentes (03/08). */
+interface ProgForm {
   nome: string;
-  stream: string;
-  programa: string;
   hora: string;
   duracao: string;
   dias: string[];
 }
 
-const VAZIO: Form = {
-  nome: "", stream: "", programa: "", hora: "", duracao: "30", dias: DIAS_UTEIS,
-};
+interface Form {
+  nome: string;
+  stream: string;
+  programas: ProgForm[];
+}
+
+const PROG_VAZIO: ProgForm = { nome: "", hora: "", duracao: "30", dias: DIAS_UTEIS };
+const VAZIO: Form = { nome: "", stream: "", programas: [PROG_VAZIO] };
 
 function doCadastro(r: RadioFonte): Form {
+  const progs = programasDe(r.config).map((p) => ({
+    nome: p.nome ?? "",
+    hora: p.hora_inicio ?? "",
+    duracao: String(p.duracao_min ?? 30),
+    // Sem `dias` no banco = roda TODOS os dias (é assim que o coletor lê).
+    // Carregar como seg-sex mudaria o significado em silêncio ao salvar.
+    dias: p.dias ?? DIAS_SEMANA,
+  }));
   return {
     nome: r.label ?? "",
     stream: r.handle,
-    programa: r.config?.programa ?? "",
-    hora: r.config?.hora_inicio ?? "",
-    duracao: String(r.config?.duracao_min ?? 30),
-    dias: r.config?.dias ?? DIAS_UTEIS,
+    programas: progs.length ? progs : [PROG_VAZIO],
   };
 }
 
 function configDo(f: Form): RadioConfig {
-  return {
-    programa: f.programa.trim() || undefined,
-    hora_inicio: f.hora.trim() || undefined,
-    duracao_min: Number(f.duracao) > 0 ? Number(f.duracao) : undefined,
-    dias: f.dias.length ? f.dias : undefined,
-  };
+  // Grava sempre no formato NOVO (grade de programas). Linha totalmente vazia
+  // é descartada; programa sem horário é mantido com o nome (a estação fica
+  // "só grava sob demanda", e o coletor ignora janelas sem hora).
+  const programas: ProgramaRadio[] = f.programas
+    .filter((p) => p.nome.trim() || p.hora.trim())
+    .map((p) => ({
+      nome: p.nome.trim() || undefined,
+      hora_inicio: p.hora.trim() || undefined,
+      duracao_min: Number(p.duracao) > 0 ? Number(p.duracao) : undefined,
+      dias: p.dias.length ? p.dias : undefined,
+    }));
+  return { programas };
+}
+
+/** Rótulo curto de um programa na lista: "Manhã Total · 07:00 (60 min) · seg qua". */
+function rotuloPrograma(p: ProgramaRadio): string {
+  const partes: string[] = [];
+  if (p.nome) partes.push(p.nome);
+  partes.push(p.hora_inicio ? `${p.hora_inicio} (${p.duracao_min ?? 30} min)` : "sem horário · só grava sob demanda");
+  if (p.hora_inicio && p.dias?.length && p.dias.length < 7) partes.push(p.dias.join(" "));
+  return partes.join(" · ");
 }
 
 /** Campo de texto sobre o degradê: fundo quase sólido, tinta clara. */
@@ -103,6 +128,29 @@ export function RadiosMonitoradas() {
   function set<K extends keyof Form>(chave: K, valor: Form[K]) {
     setForm((f) => ({ ...f, [chave]: valor }));
     setMsg(null);
+  }
+
+  function setPrograma<K extends keyof ProgForm>(i: number, chave: K, valor: ProgForm[K]) {
+    setForm((f) => ({
+      ...f,
+      programas: f.programas.map((p, j) => (j === i ? { ...p, [chave]: valor } : p)),
+    }));
+    setMsg(null);
+  }
+
+  function adicionarPrograma() {
+    setForm((f) => ({ ...f, programas: [...f.programas, PROG_VAZIO] }));
+  }
+
+  function removerPrograma(i: number) {
+    // A grade nunca fica sem linha: remover a última limpa em vez de sumir
+    // com ela, senão o formulário perde o lugar de digitar o próximo horário.
+    setForm((f) => ({
+      ...f,
+      programas: f.programas.length > 1
+        ? f.programas.filter((_, j) => j !== i)
+        : [PROG_VAZIO],
+    }));
   }
 
   async function run(fn: () => Promise<string | null>, sucesso: string) {
@@ -182,33 +230,64 @@ export function RadiosMonitoradas() {
         <div className="grid gap-2 sm:grid-cols-2">
           <Campo valor={form.nome} onChange={(v) => set("nome", v)} placeholder="Nome da estação (ex: 93 FM Bahia)" />
           <Campo valor={form.stream} onChange={(v) => set("stream", v)} placeholder="URL do stream (.m3u8, .mp3, /stream…)" />
-          <Campo valor={form.programa} onChange={(v) => set("programa", v)} placeholder="Programa (opcional)" />
-          <div className="flex gap-2">
-            <Campo valor={form.hora} onChange={(v) => set("hora", v)} placeholder="Início 07:00" />
-            <Campo valor={form.duracao} onChange={(v) => set("duracao", v)} placeholder="min" largura="tnum w-20 shrink-0" />
-          </div>
+        </div>
+
+        {/* Grade de programas: uma mesma rádio tem vários programas em
+            horários diferentes, e cada linha aqui é uma janela de captação
+            própria (03/08). O bloco rola por dentro a partir do terceiro
+            programa, para a grade não engolir a lista de estações abaixo. */}
+        <div className="mt-2 max-h-[190px] space-y-1.5 overflow-y-auto">
+          {form.programas.map((p, i) => (
+            <div key={i} className="rounded-xl p-2" style={{ background: FUNDO_ITEM, border: BORDA }}>
+              <div className="flex gap-2">
+                <Campo valor={p.nome} onChange={(v) => setPrograma(i, "nome", v)} placeholder={`Programa ${i + 1} (opcional)`} />
+                <Campo valor={p.hora} onChange={(v) => setPrograma(i, "hora", v)} placeholder="07:00" largura="tnum w-24 shrink-0" />
+                <Campo valor={p.duracao} onChange={(v) => setPrograma(i, "duracao", v)} placeholder="min" largura="tnum w-16 shrink-0" />
+                <button
+                  onClick={() => removerPrograma(i)}
+                  aria-label={`Remover programa ${i + 1}`}
+                  title="Remover este programa da grade"
+                  className="shrink-0 self-center rounded-lg px-2 py-1 text-[13px] transition hover:opacity-80"
+                  style={{ background: "rgba(2,6,23,0.88)", color: "#FCA5A5", fontWeight: 700, border: BORDA }}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                {DIAS_SEMANA.map((d) => {
+                  const ativo = p.dias.includes(d);
+                  return (
+                    <button
+                      key={d}
+                      onClick={() =>
+                        setPrograma(i, "dias", ativo ? p.dias.filter((x) => x !== d) : [...p.dias, d])
+                      }
+                      aria-pressed={ativo}
+                      title={`Captar ${p.nome || `programa ${i + 1}`} às ${d}`}
+                      className="rounded-lg px-2 py-0.5 text-[12px] transition"
+                      style={
+                        ativo
+                          ? { background: FUNDO_LARANJA, color: TINTA_PRETA, fontWeight: 800 }
+                          : { background: "rgba(2,6,23,0.6)", color: TINTA_CLARA, fontWeight: 700, border: BORDA }
+                      }
+                    >
+                      {d}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {DIAS_SEMANA.map((d) => {
-            const ativo = form.dias.includes(d);
-            return (
-              <button
-                key={d}
-                onClick={() => set("dias", ativo ? form.dias.filter((x) => x !== d) : [...form.dias, d])}
-                aria-pressed={ativo}
-                title={`Captar às ${d}`}
-                className="rounded-lg px-2.5 py-1 text-[13px] transition"
-                style={
-                  ativo
-                    ? { background: FUNDO_LARANJA, color: TINTA_PRETA, fontWeight: 800 }
-                    : { background: FUNDO_ITEM, color: TINTA_CLARA, fontWeight: 700, border: BORDA }
-                }
-              >
-                {d}
-              </button>
-            );
-          })}
+          <button
+            onClick={adicionarPrograma}
+            className="rounded-full px-3.5 py-1.5 text-[13px] transition hover:opacity-90"
+            style={{ background: FUNDO_ITEM, color: TINTA_CLARA, fontWeight: 700, border: BORDA }}
+          >
+            + Programa
+          </button>
 
           <div className="ml-auto flex items-center gap-1.5">
             {editando && (
@@ -296,13 +375,19 @@ export function RadiosMonitoradas() {
                         </span>
                       )}
                     </div>
-                    <div className="truncate text-[12px]" style={{ color: TINTA_CLARA_2, fontWeight: 500 }}>
-                      {r.config?.programa ? `${r.config.programa} · ` : ""}
-                      {r.config?.hora_inicio
-                        ? `${r.config.hora_inicio} (${r.config.duracao_min ?? 30} min)`
-                        : "sem horário · só grava sob demanda"}
-                      {r.config?.dias?.length ? ` · ${r.config.dias.join(" ")}` : ""}
-                    </div>
+                    {/* Um programa por linha: a grade inteira da estação é o
+                        dado que diz QUANDO ela grava sozinha. */}
+                    {programasDe(r.config).length === 0 ? (
+                      <div className="truncate text-[12px]" style={{ color: TINTA_CLARA_2, fontWeight: 500 }}>
+                        sem horário · só grava sob demanda
+                      </div>
+                    ) : (
+                      programasDe(r.config).map((p, pi) => (
+                        <div key={pi} className="truncate text-[12px]" style={{ color: TINTA_CLARA_2, fontWeight: 500 }}>
+                          {rotuloPrograma(p)}
+                        </div>
+                      ))
+                    )}
                     <div className="truncate text-[12px]" style={{ color: "#94A3B8", fontWeight: 500 }} title={r.handle}>
                       {r.handle}
                     </div>

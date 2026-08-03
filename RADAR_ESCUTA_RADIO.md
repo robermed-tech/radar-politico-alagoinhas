@@ -255,6 +255,14 @@ mudaram ao encostar no real:
    UTC-3 fixo). O bug nunca disparou em produção porque as estações estavam
    cadastradas sem `hora_inicio` — o fallback antigo capturava a qualquer
    hora, mascarando os dois problemas de uma vez.
+5. **`config.programas` é uma lista** (03/08/2026). A spec previa um programa
+   por estação (`{programa, hora_inicio, ...}` na raiz do config); o cliente
+   apontou que a mesma rádio tem vários programas em horários diferentes.
+   Cada item de `programas` é `{nome, hora_inicio, duracao_min, dias}` e vale
+   como janela de captação própria: duração e nome gravado vêm do programa NO
+   AR, e a trava anti-captura-dupla passou a ser por janela (por dia
+   bloquearia o programa da tarde depois do da manhã). O formato antigo
+   continua sendo lido como grade de um item, nos dois lados.
 
 Também apareceu um bug de configuração que valeu comentário no código: o
 `agora.py` chama `load_dotenv()` depois dos imports, então constante de
