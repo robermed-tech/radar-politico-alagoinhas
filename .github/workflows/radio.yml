@@ -16,28 +16,34 @@ on:
     # O cron do GitHub NÃO é pontual: nos três últimos agendamentos das
     # 10:00 UTC ele disparou 11:52, 12:00 e 12:55 (medido em 03/08/2026) —
     # atraso de 1h52 a 2h55, muito além dos 20 min de tolerância do coletor.
-    # Mirar o horário do programa é mirar um alvo que o agendador não acerta.
+    # Mirar o horário de cada programa é mirar um alvo que o agendador não
+    # acerta — e, com a grade de vários programas por estação, seriam vários
+    # alvos por dia.
     #
-    # A estratégia é outra: disparos ESCALONADOS ANTES do programa, e o
-    # coletor espera a janela abrir (`--aguardar 45`, ver minutos_ate_abrir no
-    # coletor_radio.py). O primeiro run que alcançar a janela grava; os outros
-    # saem em segundos pela trava "já captada hoje". Para a janela de 07:00
-    # BRT (10:00 UTC), os quatro disparos abaixo cobrem qualquer atraso de 0 a
-    # ~3h13 com espera máxima de 45 min:
+    # A estratégia é uma GRADE UNIFORME: disparo de meia em meia hora ao longo
+    # do dia inteiro de rádio (06h às 22h30 de Alagoinhas), e o coletor espera
+    # a janela abrir (`--aguardar 45`, ver minutos_ate_abrir). Cada chegada
+    # cobre uma faixa de 65 min (45 de espera + 20 de tolerância), então
+    # chegadas de meia em meia hora dão cobertura contínua com redundância ~2x
+    # para QUALQUER horário cadastrado — manhã, tarde ou noite — sem nunca
+    # mais precisar tocar nestes crons quando a grade de programas mudar.
+    # Programa de madrugada (fora de 06h-22h30) é o único caso que exigiria
+    # linhas novas aqui.
     #
-    #   07:07 UTC (04:07 BRT) — cobre atraso de 2h08 a 3h13
-    #   08:07 UTC (05:07 BRT) — cobre atraso de 1h08 a 2h13
-    #   09:07 UTC (06:07 BRT) — cobre atraso de 0h08 a 1h13
-    #   09:37 UTC (06:37 BRT) — cobre atraso de 0h00 a 0h43
+    # O custo disso é pequeno e o desperdício é zero: run que chega sem janela
+    # por abrir sai em segundos, a trava "já captada nesta janela" garante UMA
+    # captura paga por janela de programa (os excedentes saem na hora), e o
+    # Actions é gratuito neste repo público (mesma conta do heartbeat de
+    # 15 min). Roda todo dia da semana: o filtro de dias é do cadastro de cada
+    # programa, não do cron. Minuto :07/:37 de propósito: o pico de atraso do
+    # agendador é no minuto :00, o mais disputado da fila.
     #
-    # (minuto :07/:37 de propósito: o pico de atraso é no minuto :00, o mais
-    # disputado da fila do GitHub.) Se o `hora_inicio` cadastrado mudar, estes
-    # crons precisam andar junto — a mesma regra de antes, agora com ~3h de
-    # margem em vez de 20 min.
-    - cron: '7 7 * * 1-5'
-    - cron: '7 8 * * 1-5'
-    - cron: '7 9 * * 1-5'
-    - cron: '37 9 * * 1-5'
+    #   09-23 UTC = 06:07-20:37 BRT; 0-1 UTC = 21:07-22:37 BRT (dia seguinte
+    #   em UTC, mesma noite em Alagoinhas).
+    - cron: '7 9-23 * * *'
+    - cron: '37 9-23 * * *'
+    - cron: '7 0-1 * * *'
+    - cron: '37 0-1 * * *'
   workflow_dispatch:
     inputs:
       ignorar_janela:
@@ -69,10 +75,15 @@ on:
         type: boolean
         default: false
 
-# Um run de captação por vez. Sem isto, dois crons escalonados que chegassem
+# Um run de captação por vez. Sem isto, dois crons da grade que chegassem
 # perto da janela dormiriam JUNTOS, acordariam juntos e os dois pagariam
-# gravação — a trava "já captada hoje" só enxerga bloco depois que o primeiro
-# grava. Enfileirado, o segundo roda depois e a trava o dispensa em segundos.
+# gravação — a trava "já captada nesta janela" só enxerga bloco depois que o
+# primeiro grava. Enfileirado, o segundo roda depois e a trava o dispensa em
+# segundos. Limite conhecido: uma captação LONGA segura a fila, e janela de
+# outra estação que abrir e fechar inteira durante essa gravação é perdida —
+# programas com início sobreposto a uma captação de 2h são o único caso; se
+# acontecer no cadastro real, o caminho é capturar em runs paralelos por
+# estação, não afrouxar a trava.
 concurrency:
   group: escuta-radio
   cancel-in-progress: false
