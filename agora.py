@@ -6550,11 +6550,17 @@ if __name__ == "__main__":
             # pelo workflow_dispatch do radio.yml.
             _ids = _arg_valor("--estacoes")
             _dur = _arg_valor("--duracao")
+            # --aguardar N deixa o run DORMIR ate N minutos esperando a janela
+            # de um programa abrir. E o antidoto ao atraso cronico do cron do
+            # GitHub (medido em 03/08: +1h52 a +2h55): o radio.yml dispara
+            # antes do horario e o coletor comeca a gravar na hora certa.
+            _ag = _arg_valor("--aguardar")
             _radio.coletar_e_gravar(
                 dry_run="--radio-dry-run" in sys.argv,
                 ignorar_janela="--agora" in sys.argv,
                 somente_ids=[i for i in (_ids or "").split(",") if i.strip()] or None,
                 duracao_min=int(_dur) if (_dur or "").isdigit() else None,
+                aguardar_min=int(_ag) if (_ag or "").isdigit() else 0,
             )
     elif "--adotar-radio" in sys.argv:
         # Grava o resultado de um run da Apify que JA terminou, mas cujo
