@@ -13,6 +13,11 @@ export interface WeatherCond {
   image: string;    // foto de céu do hero (public/sky/*.jpg)
   accent: string;   // cor de destaque do clima
   dark: boolean;
+  // A FOTO é escura na região esquerda, onde o texto do hero senta? Desde
+  // 04/08 este campo é consumido pelo fade do hero da ClimaPage: heroDark
+  // liga o véu leve sobre a foto e clareia o texto da coluna esquerda. O
+  // valor descreve a imagem real em public/sky, não a condição — partly.webp
+  // é carregada de nuvens escuras e fica true mesmo sendo "clima estável".
   heroDark: boolean;
 }
 
@@ -35,7 +40,7 @@ export function getWeather(pct: number): WeatherCond {
       bgApp: "linear-gradient(160deg, #0B1E44 0%, #122A5E 35%, #1E3A6E 70%, #0E1E40 100%)",
       bgLight: "linear-gradient(160deg, #EAF2FF 0%, #F1F5FB 50%, #F6F4EC 100%)",
       image: "/sky/partly.webp",
-      accent: "#60A5FA", dark: true, heroDark: false,
+      accent: "#60A5FA", dark: true, heroDark: true,
     };
   if (pct >= 45)
     return {
