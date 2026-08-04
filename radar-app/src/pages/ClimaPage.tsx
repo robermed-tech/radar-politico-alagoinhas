@@ -13,7 +13,7 @@ import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilt
 // de ~1 MB do ECharts), então não há mais motivo para carregá-lo em lazy.
 import { GaugeTema } from "@/components/GaugeTema";
 import { ContadorAnimado } from "@/components/ContadorAnimado";
-import { CeuAnimado } from "@/components/CeuAnimado";
+import { ClimaIconeAnimado } from "@/components/ClimaIconeAnimado";
 // Chumbo QUENTE da linguagem aprovada em 03/08 — a mesma superfície dos cards
 // escuros (radar, antena, Rádio Escuta), importada para chip e botão neutro.
 // Substitui os antigos CHUMBO/#334155 e CHUMBO_ESCURO/#1E293B (slate azulado).
@@ -496,10 +496,10 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
         {/* Card do clima inteiro clicável: leva direto à curadoria de
             comentários que explica o clima ("O que o povo diz"). */}
         {/* Hero na linguagem aprovada em 03/08: card claro de vidro (tokens,
-            acompanha o tema) com brilho quente no canto e o céu desenhado em
-            CSS (CeuAnimado) — substitui a foto de céu com véu escuro e o
-            texto branco fixo. A camada de chuva de tela cheia saiu junto: a
-            chuva cai da nuvem, dentro da cena. */}
+            acompanha o tema) com brilho quente no canto — substitui a foto de
+            céu com véu escuro e o texto branco fixo. Desde 04/08 o desenho do
+            clima é o ClimaIconeAnimado (estilo soft do vídeo de referência do
+            cliente), no lugar da cena em CSS do CeuAnimado. */}
         <div
           role="button"
           tabIndex={0}
@@ -565,15 +565,22 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                 </p>
               </div>
 
-              <div className="flex min-w-0 flex-1 items-center gap-4">
-                {/* A cena de clima em CSS (sol/nuvem/gota/raio por condição),
-                    no lugar do ícone de linha sobre a foto. */}
-                <CeuAnimado cls={wx.cls} />
+              {/* Revisão de 04/08 (vídeo de referência do cliente): a cena em
+                  CSS (CeuAnimado) saiu; entra o ícone animado soft do
+                  ClimaIconeAnimado, grande, ocupando o centro do card, com a
+                  frase do clima à DIREITA dele. flex-basis REAL (não flex-1):
+                  base 0 nunca quebra linha num flex-wrap — no mobile o par
+                  encolhia em vez de descer e o conteúdo vazava por baixo do
+                  overflow-hidden do card. */}
+              <div className="flex min-w-0 flex-[1_1_300px] flex-wrap items-center justify-center gap-x-7 gap-y-3">
+                <div className="w-[150px] shrink-0 sm:w-[180px] lg:w-[205px]">
+                  <ClimaIconeAnimado cls={wx.cls} />
+                </div>
                 <div
-                  className="min-w-0 text-[26px] leading-tight text-txt-1 sm:text-[30px]"
+                  className="min-w-0 max-w-[18ch] flex-[1_1_11rem] text-[26px] leading-tight text-txt-1 sm:text-[30px]"
                   style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
                 >
-                  {wx.sub}
+                  {limparTravessoes(wx.sub)}
                 </div>
               </div>
             </div>
