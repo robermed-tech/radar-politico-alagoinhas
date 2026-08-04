@@ -91,7 +91,7 @@ function PautaItem({ p }: { p: RadioPauta }) {
             {p.interesse_gestao && (
               <span
                 className="rounded px-1.5 py-0.5 text-[12px] font-bold uppercase"
-                style={{ background: "rgba(255,106,43,0.14)", color: "var(--brand-text)" }}
+                style={{ background: "rgba(247,150,65,0.14)", color: "var(--brand-text)" }}
               >
                 interessa à gestão
               </span>
@@ -417,7 +417,7 @@ export function RadioPage() {
                   <span>{c.instagram} no Instagram</span>
                   {c.radio > 0 && c.instagram === 0 && (
                     <span className="rounded px-1.5 py-0.5 text-[12px] font-bold"
-                          style={{ background: "rgba(249,115,22,0.14)", color: "#C2410C" }}>
+                          style={{ background: "rgba(249,115,22,0.14)", color: "var(--warning)" }}>
                       só no rádio
                     </span>
                   )}

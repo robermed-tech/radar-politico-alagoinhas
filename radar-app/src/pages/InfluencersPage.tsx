@@ -19,8 +19,8 @@ const COR_ALIADO   = "#22C55E";
 const COR_IMPRENSA = "#EAB308";
 /** Contorno do destaque "mais postou no período" — laranja da marca. Literal
  *  porque o ECharts não resolve `var(--brand)`; acompanhar o token à mão
- *  quando ele mudar (03/08: #FB923C -> #FF6A2B). */
-const COR_DESTAQUE = "#FF6A2B";
+ *  quando ele mudar (03/08: #FB923C -> #FF6A2B; 04/08: -> #F79641). */
+const COR_DESTAQUE = "#F79641";
 
 const OPOSICAO_FIXA = new Set(["jaldicenunes", "jadilcenunes"]);
 

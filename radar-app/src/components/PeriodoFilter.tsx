@@ -60,7 +60,7 @@ export function PeriodoFilter({ dias, onChange, ariaLabel = "Período de anális
             // um degradê ligeiramente diferente (a queixa de 31/07: os
             // botões de período e o "Mais citados" do Feed liam como dois
             // laranjas distintos lado a lado). Desde a revisão de 31/07,
-            // `--brand` é um hex único (#FF6A2B) nos dois temas — o botão
+            // `--brand` é um hex único (#F79641) nos dois temas — o botão
             // fica chapado e casa com qualquer outro botão de marca da tela.
             //
             // O peso vem inline porque a diretriz tipográfica global do

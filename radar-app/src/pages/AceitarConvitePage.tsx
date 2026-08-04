@@ -100,7 +100,7 @@ export function AceitarConvitePage({ onDone }: { onDone: () => void }) {
               type="submit"
               disabled={loading || !password || !confirmPassword}
               className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-base font-bold text-brand-ink transition hover:opacity-90 disabled:opacity-50"
-              style={{ background: "var(--brand)", boxShadow: "0 8px 20px rgba(255,106,43,0.35)" }}
+              style={{ background: "var(--brand)", boxShadow: "0 8px 20px rgba(247,150,65,0.35)" }}
             >
               {loading ? "Salvando…" : "Definir senha e entrar"}
               {!loading && <span aria-hidden>→</span>}

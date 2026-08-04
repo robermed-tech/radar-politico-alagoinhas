@@ -16,8 +16,8 @@
      é a mesma linguagem com menos luz; blobs frios sob um laranja quente
      faziam o escuro parecer outro produto ao lado do claro. */
   --bg-page: #0A0A0A;
-  --mesh-1: radial-gradient(38% 45% at 15% 20%, rgba(255, 140, 82, 0.16) 0%, transparent 70%);
-  --mesh-2: radial-gradient(45% 50% at 85% 15%, rgba(255, 106, 43, 0.13) 0%, transparent 70%);
+  --mesh-1: radial-gradient(38% 45% at 15% 20%, rgba(249, 168, 90, 0.16) 0%, transparent 70%);
+  --mesh-2: radial-gradient(45% 50% at 85% 15%, rgba(247, 150, 65, 0.13) 0%, transparent 70%);
   --mesh-3: radial-gradient(55% 60% at 50% 100%, rgba(224, 80, 26, 0.10) 0%, transparent 70%);
   --wx-bg: var(--mesh-1), var(--mesh-2), var(--mesh-3), var(--bg-page);
 
@@ -52,12 +52,14 @@
      troca — foi assim que o PeriodoFilter e o "Mais citados" do Feed
      acabaram em tons visivelmente diferentes um do outro. Com um hex
      único, todo botão de marca usa esta variável direto, sem degradê.
-     03/08: o tom passou de #F79641 para #FF6A2B (protótipo aprovado). A regra
-     do hex único continua valendo — o que mudou foi o hex, não o mecanismo. */
-  --brand: #FF6A2B;
+     03/08: o tom passou de #F79641 para #FF6A2B (protótipo aprovado); 04/08:
+     voltou para #F79641 a pedido do cliente, com os derivados (glow, texto,
+     degradês) recalibrados na mesma família dourada e re-medidos. A regra do
+     hex único continua valendo — o que muda é o hex, não o mecanismo. */
+  --brand: #F79641;
   --accent: var(--brand);
-  --brand-glow: rgba(255, 106, 43, 0.34);
-  --gradient-hero: linear-gradient(90deg, #FFB067, #FF6A2B, #E0501A);
+  --brand-glow: rgba(247, 150, 65, 0.34);
+  --gradient-hero: linear-gradient(90deg, #FFBE78, #F79641, #D97A26);
 
   /* Marca como TEXTO é um token separado do preenchimento, e precisa ser
      (03/08). --brand é escolhido para receber tinta escura por cima; usado
@@ -65,7 +67,7 @@
      e reprova o AA. Aqui no escuro o próprio laranja já passa (6,45:1), mas
      o token existe nos dois temas para `.text-brand` resolver sozinho — ver
      a regra de .text-brand mais abaixo. */
-  --brand-text: #FF9A6B;
+  --brand-text: #F9A85A;
 
   /* Semânticas genéricas de UI (distintas do sistema de clima/risco). */
   --success: #4ADE80;
@@ -101,7 +103,7 @@
   /* Card de estação da Rádio Escuta (prévia aprovada em 04/08): vidro quente
      com borda laranja. No escuro a superfície é âmbar apagado, não creme. */
   --estacao-bg: linear-gradient(150deg, rgba(38, 32, 27, 0.85), rgba(26, 22, 18, 0.9));
-  --estacao-borda: rgba(255, 106, 43, 0.30);
+  --estacao-borda: rgba(247, 150, 65, 0.30);
 }
 
 /* ── TEMA CLARO ── */
@@ -119,8 +121,8 @@
      mais claro que a página — é essa diferença, e não a borda, que faz o vidro
      existir; se os dois forem creme igual, o card some. */
   --bg-page: #F6F2EA;
-  --mesh-1: radial-gradient(42% 48% at 18% 14%, rgba(255, 140, 82, 0.20) 0%, transparent 72%);
-  --mesh-2: radial-gradient(48% 52% at 86% 10%, rgba(255, 106, 43, 0.14) 0%, transparent 70%);
+  --mesh-1: radial-gradient(42% 48% at 18% 14%, rgba(249, 168, 90, 0.20) 0%, transparent 72%);
+  --mesh-2: radial-gradient(48% 52% at 86% 10%, rgba(247, 150, 65, 0.14) 0%, transparent 70%);
   --mesh-3: radial-gradient(60% 55% at 50% 106%, rgba(224, 80, 26, 0.09) 0%, transparent 75%);
   --wx-bg: var(--mesh-1), var(--mesh-2), var(--mesh-3), var(--bg-page);
 
@@ -147,17 +149,17 @@
   --glass-btn-border: rgba(58, 61, 66, 0.12);
   --glass-btn-hover: rgba(255, 255, 255, 0.96);
 
-  /* Mesmo hex do tema escuro (#FF6A2B) — ver o comentário da marca no bloco
+  /* Mesmo hex do tema escuro (#F79641) — ver o comentário da marca no bloco
      .theme-dark acima. Só o glow muda de intensidade entre os temas, nunca
      a cor do botão em si. */
-  --brand: #FF6A2B;
+  --brand: #F79641;
   --accent: var(--brand);
-  --brand-glow: rgba(255, 106, 43, 0.22);
-  --gradient-hero: linear-gradient(90deg, #E0501A, #C2410C, #9A3412);
+  --brand-glow: rgba(247, 150, 65, 0.22);
+  --gradient-hero: linear-gradient(90deg, #C9660D, #A64B07, #7A3A05);
 
-  /* Marca como TEXTO no tema claro: laranja queimado (4,64:1 na página,
-     4,97:1 no card). O --brand chapado mediria 2,56:1 aqui. */
-  --brand-text: #C2410C;
+  /* Marca como TEXTO no tema claro: laranja queimado da família do #F79641
+     (5,18:1 na página, 5,67:1 no card). O --brand chapado mediria ~2,2:1. */
+  --brand-text: #A64B07;
 
   /* Verde e vermelho continuam sendo APENAS sentimento (a paleta do briefing
      — laranja/chumbo/off-white — é a da interface, não a do dado). Os tons
@@ -179,10 +181,10 @@
   /* Tintas de sentimento para TEXTO no tema claro. Verde-700 e vermelho-700,
      não o par de gráfico: medido sobre o vidro do box (#FFFCF9), #22C55E dá
      2,3:1 e o próprio --success dá 3,22:1, os dois abaixo do AA para o chip de
-     12px. Estes dão 4,91:1, 6,33:1 e 5,07:1. */
+     12px. Estes dão 4,91:1, 6,33:1 e 5,67:1. */
   --sent-ink-pos: #15803D;
   --sent-ink-neg: #B91C1C;
-  --sent-ink-link: #C2410C;
+  --sent-ink-link: #A64B07;
 
   /* Céu animado no tema claro. A primeira versão usava nuvem BRANCA (a do
      protótipo, que vivia colada no sol laranja) — medida sobre o card claro
@@ -198,7 +200,7 @@
 
   /* Card de estação da Rádio Escuta no claro: o creme quente do protótipo. */
   --estacao-bg: linear-gradient(150deg, #FFF9F3, #FBEEE1);
-  --estacao-borda: rgba(255, 106, 43, 0.20);
+  --estacao-borda: rgba(247, 150, 65, 0.20);
 }
 
 /* Fallback sólido para navegadores sem backdrop-filter (Firefox < 103):
@@ -368,7 +370,7 @@ button:disabled {
 /* Degradê só na direção escura do laranja: sobre o creme, o stop claro
    (#FDBA74) media 1,9:1 e o número hero ficava ilegível na ponta de cima. */
 .metric-accent {
-  background: linear-gradient(180deg, #E0501A 0%, #C2410C 62%, #9A3412 100%);
+  background: linear-gradient(180deg, #C9660D 0%, #A64B07 62%, #7A3A05 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

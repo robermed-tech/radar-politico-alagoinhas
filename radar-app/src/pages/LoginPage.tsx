@@ -90,8 +90,8 @@ export function LoginPage() {
         <div
           className="wx-flutuar pointer-events-none absolute right-10 top-10 h-44 w-44 rounded-full"
           style={{
-            background: "radial-gradient(circle at 35% 30%, #FF8C52, #E0501A)",
-            boxShadow: "0 0 70px 22px rgba(255,106,43,0.35)",
+            background: "radial-gradient(circle at 35% 30%, #FFBE78, #F0862B)",
+            boxShadow: "0 0 70px 22px rgba(247,150,65,0.35)",
           }}
         />
 
@@ -99,7 +99,7 @@ export function LoginPage() {
           <div className="flex items-center gap-3">
             <span
               className="grid h-11 w-11 place-items-center rounded-2xl text-xl font-bold"
-              style={{ background: "var(--brand)", color: "#1A0F02", boxShadow: "0 8px 20px rgba(255,106,43,0.4)" }}
+              style={{ background: "var(--brand)", color: "#1A0F02", boxShadow: "0 8px 20px rgba(247,150,65,0.4)" }}
             >
               ◉
             </span>
