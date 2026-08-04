@@ -116,13 +116,12 @@ export function AlertasHistPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  if (isLoading) return <div className="p-8 text-txt-2">Carregando histórico de alertas…</div>;
-
-  const total = envios.length;
-  const totalWhats = envios.filter((e) => e.channel === "whatsapp").length;
-  const totalEmail = envios.filter((e) => e.channel === "email").length;
-
   // Agrupa por dia local, preservando a ordem (a query ja vem do mais novo).
+  // O useMemo vem ANTES do return antecipado de "carregando" — regra de
+  // hooks: com ele depois, a primeira renderizacao registrava 1 hook e a
+  // seguinte (dados prontos) registrava 2, e o React derrubava a pagina com
+  // "Rendered more hooks than during the previous render". Foi o bug pego
+  // pelo cliente em 04/08, logo apos a previa 3 entrar no ar.
   const grupos = useMemo(() => {
     const by = new Map<string, EnvioManual[]>();
     for (const e of envios) {
@@ -134,6 +133,12 @@ export function AlertasHistPage() {
     }
     return Array.from(by.entries());
   }, [envios]);
+
+  if (isLoading) return <div className="p-8 text-txt-2">Carregando histórico de alertas…</div>;
+
+  const total = envios.length;
+  const totalWhats = envios.filter((e) => e.channel === "whatsapp").length;
+  const totalEmail = envios.filter((e) => e.channel === "email").length;
 
   return (
     <div className="space-y-4 p-5">
