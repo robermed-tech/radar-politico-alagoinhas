@@ -74,7 +74,10 @@ export function ClipeCitacao({ caminho }: { caminho: string | null }) {
     <button
       onClick={tocar}
       disabled={carregando}
-      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-bg-1 px-2.5 py-1 text-[12px] font-bold text-txt-2 transition hover:text-txt-1 disabled:opacity-60"
+      // Pílula na marca (prévia aprovada em 04/08): o botão de conferir o
+      // áudio é a ação principal da citação, não um detalhe cinza. Tinta
+      // escura sobre o laranja, como todo preenchimento de marca.
+      className="inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-[13px] font-bold text-brand-ink transition hover:opacity-90 disabled:opacity-60"
       title="Ouvir este trecho da captação para conferir a transcrição"
     >
       <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>

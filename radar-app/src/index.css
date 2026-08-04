@@ -96,6 +96,11 @@
   --ceu-nuvem-2: #979187;
   --ceu-nuvem-escura: #3A3835;
   --ceu-gota: rgba(189, 183, 172, 0.75);
+
+  /* Card de estação da Rádio Escuta (prévia aprovada em 04/08): vidro quente
+     com borda laranja. No escuro a superfície é âmbar apagado, não creme. */
+  --estacao-bg: linear-gradient(150deg, rgba(38, 32, 27, 0.85), rgba(26, 22, 18, 0.9));
+  --estacao-borda: rgba(255, 106, 43, 0.30);
 }
 
 /* ── TEMA CLARO ── */
@@ -184,6 +189,10 @@
   --ceu-nuvem-2: #EDE7DA;
   --ceu-nuvem-escura: #55534E;
   --ceu-gota: rgba(92, 96, 104, 0.65);
+
+  /* Card de estação da Rádio Escuta no claro: o creme quente do protótipo. */
+  --estacao-bg: linear-gradient(150deg, #FFF9F3, #FBEEE1);
+  --estacao-borda: rgba(255, 106, 43, 0.20);
 }
 
 /* Fallback sólido para navegadores sem backdrop-filter (Firefox < 103):
