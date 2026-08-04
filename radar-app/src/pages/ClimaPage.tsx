@@ -594,14 +594,24 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                       fina de 11/07, e o briefing pede número em destaque com
                       legibilidade alta. Não vai a 800: neste corpo (até 208px)
                       o traço da Space Grotesk 700 já fecha os vazados.
-                      Tracking +0.01em (revisão de 04/08): o tracking-tighter
-                      (-0.05em) também era da era do peso 200 — com o traço
-                      600 os dígitos engordaram e "43"/"44" se tocavam. */}
+                      Dígitos PROPORCIONAIS, sem tnum e sem tracking custom
+                      (04/08, 3ª rodada): em caixas tabulares nenhum
+                      espaçamento fixo é harmônico — o 4 preenche a caixa
+                      inteira e o 5/2 sobram, então "44" colava com tracking
+                      negativo e "52" abria com o positivo. O kerning da
+                      própria fonte decide o espaço; tnum fica para colunas
+                      de métricas. A cópia invisível reserva a largura do
+                      valor FINAL e o contador anima em camada absoluta por
+                      cima — sem isso a largura oscila durante a rampa de
+                      0,9s e o ícone e a frase ao lado tremem a cada carga. */}
                   <span
-                    className="tnum text-[120px] leading-[0.76] tracking-[0.01em] text-txt-1 sm:text-[168px] lg:text-[208px]"
+                    className="relative inline-block text-[120px] leading-[0.76] text-txt-1 sm:text-[168px] lg:text-[208px]"
                     style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
                   >
-                    <ContadorAnimado valor={view.iad} />
+                    <span aria-hidden="true" className="invisible">{view.iad}</span>
+                    <span className="absolute inset-y-0 left-0">
+                      <ContadorAnimado valor={view.iad} />
+                    </span>
                   </span>
                   <span
                     className="mt-3 text-5xl font-medium text-txt-2 sm:text-6xl lg:text-7xl"
