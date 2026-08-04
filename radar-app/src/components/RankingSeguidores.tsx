@@ -4,17 +4,15 @@ import { fetchProfileMetrics } from "@/lib/data";
 import { montarRanking, desdeQuando, fmtSaldo, type PerfilSeguidores } from "@/lib/seguidores";
 import { fmtInt } from "@/lib/format";
 
-/** Cores por categoria de perfil, iguais às do seletor de "Análise por Perfil". */
-export const CAT_COR: Record<string, string> = {
-  Prefeito: "#22C55E",
-  Prefeitura: "#3B82F6",
-  Imprensa: "#A855F7",
-  Oposicao: "#EF4444",
-};
-export const corCategoria = (cat: string) => CAT_COR[cat] ?? "#64748B";
-
-const COR_GANHO = "#22C55E"; // mesma convenção de delta do KpiStat
-const COR_PERDA = "#EF4444";
+/* Prévia aprovada em 04/08: a cor por categoria saiu do ranking (CAT_COR
+   pintava Prefeito de verde e Oposição de vermelho — verde/vermelho são de
+   sentimento, e a mesma regra já tinha tirado a cor do seletor de perfis).
+   Barra e sparkline agora são neutras (chumbo); a categoria continua no
+   texto da linha. Ganho/perda seguem verde/vermelho porque saldo É juízo
+   (ganhou/perdeu), via tokens de tema em vez do par de gráfico. */
+const BARRA_NEUTRA = "linear-gradient(90deg, #55534E, #171613)";
+const COR_GANHO = "var(--success)";
+const COR_PERDA = "var(--danger)";
 
 /** Saldo com seta e sinal. Zero e null viram texto neutro, nunca "verde de 0". */
 function Saldo({ v }: { v: number | null }) {
@@ -67,13 +65,10 @@ function Destaque({
       {perfil ? (
         <>
           <div className="mt-1 flex items-center gap-1.5">
-            <span
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ background: corCategoria(perfil.categoria) }}
-            />
             <span className="truncate text-sm font-bold text-txt-1">@{perfil.handle}</span>
+            <span className="truncate text-xs font-semibold text-txt-3">{perfil.categoria}</span>
           </div>
-          <div className="tnum mt-1 text-[28px] font-light leading-none text-txt-1">{valor}</div>
+          <div className="tnum mt-1 font-display text-[28px] font-bold leading-none text-txt-1">{valor}</div>
           <div className="mt-1 text-xs text-txt-3">{legenda}</div>
         </>
       ) : (
@@ -223,23 +218,19 @@ export function RankingSeguidores() {
             </thead>
             <tbody>
               {ranking.map((p, i) => {
-                const cor = corCategoria(p.categoria);
                 const largura = Math.max(4, Math.round((p.seguidores / maxSeguidores) * 100));
                 return (
                   <tr key={p.handle} className="border-t border-line">
                     <td className="tnum py-2 pr-2 text-xs text-txt-3">{i + 1}</td>
                     <td className="py-2 pr-2">
                       <div className="flex items-center gap-1.5">
-                        <span
-                          className="h-2 w-2 shrink-0 rounded-full"
-                          style={{ background: cor }}
-                        />
                         <span className="text-sm font-semibold text-txt-1">@{p.handle}</span>
+                        <span className="text-xs font-medium text-txt-3">{p.categoria}</span>
                       </div>
                       <div className="mt-1 h-1.5 w-full max-w-[180px] overflow-hidden rounded-full bg-bg-2">
                         <div
                           className="h-full rounded-full"
-                          style={{ width: `${largura}%`, background: cor }}
+                          style={{ width: `${largura}%`, background: BARRA_NEUTRA }}
                         />
                       </div>
                     </td>
@@ -247,7 +238,7 @@ export function RankingSeguidores() {
                       {fmtInt(p.seguidores)}
                     </td>
                     <td className="py-2 pr-2">
-                      <Sparkline serie={p.serie} cor={cor} />
+                      <Sparkline serie={p.serie} cor="var(--brand)" />
                     </td>
                     <td className="py-2 pr-2 text-right text-xs">
                       <Saldo v={p.deltaColeta} />

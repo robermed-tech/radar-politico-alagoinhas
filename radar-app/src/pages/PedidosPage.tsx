@@ -2,10 +2,12 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPedidos, fetchRadar, filtrarPorPeriodo, type Pedido } from "@/lib/data";
 import { IconHeart, IconInbox, IconWarningTriangle } from "@/components/icons";
-import { corTema } from "@/lib/temaColors";
 import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 import { labelBairro } from "@/lib/format";
 import { ComentarioBox, ComentarioTexto } from "@/components/ComentarioBox";
+// Superfície chumbo quente — a barra da régua de temas é dado neutro; o
+// laranja fica reservado ao tema SELECIONADO (laranja = interação).
+import { FUNDO_ESCUTA } from "@/components/superficieRadio";
 
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde", educacao: "Educação", obras: "Obras", seguranca: "Segurança",
@@ -105,79 +107,55 @@ export function PedidosPage() {
         </div>
       ) : (
         <>
-          {/* Revisão de 01/08 (pedido do cliente, com prévia aprovada): os
-              chips viraram BOTÕES GRANDES retangulares — nome do tema
-              centralizado e contagem logo abaixo, lado a lado numa grade que
-              quebra conforme a tela. As cores continuam vindo de corTema.
-              A regra da revisão de 29/07 segue valendo: sem chip "Todos", o
-              estado padrão é a lista inteira e clicar de novo no tema aceso
-              (ou no ✕ do box) volta para ela — nenhum filtro fica preso. */}
-          <div
-            className="grid gap-2"
-            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}
-          >
-            {porTema.map(([tema, n]) => {
-              const cor = corTema(tema);
-              const ativo = temaSel === tema;
-              return (
-                <button
-                  key={tema}
-                  onClick={() => setTemaSel(ativo ? "todos" : tema)}
-                  className="flex min-h-[72px] flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-2 transition"
-                  style={
-                    ativo
-                      ? {
-                          background: cor,
-                          color: "#0B0B0B",
-                          // Anel de destaque separado do botão pela cor da
-                          // página, para funcionar nos dois temas.
-                          boxShadow: `0 0 0 2px var(--bg-page), 0 0 0 3.5px ${cor}`,
-                        }
-                      : { border: `1px solid ${cor}55`, background: `${cor}14`, color: cor }
-                  }
-                >
-                  <span className="text-base font-extrabold leading-tight">{labelTema(tema)}</span>
-                  <span className="tnum text-sm font-semibold" style={{ opacity: 0.85 }}>
-                    {n} {n === 1 ? "pedido" : "pedidos"}
-                  </span>
-                </button>
-              );
-            })}
+          {/* Prévia aprovada em 04/08 — O COLORIDO SAIU (substitui a revisão
+              de 01/08, dos botões grandes coloridos): os temas viram uma
+              RÉGUA DE VOLUME — nome, contagem e barra proporcional em chumbo.
+              A régua é o próprio gráfico: compara-se os temas de relance, sem
+              precisar de uma cor por categoria. O laranja fica reservado ao
+              tema SELECIONADO (laranja = interação, a regra da paleta).
+              A regra de 29/07 segue: sem chip "Todos", padrão = lista inteira,
+              e clicar de novo no tema aceso volta para ela. */}
+          <div className="rounded-[20px] border border-line bg-bg-1 p-5">
+            <div className="section-label">Temas · clique para filtrar</div>
+            <div className="mt-2">
+              {porTema.map(([tema, n]) => {
+                const ativo = temaSel === tema;
+                const larg = Math.max(4, Math.round((n / (porTema[0]?.[1] || 1)) * 100));
+                return (
+                  <button
+                    key={tema}
+                    onClick={() => setTemaSel(ativo ? "todos" : tema)}
+                    aria-pressed={ativo}
+                    className="grid w-full items-center gap-3 rounded-xl border px-3 py-1.5 text-left transition"
+                    style={{
+                      gridTemplateColumns: "150px 1fr 70px",
+                      borderColor: ativo ? "rgba(255,106,43,0.35)" : "transparent",
+                      background: ativo ? "rgba(255,106,43,0.10)" : undefined,
+                    }}
+                    title={`Ver só os pedidos de ${labelTema(tema)}`}
+                  >
+                    <span
+                      className="truncate text-[15px] font-bold"
+                      style={ativo ? { color: "var(--brand-text)" } : undefined}
+                    >
+                      {labelTema(tema)}
+                    </span>
+                    <span className="h-2.5 overflow-hidden rounded-full" style={{ background: "var(--quote-bg)", border: "1px solid var(--quote-border)" }}>
+                      <span
+                        className="block h-full rounded-full"
+                        style={{ width: `${larg}%`, background: ativo ? "var(--brand)" : FUNDO_ESCUTA }}
+                      />
+                    </span>
+                    <span className="tnum text-right font-display text-base font-bold text-txt-2">
+                      {n}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Com um tema selecionado, a lista abre DENTRO de um box moldurado
-              na cor do tema, com cabeçalho e ✕. Sem tema, a lista completa
-              continua solta na página, como sempre foi. */}
-          {temaSel !== "todos" && (
-            <div
-              className="overflow-hidden rounded-xl bg-bg-1"
-              style={{ border: `1.5px solid ${corTema(temaSel)}` }}
-            >
-              <div
-                className="flex items-center justify-between gap-2 px-4 py-2.5"
-                style={{
-                  background: `${corTema(temaSel)}14`,
-                  borderBottom: `1px solid ${corTema(temaSel)}33`,
-                }}
-              >
-                <span className="text-sm font-bold text-txt-1">
-                  Pedidos sobre{" "}
-                  <span style={{ color: corTema(temaSel) }}>{labelTema(temaSel)}</span> ·{" "}
-                  <span className="tnum">{pedidos.length}</span> no período
-                </span>
-                <button
-                  onClick={() => setTemaSel("todos")}
-                  className="rounded px-2 py-0.5 text-[13px] text-txt-3 transition hover:text-txt-1"
-                  aria-label="Fechar e voltar para todos os temas"
-                >
-                  ✕ fechar
-                </button>
-              </div>
-              <ListaPedidos pedidos={pedidos} className="p-3" />
-            </div>
-          )}
-
-          {temaSel === "todos" && <ListaPedidos pedidos={pedidos} />}
+          <ListaPedidos pedidos={pedidos} />
         </>
       )}
     </div>
@@ -191,25 +169,21 @@ function ListaPedidos({ pedidos, className = "" }: { pedidos: Pedido[]; classNam
     <div className={`space-y-2 ${className}`}>
             {pedidos.map((p, i) => {
               const revisar = (p.confianca_tema ?? 0) < CONF_REVISAR;
-              const cor = corTema(p.tema);
               return (
-                <div
-                  key={i}
-                  className="card-hover rounded-xl border border-line bg-bg-1 p-4"
-                  style={{ borderLeftColor: cor, borderLeftWidth: 3 }}
-                >
+                // Card neutro (prévia de 04/08): a borda colorida e o chip na
+                // cor do tema saíram junto com os botões coloridos — o tema
+                // vira chip neutro, e a cor da página fica com o dado que tem
+                // semântica (sentimento, marca, risco).
+                <div key={i} className="card-hover rounded-xl border border-line bg-bg-1 p-4">
                   <div className="flex items-start gap-2">
-                    <p className="flex-1 text-base font-bold text-txt-1">{p.pedido}</p>
+                    <p className="flex-1 font-display text-base font-bold text-txt-1">{p.pedido}</p>
                     <span className="flex shrink-0 items-center gap-1 text-sm font-bold text-txt-3">
                       <IconHeart size={13} />
                       <span className="tnum">{p.curtidas}</span>
                     </span>
                   </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-sm">
-                    <span
-                      className="rounded px-1.5 py-0.5 font-bold"
-                      style={{ background: `${cor}24`, color: cor, border: `1px solid ${cor}3d` }}
-                    >
+                    <span className="rounded border border-line bg-bg-2 px-1.5 py-0.5 font-bold text-txt-2">
                       {labelTema(p.tema)}
                     </span>
                     {p.localidade && p.localidade !== "nao_identificado" && (
@@ -220,7 +194,7 @@ function ListaPedidos({ pedidos, className = "" }: { pedidos: Pedido[]; classNam
                     {revisar && (
                       <span
                         className="flex items-center gap-1 rounded px-1.5 py-0.5 font-bold"
-                        style={{ background: "rgba(234,179,8,0.14)", color: "#CA8A04" }}
+                        style={{ background: "rgba(180,83,9,0.12)", color: "var(--warning)" }}
                         title={`Confiança ${p.confianca_tema ?? 0}/100 — texto ambíguo ou irônico`}
                       >
                         <IconWarningTriangle size={11} /> revisar
