@@ -46,7 +46,16 @@ export function ContadorAnimado({
       if (p < 1) raf = requestAnimationFrame(passo);
     };
     raf = requestAnimationFrame(passo);
-    return () => cancelAnimationFrame(raf);
+    // Garantia por timer (04/08): navegador embutido/economia de energia pode
+    // estrangular o rAF e deixar o número parado no 0 por segundos — foi o
+    // print do cliente ("0%" com clima de 60+). O timer fixa o valor final
+    // mesmo se nenhum quadro de animação rodar; se a rampa já terminou, o
+    // setState com o mesmo valor não re-renderiza nada.
+    const garantia = window.setTimeout(() => setMostrado(valor), duracaoMs + 300);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(garantia);
+    };
   }, [valor, duracaoMs]);
 
   return <>{formatar(mostrado)}</>;
