@@ -14,6 +14,7 @@ import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilt
 import { GaugeTema } from "@/components/GaugeTema";
 import { ContadorAnimado } from "@/components/ContadorAnimado";
 import { ClimaIconeAnimado } from "@/components/ClimaIconeAnimado";
+import { useThemeStore } from "@/stores/theme";
 // Chumbo QUENTE da linguagem aprovada em 03/08 — a mesma superfície dos cards
 // escuros (radar, antena, Rádio Escuta), importada para chip e botão neutro.
 // Substitui os antigos CHUMBO/#334155 e CHUMBO_ESCURO/#1E293B (slate azulado).
@@ -403,6 +404,10 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
   const [dias, setDias] = useState<Dias>(1);
   const [publicacoesAbertas, setPublicacoesAbertas] = useState(false);
   const { isAdmin } = useAuth();
+  // Tema atual (mesmo store do Gauge): a tinta do texto sobre a FOTO do fade
+  // é decidida pela luminância da foto E pelo tema — hook aqui no topo, antes
+  // dos returns condicionais (regra de hooks, a mesma do fix do Histórico).
+  const theme = useThemeStore((s) => s.theme);
   const periodo = periodoParaChave(dias);
   const { data, isLoading } = useQuery({
     queryKey: ["radar"],
@@ -479,6 +484,17 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
   // viva onde ela é o dado certo (frentes de instabilidade, mais abaixo).
   const wx = view.wx;
   const amostra = forcaAmostra(view.comentarios);
+  // Tinta do texto que senta sobre a FOTO do fade: fixa pela luminância da
+  // foto, não pelos tokens. Foto ESCURA = claro sempre (o véu leve dá o
+  // assento, nos dois temas). Foto CLARA = preto sólido no tema claro
+  // (revisão de 04/08: os tokens txt-1/txt-2 não eram pretos o bastante
+  // sobre a foto cinza do nublado); no tema ESCURO volta aos tokens, porque
+  // atrás da transição do fade o fundo é o card escuro e o preto sumiria.
+  const inkFoto = wx.heroDark
+    ? { forte: "#F7F4ED", suave: "rgba(247,244,237,0.85)", rotulo: "rgba(247,244,237,0.92)" }
+    : theme === "light"
+      ? { forte: "#0B0E14", suave: "#0B0E14", rotulo: "#0B0E14" }
+      : null;
 
   return (
     <div className="space-y-4 p-5">
@@ -524,24 +540,31 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
               ESCURAS (wx.heroDark: chuva/tempestade/severíssimo) entra um véu
               escuro leve dentro da própria camada mascarada, o assento do
               texto claro por cima. */}
+          {/* Revisão de 04/08 (2ª rodada): fade mais curto e mais suave — a
+              foto morre mais à esquerda (52% de largura, opaca só até 22%) e
+              a curva tem stops intermediários em vez de uma reta. O véu das
+              fotos escuras subiu junto (0.22 → 0.28) para o texto claro
+              continuar assentado com menos foto por baixo. */}
           <div
             className="pointer-events-none absolute inset-y-0 left-0"
             style={{
-              width: "58%",
-              background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.22), rgba(10,12,18,0.22)), " : ""}url("${wx.image}") left center / cover no-repeat`,
-              WebkitMaskImage: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 100%)",
-              maskImage: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 100%)",
+              width: "52%",
+              background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), " : ""}url("${wx.image}") left center / cover no-repeat`,
+              WebkitMaskImage:
+                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+              maskImage:
+                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
             }}
           />
 
           <div className="relative z-10 flex h-full flex-col">
             <div className="flex items-start justify-between gap-2">
-              {/* Sobre foto escura o texto da coluna esquerda clareia (cor
-                  fixa, não token): text-txt-1 é quase preto no tema claro e
-                  sumia na foto de tempestade — era o defeito apontado na
-                  prévia. Ícone e frase ficam na zona já transparente e seguem
-                  nos tokens. */}
-              <div className="section-label" style={wx.heroDark ? { color: "rgba(247,244,237,0.92)" } : undefined}>
+              {/* Sobre a foto, a cor do texto vem de inkFoto (fixa pela
+                  luminância da foto e pelo tema), nunca dos tokens: text-txt-1
+                  sumia na foto de tempestade, e os tokens não eram pretos o
+                  bastante sobre a foto cinza do nublado. Ícone, título e
+                  frase ficam na zona já transparente e seguem nos tokens. */}
+              <div className="section-label" style={inkFoto ? { color: inkFoto.rotulo } : undefined}>
                 Como a população vê a gestão
               </div>
               <span
@@ -573,13 +596,13 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                       o traço da Space Grotesk 700 já fecha os vazados. */}
                   <span
                     className="tnum text-[120px] leading-[0.76] tracking-tighter text-txt-1 sm:text-[168px] lg:text-[208px]"
-                    style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: wx.heroDark ? "#F7F4ED" : undefined }}
+                    style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
                   >
                     <ContadorAnimado valor={view.iad} />
                   </span>
                   <span
                     className="mt-3 text-5xl font-medium text-txt-2 sm:text-6xl lg:text-7xl"
-                    style={wx.heroDark ? { color: "rgba(247,244,237,0.85)" } : undefined}
+                    style={inkFoto ? { color: inkFoto.suave } : undefined}
                   >
                     %
                   </span>
@@ -591,7 +614,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                     que "44%" quer dizer. */}
                 <p
                   className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]"
-                  style={wx.heroDark ? { color: "rgba(247,244,237,0.85)" } : undefined}
+                  style={inkFoto ? { color: inkFoto.suave } : undefined}
                 >
                   Aprovação da gestão nos comentários analisados no período
                 </p>
@@ -608,11 +631,23 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                 <div className="w-[150px] shrink-0 sm:w-[180px] lg:w-[205px]">
                   <ClimaIconeAnimado cls={wx.cls} />
                 </div>
-                <div
-                  className="min-w-0 max-w-[18ch] flex-[1_1_11rem] text-[26px] leading-tight text-txt-1 sm:text-[30px]"
-                  style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
-                >
-                  {limparTravessoes(wx.sub)}
+                {/* Título do clima em DESTAQUE (revisão de 04/08, 2ª rodada):
+                    o nome da condição em caixa alta acima da frase — antes só
+                    a frase aparecia e o nome do clima não estava em lugar
+                    nenhum do card. */}
+                <div className="min-w-0 max-w-[18ch] flex-[1_1_11rem]">
+                  <div
+                    className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 sm:text-[36px]"
+                    style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                  >
+                    {wx.label}
+                  </div>
+                  <div
+                    className="mt-2 text-[18px] leading-snug text-txt-2 sm:text-[20px]"
+                    style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                  >
+                    {limparTravessoes(wx.sub)}
+                  </div>
                 </div>
               </div>
             </div>

@@ -40,9 +40,16 @@ function Fileira({ fundo, texto, rotulo }: { fundo: string; texto: string; rotul
 }
 
 /** Réplica do hero da ClimaPage: card claro de vidro (03/08) + foto de céu em
- * fade lateral com texto clareando sobre foto escura (04/08). */
-function HeroReplica({ pct, iad }: { pct: number; iad: number }) {
+ * fade lateral (04/08, 2ª rodada: fade mais curto, título do clima em
+ * destaque, tinta fixa pela luminância da foto). `temaEscuro` substitui o
+ * useThemeStore da página real: aqui as duas seções convivem na mesma tela. */
+function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: number; temaEscuro?: boolean }) {
   const wx = getWeather(pct);
+  const inkFoto = wx.heroDark
+    ? { forte: "#F7F4ED", suave: "rgba(247,244,237,0.85)", rotulo: "rgba(247,244,237,0.92)" }
+    : !temaEscuro
+      ? { forte: "#0B0E14", suave: "#0B0E14", rotulo: "#0B0E14" }
+      : null;
   return (
     <div
       className="relative overflow-hidden rounded-[28px] border border-line bg-bg-1 p-7"
@@ -55,14 +62,16 @@ function HeroReplica({ pct, iad }: { pct: number; iad: number }) {
       <div
         className="pointer-events-none absolute inset-y-0 left-0"
         style={{
-          width: "58%",
-          background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.22), rgba(10,12,18,0.22)), " : ""}url("${wx.image}") left center / cover no-repeat`,
-          WebkitMaskImage: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 100%)",
-          maskImage: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 100%)",
+          width: "52%",
+          background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), " : ""}url("${wx.image}") left center / cover no-repeat`,
+          WebkitMaskImage:
+            "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+          maskImage:
+            "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
         }}
       />
       <div className="relative z-10 flex h-full flex-col">
-        <div className="section-label" style={wx.heroDark ? { color: "rgba(247,244,237,0.92)" } : undefined}>
+        <div className="section-label" style={inkFoto ? { color: inkFoto.rotulo } : undefined}>
           Como a população vê a gestão
         </div>
         <div className="mt-4 flex min-h-0 flex-1 flex-wrap items-center gap-x-8 gap-y-4">
@@ -70,20 +79,20 @@ function HeroReplica({ pct, iad }: { pct: number; iad: number }) {
             <div className="flex items-start">
               <span
                 className="tnum text-[120px] leading-[0.76] tracking-tighter text-txt-1 sm:text-[168px] lg:text-[208px]"
-                style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: wx.heroDark ? "#F7F4ED" : undefined }}
+                style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
               >
                 {iad}
               </span>
               <span
                 className="mt-3 text-5xl font-medium text-txt-2 sm:text-6xl lg:text-7xl"
-                style={wx.heroDark ? { color: "rgba(247,244,237,0.85)" } : undefined}
+                style={inkFoto ? { color: inkFoto.suave } : undefined}
               >
                 %
               </span>
             </div>
             <p
               className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]"
-              style={wx.heroDark ? { color: "rgba(247,244,237,0.85)" } : undefined}
+              style={inkFoto ? { color: inkFoto.suave } : undefined}
             >
               Aprovação da gestão nos comentários analisados no período
             </p>
@@ -92,11 +101,19 @@ function HeroReplica({ pct, iad }: { pct: number; iad: number }) {
             <div className="w-[150px] shrink-0 sm:w-[180px] lg:w-[205px]">
               <ClimaIconeAnimado cls={wx.cls} />
             </div>
-            <div
-              className="min-w-0 max-w-[18ch] flex-[1_1_11rem] text-[26px] leading-tight text-txt-1 sm:text-[30px]"
-              style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
-            >
-              {limparTravessoes(wx.sub)}
+            <div className="min-w-0 max-w-[18ch] flex-[1_1_11rem]">
+              <div
+                className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 sm:text-[36px]"
+                style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}
+              >
+                {wx.label}
+              </div>
+              <div
+                className="mt-2 text-[18px] leading-snug text-txt-2 sm:text-[20px]"
+                style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
+              >
+                {limparTravessoes(wx.sub)}
+              </div>
             </div>
           </div>
         </div>
@@ -130,7 +147,7 @@ createRoot(document.getElementById("root")!).render(
         Hero com foto em fade (tema escuro)
       </div>
       {TODAS.map((pct) => (
-        <HeroReplica key={pct} pct={pct} iad={pct} />
+        <HeroReplica key={pct} pct={pct} iad={pct} temaEscuro />
       ))}
     </div>
 
