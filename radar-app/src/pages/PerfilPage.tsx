@@ -335,7 +335,18 @@ export function PerfilPage() {
             >
               {perfilAtivo.categoria || "—"}
             </span>
-            <span className="font-display text-[30px] font-bold leading-none tracking-tight text-txt-1 sm:text-[40px]" style={{ wordBreak: "break-all" }}>
+            {/* Laranja da marca CHAPADO, exceção pedida pelo cliente em 04/08:
+                é o único texto do painel que não passa pelo `--brand-text`.
+                Medido sobre o card: 2,14:1 no tema claro (abaixo do mínimo de
+                3:1 até para texto grande) e 8,45:1 no escuro. Fica como está
+                por decisão de design — o nome também aparece no chip aceso do
+                seletor logo acima, então a informação não depende só daqui.
+                Se um dia tiver que passar no AA sem perder o tom, o caminho é
+                `var(--brand-text)` (5,54:1 no claro). */}
+            <span
+              className="font-display text-[30px] font-bold leading-none tracking-tight sm:text-[40px]"
+              style={{ wordBreak: "break-all", color: "#F79641" }}
+            >
               @{perfilAtivo.autor}
             </span>
             <p className="text-[13.5px] font-semibold text-txt-3">
