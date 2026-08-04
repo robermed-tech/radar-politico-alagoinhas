@@ -62,6 +62,12 @@ function Nuvem({
         boxShadow: escura
           ? "20px -12px 0 -4px var(--ceu-nuvem-escura), -18px 4px 0 -6px var(--ceu-nuvem-2)"
           : "20px -12px 0 -4px var(--ceu-nuvem), -18px 4px 0 -6px var(--ceu-nuvem-2)",
+        // O contorno da nuvem é o drop-shadow, não a cor da massa: o filtro
+        // acompanha a silhueta inteira (inclusive os pufes em box-shadow) e é
+        // o que separa a nuvem clara do card claro — correção de 04/08, a
+        // nuvem branca media 1,04:1 e sumia (print do cliente).
+        filter:
+          "drop-shadow(0 0 1px var(--ceu-nuvem-halo)) drop-shadow(0 3px 6px var(--ceu-nuvem-halo))",
         opacity: atras ? 0.55 : 0.96,
         animationDuration: `${duracao}s`,
         zIndex: atras ? 0 : 1,
