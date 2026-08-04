@@ -31,6 +31,7 @@ import { ClipeCitacao } from "@/components/ClipeCitacao";
 import { GravarAgora } from "@/components/GravarAgora";
 import { RadiosMonitoradas } from "@/components/RadiosMonitoradas";
 import { GaugeTema } from "@/components/GaugeTema";
+import { OndasEq } from "@/components/SinalVivo";
 import { labelBairro } from "@/lib/format";
 import { corTema } from "@/lib/temaColors";
 
@@ -153,7 +154,13 @@ function CardEstacao({ r }: { r: EstacaoResumo }) {
     <div className="rounded-xl border border-line bg-bg-1 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-xl font-extrabold text-txt-1">{r.estacao}</div>
+          <div className="flex items-center gap-2.5">
+            <div className="text-xl font-extrabold text-txt-1">{r.estacao}</div>
+            {/* Equalizador só quando a estação de fato gravou na janela — é a
+                distinção falha ≠ silêncio dos cards: estação que falhou não
+                pode parecer "no ar". */}
+            {r.capturas > r.falhas && <OndasEq ativo />}
+          </div>
           <div className="text-sm text-txt-2">
             {r.programa ? `${r.programa} · ` : ""}
             {r.capturas} captação(ões){r.minutos > 0 ? `, ${Math.round(r.minutos)} min` : ""}

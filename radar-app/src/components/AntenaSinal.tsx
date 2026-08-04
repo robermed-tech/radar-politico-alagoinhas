@@ -15,6 +15,8 @@
 // ── Geometria (viewBox 24×24) ────────────────────────────────────────────────
 // Foco no alto, torre abaixo. Os arcos varrem ±40° em torno da horizontal: mais
 // que isso e a ponta de baixo do arco externo invadia as pernas da torre.
+import { FUNDO_ESCUTA, SOMBRA } from "./superficieRadio";
+
 const FOCO = { x: 12, y: 6.4 };
 const RAIOS = [3.2, 5.0, 6.8];
 
@@ -88,7 +90,11 @@ export function IconAntena({ size = 16 }: { size?: number }) {
  * camada acesa por cima, que é a que pulsa.
  */
 function AntenaCaptando({ ativo, size = 210 }: { ativo: boolean; size?: number }) {
-  const cor = ativo ? "#22C55E" : "#F59E0B";
+  // Mesmas cores de estado do radar de coleta (COR_RADAR_* em
+  // RadarStatusBar.tsx, onda 2 de 03/08): captando = laranja da marca,
+  // sem captação = âmbar de atenção. As duas colunas são gêmeas; cor
+  // diferente aqui quebraria o "igual" que o cliente pediu em 29/07.
+  const cor = ativo ? "#FF6A2B" : "#F59E0B";
   // Origem do zoom no foco da antena, não no centro do quadro: a onda tem que
   // nascer da ponta da torre.
   const origem = `${(FOCO.x / 24) * 100}% ${(FOCO.y / 24) * 100}%`;
@@ -165,14 +171,17 @@ export function AntenaStatusColumn({
   legenda?: string;
   minHeight?: number;
 }) {
-  const cor = ativo ? "#22C55E" : "#F59E0B";
+  const cor = ativo ? "#FF6A2B" : "#F59E0B";
   return (
     <div
       className="flex h-full flex-col items-center justify-center overflow-hidden rounded-[28px] px-6 py-8 text-center"
       style={{
-        background: "linear-gradient(165deg, #475569 0%, #0F172A 100%)",
+        // Superfície importada de superficieRadio.ts — a mesma do radar de
+        // coleta e dos dois cards da Rádio Escuta (chumbo quente desde a
+        // onda 2 de 03/08, contraste remedido no comentário do token).
+        background: FUNDO_ESCUTA,
         minHeight,
-        boxShadow: "0 18px 40px -18px rgba(15,23,42,0.65)",
+        boxShadow: SOMBRA,
       }}
     >
       <div

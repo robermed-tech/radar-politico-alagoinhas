@@ -153,9 +153,12 @@ export function GravarAgora() {
                         : rotulo(r)
                     }
                   >
+                    {/* Laranja da marca no lugar do verde (onda 2 de 03/08:
+                        verde é exclusivo de sentimento). No chip selecionado o
+                        fundo já é laranja, então o ponto vira tinta preta. */}
                     <span
                       className="inline-block h-2 w-2 shrink-0 rounded-full"
-                      style={{ background: ativo ? TINTA_PRETA : r.active ? "#22C55E" : "#94A3B8" }}
+                      style={{ background: ativo ? TINTA_PRETA : r.active ? "var(--brand)" : "#94A3B8" }}
                       aria-hidden
                     />
                     <span className="min-w-0 flex-1 truncate">{rotulo(r)}</span>

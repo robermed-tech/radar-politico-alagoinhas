@@ -452,6 +452,54 @@ button:disabled {
   .raindrop { animation: none; opacity: 0.18; transform: translate3d(0, 140px, 0); }
 }
 
+/* ── Animações da onda 2 do redesign (03/08) ───────────────────────────────
+   As três vivem aqui, e não em <style> dentro dos componentes, porque cada
+   uma tem mais de um consumidor — a lição do PeriodoFilter/ComentarioBox vale
+   para keyframe também. Todas são transform/opacity: rodam no compositor e
+   sobrevivem à rolagem e à aba oculta (a regra do velocímetro e da antena —
+   nunca requestAnimationFrame para estado contínuo). */
+
+/* Flutuar do ícone de clima no hero (o "sol que levita" do protótipo). */
+@keyframes wx-flutuar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.wx-flutuar {
+  animation: wx-flutuar 4.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Halo do LED de captação: um anel que nasce no ponto e se dissipa.
+   Transform/opacity de propósito — o protótipo fazia o pulso animando
+   box-shadow, que repinta a cada quadro em vez de compor. */
+@keyframes led-pulso {
+  0% { transform: scale(0.5); opacity: 0.65; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.led-pulso {
+  animation: led-pulso 1.7s ease-out infinite;
+  will-change: transform, opacity;
+}
+
+/* Barra de equalizador (waveform de estação captada). O delay vem inline,
+   escalonado por barra. */
+@keyframes eq-barra {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+.eq-barra {
+  animation: eq-barra 1.05s ease-in-out infinite;
+  transform-origin: bottom;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-flutuar, .eq-barra { animation: none; }
+  /* O halo sem animação seria um anel parado sobre o LED; some. O ponto em si
+     (o dado: ligado/desligado) continua visível. */
+  .led-pulso { animation: none; opacity: 0; }
+}
+
 /* ── Modal noturno (shell único de todo pop-up do painel) ──────────────────
    Linha visual fixa em azul-marinho profundo, IGUAL nos dois temas: pop-up é
    um momento de foco, e a leitura em telão não pode depender do tema da

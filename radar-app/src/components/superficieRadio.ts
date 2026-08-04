@@ -14,8 +14,13 @@
  * chumbo por baixo varia demais para um alpha baixo compensar.
  */
 
-/** Degradê chumbo→quase-preto: o mesmo do radar de coleta e do painel da antena. */
-export const FUNDO_ESCUTA = "linear-gradient(165deg, #475569 0%, #0F172A 100%)";
+/** Degradê chumbo→quase-preto: o mesmo do radar de coleta e do painel da antena.
+ *  Onda 2 do redesign (03/08): as pontas saíram do slate azulado
+ *  (#475569→#0F172A) para o chumbo QUENTE da nova paleta — o card escuro era o
+ *  último pedaço frio numa tela inteira creme/laranja. Contraste conferido na
+ *  ponta clara, que é o pior caso: branco 7,68:1 (era 7,58 no slate) e o
+ *  rótulo a 78% de alpha 4,55:1 — os dois AA. */
+export const FUNDO_ESCUTA = "linear-gradient(165deg, #55534E 0%, #171613 100%)";
 /**
  * Laranja da marca, chapado. Até 31/07 era um degradê de dois tons — a mesma
  * receita do antigo card "Engajamento no período". Com `--brand` virando um
@@ -31,13 +36,15 @@ export const FUNDO_LARANJA = "var(--brand)";
 export const TINTA_PRETA = "#1A0F02";
 export const TINTA_CLARA = "#F8FAFC";
 export const TINTA_CLARA_2 = "#CBD5E1";
-/** Caixa interna (lista, formulário) sobre o degradê. */
-export const FUNDO_LISTA = "rgba(2,6,23,0.55)";
+/** Caixa interna (lista, formulário) sobre o degradê. Base preta QUENTE
+ *  (rgba(20,19,16)) acompanhando o degradê novo; a luminância é a mesma da
+ *  base slate anterior, então as medições de contraste dos chips valem. */
+export const FUNDO_LISTA = "rgba(20,19,16,0.55)";
 /** Item/campo dentro da caixa interna. */
-export const FUNDO_ITEM = "rgba(2,6,23,0.72)";
-export const BORDA = "1px solid rgba(148,163,184,0.30)";
+export const FUNDO_ITEM = "rgba(20,19,16,0.72)";
+export const BORDA = "1px solid rgba(168,164,155,0.30)";
 /** Sombra de assentamento comum aos dois cards. */
-export const SOMBRA = "0 18px 40px -18px rgba(15,23,42,0.65)";
+export const SOMBRA = "0 18px 40px -18px rgba(23,22,19,0.65)";
 /** Altura mínima da linha de topo — mantém a proporção quadrada do "Gravar
  *  agora" mesmo com o cadastro vazio. */
 export const ALTURA_MIN = 340;
