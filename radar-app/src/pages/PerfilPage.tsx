@@ -10,9 +10,9 @@ import {
   type Post,
 } from "@/lib/data";
 import { fetchKeywords } from "@/lib/admin";
-import { KpiStat } from "@/components/KpiStat";
-import { COLOR_SENTIMENT } from "@/lib/chartTheme";
 import { fmtInt } from "@/lib/format";
+import { ContadorAnimado } from "@/components/ContadorAnimado";
+import { FUNDO_ESCUTA } from "@/components/superficieRadio";
 import { InfluencersSection } from "@/pages/InfluencersPage";
 import { RankingSeguidores } from "@/components/RankingSeguidores";
 import { montarRanking } from "@/lib/seguidores";
@@ -27,10 +27,20 @@ import {
   tintaSentimento,
 } from "@/components/ComentarioBox";
 
-const COR_CONTRA = COLOR_SENTIMENT.neg;
-const COR_FAVOR = COLOR_SENTIMENT.pos;
+// Sentimento como TEXTO usa os tokens de tema, nunca o par de gráfico
+// (COLOR_SENTIMENT é cor de preenchimento; como letra sobre o creme reprova).
+const COR_CONTRA = "var(--danger)";
+const COR_FAVOR = "var(--success)";
 
-const CHUMBO = "#334155";
+/** Agrupamento do seletor (prévia de 04/08): acha-se o perfil pelo grupo,
+ *  não varrendo a lista. A categoria vem do cadastro de Fontes. */
+function grupoDaCategoria(cat: string): string {
+  if (/prefeit|governo/i.test(cat)) return "Governo";
+  if (/imprensa/i.test(cat)) return "Imprensa";
+  if (/oposi/i.test(cat)) return "Oposição";
+  return "Outros";
+}
+const ORDEM_GRUPO = ["Governo", "Imprensa", "Oposição", "Outros"];
 
 /**
  * Revisão de 28/07: o degradê por categoria (verde/azul/roxo/vermelho) saiu
@@ -87,26 +97,29 @@ function CardExtremo({
   vazio: string;
 }) {
   const corTexto = tom === "critica" ? "text-danger" : "text-success";
-  // Fio vertical na cor do grupo: mantém a leitura "esquerda = crítica,
-  // direita = elogio" que o fundo colorido dava, sem inundar o card.
+  // Fio vertical na cor do grupo: mantém a leitura "crítica vs. elogio" que o
+  // fundo colorido dava, sem inundar o tile. Desde a prévia de 04/08 os
+  // quatro extremos moram em UM card ("Quem puxa a conversa"), como tiles
+  // compactos — o fio é absoluto porque border-left mudaria a largura.
   const corFio = tom === "critica" ? "var(--danger)" : "var(--success)";
 
   return (
-    <div
-      className="card-hover overflow-hidden rounded-xl border border-line bg-bg-1 p-4"
-      style={{ borderLeftColor: corFio, borderLeftWidth: 4 }}
-    >
-      <div className="section-label">{titulo}</div>
+    <div className="relative rounded-xl border border-line bg-bg-2 p-4 pl-5">
+      <span
+        aria-hidden
+        className="absolute left-0 top-3 bottom-3 w-1 rounded-full"
+        style={{ background: corFio }}
+      />
+      <div className="section-label" style={{ fontSize: 11 }}>{titulo}</div>
       {perfil ? (
         <>
           <div
-            className={`mt-2 truncate text-[21px] leading-tight tracking-tight sm:text-[25px] ${corTexto}`}
-            style={{ fontWeight: 800 }}
+            className={`mt-1.5 truncate font-display text-[21px] font-bold leading-tight tracking-tight ${corTexto}`}
             title={`@${perfil.autor}`}
           >
             @{perfil.autor}
           </div>
-          <div className="tnum mt-1 text-base font-bold text-txt-2">
+          <div className="tnum mt-1 text-sm font-bold text-txt-2">
             {valor ? valor(perfil) : ""} {sufixo}
           </div>
         </>
@@ -255,39 +268,48 @@ export function PerfilPage() {
           28/07 novamente, mesmo dia): a cor por categoria saiu — todo perfil
           usa o mesmo degradê chumbo→preto com brilho translúcido branco;
           diferenciar por categoria virou tarefa só do tooltip (title). */}
+      {/* Prévia de 04/08: o muro de chips em linhas embrulhadas vira um
+          TRILHO rolável agrupado por categoria — acha-se o perfil pelo grupo.
+          O chip continua NEUTRO para toda categoria (regra de 28/07: cor por
+          categoria não existe; verde/vermelho são de sentimento). */}
       {analise.length > 0 && (
         <div>
           <div className="section-label mb-2">Selecionar perfil</div>
-          <div className="flex flex-wrap gap-2">
-            {analise.map((p) => {
-              const ativo = p.autor === autor;
+          <div className="flex gap-5 overflow-x-auto pb-2">
+            {ORDEM_GRUPO.map((grupo) => {
+              const doGrupo = analise.filter((p) => grupoDaCategoria(p.categoria) === grupo);
+              if (doGrupo.length === 0) return null;
               return (
-                <button
-                  key={p.autor}
-                  onClick={() => setSel(p.autor)}
-                  className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition"
-                  style={{
-                    backgroundImage: `${ativo ? BRILHO_PERFIL_ATIVO : BRILHO_PERFIL}, ${FUNDO_PERFIL_BASE}`,
-                    fontWeight: 800,
-                    // Sem opacity reduzida no estado inativo: opacity mistura
-                    // TODO o botão (fundo + texto) com o que está atrás dele,
-                    // e isso desidratava o contraste do gradiente com o fundo
-                    // escuro da página sem eu saber por quanto — melhor
-                    // diferenciar ativo/inativo só pelo anel e pela força do
-                    // brilho, que não mexem na cor do texto.
-                    boxShadow: ativo
-                      ? "0 0 0 2px rgba(255,255,255,0.9), 0 10px 22px -10px rgba(0,0,0,0.6)"
-                      : "0 6px 16px -10px rgba(0,0,0,0.5)",
-                  }}
-                  title={`${p.categoria} · ${p.postsGestao} publicações sobre a gestão`}
-                >
-                  {/* Revisão de 30/07: o selo com o número de publicações
-                      sobre a gestão saiu do chip. O número continua no
-                      tooltip (title) e, com todas as casas decimais do
-                      contexto, na tabela de ranking logo abaixo — no chip ele
-                      competia com o @, que é o que a pessoa procura ali. */}
-                  @{p.autor}
-                </button>
+                <div key={grupo} className="shrink-0">
+                  <div className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.13em] text-txt-3">
+                    {grupo}
+                  </div>
+                  <div className="flex gap-2">
+                    {doGrupo.map((p) => {
+                      const ativo = p.autor === autor;
+                      return (
+                        <button
+                          key={p.autor}
+                          onClick={() => setSel(p.autor)}
+                          className="flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm text-white transition"
+                          style={{
+                            backgroundImage: `${ativo ? BRILHO_PERFIL_ATIVO : BRILHO_PERFIL}, ${FUNDO_PERFIL_BASE}`,
+                            fontWeight: 800,
+                            // Sem opacity reduzida no inativo (mistura fundo e
+                            // texto com o que está atrás); ativo = anel, com o
+                            // laranja da marca por fora do respiro branco.
+                            boxShadow: ativo
+                              ? "0 0 0 2px var(--bg-page), 0 0 0 4px var(--brand), 0 10px 22px -10px rgba(0,0,0,0.6)"
+                              : "0 6px 16px -10px rgba(0,0,0,0.5)",
+                          }}
+                          title={`${p.categoria} · ${p.postsGestao} publicações sobre a gestão`}
+                        >
+                          @{p.autor}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -301,88 +323,82 @@ export function PerfilPage() {
           da tela. Agora selecionar e ler o resultado ficam na mesma dobra.
           Nome em corpo de título de página (28/07) e categoria em chip neutro
           (chumbo), não colorido por CAT_COR — mesma doutrina do seletor. */}
+      {/* Prévia de 04/08: o cabeçalho do perfil e os 4 KPIs se FUNDEM num
+          cartão único — quem está sendo lido à esquerda, os números à direita
+          — devolvendo uma dobra inteira de tela. */}
       {perfilAtivo && (
-        <div className="rounded-xl border border-line bg-bg-1 px-5 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-[34px] font-extrabold leading-none tracking-tight text-txt-1 sm:text-[42px]">
-                @{perfilAtivo.autor}
-              </span>
-              <span
-                className="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide text-white"
-                style={{ background: CHUMBO }}
-              >
-                {perfilAtivo.categoria || "—"}
-              </span>
+        <div className="grid overflow-hidden rounded-[20px] border border-line bg-bg-1 lg:grid-cols-[minmax(280px,1.1fr)_2fr]" style={{ boxShadow: "var(--shadow-ambient)" }}>
+          <div className="flex flex-col justify-center gap-2 px-7 py-6">
+            <span
+              className="w-fit rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide text-white"
+              style={{ background: FUNDO_ESCUTA }}
+            >
+              {perfilAtivo.categoria || "—"}
+            </span>
+            <span className="font-display text-[30px] font-bold leading-none tracking-tight text-txt-1 sm:text-[40px]" style={{ wordBreak: "break-all" }}>
+              @{perfilAtivo.autor}
+            </span>
+            <p className="text-[13.5px] font-semibold text-txt-3">
+              {fmtInt(perfilAtivo.postsGestao)} de {fmtInt(perfilAtivo.posts)} publicações citam
+              as palavras da Relevância
+            </p>
+          </div>
+          <div className="grid grid-cols-2 border-t border-line lg:grid-cols-4 lg:border-l lg:border-t-0">
+            <div className="border-r border-line px-5 py-5">
+              <div className="section-label">Seguidores</div>
+              <div className="tnum mt-2 font-display text-[30px] font-bold leading-none text-txt-1">
+                {seguidores ? (
+                  <>
+                    <ContadorAnimado valor={seguidores.seguidores} formatar={fmtInt} />
+                    {seguidores.delta24h !== null && seguidores.delta24h !== 0 && (
+                      <span className="ml-1.5 text-[15px]" style={{ color: seguidores.delta24h > 0 ? COR_FAVOR : COR_CONTRA }}>
+                        {seguidores.delta24h > 0 ? "▲" : "▼"}{Math.abs(seguidores.delta24h)}
+                      </span>
+                    )}
+                  </>
+                ) : "n/d"}
+              </div>
+              <div className="mt-1.5 text-xs font-medium text-txt-3">
+                {seguidores
+                  ? seguidores.delta24h === null ? "primeira coleta registrada" : "saldo nas últimas 24h"
+                  : "aguardando primeira coleta"}
+              </div>
+            </div>
+            <div className="px-5 py-5 lg:border-r lg:border-line">
+              <div className="section-label">Críticas contrárias</div>
+              <div className="tnum mt-2 font-display text-[30px] font-bold leading-none" style={{ color: COR_CONTRA }}>
+                <ContadorAnimado valor={perfilAtivo.contra} formatar={fmtInt} />
+              </div>
+              <div className="mt-1.5 text-xs font-medium text-txt-3">{perfilAtivo.pctContra}% dos que tomam partido</div>
+            </div>
+            <div className="border-r border-t border-line px-5 py-5 lg:border-t-0">
+              <div className="section-label">Favoráveis</div>
+              <div className="tnum mt-2 font-display text-[30px] font-bold leading-none" style={{ color: COR_FAVOR }}>
+                <ContadorAnimado valor={perfilAtivo.favor} formatar={fmtInt} />
+              </div>
+              <div className="mt-1.5 text-xs font-medium text-txt-3">{100 - perfilAtivo.pctContra}% dos que tomam partido</div>
+            </div>
+            <div className="border-t border-line px-5 py-5 lg:border-t-0">
+              <div className="section-label">Sobre a gestão</div>
+              <div className="tnum mt-2 font-display text-[30px] font-bold leading-none text-txt-1">
+                <ContadorAnimado valor={perfilAtivo.postsGestao} formatar={fmtInt} />
+              </div>
+              <div className="mt-1.5 text-xs font-medium text-txt-3">de {fmtInt(perfilAtivo.posts)} publicações no período</div>
             </div>
           </div>
-          <p className="mt-2 text-[13px] font-semibold text-txt-3">
-            {fmtInt(perfilAtivo.postsGestao)} de {fmtInt(perfilAtivo.posts)} publicações citam
-            as palavras da Relevância
-          </p>
         </div>
       )}
 
-      {/* KPIs do perfil selecionado */}
-      {perfilAtivo && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <KpiStat
-            label="Seguidores"
-            value={seguidores ? fmtInt(seguidores.seguidores) : "n/d"}
-            sub={
-              seguidores
-                ? seguidores.delta24h === null
-                  ? "primeira coleta registrada"
-                  : "saldo nas últimas 24h"
-                : "aguardando primeira coleta"
-            }
-            delta={
-              seguidores && seguidores.delta24h !== null
-                ? {
-                    v: seguidores.delta24h,
-                    dir: seguidores.delta24h > 0 ? "up" : seguidores.delta24h < 0 ? "down" : "flat",
-                  }
-                : undefined
-            }
-          />
-          <KpiStat
-            label="Críticas contrárias"
-            value={
-              <span style={{ color: COR_CONTRA, fontWeight: 700 }}>
-                {fmtInt(perfilAtivo.contra)}
-              </span>
-            }
-            sub={`${perfilAtivo.pctContra}% dos que tomam partido`}
-          />
-          <KpiStat
-            label="Manifestações favoráveis"
-            value={
-              <span style={{ color: COR_FAVOR, fontWeight: 700 }}>
-                {fmtInt(perfilAtivo.favor)}
-              </span>
-            }
-            sub={`${100 - perfilAtivo.pctContra}% dos que tomam partido`}
-          />
-          {/* O KPI "O que publica sobre a gestão" saiu na revisão de 27/07:
-              mostrava "7/2 críticas / elogios" duas vezes na mesma tela. */}
-          <KpiStat
-            label="Publicações sobre a gestão"
-            value={fmtInt(perfilAtivo.postsGestao)}
-            sub={`de ${fmtInt(perfilAtivo.posts)} no período`}
-          />
+      {/* Os quatro extremos num card só (prévia de 04/08): "quem PUBLICA" na
+          linha de cima, "quem RECEBE" na de baixo, com as contagens no rótulo.
+          Só os extremos de "mais" (revisão de 27/07). */}
+      <div className="rounded-[20px] border border-line bg-bg-1 p-5" style={{ boxShadow: "var(--shadow-ambient)" }}>
+        <div className="section-label">
+          Quem puxa a conversa · {fmtInt(totalGeral.fazCritica)} publicações críticas e{" "}
+          {fmtInt(totalGeral.fazElogio)} favoráveis · {fmtInt(totalGeral.contra)} comentários
+          contrários e {fmtInt(totalGeral.favor)} favoráveis
         </div>
-      )}
-
-      {/* O que cada perfil PUBLICA sobre a gestão */}
-      <div>
-        <div className="section-label mb-2">
-          Quem critica e quem elogia a gestão · {fmtInt(totalGeral.fazCritica)} publicações
-          críticas e {fmtInt(totalGeral.fazElogio)} favoráveis no período
-        </div>
-        {/* Só os extremos de "mais" (revisão de 27/07) — "menos critica"/
-            "menos elogia" saíram: o interesse prático é quem concentra a
-            crítica e quem concentra o elogio, não quem faz pouco de cada. */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <CardExtremo
             titulo="Mais critica a gestão"
             perfil={rankFazCritica.maior}
@@ -399,16 +415,6 @@ export function PerfilPage() {
             tom="elogio"
             vazio="Ninguém publicou sobre a gestão"
           />
-        </div>
-      </div>
-
-      {/* O que cada perfil RECEBE dos cidadãos */}
-      <div>
-        <div className="section-label mb-2">
-          Quem concentra a reação dos cidadãos · {fmtInt(totalGeral.contra)} comentários
-          contrários e {fmtInt(totalGeral.favor)} favoráveis
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <CardExtremo
             titulo="Recebe mais críticas"
             perfil={rankContra.maior}

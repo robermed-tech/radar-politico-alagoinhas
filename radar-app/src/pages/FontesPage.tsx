@@ -14,16 +14,27 @@ const FILTRO_OPTS = [
   { value: "imprensa", label: "Imprensa" },
 ];
 
-const FILTRO_BADGE: Record<string, string> = {
-  governo:  "rgba(22,163,74,0.12)",
-  oposicao: "rgba(239,68,68,0.12)",
-  imprensa: "rgba(99,102,241,0.12)",
-};
-const FILTRO_COLOR: Record<string, string> = {
-  governo:  "#16A34A",
-  oposicao: "#EF4444",
-  imprensa: "#6366F1",
-};
+/* Prévia aprovada em 04/08: os chips coloridos de categoria saíram — o antigo
+   FILTRO_COLOR pintava GOVERNO de verde e OPOSIÇÃO de vermelho, e
+   verde/vermelho são reservados a sentimento (a mesma regra que já tirou a
+   cor do seletor de perfis). A categoria agora é o CABEÇALHO do grupo em que
+   a fonte aparece, não um selo pintado em cada linha. */
+
+/** LED de estado da fonte — o mesmo sinal da Rádio Escuta: laranja acesa,
+ *  cinza apagada. */
+function LedFonte({ ativa }: { ativa: boolean }) {
+  return (
+    <span
+      className="h-2 w-2 shrink-0 rounded-full"
+      style={
+        ativa
+          ? { background: "var(--brand)", boxShadow: "0 0 8px var(--brand)" }
+          : { background: "var(--txt3)", opacity: 0.5 }
+      }
+      aria-hidden
+    />
+  );
+}
 
 // Uma aba só para todas as plataformas (reunião 24/07). Cada plataforma vai
 // para o backend certo: Instagram → monitored_sources (pipeline ÁGORA atual);
@@ -139,70 +150,143 @@ function SourcesSection() {
         </button>
         <Feedback msg={msg} />
       </div>
-      <div className="mt-3 space-y-1.5">
-        {(sources ?? []).map((s) => (
-          <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
-            <div className="min-w-0 flex items-center gap-2">
-              <span
-                className="shrink-0 rounded px-1.5 py-0.5 text-[12px] font-bold uppercase"
-                style={{ background: FILTRO_BADGE[s.filtro] ?? "rgba(100,100,100,0.1)", color: FILTRO_COLOR[s.filtro] ?? "#888" }}
-              >
-                {FILTRO_OPTS.find(o => o.value === s.filtro)?.label ?? s.filtro}
-              </span>
-              <span className={s.active ? "text-txt-1" : "text-txt-3 line-through"}>
-                <span className="text-txt-3">{s.platform}/</span>{s.handle}
-                {s.categoria && s.categoria !== s.handle && (
-                  <span className="ml-1 text-txt-3">· {s.categoria}</span>
-                )}
+      {/* Lista agrupada por categoria (prévia de 04/08): acha-se o perfil
+          pelo grupo, e o desequilíbrio entre categorias fica visível na
+          própria contagem do cabeçalho. */}
+      <div className="mt-4 space-y-4">
+        {FILTRO_OPTS.map((g) => {
+          const doGrupo = (sources ?? []).filter((s) => s.filtro === g.value);
+          if (doGrupo.length === 0) return null;
+          const ativas = doGrupo.filter((s) => s.active).length;
+          return (
+            <div key={g.value}>
+              <div className="mb-1.5 flex items-baseline gap-2">
+                <span className="section-label">{g.label}</span>
+                <span className="text-xs font-semibold text-txt-3">
+                  {doGrupo.length} {doGrupo.length === 1 ? "perfil" : "perfis"} · {ativas} {ativas === 1 ? "ativo" : "ativos"}
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {doGrupo.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
+                    <div className="min-w-0 flex items-center gap-2.5">
+                      <LedFonte ativa={s.active} />
+                      <span className={s.active ? "text-txt-1" : "text-txt-3"}>
+                        <span className="font-bold">@{s.handle}</span>
+                        <span className="ml-1.5 text-txt-3">{s.platform}</span>
+                        {s.categoria && s.categoria !== s.handle && (
+                          <span className="text-txt-3"> · {s.categoria}</span>
+                        )}
+                        {!s.active && <span className="ml-2 text-[12px] uppercase tracking-wide text-txt-3">desativada</span>}
+                      </span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <button
+                        onClick={() => run(() => toggleSource(s.id, !s.active), "✔ Atualizada")}
+                        className="text-xs font-semibold text-txt-3 hover:text-txt-1"
+                      >
+                        {s.active ? "Desativar" : "Ativar"}
+                      </button>
+                      <button
+                        onClick={() => run(() => deleteSource(s.id), "✔ Removida")}
+                        className="text-xs font-semibold hover:underline"
+                        style={{ color: "var(--sent-ink-neg)" }}
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Fonte com filtro fora das três categorias não pode sumir da tela
+            por causa do agrupamento — cai num grupo "Outros". */}
+        {(() => {
+          const conhecidos = new Set(FILTRO_OPTS.map((o) => o.value));
+          const outros = (sources ?? []).filter((s) => !conhecidos.has(s.filtro));
+          if (outros.length === 0) return null;
+          return (
+            <div>
+              <div className="mb-1.5 flex items-baseline gap-2">
+                <span className="section-label">Outros</span>
+                <span className="text-xs font-semibold text-txt-3">{outros.length} perfil(is)</span>
+              </div>
+              <div className="space-y-1.5">
+                {outros.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
+                    <div className="min-w-0 flex items-center gap-2.5">
+                      <LedFonte ativa={s.active} />
+                      <span className={s.active ? "text-txt-1" : "text-txt-3"}>
+                        <span className="font-bold">@{s.handle}</span>
+                        <span className="ml-1.5 text-txt-3">{s.platform} · {s.filtro}</span>
+                      </span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <button
+                        onClick={() => run(() => toggleSource(s.id, !s.active), "✔ Atualizada")}
+                        className="text-xs font-semibold text-txt-3 hover:text-txt-1"
+                      >
+                        {s.active ? "Desativar" : "Ativar"}
+                      </button>
+                      <button
+                        onClick={() => run(() => deleteSource(s.id), "✔ Removida")}
+                        className="text-xs font-semibold hover:underline"
+                        style={{ color: "var(--sent-ink-neg)" }}
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {coletaNaoIg.length > 0 && (
+          <div>
+            <div className="mb-1.5 flex items-baseline gap-2">
+              <span className="section-label">Outras plataformas</span>
+              <span className="text-xs font-semibold text-txt-3">
+                {coletaNaoIg.length} fonte(s)
               </span>
             </div>
-            <div className="flex shrink-0 items-center gap-3">
-              <button
-                onClick={() => run(() => toggleSource(s.id, !s.active), "✔ Atualizada")}
-                className="text-xs font-semibold text-txt-3 hover:text-txt-1"
-              >
-                {s.active ? "Desativar" : "Ativar"}
-              </button>
-              <button
-                onClick={() => run(() => deleteSource(s.id), "✔ Removida")}
-                className="text-xs font-semibold text-risk-crit hover:underline"
-              >
-                Remover
-              </button>
+            <div className="space-y-1.5">
+              {coletaNaoIg.map((s: ColetaSource) => (
+                <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
+                  <div className="min-w-0 flex items-center gap-2.5">
+                    <LedFonte ativa={s.active} />
+                    <span className={s.active ? "text-txt-1" : "text-txt-3"}>
+                      <span className="font-bold">{s.handle}</span>
+                      <span className="ml-1.5 text-txt-3">{s.platform}</span>
+                      {s.label && <span className="text-txt-3"> · {s.label}</span>}
+                      {!s.active && <span className="ml-2 text-[12px] uppercase tracking-wide text-txt-3">pausada</span>}
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <button
+                      onClick={() => run(() => toggleColetaSource(s.id, !s.active), s.active ? "✔ Pausada" : "✔ Ativada")}
+                      className="text-xs font-semibold text-txt-3 hover:text-txt-1"
+                    >
+                      {s.active ? "Pausar" : "Ativar"}
+                    </button>
+                    <button
+                      onClick={() => run(() => deleteColetaSource(s.id), "✔ Removida")}
+                      className="text-xs font-semibold hover:underline"
+                      style={{ color: "var(--sent-ink-neg)" }}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-        {coletaNaoIg.map((s: ColetaSource) => (
-          <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm">
-            <div className="min-w-0 flex items-center gap-2">
-              <span
-                className="shrink-0 rounded px-1.5 py-0.5 text-[12px] font-bold uppercase"
-                style={{ background: "rgba(239,68,68,0.12)", color: "#EF4444" }}
-              >
-                {s.platform}
-              </span>
-              <span className={s.active ? "text-txt-1" : "text-txt-3"}>
-                <span className="font-semibold">{s.handle}</span>
-                {s.label && <span className="ml-1 text-txt-3">· {s.label}</span>}
-                {!s.active && <span className="ml-2 text-[12px] uppercase tracking-wide text-txt-3">pausada</span>}
-              </span>
-            </div>
-            <div className="flex shrink-0 items-center gap-3">
-              <button
-                onClick={() => run(() => toggleColetaSource(s.id, !s.active), s.active ? "✔ Pausada" : "✔ Ativada")}
-                className="text-xs font-semibold text-txt-3 hover:text-txt-1"
-              >
-                {s.active ? "Pausar" : "Ativar"}
-              </button>
-              <button
-                onClick={() => run(() => deleteColetaSource(s.id), "✔ Removida")}
-                className="text-xs font-semibold text-risk-crit hover:underline"
-              >
-                Remover
-              </button>
-            </div>
-          </div>
-        ))}
+        )}
+
         {sources?.length === 0 && coletaNaoIg.length === 0 && (
           <p className="text-sm text-txt-3">Nenhuma fonte cadastrada.</p>
         )}
