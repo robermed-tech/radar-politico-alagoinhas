@@ -49,8 +49,8 @@ export function PeriodoFilter({ dias, onChange, ariaLabel = "Período de anális
             }`}
             // Tinta escura sobre o laranja, e não branca: é a decisão de
             // contraste da reunião de 24/07, já usada na pílula ativa do menu
-            // e no box de engajamento. Branco sobre #F79641 mede 2,24:1 e
-            // reprova no AA (mínimo 4,5); com #1A0F02 mede 8,44:1.
+            // e no box de engajamento. Branco sobre o laranja da marca mede
+            // 2,86:1 e reprova no AA (mínimo 4,5); com #1A0F02 mede 6,60:1.
             //
             // `var(--brand)` chapado, e não um degradê: até 30/07 o token
             // mudava de tom entre o tema claro e o escuro, e um degradê
@@ -60,7 +60,7 @@ export function PeriodoFilter({ dias, onChange, ariaLabel = "Período de anális
             // um degradê ligeiramente diferente (a queixa de 31/07: os
             // botões de período e o "Mais citados" do Feed liam como dois
             // laranjas distintos lado a lado). Desde a revisão de 31/07,
-            // `--brand` é um hex único (#F79641) nos dois temas — o botão
+            // `--brand` é um hex único (#FF6A2B) nos dois temas — o botão
             // fica chapado e casa com qualquer outro botão de marca da tela.
             //
             // O peso vem inline porque a diretriz tipográfica global do

@@ -47,8 +47,15 @@ export default {
         lime: { DEFAULT: "#BEDB1D", ink: "#1A2400" },
         skycard: { DEFAULT: "var(--brand)", deep: "var(--brand)" },
       },
+      // Duas famílias com papéis distintos (briefing de 03/08): Space Grotesk
+      // carrega título, rótulo de card e NÚMERO (as formas geométricas e o
+      // corte reto dos dígitos sustentam corpo grande sem virar peso morto);
+      // Inter carrega o texto corrido, que é onde a leitura acontece. Não
+      // trocar `sans` por uma display: o painel tem parágrafo de análise e
+      // citação de cidadão, e display em corpo pequeno cansa.
       fontFamily: {
-        sans: ["Plus Jakarta Sans", "system-ui", "sans-serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        display: ["Space Grotesk", "Inter", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
     },

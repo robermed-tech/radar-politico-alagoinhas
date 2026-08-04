@@ -17,8 +17,10 @@ import { periodoLabel } from "@/components/PeriodoFilter";
 const COR_OPOSICAO = "#EF4444";
 const COR_ALIADO   = "#22C55E";
 const COR_IMPRENSA = "#EAB308";
-/** Contorno do destaque "mais postou no período" — laranja da marca. */
-const COR_DESTAQUE = "#FB923C";
+/** Contorno do destaque "mais postou no período" — laranja da marca. Literal
+ *  porque o ECharts não resolve `var(--brand)`; acompanhar o token à mão
+ *  quando ele mudar (03/08: #FB923C -> #FF6A2B). */
+const COR_DESTAQUE = "#FF6A2B";
 
 const OPOSICAO_FIXA = new Set(["jaldicenunes", "jadilcenunes"]);
 

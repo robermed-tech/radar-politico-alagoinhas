@@ -31,8 +31,8 @@ export function Gauge({ value, label, color = "#2563EB", suffix = "" }: GaugePro
         detail: {
           valueAnimation: true,
           fontSize: 34,
-          fontWeight: 300,
-          fontFamily: "JetBrains Mono, monospace",
+          fontWeight: 700,
+          fontFamily: "Space Grotesk, Inter, sans-serif",
           color: ink.detail,
           offsetCenter: [0, "10%"],
           formatter: (v: number) => `${Math.round(v)}${suffix}`,
