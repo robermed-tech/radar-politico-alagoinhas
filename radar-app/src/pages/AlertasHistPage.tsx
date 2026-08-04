@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchEnviosManuais, type EnvioManual } from "@/lib/admin";
 import { IconAlertBell } from "@/components/icons";
+import { ContadorAnimado } from "@/components/ContadorAnimado";
 
 /**
  * Histórico de Alertas — decisão da reunião de 24/07: em vez dos disparos
@@ -11,15 +12,25 @@ import { IconAlertBell } from "@/components/icons";
  * comprovar "eu enviei sim, aqui, tal hora".
  */
 
-function fmtDt(iso: string): string {
+function fmtHora(iso: string): string {
   try {
-    return new Date(iso).toLocaleString("pt-BR", {
-      day: "2-digit", month: "2-digit",
-      hour: "2-digit", minute: "2-digit",
-    });
+    return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   } catch {
     return iso;
   }
+}
+
+/** Cabecalho do grupo de dia ("Hoje - 04/08/26"). */
+function rotuloDia(iso: string): string {
+  const d = new Date(iso);
+  const hoje = new Date();
+  const ontem = new Date(); ontem.setDate(hoje.getDate() - 1);
+  const mesmoDia = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const data = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  if (mesmoDia(d, hoje)) return `Hoje · ${data}`;
+  if (mesmoDia(d, ontem)) return `Ontem · ${data}`;
+  return data;
 }
 
 const CANAL_LABEL: Record<string, string> = {
@@ -27,18 +38,11 @@ const CANAL_LABEL: Record<string, string> = {
   email: "E-mail",
 };
 
-const CANAL_COR: Record<string, string> = {
-  whatsapp: "#16A34A",
-  email: "#2563EB",
-};
-
+/* Previa 3 de 04/08: o canal perdeu o verde/azul decorativo — canal nao e
+   semantica de sentimento. Chip neutro, o dado e o nome. */
 function BadgeCanal({ canal }: { canal: string }) {
-  const cor = CANAL_COR[canal] ?? "#64748B";
   return (
-    <span
-      className="inline-block rounded-md px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide"
-      style={{ background: `${cor}1A`, color: cor, border: `1px solid ${cor}44` }}
-    >
+    <span className="inline-block rounded-md border border-line bg-bg-2 px-2 py-0.5 text-[12px] font-extrabold uppercase tracking-wide text-txt-2">
       {CANAL_LABEL[canal] ?? canal}
     </span>
   );
@@ -60,12 +64,21 @@ function EmptyState() {
 function LinhaEnvio({ e }: { e: EnvioManual }) {
   const [aberto, setAberto] = useState(false);
   return (
-    <div className="rounded-lg border border-line bg-bg-2 px-4 py-3">
+    // Espinha chumbo a esquerda (previa 3): a linha vira item de linha do
+    // tempo, nao mais uma linha de tabela.
+    <div className="relative rounded-[14px] border border-line bg-bg-1 px-4 py-3 pl-6" style={{ boxShadow: "var(--shadow-ambient)" }}>
+      <span
+        aria-hidden
+        className="absolute left-0 top-3 bottom-3 w-1 rounded-full"
+        style={{ background: "linear-gradient(165deg, #55534E, #171613)" }}
+      />
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="tnum text-xs text-txt-3">{fmtDt(e.created_at)}</span>
         <BadgeCanal canal={e.channel} />
         {e.tema && (
-          <span className="rounded bg-bg-1 px-2 py-0.5 text-[13px] font-bold frase-cap text-txt-1">
+          <span
+            className="rounded px-2 py-0.5 text-[12.5px] font-bold frase-cap"
+            style={{ background: "rgba(255,106,43,0.10)", color: "var(--brand-text)" }}
+          >
             {e.tema}
           </span>
         )}
@@ -73,11 +86,12 @@ function LinhaEnvio({ e }: { e: EnvioManual }) {
           {e.sent_by_nome ? <>por <b className="text-txt-1">{e.sent_by_nome}</b></> : null}
           {e.recipient ? <> · para <b className="text-txt-1">{e.recipient}</b></> : null}
         </span>
+        <span className="tnum ml-auto shrink-0 text-[13px] font-semibold text-txt-3">{fmtHora(e.created_at)}</span>
         {e.mensagem && (
           <button
             onClick={() => setAberto((v) => !v)}
-            className="ml-auto shrink-0 rounded-lg px-2.5 py-1 text-[13px] font-bold text-white transition hover:opacity-90"
-            style={{ background: "#334155" }}
+            className="shrink-0 rounded-full px-3 py-1 text-[13px] font-bold text-white transition hover:opacity-90"
+            style={{ background: "linear-gradient(165deg, #55534E, #171613)" }}
           >
             {aberto ? "Ocultar mensagem" : "Ver mensagem"}
           </button>
@@ -108,6 +122,19 @@ export function AlertasHistPage() {
   const totalWhats = envios.filter((e) => e.channel === "whatsapp").length;
   const totalEmail = envios.filter((e) => e.channel === "email").length;
 
+  // Agrupa por dia local, preservando a ordem (a query ja vem do mais novo).
+  const grupos = useMemo(() => {
+    const by = new Map<string, EnvioManual[]>();
+    for (const e of envios) {
+      const d = new Date(e.created_at);
+      const chave = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const arr = by.get(chave) ?? [];
+      arr.push(e);
+      by.set(chave, arr);
+    }
+    return Array.from(by.entries());
+  }, [envios]);
+
   return (
     <div className="space-y-4 p-5">
       <div>
@@ -117,18 +144,20 @@ export function AlertasHistPage() {
         </p>
       </div>
 
-      {/* Contadores rápidos */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Contadores no padrao do painel (previa 3): display + contagem
+          animada, sem o verde/azul decorativo — canal nao e sentimento. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
-          { label: "Total de envios", value: total, cor: "var(--txt1)" },
-          { label: "Via WhatsApp", value: totalWhats, cor: "#16A34A" },
-          { label: "Via E-mail", value: totalEmail, cor: "#2563EB" },
-        ].map(({ label, value, cor }) => (
+          { label: "Total de envios", value: total, hint: "desde o inicio do registro" },
+          { label: "Via WhatsApp", value: totalWhats, hint: "abertos no wa.me do usuario" },
+          { label: "Via e-mail", value: totalEmail, hint: "copiados para envio manual" },
+        ].map(({ label, value, hint }) => (
           <div key={label} className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-txt-3">{label}</div>
-            <div className="mt-1 text-3xl font-extrabold tabular-nums" style={{ color: cor }}>
-              {value}
+            <div className="section-label">{label}</div>
+            <div className="tnum mt-1 font-display text-[34px] font-bold leading-none text-txt-1">
+              <ContadorAnimado valor={value} />
             </div>
+            <div className="mt-1 text-xs text-txt-3">{hint}</div>
           </div>
         ))}
       </div>
@@ -136,9 +165,20 @@ export function AlertasHistPage() {
       {envios.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="space-y-2">
-          {envios.map((e) => (
-            <LinhaEnvio key={e.id} e={e} />
+        // Linha do tempo agrupada por DIA (previa 3): "o que ja foi mandado
+        // sobre saude este mes?" sai num relance.
+        <div className="space-y-5">
+          {grupos.map(([dia, doDia]) => (
+            <div key={dia}>
+              <div className="mb-2 font-display text-[13px] font-bold uppercase tracking-[0.1em] text-txt-3">
+                {rotuloDia(doDia[0].created_at)}
+              </div>
+              <div className="space-y-2">
+                {doDia.map((e) => (
+                  <LinhaEnvio key={e.id} e={e} />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
