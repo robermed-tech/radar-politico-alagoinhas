@@ -14,6 +14,7 @@ import { IconInbox } from "@/components/icons";
 import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 import { ComentariosBairroModal } from "@/components/ComentariosBairroModal";
 import { labelBairro } from "@/lib/format";
+import { ContadorAnimado } from "@/components/ContadorAnimado";
 
 type Ordem = "volume" | "negativo";
 
@@ -173,17 +174,21 @@ export function BairrosPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {/* KPIs no padrão do painel (prévia 2 de 04/08): número na
+                display, contando na entrada. O azul decorativo do "mais
+                citado" saiu (não era semântica de nada); o "mais crítico"
+                usa o token de sentimento. */}
             <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
               <div className="section-label">Locais citados</div>
-              <div className="tnum mt-1 text-[2.75rem] font-semibold leading-none text-txt-1">{bairros.length}</div>
+              <div className="tnum mt-1 font-display text-[2.5rem] font-bold leading-none text-txt-1"><ContadorAnimado valor={bairros.length} /></div>
             </div>
             <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
               <div className="section-label">Menções com local</div>
-              <div className="tnum mt-1 text-[2.75rem] font-semibold leading-none text-txt-1">{totalMencoes}</div>
+              <div className="tnum mt-1 font-display text-[2.5rem] font-bold leading-none text-txt-1"><ContadorAnimado valor={totalMencoes} /></div>
             </div>
             <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
               <div className="section-label">Bairro mais citado</div>
-              <div className="mt-1.5 truncate text-xl font-bold" style={{ color: "#3B82F6" }}>
+              <div className="mt-1.5 truncate font-display text-xl font-bold text-txt-1">
                 {(() => {
                   const l = [...bairros].sort((a, b) => b.total - a.total)[0]?.localidade;
                   return l ? labelBairro(l) : "—";
@@ -192,7 +197,7 @@ export function BairrosPage() {
             </div>
             <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
               <div className="section-label">Bairro mais crítico</div>
-              <div className="mt-1.5 truncate text-xl font-bold" style={{ color: "#EF4444" }}>
+              <div className="mt-1.5 truncate font-display text-xl font-bold" style={{ color: "var(--danger)" }}>
                 {(() => {
                   const l = [...bairros].sort((a, b) => b.pctNeg - a.pctNeg)[0]?.localidade;
                   return l ? labelBairro(l) : "—";

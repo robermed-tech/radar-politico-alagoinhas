@@ -220,9 +220,11 @@ function TimelineClima({ themes, janela }: { themes: DailyTheme[]; janela: numbe
         type: "line",
         smooth: true,
         data: perDia.map((d) => d.pctNeg),
-        lineStyle: { color: "#EF4444", width: 2 },
-        itemStyle: { color: "#EF4444" },
-        areaStyle: glassArea("#EF4444"),
+        // Curva na MARCA (prévia 2 de 04/08): série única — a cor não está
+        // comparando crítica com elogio, então não precisa do vermelho.
+        lineStyle: { color: "#FF6A2B", width: 2.5 },
+        itemStyle: { color: "#FF6A2B" },
+        areaStyle: glassArea("#FF6A2B"),
       },
     ],
   };
@@ -486,7 +488,7 @@ export function TemasPage() {
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="text-xs font-bold uppercase tracking-wide text-risk-crit">
+            <div className="font-display text-xs font-bold uppercase tracking-wide" style={{ color: "var(--danger)" }}>
               ▲ Subindo ({subindo.length})
             </div>
             {alertaTema && alertaTema.pctNeg >= 35 && (
@@ -498,42 +500,59 @@ export function TemasPage() {
               />
             )}
           </div>
+          {/* Barra de intensidade por tema (prévia 2 de 04/08): vê-se quem
+              sobe rápido sem comparar decimais. Largura proporcional à maior
+              taxa da própria lista; cor nos tokens de sentimento. */}
           <div className="space-y-1.5">
-            {subindo.slice(0, 5).map((s) => {
-              const isOut = outrosTemasSet.has(s.tema);
-              return (
-                <div key={s.tema} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="min-w-0 flex-1 truncate text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
-                    {s.tema}
-                  </span>
-                  <span className="tnum shrink-0 font-bold" style={{ color: isOut ? COR_OUTROS : "#EF4444" }}>
-                    +{s.s.toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
-                  </span>
-                </div>
-              );
-            })}
+            {(() => {
+              const maxS = Math.max(...subindo.slice(0, 5).map((x) => Math.abs(x.s)), 0.001);
+              return subindo.slice(0, 5).map((s) => {
+                const isOut = outrosTemasSet.has(s.tema);
+                const cor = isOut ? COR_OUTROS : "var(--danger)";
+                return (
+                  <div key={s.tema} className="grid items-center gap-2 text-sm" style={{ gridTemplateColumns: "minmax(0,1fr) 80px 96px" }}>
+                    <span className="min-w-0 truncate text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
+                      {s.tema}
+                    </span>
+                    <span className="h-2 overflow-hidden rounded-full" style={{ background: "var(--quote-bg)" }}>
+                      <span className="block h-full rounded-full" style={{ width: `${Math.max(6, Math.round((Math.abs(s.s) / maxS) * 100))}%`, background: cor, opacity: isOut ? 0.5 : 0.85 }} />
+                    </span>
+                    <span className="tnum shrink-0 text-right font-bold" style={{ color: cor }}>
+                      +{s.s.toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
+                    </span>
+                  </div>
+                );
+              });
+            })()}
             {subindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em alta.</div>}
           </div>
         </div>
 
         <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-risk-low">
+          <div className="mb-2 font-display text-xs font-bold uppercase tracking-wide" style={{ color: "var(--success)" }}>
             ▼ Caindo ({caindo.length})
           </div>
           <div className="space-y-1.5">
-            {caindo.slice(0, 5).map((s) => {
-              const isOut = outrosTemasSet.has(s.tema);
-              return (
-                <div key={s.tema} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="min-w-0 flex-1 truncate text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
-                    {s.tema}
-                  </span>
-                  <span className="tnum shrink-0 font-bold" style={{ color: isOut ? COR_OUTROS : "#22C55E" }}>
-                    {s.s.toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
-                  </span>
-                </div>
-              );
-            })}
+            {(() => {
+              const maxS = Math.max(...caindo.slice(0, 5).map((x) => Math.abs(x.s)), 0.001);
+              return caindo.slice(0, 5).map((s) => {
+                const isOut = outrosTemasSet.has(s.tema);
+                const cor = isOut ? COR_OUTROS : "var(--success)";
+                return (
+                  <div key={s.tema} className="grid items-center gap-2 text-sm" style={{ gridTemplateColumns: "minmax(0,1fr) 80px 96px" }}>
+                    <span className="min-w-0 truncate text-txt-1" style={isOut ? { color: COR_OUTROS } : {}}>
+                      {s.tema}
+                    </span>
+                    <span className="h-2 overflow-hidden rounded-full" style={{ background: "var(--quote-bg)" }}>
+                      <span className="block h-full rounded-full" style={{ width: `${Math.max(6, Math.round((Math.abs(s.s) / maxS) * 100))}%`, background: cor, opacity: isOut ? 0.5 : 0.85 }} />
+                    </span>
+                    <span className="tnum shrink-0 text-right font-bold" style={{ color: cor }}>
+                      {s.s.toFixed(1)} {metrica === "volume" ? "posts/dia" : "pt/dia"}
+                    </span>
+                  </div>
+                );
+              });
+            })()}
             {caindo.length === 0 && <div className="text-sm text-txt-3">Nenhum em queda.</div>}
           </div>
         </div>
