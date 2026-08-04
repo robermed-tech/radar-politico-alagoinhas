@@ -60,18 +60,29 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
         style={{ background: "radial-gradient(circle, rgba(255,140,82,0.30) 0%, transparent 65%)" }}
       />
       <div
-        className="pointer-events-none absolute inset-y-0 left-0"
+        className="pointer-events-none absolute inset-y-0 right-0 hidden sm:block"
         style={{
           width: "52%",
-          background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), " : ""}url("${wx.image}") left center / cover no-repeat`,
+          background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), " : ""}url("${wx.image}") right center / cover no-repeat`,
           WebkitMaskImage:
-            "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+            "linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
           maskImage:
-            "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+            "linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 sm:hidden"
+        style={{
+          height: "62%",
+          background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), " : ""}url("${wx.image}") center bottom / cover no-repeat`,
+          WebkitMaskImage:
+            "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+          maskImage:
+            "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
         }}
       />
       <div className="relative z-10 flex h-full flex-col">
-        <div className="section-label" style={inkFoto ? { color: inkFoto.rotulo } : undefined}>
+        <div className="section-label">
           Como a população vê a gestão
         </div>
         <div className="mt-4 flex min-h-0 flex-1 flex-wrap items-center gap-x-8 gap-y-4">
@@ -79,21 +90,13 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
             <div className="flex items-start">
               <span
                 className="text-[120px] leading-[0.76] text-txt-1 sm:text-[168px] lg:text-[208px]"
-                style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
+                style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
               >
                 {iad}
               </span>
-              <span
-                className="mt-3 text-5xl font-medium text-txt-2 sm:text-6xl lg:text-7xl"
-                style={inkFoto ? { color: inkFoto.suave } : undefined}
-              >
-                %
-              </span>
+              <span className="mt-3 text-5xl font-medium text-txt-2 sm:text-6xl lg:text-7xl">%</span>
             </div>
-            <p
-              className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]"
-              style={inkFoto ? { color: inkFoto.suave } : undefined}
-            >
+            <p className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]">
               Aprovação da gestão nos comentários analisados no período
             </p>
           </div>
@@ -104,13 +107,13 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
             <div className="min-w-0 max-w-[18ch] flex-[1_1_11rem]">
               <div
                 className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 sm:text-[36px]"
-                style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                style={{ fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
               >
                 {wx.label}
               </div>
               <div
                 className="mt-2 text-[18px] leading-snug text-txt-2 sm:text-[20px]"
-                style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.suave }}
               >
                 {limparTravessoes(wx.sub)}
               </div>

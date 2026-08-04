@@ -1,8 +1,12 @@
 # Imagens de céu do hero do Clima Político
 
-As 6 imagens estão otimizadas em `.webp` (geradas a partir dos `.jpg` enviados,
-~98% menores: 12 MB → 236 KB). Para trocar uma foto: substitua o `.webp`
-correspondente (largura ~1600px, qualidade 80). Cada uma corresponde a um clima:
+As 6 imagens estão em `.jpg` (~940 KB no total). Em 04/08/26 as `.webp`
+antigas foram cortadas em ~7% na borda direita e reencodadas: elas carregavam
+a MARCA D'ÁGUA do gerador de imagem no canto inferior direito, que ficou
+visível quando o fade do hero passou a mostrar a direita da foto. Para trocar
+uma foto: substitua o `.jpg` correspondente (largura ~1300px, qualidade 85) e
+confira se não há marca ou assinatura perto das bordas. Cada uma corresponde
+a um clima:
 
 | Arquivo        | Imagem enviada                              | Quando aparece (IAD) |
 |----------------|---------------------------------------------|----------------------|
