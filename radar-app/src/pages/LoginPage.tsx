@@ -76,20 +76,31 @@ export function LoginPage() {
     <div className="grid min-h-screen lg:grid-cols-2" style={{ background: "var(--wx-bg)" }}>
       {/* ── PAINEL DE MARCA (esquerda) — estilo clean da referência ── */}
       <div className="relative hidden overflow-hidden p-10 lg:flex lg:flex-col">
+        {/* Prévia 3 de 04/08: o painel de marca troca o degradê laranja sobre
+            foto (e o círculo verde-lima de uma identidade passada) pelo chumbo
+            quente do painel com o SOL da marca flutuando — a mesma cena que
+            recebe o usuário na Estação Meteorológica logo depois do login. */}
         <div
           className="absolute inset-4 rounded-[32px]"
           style={{
-            background: `linear-gradient(150deg, rgba(251,146,60,0.92) 0%, rgba(234,88,12,0.95) 100%), url("/sky/sunny.webp") center/cover no-repeat`,
-            boxShadow: "0 30px 70px -24px rgba(234,88,12,0.55)",
+            background: "linear-gradient(165deg, #55534E 0%, #171613 100%)",
+            boxShadow: "0 30px 70px -24px rgba(23,22,19,0.65)",
           }}
         />
-        {/* bolhas decorativas */}
-        <div className="pointer-events-none absolute -left-6 bottom-10 h-48 w-48 rounded-full" style={{ background: "rgba(255,255,255,0.12)" }} />
-        <div className="pointer-events-none absolute right-16 top-16 h-28 w-28 rounded-full" style={{ background: "rgba(190,219,29,0.25)" }} />
+        <div
+          className="wx-flutuar pointer-events-none absolute right-10 top-10 h-44 w-44 rounded-full"
+          style={{
+            background: "radial-gradient(circle at 35% 30%, #FF8C52, #E0501A)",
+            boxShadow: "0 0 70px 22px rgba(255,106,43,0.35)",
+          }}
+        />
 
         <div className="reveal reveal-1 relative z-10 flex h-full flex-col p-8 text-white">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/20 text-xl font-bold backdrop-blur">
+            <span
+              className="grid h-11 w-11 place-items-center rounded-2xl text-xl font-bold"
+              style={{ background: "var(--brand)", color: "#1A0F02", boxShadow: "0 8px 20px rgba(255,106,43,0.4)" }}
+            >
               ◉
             </span>
             <div>
@@ -128,8 +139,8 @@ export function LoginPage() {
           {/* logo compacta — visível também no mobile */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <span
-              className="grid h-10 w-10 place-items-center rounded-2xl text-xl font-bold text-white"
-              style={{ background: "var(--brand)" }}
+              className="grid h-10 w-10 place-items-center rounded-2xl text-xl font-bold"
+              style={{ background: "var(--brand)", color: "#1A0F02" }}
             >
               ◉
             </span>

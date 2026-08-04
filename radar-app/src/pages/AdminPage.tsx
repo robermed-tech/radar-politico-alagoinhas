@@ -174,12 +174,19 @@ function ScoreSection() {
         fecha em 1.0. Obs.: o <span className="font-semibold">score_risco por post</span> vem do
         modelo de IA e não é afetado por estes pesos — eles governam os índices agregados do painel.
       </p>
-      <div className="space-y-2">
+      {/* Prévia 3 de 04/08: os campos numéricos viram barras deslizantes na
+          marca, com o valor na display ao lado — o peso relativo dos termos
+          fica visível de relance. A precisão continua a mesma (passo 0,05). */}
+      <div className="space-y-1">
         {SCORE_FIELDS.map((f) => (
-          <label key={f.key} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
-            <span className="min-w-0 flex-1 text-txt-2">{f.label}</span>
+          <label
+            key={f.key}
+            className="grid items-center gap-x-4 py-1.5 text-sm"
+            style={{ gridTemplateColumns: "minmax(120px, 190px) 1fr 56px" }}
+          >
+            <span className="min-w-0 truncate font-semibold text-txt-2">{f.label}</span>
             <input
-              type="number"
+              type="range"
               step={0.05}
               min={0}
               max={1}
@@ -187,8 +194,13 @@ function ScoreSection() {
               onChange={(e) =>
                 setDraft({ ...weights, [f.key]: parseFloat(e.target.value) || 0 })
               }
-              className="w-24 rounded-lg border border-line bg-bg-2 px-3 py-1.5 text-right text-sm outline-none focus:border-brand"
+              className="h-2 w-full cursor-pointer"
+              style={{ accentColor: "var(--brand)" }}
+              aria-label={`Peso de ${f.label}`}
             />
+            <span className="tnum text-right font-display text-base font-bold text-txt-1">
+              {weights[f.key].toFixed(2)}
+            </span>
           </label>
         ))}
       </div>

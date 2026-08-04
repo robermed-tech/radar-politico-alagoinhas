@@ -35,7 +35,7 @@ export function AceitarConvitePage({ onDone }: { onDone: () => void }) {
         <div className="mb-8 flex items-center gap-3">
           <span
             className="grid h-10 w-10 place-items-center rounded-2xl text-xl font-bold text-white"
-            style={{ background: "var(--brand)" }}
+            style={{ background: "var(--brand)", color: "#1A0F02" }}
           >
             ◉
           </span>
@@ -99,8 +99,8 @@ export function AceitarConvitePage({ onDone }: { onDone: () => void }) {
             <button
               type="submit"
               disabled={loading || !password || !confirmPassword}
-              className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-base font-bold text-white transition hover:opacity-90 disabled:opacity-50"
-              style={{ background: "#0B1220" }}
+              className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-base font-bold text-brand-ink transition hover:opacity-90 disabled:opacity-50"
+              style={{ background: "var(--brand)", boxShadow: "0 8px 20px rgba(255,106,43,0.35)" }}
             >
               {loading ? "Salvando…" : "Definir senha e entrar"}
               {!loading && <span aria-hidden>→</span>}
