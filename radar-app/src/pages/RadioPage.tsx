@@ -31,7 +31,8 @@ import { ClipeCitacao } from "@/components/ClipeCitacao";
 import { GravarAgora } from "@/components/GravarAgora";
 import { RadiosMonitoradas } from "@/components/RadiosMonitoradas";
 import { GaugeTema } from "@/components/GaugeTema";
-import { OndasEq } from "@/components/SinalVivo";
+import { OndasEq, LedVivo } from "@/components/SinalVivo";
+import { ContadorAnimado } from "@/components/ContadorAnimado";
 import { labelBairro } from "@/lib/format";
 import { corTema } from "@/lib/temaColors";
 
@@ -45,11 +46,14 @@ function labelTema(t: string | null): string {
   return TEMA_LABEL[t] ?? t.charAt(0).toUpperCase() + t.slice(1);
 }
 
+// Tom como TEXTO usa as tintas de sentimento (tokens por tema), nunca o par
+// de gráfico #EF4444/#22C55E — cor de série é preenchimento, não letra
+// (prévia aprovada em 04/08; a regra é a mesma dos @ da Análise por Perfil).
 const TOM_COR: Record<string, string> = {
-  critico: "#EF4444",
-  favoravel: "#16A34A",
-  neutro: "#94A3B8",
-  nao_classificado: "#64748B",
+  critico: "var(--sent-ink-neg)",
+  favoravel: "var(--sent-ink-pos)",
+  neutro: "var(--txt3)",
+  nao_classificado: "var(--txt3)",
 };
 const TOM_LABEL: Record<string, string> = {
   critico: "crítica à gestão",
@@ -63,11 +67,15 @@ const VOZ_LABEL: Record<string, string> = {
   entrevistado: "entrevistado", reportagem: "reportagem",
 };
 
-function Kpi({ label, valor, hint }: { label: string; valor: string; hint?: string }) {
+function Kpi({ label, valor, hint }: { label: string; valor: number; hint?: string }) {
   return (
-    <div className="rounded-xl border border-line bg-bg-1 p-4">
+    <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
       <div className="section-label">{label}</div>
-      <div className="mt-1 text-[32px] font-extrabold leading-none text-txt-1">{valor}</div>
+      {/* Número na display, contando na entrada — o mesmo par tamanho+rampa
+          dos contadores da Estação Meteorológica (prévia aprovada em 04/08). */}
+      <div className="tnum mt-1 font-display text-[36px] font-bold leading-none text-txt-1">
+        <ContadorAnimado valor={valor} />
+      </div>
       {hint && <div className="mt-1 text-xs text-txt-3">{hint}</div>}
     </div>
   );
@@ -84,7 +92,7 @@ function PautaItem({ p }: { p: RadioPauta }) {
             {p.interesse_gestao && (
               <span
                 className="rounded px-1.5 py-0.5 text-[12px] font-bold uppercase"
-                style={{ background: "rgba(249,115,22,0.14)", color: "#C2410C" }}
+                style={{ background: "rgba(255,106,43,0.14)", color: "var(--brand-text)" }}
               >
                 interessa à gestão
               </span>
@@ -109,7 +117,7 @@ function PautaItem({ p }: { p: RadioPauta }) {
               </span>
             )}
           </div>
-          <div className="mt-1 text-base font-bold text-txt-1">{p.assunto}</div>
+          <div className="mt-1 font-display text-[17px] font-bold text-txt-1">{p.assunto}</div>
         </div>
         {p.interesse_gestao && <AlertaRadio pauta={p} />}
       </div>
@@ -123,8 +131,10 @@ function PautaItem({ p }: { p: RadioPauta }) {
         </p>
       )}
 
+      {/* Fio laranja da prévia aprovada: a citação é o coração do card, e o
+          fio cinza a deixava com cara de nota de rodapé. */}
       {p.citacao && (
-        <div className="mt-2 border-l-2 pl-2.5" style={{ borderColor: "rgba(148,163,184,0.5)" }}>
+        <div className="mt-2 border-l-[3px] pl-3" style={{ borderColor: "var(--brand)" }}>
           <p className="text-sm italic leading-relaxed text-txt-2">“{p.citacao}”</p>
           {/* O áudio fica na MESMA caixa da citação, colado nela: é a frase
               que ele confere, e o aviso de "transcrição automática" ao lado é
@@ -149,17 +159,29 @@ function PautaItem({ p }: { p: RadioPauta }) {
 function CardEstacao({ r }: { r: EstacaoResumo }) {
   const [aberto, setAberto] = useState(true);
   const naoCaptada = r.capturas > 0 && r.falhas === r.capturas;
+  const captou = r.capturas > r.falhas;
 
   return (
-    <div className="rounded-xl border border-line bg-bg-1 p-4">
+    // Superfície de estação da prévia aprovada em 04/08: vidro quente com
+    // borda laranja (tokens --estacao-*, dois temas). Estação que só falhou
+    // leva a borda avermelhada — o card inteiro já avisa antes do texto.
+    <div
+      className="rounded-[20px] p-5"
+      style={{
+        background: "var(--estacao-bg)",
+        border: `1px solid ${naoCaptada ? "rgba(194,38,38,0.30)" : "var(--estacao-borda)"}`,
+        boxShadow: "var(--shadow-ambient)",
+      }}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="text-xl font-extrabold text-txt-1">{r.estacao}</div>
-            {/* Equalizador só quando a estação de fato gravou na janela — é a
-                distinção falha ≠ silêncio dos cards: estação que falhou não
-                pode parecer "no ar". */}
-            {r.capturas > r.falhas && <OndasEq ativo />}
+            {/* LED + equalizador só quando a estação de fato gravou na janela —
+                é a distinção falha ≠ silêncio dos cards: estação que falhou
+                não pode parecer "no ar". */}
+            <LedVivo ligado={captou} size={9} />
+            <div className="font-display text-xl font-extrabold text-txt-1">{r.estacao}</div>
+            {captou && <OndasEq ativo />}
           </div>
           <div className="text-sm text-txt-2">
             {r.programa ? `${r.programa} · ` : ""}
@@ -321,13 +343,13 @@ export function RadioPage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi
           label="Rádios captadas"
-          valor={String(estacoesCaptadas)}
+          valor={estacoesCaptadas}
           hint={`${estacoes.length} monitorada(s) na janela`}
         />
-        <Kpi label="Minutos transcritos" valor={String(Math.round(minutos))} hint="captação ao vivo" />
+        <Kpi label="Minutos transcritos" valor={Math.round(minutos)} hint="captação ao vivo" />
         <Kpi
           label="Assuntos de interesse"
-          valor={String(deInteresse.length)}
+          valor={deInteresse.length}
           hint={`de ${pautas.length} pauta(s) captada(s)`}
         />
         {/* Mesmo velocímetro do Termômetro por tema (Estação Meteorológica),
