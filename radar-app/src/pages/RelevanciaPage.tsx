@@ -56,7 +56,7 @@ function KeywordsSection() {
                 ? "bg-brand text-brand-ink"
                 : "border border-line bg-bg-2 text-txt-3 line-through"
             }`}
-            style={k.active ? { boxShadow: "0 6px 16px var(--brand-glow, rgba(255,106,43,0.22))" } : undefined}
+            style={k.active ? { boxShadow: "0 6px 16px var(--brand-glow, rgba(247,150,65,0.22))" } : undefined}
           >
             <button
               onClick={() => run(() => toggleKeyword(k.id, !k.active), k.active ? "✔ Desativada" : "✔ Ativada")}

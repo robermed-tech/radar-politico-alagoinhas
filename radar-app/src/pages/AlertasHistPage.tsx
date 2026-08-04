@@ -77,7 +77,7 @@ function LinhaEnvio({ e }: { e: EnvioManual }) {
         {e.tema && (
           <span
             className="rounded px-2 py-0.5 text-[12.5px] font-bold frase-cap"
-            style={{ background: "rgba(255,106,43,0.10)", color: "var(--brand-text)" }}
+            style={{ background: "rgba(247,150,65,0.10)", color: "var(--brand-text)" }}
           >
             {e.tema}
           </span>

@@ -12,7 +12,7 @@ import { FUNDO_ESCUTA, SOMBRA } from "./superficieRadio";
  * conic-gradient com sufixo de alpha (`${cor}55`), onde var() não resolve —
  * acompanhar o token à mão se ele mudar.
  */
-const COR_RADAR_ATIVO = "#FF6A2B";
+const COR_RADAR_ATIVO = "#F79641";
 const COR_RADAR_OCIOSO = "#F59E0B";
 
 /**

@@ -222,9 +222,9 @@ function TimelineClima({ themes, janela }: { themes: DailyTheme[]; janela: numbe
         data: perDia.map((d) => d.pctNeg),
         // Curva na MARCA (prévia 2 de 04/08): série única — a cor não está
         // comparando crítica com elogio, então não precisa do vermelho.
-        lineStyle: { color: "#FF6A2B", width: 2.5 },
-        itemStyle: { color: "#FF6A2B" },
-        areaStyle: glassArea("#FF6A2B"),
+        lineStyle: { color: "#F79641", width: 2.5 },
+        itemStyle: { color: "#F79641" },
+        areaStyle: glassArea("#F79641"),
       },
     ],
   };

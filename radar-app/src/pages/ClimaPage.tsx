@@ -530,7 +530,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           {/* Brilho quente do protótipo — atmosfera, atrás do conteúdo. */}
           <div
             className="pointer-events-none absolute -right-16 -top-28 h-[380px] w-[380px] rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(255,140,82,0.30) 0%, transparent 65%)" }}
+            style={{ background: "radial-gradient(circle, rgba(249,168,90,0.30) 0%, transparent 65%)" }}
           />
 
           {/* Foto de céu da condição em FADE (teste aprovado em 04/08): a foto
@@ -700,7 +700,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             // a troca de tom entre tema claro e escuro.
             background: "var(--brand)",
             minHeight: 320,
-            boxShadow: "0 18px 40px -14px rgba(255,106,43,0.5)",
+            boxShadow: "0 18px 40px -14px rgba(247,150,65,0.5)",
           }}
           aria-label="Ver as publicações analisadas no período"
         >

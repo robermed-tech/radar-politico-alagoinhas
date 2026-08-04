@@ -129,8 +129,8 @@ export function PedidosPage() {
                     className="grid w-full items-center gap-3 rounded-xl border px-3 py-1.5 text-left transition"
                     style={{
                       gridTemplateColumns: "150px 1fr 70px",
-                      borderColor: ativo ? "rgba(255,106,43,0.35)" : "transparent",
-                      background: ativo ? "rgba(255,106,43,0.10)" : undefined,
+                      borderColor: ativo ? "rgba(247,150,65,0.35)" : "transparent",
+                      background: ativo ? "rgba(247,150,65,0.10)" : undefined,
                     }}
                     title={`Ver só os pedidos de ${labelTema(tema)}`}
                   >

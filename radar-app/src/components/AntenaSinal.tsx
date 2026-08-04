@@ -94,7 +94,7 @@ function AntenaCaptando({ ativo, size = 210 }: { ativo: boolean; size?: number }
   // RadarStatusBar.tsx, onda 2 de 03/08): captando = laranja da marca,
   // sem captação = âmbar de atenção. As duas colunas são gêmeas; cor
   // diferente aqui quebraria o "igual" que o cliente pediu em 29/07.
-  const cor = ativo ? "#FF6A2B" : "#F59E0B";
+  const cor = ativo ? "#F79641" : "#F59E0B";
   // Origem do zoom no foco da antena, não no centro do quadro: a onda tem que
   // nascer da ponta da torre.
   const origem = `${(FOCO.x / 24) * 100}% ${(FOCO.y / 24) * 100}%`;
@@ -171,7 +171,7 @@ export function AntenaStatusColumn({
   legenda?: string;
   minHeight?: number;
 }) {
-  const cor = ativo ? "#FF6A2B" : "#F59E0B";
+  const cor = ativo ? "#F79641" : "#F59E0B";
   return (
     <div
       className="flex h-full flex-col items-center justify-center overflow-hidden rounded-[28px] px-6 py-8 text-center"
