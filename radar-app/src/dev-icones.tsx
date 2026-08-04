@@ -78,7 +78,7 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
           <div className="flex flex-col items-start">
             <div className="flex items-start">
               <span
-                className="tnum text-[120px] leading-[0.76] tracking-tighter text-txt-1 sm:text-[168px] lg:text-[208px]"
+                className="tnum text-[120px] leading-[0.76] tracking-[0.01em] text-txt-1 sm:text-[168px] lg:text-[208px]"
                 style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
               >
                 {iad}

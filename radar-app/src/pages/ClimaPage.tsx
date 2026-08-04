@@ -593,9 +593,12 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                   {/* Peso 600 desde a onda 2 (03/08): o 200 era da doutrina
                       fina de 11/07, e o briefing pede número em destaque com
                       legibilidade alta. Não vai a 800: neste corpo (até 208px)
-                      o traço da Space Grotesk 700 já fecha os vazados. */}
+                      o traço da Space Grotesk 700 já fecha os vazados.
+                      Tracking +0.01em (revisão de 04/08): o tracking-tighter
+                      (-0.05em) também era da era do peso 200 — com o traço
+                      600 os dígitos engordaram e "43"/"44" se tocavam. */}
                   <span
-                    className="tnum text-[120px] leading-[0.76] tracking-tighter text-txt-1 sm:text-[168px] lg:text-[208px]"
+                    className="tnum text-[120px] leading-[0.76] tracking-[0.01em] text-txt-1 sm:text-[168px] lg:text-[208px]"
                     style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
                   >
                     <ContadorAnimado valor={view.iad} />
