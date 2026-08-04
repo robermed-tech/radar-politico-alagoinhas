@@ -34,7 +34,6 @@ import { GaugeTema } from "@/components/GaugeTema";
 import { OndasEq, LedVivo } from "@/components/SinalVivo";
 import { ContadorAnimado } from "@/components/ContadorAnimado";
 import { labelBairro } from "@/lib/format";
-import { corTema } from "@/lib/temaColors";
 
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde", educacao: "Educação", obras: "Obras", seguranca: "Segurança",
@@ -97,11 +96,10 @@ function PautaItem({ p }: { p: RadioPauta }) {
                 interessa à gestão
               </span>
             )}
+            {/* Tema em chip NEUTRO (prévia da Rádio Escuta + "retire o
+                colorido" dos Pedidos): cor de tema não é semântica. */}
             {p.tema && (
-              <span
-                className="rounded px-1.5 py-0.5 text-[12px] font-bold"
-                style={{ background: `${corTema(p.tema)}22`, color: corTema(p.tema) }}
-              >
+              <span className="rounded border border-line bg-bg-2 px-1.5 py-0.5 text-[12px] font-bold text-txt-2">
                 {labelTema(p.tema)}
               </span>
             )}

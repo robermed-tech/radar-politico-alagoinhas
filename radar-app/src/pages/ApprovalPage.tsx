@@ -179,6 +179,40 @@ function ChartVertical({
   );
 }
 
+/**
+ * Velocímetro da APROVAÇÃO (prévia 2 de 04/08). Verde à DIREITA de propósito:
+ * mede % de aprovação, 100 é o melhor cenário — o espelho do GaugeTema (% de
+ * críticos, verde à esquerda). SVG puro; a agulha vibra por animação CSS de
+ * transform (compositor, sobrevive à aba oculta — regra do velocímetro) e o
+ * ângulo de repouso é aplicado por estilo no render, nunca por rAF.
+ */
+function GaugeAprovacao({ pct }: { pct: number }) {
+  const ang = (Math.max(0, Math.min(100, pct)) / 100) * 180 - 90;
+  return (
+    <svg width="210" height="106" viewBox="0 0 220 112" aria-hidden className="mt-2">
+      <style>{`
+        @keyframes aprov-vibrar { 0%, 100% { transform: rotate(-0.7deg); } 50% { transform: rotate(0.7deg); } }
+        .aprov-vibra { transform-origin: 110px 96px; animation: aprov-vibrar 1.1s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) { .aprov-vibra { animation: none; } }
+      `}</style>
+      <defs>
+        <linearGradient id="gaprov" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#C22626" />
+          <stop offset="50%" stopColor="#E8A400" />
+          <stop offset="100%" stopColor="#137A3C" />
+        </linearGradient>
+      </defs>
+      <path d="M20 96 A90 90 0 0 1 200 96" fill="none" stroke="url(#gaprov)" strokeWidth="12" strokeLinecap="round" />
+      <g style={{ transform: `rotate(${ang}deg)`, transformOrigin: "110px 96px" }}>
+        <g className="aprov-vibra">
+          <line x1="110" y1="96" x2="110" y2="28" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" />
+        </g>
+      </g>
+      <circle cx="110" cy="96" r="7" fill="currentColor" />
+    </svg>
+  );
+}
+
 function ChartLegend() {
   return (
     <div className="mt-2 flex items-center justify-center gap-5 text-[12px] text-txt-3">
@@ -425,16 +459,31 @@ export function ApprovalPage() {
       {/* Aviso de amostra fraca */}
       <AvisoAmostra ica={view.ica} posts={view.posts} />
 
-      {/* Header com índice + KPIs */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* IAD — número grande sem gauge */}
-        <div className="flex flex-col items-center justify-center rounded-xl border border-line bg-bg-1 p-4">
+      {/* Prévia 2 de 04/08: o velocímetro da aprovação e a linha do tempo se
+          FUNDEM num cartão único — quanto à esquerda, para onde vai à direita
+          (a mesma fusão do hero da Análise por Perfil). O gauge é local e tem
+          o verde à DIREITA de propósito: ele mede % de APROVAÇÃO (100 = ótimo),
+          ao contrário do GaugeTema, que mede % de críticos (0 = ótimo) — não
+          reaproveitar um no lugar do outro. */}
+      <div className="grid overflow-hidden rounded-[20px] border border-line bg-bg-1 lg:grid-cols-[minmax(300px,1fr)_2fr]" style={{ boxShadow: "var(--shadow-ambient)" }}>
+        <div className="flex flex-col items-center justify-center border-b border-line px-6 py-6 text-center lg:border-b-0 lg:border-r">
           <div className="section-label">Aprovação Digital</div>
-          <div className="mt-1 text-6xl font-extrabold leading-none" style={{ color: colorByIAD(view.iad) }}>
+          <GaugeAprovacao pct={view.iad} />
+          <div className="tnum font-display text-[44px] font-bold leading-none" style={{ color: colorByIAD(view.iad) }}>
             {view.iad}%
           </div>
-          <div className="mt-1 text-[12px] text-txt-3">IAD</div>
+          <div className="mt-1.5 max-w-[26ch] text-[13px] font-semibold text-txt-3">
+            dos comentários que tomam partido aprovam a gestão
+          </div>
         </div>
+        <div className="px-5 py-4">
+          <div className="section-label mb-1">Histórico do IAD · últimos 30 dias</div>
+          <ReactECharts option={histOption} style={{ height: 208 }} notMerge />
+        </div>
+      </div>
+
+      {/* KPIs restantes */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiStat
           label="Confiança"
           value={`${view.ica}%`}
@@ -498,11 +547,7 @@ export function ApprovalPage() {
         })()}
       </div>
 
-      {/* Histórico */}
-      <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-        <div className="mb-1 text-sm font-bold">Histórico do IAD (últimos 30 dias)</div>
-        <ReactECharts option={histOption} style={{ height: 220 }} notMerge />
-      </div>
+      {/* (O card "Histórico do IAD" foi fundido no hero acima — prévia 2.) */}
 
       {/* Drill-downs */}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -561,7 +606,7 @@ export function ApprovalPage() {
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-3 flex items-center gap-1.5 text-sm font-bold text-risk-low">
+          <div className="mb-3 flex items-center gap-1.5 font-display text-sm font-bold" style={{ color: "var(--success)" }}>
             <IconTrendUp size={16} />
             Vozes que aprovam (top 5 mais curtidos)
           </div>
@@ -577,7 +622,7 @@ export function ApprovalPage() {
           </div>
         </div>
         <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-          <div className="mb-3 flex items-center gap-1.5 text-sm font-bold text-risk-crit">
+          <div className="mb-3 flex items-center gap-1.5 font-display text-sm font-bold" style={{ color: "var(--danger)" }}>
             <IconTrendDown size={16} />
             Vozes que reprovam (top 5 mais curtidos)
           </div>

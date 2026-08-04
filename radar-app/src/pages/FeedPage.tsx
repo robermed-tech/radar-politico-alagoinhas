@@ -22,10 +22,12 @@ const FILTRO_LABELS: Record<Filtro, string> = {
   positivos: "Favoráveis",
 };
 
-const SENT_BORDER: Record<string, string> = {
-  positivo: "#22C55E",
-  negativo: "#EF4444",
-  neutro: "#64748B",
+// Espinha de sentimento (prévia 2 de 04/08): a mesma linguagem dos Alertas —
+// a cor mora num fio, não na borda do card. Tokens de tema, não par de gráfico.
+const SENT_ESPINHA: Record<string, string> = {
+  positivo: "var(--success)",
+  negativo: "var(--danger)",
+  neutro: "var(--txt3)",
 };
 
 function AvatarIcone({ categoria }: { categoria: string }) {
@@ -52,18 +54,19 @@ function tempoRelativo(dataStr: string): string {
 function PostCard({ p }: { p: Post }) {
   const resumo = resumoProsaPost(p) || p.queixa_dominante || p.elogio_dominante || "";
   const reacao = sentimentoReacao(p);
-  const borderColor = SENT_BORDER[reacao] ?? "#64748B";
   return (
-    <div
-      className="card-hover rounded-xl border border-line bg-bg-1 p-4"
-      style={{ borderLeftColor: borderColor, borderLeftWidth: 3 }}
-    >
+    <div className="card-hover relative rounded-xl border border-line bg-bg-1 p-4 pl-5">
+      <span
+        aria-hidden
+        className="absolute left-0 top-3 bottom-3 w-1 rounded-full"
+        style={{ background: SENT_ESPINHA[reacao] ?? "var(--txt3)", opacity: reacao === "neutro" ? 0.5 : 1 }}
+      />
       <div className="mb-2 flex items-center gap-2">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bg-2 text-txt-2">
           <AvatarIcone categoria={p.categoria} />
         </span>
         <div className="min-w-0">
-          <span className="text-sm font-bold text-txt-1">@{p.autor}</span>
+          <span className="font-display text-[15px] font-bold text-txt-1">@{p.autor}</span>
           {p.categoria && (
             <span className="ml-2 text-xs text-txt-3">{p.categoria}</span>
           )}
@@ -107,7 +110,7 @@ export function FeedPage() {
     retry: false,
   });
 
-  const posts = useMemo<Post[]>(() => {
+  const feed = useMemo(() => {
     const periodPosts = filtrarPorPeriodo(data?.data ?? [], periodo);
     // resumoProsaPost já monta um resumo só a partir dos percentuais de
     // comentários (sem precisar de queixa/elogio/resumo brutos) — sem isso
@@ -123,10 +126,14 @@ export function FeedPage() {
       const db = parseData(b.data_post)?.getTime() ?? 0;
       return db - da;
     });
-    if (filtro === "negativos") return all.filter((p) => sentimentoReacao(p) === "negativo");
-    if (filtro === "positivos") return all.filter((p) => sentimentoReacao(p) === "positivo");
-    return all;
+    const neg = all.filter((p) => sentimentoReacao(p) === "negativo");
+    const pos = all.filter((p) => sentimentoReacao(p) === "positivo");
+    const lista = filtro === "negativos" ? neg : filtro === "positivos" ? pos : all;
+    // Contagens nos botões de filtro (prévia 2 de 04/08): o leitor vê o
+    // tamanho de cada recorte antes de clicar.
+    return { lista, contagens: { todos: all.length, negativos: neg.length, positivos: pos.length } };
   }, [data, filtro, periodo]);
+  const { lista: posts, contagens } = feed;
 
   if (isLoading) return <div className="p-8 text-txt-2">Carregando feed…</div>;
 
@@ -163,7 +170,7 @@ export function FeedPage() {
                       : { fontWeight: 600 }
                   }
                 >
-                  {FILTRO_LABELS[f]}
+                  {FILTRO_LABELS[f]} · <span className="tnum">{contagens[f]}</span>
                 </button>
               );
             })}
@@ -176,7 +183,9 @@ export function FeedPage() {
           <p className="text-txt-2">Nenhuma publicação para este filtro.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        // Duas colunas em tela larga (prévia 2 de 04/08): metade da rolagem
+        // para a mesma leitura — no telão a coluna única deixava meia tela vazia.
+        <div className="grid gap-3 xl:grid-cols-2">
           {posts.map((p, i) => (
             <PostCard key={p.url || i} p={p} />
           ))}
