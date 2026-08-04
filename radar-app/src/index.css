@@ -7,14 +7,18 @@
 .theme-dark {
   color-scheme: dark;
 
-  /* Fundo de página — mesh de blobs radiais (índigo/teal/ciano) sobre base
-     quase-preta. Fixo no nível do app shell (body), não por página.
-     --wx-bg é composto a partir destes tokens para não duplicar mecanismo:
-     LoginPage e print.css continuam consumindo --wx-bg sem alteração. */
+  /* Fundo de página — mesh de blobs radiais sobre base quase-preta. Fixo no
+     nível do app shell (body), não por página. --wx-bg é composto a partir
+     destes tokens para não duplicar mecanismo: LoginPage e print.css
+     continuam consumindo --wx-bg sem alteração.
+     Revisão de 03/08: o mesh era índigo/teal/ciano (frio) e passou a ser da
+     mesma família quente da marca. O tema escuro não é uma paleta à parte —
+     é a mesma linguagem com menos luz; blobs frios sob um laranja quente
+     faziam o escuro parecer outro produto ao lado do claro. */
   --bg-page: #0A0A0A;
-  --mesh-1: radial-gradient(38% 45% at 15% 20%, rgba(99, 102, 241, 0.20) 0%, transparent 70%);
-  --mesh-2: radial-gradient(45% 50% at 85% 15%, rgba(20, 184, 166, 0.18) 0%, transparent 70%);
-  --mesh-3: radial-gradient(55% 60% at 50% 100%, rgba(56, 189, 248, 0.10) 0%, transparent 70%);
+  --mesh-1: radial-gradient(38% 45% at 15% 20%, rgba(255, 140, 82, 0.16) 0%, transparent 70%);
+  --mesh-2: radial-gradient(45% 50% at 85% 15%, rgba(255, 106, 43, 0.13) 0%, transparent 70%);
+  --mesh-3: radial-gradient(55% 60% at 50% 100%, rgba(224, 80, 26, 0.10) 0%, transparent 70%);
   --wx-bg: var(--mesh-1), var(--mesh-2), var(--mesh-3), var(--bg-page);
 
   /* Cards — vidro fosco flutuando sobre o mesh. */
@@ -29,9 +33,12 @@
   --hairline: rgba(255, 255, 255, 0.14); /* highlight superior do vidro */
   --shadow-ambient: 0 18px 48px -18px rgba(0, 0, 0, 0.66), 0 2px 8px -2px rgba(0, 0, 0, 0.5);
   --shadow-raised: 0 28px 64px -24px rgba(0, 0, 0, 0.72), 0 4px 14px -4px rgba(0, 0, 0, 0.55);
-  --txt1: #F2F6FD;
-  --txt2: #AEBED6;
-  --txt3: #7C8BA6;
+  /* Tinta neutra QUENTE (03/08). Era azulada (#F2F6FD/#AEBED6/#7C8BA6), o que
+     puxava o escuro para o azul justamente onde o claro é creme. Medido sobre
+     o vidro do card (~#141414): 16,34:1 / 9,24:1 / 5,89:1. */
+  --txt1: #F5F1E8;
+  --txt2: #BDB7AC;
+  --txt3: #979187;
   --glass-btn: rgba(255, 255, 255, 0.06);
   --glass-btn-border: rgba(255, 255, 255, 0.12);
   --glass-btn-hover: rgba(255, 255, 255, 0.12);
@@ -44,11 +51,21 @@
      telas tinha que reimplementar um degradê à parte para disfarçar a
      troca — foi assim que o PeriodoFilter e o "Mais citados" do Feed
      acabaram em tons visivelmente diferentes um do outro. Com um hex
-     único, todo botão de marca usa esta variável direto, sem degradê. */
-  --brand: #F79641;
+     único, todo botão de marca usa esta variável direto, sem degradê.
+     03/08: o tom passou de #F79641 para #FF6A2B (protótipo aprovado). A regra
+     do hex único continua valendo — o que mudou foi o hex, não o mecanismo. */
+  --brand: #FF6A2B;
   --accent: var(--brand);
-  --brand-glow: rgba(247, 150, 65, 0.34);
-  --gradient-hero: linear-gradient(90deg, #FBBF24, #FB923C, #F87171);
+  --brand-glow: rgba(255, 106, 43, 0.34);
+  --gradient-hero: linear-gradient(90deg, #FFB067, #FF6A2B, #E0501A);
+
+  /* Marca como TEXTO é um token separado do preenchimento, e precisa ser
+     (03/08). --brand é escolhido para receber tinta escura por cima; usado
+     como cor de letra sobre o fundo da página ele mede 2,56:1 no tema claro
+     e reprova o AA. Aqui no escuro o próprio laranja já passa (6,45:1), mas
+     o token existe nos dois temas para `.text-brand` resolver sozinho — ver
+     a regra de .text-brand mais abaixo. */
+  --brand-text: #FF9A6B;
 
   /* Semânticas genéricas de UI (distintas do sistema de clima/risco). */
   --success: #4ADE80;
@@ -78,55 +95,73 @@
 .theme-light {
   color-scheme: light;
 
-  /* Branco quente, nunca #FFFFFF puro — um branco absoluto ofusca numa tela
+  /* Off-white QUENTE, nunca #FFFFFF puro — um branco absoluto ofusca numa tela
      cheia de números e fica cansativo de encarar por muito tempo. Mesh em
-     tons de âmbar/laranja (mesma família da marca) substitui o antigo
-     índigo/teal/ciano — lê como um "nascer do sol" sutil atrás do vidro dos
-     cards, coerente com a metáfora de clima do produto. Opacidades baixas de
-     propósito: o fundo é atmosfera, não pode competir com o conteúdo. */
-  --bg-page: #FFF9F2;
-  --mesh-1: radial-gradient(42% 48% at 18% 14%, rgba(253, 186, 116, 0.24) 0%, transparent 72%);
-  --mesh-2: radial-gradient(48% 52% at 86% 10%, rgba(251, 146, 60, 0.16) 0%, transparent 70%);
-  --mesh-3: radial-gradient(60% 55% at 50% 106%, rgba(249, 115, 22, 0.10) 0%, transparent 75%);
+     tons de âmbar/laranja (mesma família da marca) — lê como um "nascer do
+     sol" sutil atrás do vidro dos cards, coerente com a metáfora de clima do
+     produto. Opacidades baixas de propósito: o fundo é atmosfera, não pode
+     competir com o conteúdo.
+     03/08: o fundo desceu de #FFF9F2 (branco com um toque de creme) para
+     #F6F2EA (creme de verdade), o tom do protótipo. O card continua um degrau
+     mais claro que a página — é essa diferença, e não a borda, que faz o vidro
+     existir; se os dois forem creme igual, o card some. */
+  --bg-page: #F6F2EA;
+  --mesh-1: radial-gradient(42% 48% at 18% 14%, rgba(255, 140, 82, 0.20) 0%, transparent 72%);
+  --mesh-2: radial-gradient(48% 52% at 86% 10%, rgba(255, 106, 43, 0.14) 0%, transparent 70%);
+  --mesh-3: radial-gradient(60% 55% at 50% 106%, rgba(224, 80, 26, 0.09) 0%, transparent 75%);
   --wx-bg: var(--mesh-1), var(--mesh-2), var(--mesh-3), var(--bg-page);
 
-  --bg-card: rgba(255, 255, 255, 0.65);
-  --border-card: rgba(229, 229, 229, 0.8);
+  --bg-card: rgba(255, 253, 249, 0.72);
+  --border-card: rgba(58, 61, 66, 0.10);
   --g1: var(--bg-card);
   --g2: rgba(255, 255, 255, 0.55);
   --g3: rgba(15, 23, 42, 0.05);
   --g-raised: rgba(255, 255, 255, 0.88);
   --line: var(--border-card);
-  --line-strong: rgba(15, 23, 42, 0.20);
+  --line-strong: rgba(58, 61, 66, 0.22);
   --hairline: rgba(255, 255, 255, 0.9); /* highlight superior do vidro */
-  --shadow-ambient: 0 14px 40px -18px rgba(20, 40, 80, 0.24), 0 2px 6px -2px rgba(20, 40, 80, 0.10);
-  --shadow-raised: 0 24px 56px -22px rgba(20, 40, 80, 0.30), 0 4px 12px -4px rgba(20, 40, 80, 0.14);
-  --txt1: #0b1220;
-  --txt2: #3f4b5e;
-  --txt3: #586577;
-  --glass-btn: rgba(255, 255, 255, 0.72);
-  --glass-btn-border: rgba(15, 23, 42, 0.10);
-  --glass-btn-hover: rgba(255, 255, 255, 0.95);
+  --shadow-ambient: 0 14px 40px -18px rgba(58, 61, 66, 0.20), 0 2px 6px -2px rgba(58, 61, 66, 0.09);
+  --shadow-raised: 0 24px 56px -22px rgba(58, 61, 66, 0.26), 0 4px 12px -4px rgba(58, 61, 66, 0.13);
+  /* Tinta na família do CHUMBO do briefing (cinza quente), não mais o azul
+     ardósia (#0b1220/#3f4b5e/#586577). Medido sobre a página (#F6F2EA) e
+     sobre o vidro do card (~#FCFAF6): 13,21/14,15 — 7,36/7,88 — 5,65/6,05.
+     Nenhum deles é o #8b8579 do protótipo, que mede 3,28:1 e reprova o AA
+     justamente nos rótulos de 11px em que ele estava aplicado. */
+  --txt1: #26282D;
+  --txt2: #4B4F57;
+  --txt3: #5C6068;
+  --glass-btn: rgba(255, 253, 249, 0.78);
+  --glass-btn-border: rgba(58, 61, 66, 0.12);
+  --glass-btn-hover: rgba(255, 255, 255, 0.96);
 
-  /* Mesmo hex do tema escuro (#F79641) — ver o comentário da marca no bloco
+  /* Mesmo hex do tema escuro (#FF6A2B) — ver o comentário da marca no bloco
      .theme-dark acima. Só o glow muda de intensidade entre os temas, nunca
      a cor do botão em si. */
-  --brand: #F79641;
+  --brand: #FF6A2B;
   --accent: var(--brand);
-  --brand-glow: rgba(247, 150, 65, 0.22);
-  --gradient-hero: linear-gradient(90deg, #FBBF24, #F97316, #E11D48);
+  --brand-glow: rgba(255, 106, 43, 0.22);
+  --gradient-hero: linear-gradient(90deg, #E0501A, #C2410C, #9A3412);
 
-  --success: #16A34A;
-  --warning: #CA8A04;
-  --danger: #DC2626;
+  /* Marca como TEXTO no tema claro: laranja queimado (4,64:1 na página,
+     4,97:1 no card). O --brand chapado mediria 2,56:1 aqui. */
+  --brand-text: #C2410C;
+
+  /* Verde e vermelho continuam sendo APENAS sentimento (a paleta do briefing
+     — laranja/chumbo/off-white — é a da interface, não a do dado). Os tons
+     desceram um degrau porque o fundo creme é mais escuro que o branco
+     anterior: #16A34A caía para 2,95:1 e #DC2626 para 4,33:1 sobre ele.
+     Medido agora: 4,85 — 5,04 — 5,23 (página) e um pouco mais no card. */
+  --success: #137A3C;
+  --warning: #96590A;
+  --danger: #C22626;
 
   /* Violeta acessível no tema claro (violet-700 ~6:1) */
   --violet: #6d28d9;
   --violet-soft: rgba(109, 40, 217, 0.07);
   --violet-border: rgba(109, 40, 217, 0.28);
 
-  --quote-bg: rgba(15, 23, 42, 0.03);
-  --quote-border: rgba(15, 23, 42, 0.08);
+  --quote-bg: rgba(58, 61, 66, 0.035);
+  --quote-border: rgba(58, 61, 66, 0.10);
 
   /* Tintas de sentimento para TEXTO no tema claro. Verde-700 e vermelho-700,
      não o par de gráfico: medido sobre o vidro do box (#FFFCF9), #22C55E dá
@@ -145,7 +180,7 @@
     --bg-card: #171717;
   }
   .theme-light {
-    --bg-card: #FFFFFF;
+    --bg-card: #FFFDF9;
   }
 }
 
@@ -174,6 +209,24 @@ body {
    já causou um bug (a primeira versão do box "Publicações analisadas" saiu
    preta com texto em peso regular, porque font-bold apontava para 400). */
 
+/* Título de página, título de card e número em destaque vão para a DISPLAY
+   (Space Grotesk); o texto corrido fica na Inter. A regra é aplicada aqui, no
+   elemento, e não classe a classe nos componentes: os <h1> das páginas já são
+   padronizados (34px/800 desde 28/07) e passariam a divergir um do outro na
+   primeira tela que alguém esquecesse de marcar. `h3` fica de fora de
+   propósito — em vários cards ele é linha de conteúdo, não título. */
+h1,
+h2,
+.section-label,
+.metric-hero {
+  font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+  /* A Space Grotesk vai até 700, e os <h1> do painel são `font-extrabold`
+     (800). Sem esta linha o navegador FABRICA o 800 engordando o traço do
+     700, e o título grande sai borrado nas bordas. Com ela, o 800 cai no 700
+     real da fonte. */
+  font-synthesis-weight: none;
+}
+
 /* Exceção declarada à diretriz acima (pedido de 27/07): o box "Publicações
    analisadas" é o único ponto do painel em que TODA fonte é bold, nunca
    regular. Precisa morar aqui porque o override global usa !important e
@@ -195,7 +248,9 @@ button:disabled {
   cursor: not-allowed;
 }
 :focus-visible {
-  outline: 2px solid #f97316;
+  /* var(--brand), nunca um laranja escrito à mão: era #f97316 aqui, que virou
+     uma terceira fonte de laranja no app depois da unificação de 31/07. */
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -269,18 +324,22 @@ button:disabled {
   box-shadow: var(--shadow-raised), inset 0 1px 0 var(--hairline) !important;
 }
 
-/* ── MÉTRICA HERO: hierarquia por TAMANHO + COR, peso permanece leve ──
-   Doutrina fina preservada (weight 300). O destaque vem do tamanho fluido
-   e do gradiente de accent, nunca do peso. */
+/* ── MÉTRICA HERO: tamanho grande E peso, na display ──
+   O weight 300 daqui era da doutrina fina de 11/07, revogada em 27/07 (o
+   cliente pediu letra maior e mais pesada) e revogada de novo pelo briefing
+   de 03/08 ("números em destaque, tamanho grande, legibilidade alta", para
+   quem lê o painel de relance). Peso 700 na Space Grotesk. */
 .metric-hero {
   font-size: clamp(2.4rem, 5.5vw, 3.6rem);
-  font-weight: 300;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
+/* Degradê só na direção escura do laranja: sobre o creme, o stop claro
+   (#FDBA74) media 1,9:1 e o número hero ficava ilegível na ponta de cima. */
 .metric-accent {
-  background: linear-gradient(180deg, #FDBA74 0%, #F97316 62%, #EA580C 100%);
+  background: linear-gradient(180deg, #E0501A 0%, #C2410C 62%, #9A3412 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -309,6 +368,19 @@ button:disabled {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--txt3);
+}
+
+/* Marca como cor de LETRA resolve por --brand-text, não pelo --brand chapado.
+   O `text-brand` do Tailwind aponta para o mesmo token do `bg-brand`, e esse
+   token é escolhido para receber tinta escura POR CIMA — como cor de letra
+   sobre o creme da página ele mede 2,56:1. Em vez de trocar a classe nos ~10
+   pontos que a usam (link de "ver mais", rótulo de seção, ícone), o ajuste
+   fica aqui: a utilidade continua se chamando text-brand e passa a resolver
+   por tema. Declarada depois de @tailwind utilities, então vence por ordem;
+   `hover:text-brand` tem pseudo-classe e continua ganhando desta, que é o
+   comportamento desejado (o hover pode acender no laranja cheio). */
+.text-brand {
+  color: var(--brand-text);
 }
 
 /* Glow de accent para elementos hero (halo quente sob o vidro). */
