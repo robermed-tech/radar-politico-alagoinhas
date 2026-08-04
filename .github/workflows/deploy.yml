@@ -42,22 +42,32 @@ jobs:
       - name: Copiar index.html → 200.html (SPA routing no Surge)
         run: cp radar-app/dist/index.html radar-app/dist/200.html
 
-      - name: Deploy para Surge.sh (radar-politico-alg.surge.sh)
-        run: npx surge --project radar-app/dist --domain radar-politico-alg.surge.sh
+      # Endereço ÚNICO desde 04/08/26 (pedido do Robério): o painel vive só em
+      # radar-politico.surge.sh. "radar-politico" é o nome PROVISÓRIO do SaaS —
+      # quando houver nome definitivo, basta trocar o --domain abaixo e mover
+      # este domínio para a lista de redirecionadores, repetindo a transição.
+      - name: Deploy para Surge.sh (radar-politico.surge.sh)
+        run: npx surge --project radar-app/dist --domain radar-politico.surge.sh
         env:
           SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
           SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
 
-      # radar-comando.surge.sh é o domínio documentado no CLAUDE.md como
-      # "Frontend admin" oficial, mas até aqui só era atualizado manualmente
-      # via deploy.bat na máquina do Robério — o que deixava esse domínio
-      # desatualizado sempre que alguém esquecia de rodar o script depois de
-      # um merge. Publicando os dois a partir do MESMO build garante que
-      # qualquer usuário, em qualquer um dos dois domínios, sempre veja a
-      # versão mais recente do main. deploy.bat continua funcionando como
-      # fallback manual, mas deixa de ser necessário no fluxo normal.
-      - name: Deploy para Surge.sh (radar-comando.surge.sh)
-        run: npx surge --project radar-app/dist --domain radar-comando.surge.sh
+      # Transição: os dois endereços antigos (radar-comando e
+      # radar-politico-alg) recebem uma página de REDIRECIONAMENTO que preserva
+      # rota e parâmetros — quem tem favorito antigo cai no endereço novo em
+      # vez de num "project not found". Estes três steps podem ser removidos
+      # quando ninguém mais chegar pelos endereços antigos.
+      - name: Preparar página de redirecionamento (SPA fallback)
+        run: cp radar-app/redirect-legado/index.html radar-app/redirect-legado/200.html
+
+      - name: Redirecionador em radar-politico-alg.surge.sh
+        run: npx surge --project radar-app/redirect-legado --domain radar-politico-alg.surge.sh
+        env:
+          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+
+      - name: Redirecionador em radar-comando.surge.sh
+        run: npx surge --project radar-app/redirect-legado --domain radar-comando.surge.sh
         env:
           SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
           SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
