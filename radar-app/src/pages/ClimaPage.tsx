@@ -496,10 +496,12 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
         {/* Card do clima inteiro clicável: leva direto à curadoria de
             comentários que explica o clima ("O que o povo diz"). */}
         {/* Hero na linguagem aprovada em 03/08: card claro de vidro (tokens,
-            acompanha o tema) com brilho quente no canto — substitui a foto de
-            céu com véu escuro e o texto branco fixo. Desde 04/08 o desenho do
-            clima é o ClimaIconeAnimado (estilo soft do vídeo de referência do
-            cliente), no lugar da cena em CSS do CeuAnimado. */}
+            acompanha o tema) com brilho quente no canto — o fundo INTEIRO de
+            foto com véu escuro e texto branco fixo não existe mais. Desde
+            04/08 o desenho do clima é o ClimaIconeAnimado (estilo soft do
+            vídeo de referência do cliente), no lugar da cena em CSS do
+            CeuAnimado, e a foto de céu voltou de outro jeito: como FADE
+            lateral esquerdo (camada mascarada abaixo), aprovado em prévia. */}
         <div
           role="button"
           tabIndex={0}
@@ -515,9 +517,33 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             style={{ background: "radial-gradient(circle, rgba(255,140,82,0.30) 0%, transparent 65%)" }}
           />
 
+          {/* Foto de céu da condição em FADE (teste aprovado em 04/08): a foto
+              (wx.image, que estava órfã desde o redesign) ocupa a parte
+              esquerda do card e desvanece para a direita via mask-image,
+              revelando o fundo do card no tema claro ou escuro. Nas fotos
+              ESCURAS (wx.heroDark: chuva/tempestade/severíssimo) entra um véu
+              escuro leve dentro da própria camada mascarada, o assento do
+              texto claro por cima. */}
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0"
+            style={{
+              width: "58%",
+              background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.22), rgba(10,12,18,0.22)), " : ""}url("${wx.image}") left center / cover no-repeat`,
+              WebkitMaskImage: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 100%)",
+              maskImage: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 100%)",
+            }}
+          />
+
           <div className="relative z-10 flex h-full flex-col">
             <div className="flex items-start justify-between gap-2">
-              <div className="section-label">Como a população vê a gestão</div>
+              {/* Sobre foto escura o texto da coluna esquerda clareia (cor
+                  fixa, não token): text-txt-1 é quase preto no tema claro e
+                  sumia na foto de tempestade — era o defeito apontado na
+                  prévia. Ícone e frase ficam na zona já transparente e seguem
+                  nos tokens. */}
+              <div className="section-label" style={wx.heroDark ? { color: "rgba(247,244,237,0.92)" } : undefined}>
+                Como a população vê a gestão
+              </div>
               <span
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13.5px] font-bold text-white opacity-90 transition group-hover:opacity-100"
                 style={{ background: FUNDO_ESCUTA }}
@@ -547,11 +573,14 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                       o traço da Space Grotesk 700 já fecha os vazados. */}
                   <span
                     className="tnum text-[120px] leading-[0.76] tracking-tighter text-txt-1 sm:text-[168px] lg:text-[208px]"
-                    style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                    style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: wx.heroDark ? "#F7F4ED" : undefined }}
                   >
                     <ContadorAnimado valor={view.iad} />
                   </span>
-                  <span className="mt-3 text-5xl font-medium text-txt-2 sm:text-6xl lg:text-7xl">
+                  <span
+                    className="mt-3 text-5xl font-medium text-txt-2 sm:text-6xl lg:text-7xl"
+                    style={wx.heroDark ? { color: "rgba(247,244,237,0.85)" } : undefined}
+                  >
                     %
                   </span>
                 </div>
@@ -560,7 +589,10 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                     número — o rótulo qualitativo ao lado (wx.sub) já varia
                     por faixa, então essa linha é a única explicação fixa do
                     que "44%" quer dizer. */}
-                <p className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]">
+                <p
+                  className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]"
+                  style={wx.heroDark ? { color: "rgba(247,244,237,0.85)" } : undefined}
+                >
                   Aprovação da gestão nos comentários analisados no período
                 </p>
               </div>
