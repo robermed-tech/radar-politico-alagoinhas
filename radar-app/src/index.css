@@ -89,6 +89,13 @@
   --sent-ink-pos: #4ADE80;
   --sent-ink-neg: #F87171;
   --sent-ink-link: #FB923C;
+
+  /* Céu animado do hero do Clima (CeuAnimado.tsx): nuvens e gota por tema.
+     No escuro a nuvem branca viraria um holofote; desce para o creme apagado. */
+  --ceu-nuvem: #BDB7AC;
+  --ceu-nuvem-2: #979187;
+  --ceu-nuvem-escura: #3A3835;
+  --ceu-gota: rgba(189, 183, 172, 0.75);
 }
 
 /* ── TEMA CLARO ── */
@@ -170,6 +177,13 @@
   --sent-ink-pos: #15803D;
   --sent-ink-neg: #B91C1C;
   --sent-ink-link: #C2410C;
+
+  /* Céu animado no tema claro: nuvem branca com sombra creme, como no
+     protótipo aprovado. */
+  --ceu-nuvem: #FFFFFF;
+  --ceu-nuvem-2: #EDE7DA;
+  --ceu-nuvem-escura: #55534E;
+  --ceu-gota: rgba(92, 96, 104, 0.65);
 }
 
 /* Fallback sólido para navegadores sem backdrop-filter (Firefox < 103):
@@ -424,33 +438,9 @@ button:disabled {
   .reveal { opacity: 1; animation: none; }
 }
 
-/* ── Animação de chuva no hero do Clima ── */
-.rain-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-.raindrop {
-  position: absolute;
-  top: -12%;
-  width: 2px;
-  height: 16px;
-  border-radius: 1px;
-  background: linear-gradient(transparent, rgba(255, 255, 255, 0.5));
-  animation-name: rain-fall;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  will-change: transform;
-}
-@keyframes rain-fall {
-  0% { transform: translate3d(0, -20px, 0); opacity: 0; }
-  20% { opacity: 1; }
-  100% { transform: translate3d(14px, 300px, 0); opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .raindrop { animation: none; opacity: 0.18; transform: translate3d(0, 140px, 0); }
-}
+/* (A antiga camada de chuva de tela cheia do hero — .rain-layer/.raindrop —
+   saiu junto com a foto de céu: a chuva agora cai da nuvem do CeuAnimado,
+   dentro da própria cena.) */
 
 /* ── Animações da onda 2 do redesign (03/08) ───────────────────────────────
    As três vivem aqui, e não em <style> dentro dos componentes, porque cada

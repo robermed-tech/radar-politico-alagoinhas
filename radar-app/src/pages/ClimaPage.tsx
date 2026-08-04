@@ -13,12 +13,11 @@ import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilt
 // de ~1 MB do ECharts), então não há mais motivo para carregá-lo em lazy.
 import { GaugeTema } from "@/components/GaugeTema";
 import { ContadorAnimado } from "@/components/ContadorAnimado";
-
-// Paleta neutra "chumbo e branco" da reunião de 24/07: enquanto o produto não
-// tem identidade visual fechada, tudo que não tem cor semântica definida usa
-// grafite com texto branco.
-const CHUMBO = "#334155";
-const CHUMBO_ESCURO = "#1E293B";
+import { CeuAnimado } from "@/components/CeuAnimado";
+// Chumbo QUENTE da linguagem aprovada em 03/08 — a mesma superfície dos cards
+// escuros (radar, antena, Rádio Escuta), importada para chip e botão neutro.
+// Substitui os antigos CHUMBO/#334155 e CHUMBO_ESCURO/#1E293B (slate azulado).
+import { FUNDO_ESCUTA } from "@/components/superficieRadio";
 
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde",
@@ -215,7 +214,7 @@ function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number 
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span
           className="section-label rounded-full px-3 py-1"
-          style={{ background: CHUMBO, color: "#FFFFFF" }}
+          style={{ background: FUNDO_ESCUTA, color: "#FFFFFF" }}
         >
           {periodoClima(dias)}
         </span>
@@ -276,15 +275,15 @@ function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]
               <span className="min-w-0 flex-1 font-semibold text-txt-1">{tema}</span>
               {cont && (cont.neg > 0 || cont.pos > 0) && (
                 <span className="tnum flex shrink-0 items-center gap-2 text-[13px] font-bold">
-                  <span style={{ color: "#EF4444" }}>{cont.neg} neg</span>
-                  <span style={{ color: "#22C55E" }}>{cont.pos} pos</span>
+                  <span style={{ color: "var(--sent-ink-neg)" }}>{cont.neg} neg</span>
+                  <span style={{ color: "var(--sent-ink-pos)" }}>{cont.pos} pos</span>
                 </span>
               )}
               {a.tema_categoria && (
                 <button
                   onClick={() => setAberto({ tema, categoria: a.tema_categoria! })}
                   className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition hover:opacity-90"
-                  style={{ background: CHUMBO }}
+                  style={{ background: FUNDO_ESCUTA }}
                 >
                   Ver comentários
                 </button>
@@ -346,11 +345,15 @@ function RecomendacoesPeriodo({
       </p>
       <div className="space-y-3">
         {recomendacoes.slice(0, 3).map((r, i) => (
-          <div key={i} className="rounded-lg border border-line bg-bg-2 p-4">
-            {r.canal && (
-              <div className="mb-1 text-sm font-extrabold text-txt-1">{fraseCapitalizada(r.canal)}</div>
-            )}
-            <p className="text-sm text-txt-2">{limparTravessoes(r.mensagem)}</p>
+          <div key={i} className="flex gap-3 rounded-lg border border-line bg-bg-2 p-4">
+            {/* Marcador do protótipo aprovado: seta na cor de texto da marca. */}
+            <span aria-hidden className="shrink-0 font-extrabold" style={{ color: "var(--brand-text)" }}>→</span>
+            <div className="min-w-0">
+              {r.canal && (
+                <div className="mb-1 text-sm font-extrabold text-txt-1">{fraseCapitalizada(r.canal)}</div>
+              )}
+              <p className="text-sm text-txt-2">{limparTravessoes(r.mensagem)}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -370,9 +373,16 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
           const nivel = frenteNivel(f);
           const cor = NIVEL_COLOR[nivel];
           return (
-            <div key={f.tema} className="flex items-center justify-between py-1 text-sm">
-              <span className="flex items-center gap-2 text-txt-1">
-                <span className="text-txt-3"><WeatherIcon cls={FRENTE_TO_CLS[f.icone] ?? "cloudy"} size={18} strokeWidth={1.6} /></span>
+            <div key={f.tema} className="flex items-center justify-between py-1.5 text-sm">
+              <span className="flex items-center gap-2.5 text-txt-1">
+                {/* Tile do protótipo aprovado: o ícone de clima da frente num
+                    quadradinho laranja translúcido, em vez de solto no cinza. */}
+                <span
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand/10"
+                  style={{ color: "var(--brand-text)" }}
+                >
+                  <WeatherIcon cls={FRENTE_TO_CLS[f.icone] ?? "cloudy"} size={17} strokeWidth={1.7} />
+                </span>
                 {f.tema}
               </span>
               <span
@@ -469,9 +479,6 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
   // viva onde ela é o dado certo (frentes de instabilidade, mais abaixo).
   const wx = view.wx;
   const amostra = forcaAmostra(view.comentarios);
-  const txt1 = "#FFFFFF";
-  const txt2 = "rgba(255,255,255,0.86)";
-  const heroBg = `linear-gradient(105deg, rgba(8,11,18,0.72) 0%, rgba(8,11,18,0.32) 50%, rgba(8,11,18,0.58) 100%), url("${wx.image}") center/cover no-repeat, ${wx.bg}`;
 
   return (
     <div className="space-y-4 p-5">
@@ -488,39 +495,32 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
       <div className="grid gap-4 lg:grid-cols-6">
         {/* Card do clima inteiro clicável: leva direto à curadoria de
             comentários que explica o clima ("O que o povo diz"). */}
+        {/* Hero na linguagem aprovada em 03/08: card claro de vidro (tokens,
+            acompanha o tema) com brilho quente no canto e o céu desenhado em
+            CSS (CeuAnimado) — substitui a foto de céu com véu escuro e o
+            texto branco fixo. A camada de chuva de tela cheia saiu junto: a
+            chuva cai da nuvem, dentro da cena. */}
         <div
           role="button"
           tabIndex={0}
           onClick={() => onVerFeed?.()}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onVerFeed?.(); }}
-          className="reveal reveal-2 group relative cursor-pointer overflow-hidden rounded-[28px] p-7 transition-transform duration-200 hover:-translate-y-0.5 lg:col-span-3"
-          style={{ background: heroBg, minHeight: 320 }}
+          className="reveal reveal-2 card-hover group relative cursor-pointer overflow-hidden rounded-[28px] border border-line bg-bg-1 p-7 lg:col-span-3"
+          style={{ minHeight: 320 }}
           aria-label="Ver os comentários que explicam este clima"
         >
-          {(wx.cls === "rain" || wx.cls === "storm" || wx.cls === "severe") && (
-            <div className="rain-layer">
-              {Array.from({ length: 24 }).map((_, i) => (
-                <span
-                  key={i}
-                  className="raindrop"
-                  style={{
-                    left: `${(i * 4.3) % 100}%`,
-                    animationDuration: `${0.55 + (i % 5) * 0.12}s`,
-                    animationDelay: `${-(i % 7) * 0.2}s`,
-                  }}
-                />
-              ))}
-            </div>
-          )}
+          {/* Brilho quente do protótipo — atmosfera, atrás do conteúdo. */}
+          <div
+            className="pointer-events-none absolute -right-16 -top-28 h-[380px] w-[380px] rounded-full"
+            style={{ background: "radial-gradient(circle, rgba(255,140,82,0.30) 0%, transparent 65%)" }}
+          />
 
           <div className="relative z-10 flex h-full flex-col">
             <div className="flex items-start justify-between gap-2">
-              <div className="text-[14px] font-bold tracking-[0.08em]" style={{ color: txt2 }}>
-                Como a população vê a gestão
-              </div>
+              <div className="section-label">Como a população vê a gestão</div>
               <span
-                className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[13px] font-bold opacity-80 transition group-hover:opacity-100"
-                style={{ background: "rgba(255,255,255,0.16)", color: "#FFFFFF", backdropFilter: "blur(6px)" }}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13.5px] font-bold text-white opacity-90 transition group-hover:opacity-100"
+                style={{ background: FUNDO_ESCUTA }}
               >
                 Ver o que o povo diz
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -546,15 +546,12 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                       legibilidade alta. Não vai a 800: neste corpo (até 208px)
                       o traço da Space Grotesk 700 já fecha os vazados. */}
                   <span
-                    className="tnum text-[120px] leading-[0.76] tracking-tighter sm:text-[168px] lg:text-[208px]"
-                    style={{ color: txt1, fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                    className="tnum text-[120px] leading-[0.76] tracking-tighter text-txt-1 sm:text-[168px] lg:text-[208px]"
+                    style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
                   >
                     <ContadorAnimado valor={view.iad} />
                   </span>
-                  <span
-                    className="mt-3 text-5xl sm:text-6xl lg:text-7xl"
-                    style={{ color: txt2, fontWeight: 300 }}
-                  >
+                  <span className="mt-3 text-5xl font-medium text-txt-2 sm:text-6xl lg:text-7xl">
                     %
                   </span>
                 </div>
@@ -563,24 +560,18 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                     número — o rótulo qualitativo ao lado (wx.sub) já varia
                     por faixa, então essa linha é a única explicação fixa do
                     que "44%" quer dizer. */}
-                <p
-                  className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug sm:text-[17px]"
-                  style={{ color: txt2 }}
-                >
+                <p className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]">
                   Aprovação da gestão nos comentários analisados no período
                 </p>
               </div>
 
               <div className="flex min-w-0 flex-1 items-center gap-4">
-                {/* `wx-flutuar`: o ícone do clima levita devagar (onda 2 de
-                    03/08, o "sol que flutua" do protótipo). Vale para toda
-                    condição — a chuva já tem a própria camada de gotas. */}
-                <div className="wx-flutuar shrink-0" style={{ filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.22))" }}>
-                  <WeatherIcon cls={wx.cls} size={72} color="#FFFFFF" strokeWidth={1.4} />
-                </div>
+                {/* A cena de clima em CSS (sol/nuvem/gota/raio por condição),
+                    no lugar do ícone de linha sobre a foto. */}
+                <CeuAnimado cls={wx.cls} />
                 <div
-                  className="min-w-0 text-[26px] leading-tight sm:text-[30px]"
-                  style={{ color: txt1, fontWeight: 600 }}
+                  className="min-w-0 text-[26px] leading-tight text-txt-1 sm:text-[30px]"
+                  style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
                 >
                   {wx.sub}
                 </div>
@@ -610,7 +601,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             // a troca de tom entre tema claro e escuro.
             background: "var(--brand)",
             minHeight: 320,
-            boxShadow: "0 18px 40px -14px rgba(247,150,65,0.5)",
+            boxShadow: "0 18px 40px -14px rgba(255,106,43,0.5)",
           }}
           aria-label="Ver as publicações analisadas no período"
         >
@@ -625,7 +616,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
               </div>
               <span
                 className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[13px] font-bold text-white opacity-90 transition group-hover:opacity-100"
-                style={{ background: CHUMBO_ESCURO }}
+                style={{ background: FUNDO_ESCUTA }}
               >
                 Ver publicações
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -639,7 +630,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
 
             <div
               className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold text-white"
-              style={{ background: CHUMBO }}
+              style={{ background: FUNDO_ESCUTA }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
                 <line x1="6" y1="20" x2="6" y2="15" />
