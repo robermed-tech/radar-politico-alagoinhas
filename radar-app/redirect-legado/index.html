@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Radar Político mudou de endereço</title>
+  <!-- Publicada pelo CI nos endereços antigos (radar-comando.surge.sh e
+       radar-politico-alg.surge.sh) desde a consolidação de 04/08/26: o painel
+       vive num endereço só, radar-politico.surge.sh. O script preserva a rota
+       e os parâmetros; o meta refresh é o plano B sem JavaScript. -->
+  <meta http-equiv="refresh" content="4; url=https://radar-politico.surge.sh/" />
+  <script>
+    location.replace("https://radar-politico.surge.sh" + location.pathname + location.search + location.hash);
+  </script>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #F4EFE7;
+      color: #1A2033;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    main {
+      max-width: 34rem;
+      margin: 1.5rem;
+      padding: 2rem 2.25rem;
+      background: #FFFFFF;
+      border: 1px solid rgba(26, 32, 51, 0.12);
+      border-radius: 24px;
+      text-align: center;
+    }
+    h1 { font-size: 1.5rem; margin: 0 0 0.75rem; }
+    p { font-size: 1.05rem; line-height: 1.5; margin: 0; }
+    a { color: #C2560F; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>O painel mudou de endereço</h1>
+    <p>
+      Agora ele vive em <a href="https://radar-politico.surge.sh">radar-politico.surge.sh</a>.
+      Você será levado para lá automaticamente. Atualize seus favoritos.
+    </p>
+  </main>
+</body>
+</html>

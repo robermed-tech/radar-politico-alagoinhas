@@ -22,12 +22,12 @@ if errorlevel 1 (
 echo [2/3] Preparando fallback de rotas (SPA)...
 copy /Y dist\index.html dist\200.html >nul
 
-echo [3/3] Publicando em radar-comando.surge.sh...
-call surge dist radar-comando.surge.sh
+echo [3/3] Publicando em radar-politico.surge.sh...
+call surge dist radar-politico.surge.sh
 
 echo.
 echo ==========================================
 echo  Deploy concluido!
-echo  URL: https://radar-comando.surge.sh
+echo  URL: https://radar-politico.surge.sh
 echo ==========================================
 pause
