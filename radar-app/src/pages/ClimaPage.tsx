@@ -540,31 +540,49 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
               ESCURAS (wx.heroDark: chuva/tempestade/severíssimo) entra um véu
               escuro leve dentro da própria camada mascarada, o assento do
               texto claro por cima. */}
-          {/* Revisão de 04/08 (2ª rodada): fade mais curto e mais suave — a
-              foto morre mais à esquerda (52% de largura, opaca só até 22%) e
-              a curva tem stops intermediários em vez de uma reta. O véu das
-              fotos escuras subiu junto (0.22 → 0.28) para o texto claro
-              continuar assentado com menos foto por baixo. */}
+          {/* Revisão de 04/08 (4ª rodada): o fade INVERTEU — a foto fica
+              visível na DIREITA do card e desvanece para a esquerda (máscara
+              to left, mesmos stops suaves da 2ª rodada). Com isso a tinta por
+              luminância migrou do bloco esquerdo (número, que voltou aos
+              tokens) para o bloco direito (título e frase do clima, que agora
+              sentam sobre a foto). O véu das fotos escuras continua na
+              própria camada.
+              NO MOBILE (< sm) a foto vai para o RODAPÉ com fade vertical: no
+              card empilhado o par ícone+título é centralizado e a foto
+              lateral deixava a fronteira do fade no MEIO do título
+              ("TEMPE|STADE", metade clara sobre card claro). No rodapé o
+              título senta inteiro sobre a foto e a mesma tinta vale. */}
           <div
-            className="pointer-events-none absolute inset-y-0 left-0"
+            className="pointer-events-none absolute inset-y-0 right-0 hidden sm:block"
             style={{
               width: "52%",
-              background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), " : ""}url("${wx.image}") left center / cover no-repeat`,
+              background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), " : ""}url("${wx.image}") right center / cover no-repeat`,
               WebkitMaskImage:
-                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+                "linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
               maskImage:
-                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+                "linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+            }}
+          />
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 sm:hidden"
+            style={{
+              height: "62%",
+              background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), " : ""}url("${wx.image}") center bottom / cover no-repeat`,
+              WebkitMaskImage:
+                "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+              maskImage:
+                "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
             }}
           />
 
           <div className="relative z-10 flex h-full flex-col">
             <div className="flex items-start justify-between gap-2">
-              {/* Sobre a foto, a cor do texto vem de inkFoto (fixa pela
-                  luminância da foto e pelo tema), nunca dos tokens: text-txt-1
-                  sumia na foto de tempestade, e os tokens não eram pretos o
-                  bastante sobre a foto cinza do nublado. Ícone, título e
-                  frase ficam na zona já transparente e seguem nos tokens. */}
-              <div className="section-label" style={inkFoto ? { color: inkFoto.rotulo } : undefined}>
+              {/* Com o fade invertido (4ª rodada), o topo e a coluna esquerda
+                  voltaram a ficar sobre o fundo do card: rótulo, número e
+                  legenda usam os TOKENS do tema. Quem senta sobre a foto
+                  agora é o bloco direito (título e frase), que carrega a
+                  tinta por luminância (inkFoto). */}
+              <div className="section-label">
                 Como a população vê a gestão
               </div>
               <span
@@ -606,17 +624,14 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                       0,9s e o ícone e a frase ao lado tremem a cada carga. */}
                   <span
                     className="relative inline-block text-[120px] leading-[0.76] text-txt-1 sm:text-[168px] lg:text-[208px]"
-                    style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
+                    style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
                   >
                     <span aria-hidden="true" className="invisible">{view.iad}</span>
                     <span className="absolute inset-y-0 left-0">
                       <ContadorAnimado valor={view.iad} />
                     </span>
                   </span>
-                  <span
-                    className="mt-3 text-5xl font-medium text-txt-2 sm:text-6xl lg:text-7xl"
-                    style={inkFoto ? { color: inkFoto.suave } : undefined}
-                  >
+                  <span className="mt-3 text-5xl font-medium text-txt-2 sm:text-6xl lg:text-7xl">
                     %
                   </span>
                 </div>
@@ -625,10 +640,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                     número — o rótulo qualitativo ao lado (wx.sub) já varia
                     por faixa, então essa linha é a única explicação fixa do
                     que "44%" quer dizer. */}
-                <p
-                  className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]"
-                  style={inkFoto ? { color: inkFoto.suave } : undefined}
-                >
+                <p className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]">
                   Aprovação da gestão nos comentários analisados no período
                 </p>
               </div>
@@ -651,13 +663,13 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                 <div className="min-w-0 max-w-[18ch] flex-[1_1_11rem]">
                   <div
                     className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 sm:text-[36px]"
-                    style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                    style={{ fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
                   >
                     {wx.label}
                   </div>
                   <div
                     className="mt-2 text-[18px] leading-snug text-txt-2 sm:text-[20px]"
-                    style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                    style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.suave }}
                   >
                     {limparTravessoes(wx.sub)}
                   </div>
