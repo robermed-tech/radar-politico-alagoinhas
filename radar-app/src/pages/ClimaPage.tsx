@@ -12,6 +12,7 @@ import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilt
 // Import direto: desde 27/07 o velocímetro é SVG puro (não puxa mais o chunk
 // de ~1 MB do ECharts), então não há mais motivo para carregá-lo em lazy.
 import { GaugeTema } from "@/components/GaugeTema";
+import { ContadorAnimado } from "@/components/ContadorAnimado";
 
 // Paleta neutra "chumbo e branco" da reunião de 24/07: enquanto o produto não
 // tem identidade visual fechada, tudo que não tem cor semântica definida usa
@@ -540,11 +541,15 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             <div className="mt-4 flex min-h-0 flex-1 flex-wrap items-center gap-x-8 gap-y-4">
               <div className="flex flex-col items-start">
                 <div className="flex items-start" aria-label={`Índice de aprovação: ${view.iad}%`}>
+                  {/* Peso 600 desde a onda 2 (03/08): o 200 era da doutrina
+                      fina de 11/07, e o briefing pede número em destaque com
+                      legibilidade alta. Não vai a 800: neste corpo (até 208px)
+                      o traço da Space Grotesk 700 já fecha os vazados. */}
                   <span
                     className="tnum text-[120px] leading-[0.76] tracking-tighter sm:text-[168px] lg:text-[208px]"
-                    style={{ color: txt1, fontWeight: 200 }}
+                    style={{ color: txt1, fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
                   >
-                    {view.iad}
+                    <ContadorAnimado valor={view.iad} />
                   </span>
                   <span
                     className="mt-3 text-5xl sm:text-6xl lg:text-7xl"
@@ -567,7 +572,10 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
               </div>
 
               <div className="flex min-w-0 flex-1 items-center gap-4">
-                <div className="shrink-0" style={{ filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.22))" }}>
+                {/* `wx-flutuar`: o ícone do clima levita devagar (onda 2 de
+                    03/08, o "sol que flutua" do protótipo). Vale para toda
+                    condição — a chuva já tem a própria camada de gotas. */}
+                <div className="wx-flutuar shrink-0" style={{ filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.22))" }}>
                   <WeatherIcon cls={wx.cls} size={72} color="#FFFFFF" strokeWidth={1.4} />
                 </div>
                 <div
@@ -643,8 +651,11 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
 
             <div className="mt-auto pt-6">
               <div className="flex items-end gap-1">
-                <span className="tnum text-[68px] leading-[0.85] tracking-tight" style={{ fontWeight: 300, color: "#1A0F02" }}>
-                  {fmtInt(view.comentarios)}
+                <span
+                  className="tnum text-[68px] leading-[0.85] tracking-tight"
+                  style={{ fontWeight: 700, color: "#1A0F02", fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                >
+                  <ContadorAnimado valor={view.comentarios} formatar={fmtInt} />
                 </span>
               </div>
               <div className="mt-1 text-base font-bold" style={{ color: "rgba(26,15,2,0.85)" }}>

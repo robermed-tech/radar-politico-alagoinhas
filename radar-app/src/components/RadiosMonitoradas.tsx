@@ -9,6 +9,7 @@ import {
   FUNDO_LISTA, FUNDO_ITEM, BORDA, SOMBRA, ALTURA_MIN, ALTURA_MAX,
 } from "@/components/superficieRadio";
 import { ConfirmaModal } from "@/components/ConfirmaModal";
+import { LedVivo } from "@/components/SinalVivo";
 
 /**
  * Cadastro das rádios monitoradas — card da LINHA DE TOPO da Rádio Escuta
@@ -356,11 +357,10 @@ export function RadiosMonitoradas() {
                     boxShadow: sel ? "0 0 0 2px var(--brand)" : undefined,
                   }}
                 >
-                  <span
-                    className="inline-block h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: r.active ? "#22C55E" : "#94A3B8" }}
-                    aria-hidden
-                  />
+                  {/* LED com halo pulsante quando a estação está ativa (onda 2
+                      de 03/08, o "card pulsando" do protótipo). Laranja da
+                      marca, não mais verde: verde é exclusivo de sentimento. */}
+                  <LedVivo ligado={r.active} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="min-w-0 truncate text-sm" style={{ color: TINTA_CLARA, fontWeight: 700 }}>

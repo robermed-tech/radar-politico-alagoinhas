@@ -1,6 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchCollectionLogsHoje, fetchFontesUnificadas, calcKpis } from "@/lib/collection";
 import { fmtInt } from "@/lib/format";
+import { FUNDO_ESCUTA, SOMBRA } from "./superficieRadio";
+
+/**
+ * Cores do estado do radar (onda 2 do redesign, 03/08). Varredura ativa no
+ * LARANJA DA MARCA — era verde #22C55E, e o protótipo aprovado mostra o radar
+ * na energia da marca; de quebra, o verde volta a ser exclusivo de sentimento,
+ * que é a regra da paleta. Ocioso segue âmbar (é um estado de atenção: nenhuma
+ * fonte ativa). Hex literal, e não var(--brand): a cor entra em strings de
+ * conic-gradient com sufixo de alpha (`${cor}55`), onde var() não resolve —
+ * acompanhar o token à mão se ele mudar.
+ */
+const COR_RADAR_ATIVO = "#FF6A2B";
+const COR_RADAR_OCIOSO = "#F59E0B";
 
 /**
  * Status do "radar de coleta". A versão completa continua na aba Monitor de
@@ -14,7 +27,7 @@ import { fmtInt } from "@/lib/format";
  *                cards para baixo.
  */
 function RadarSweep({ ativo, size = 34 }: { ativo: boolean; size?: number }) {
-  const cor = ativo ? "#22C55E" : "#F59E0B";
+  const cor = ativo ? COR_RADAR_ATIVO : COR_RADAR_OCIOSO;
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }} aria-hidden>
       <style>{`
@@ -94,7 +107,7 @@ function useRadarKpis(): Kpis {
 export function RadarStatusBar() {
   const kpis = useRadarKpis();
   const ativo = kpis.fontesAtivas > 0;
-  const cor = ativo ? "#22C55E" : "#F59E0B";
+  const cor = ativo ? COR_RADAR_ATIVO : COR_RADAR_OCIOSO;
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border border-line bg-bg-1 px-4 py-2.5">
@@ -132,7 +145,7 @@ export function RadarStatusBar() {
 export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
   const kpis = useRadarKpis();
   const ativo = kpis.fontesAtivas > 0;
-  const cor = ativo ? "#22C55E" : "#F59E0B";
+  const cor = ativo ? COR_RADAR_ATIVO : COR_RADAR_OCIOSO;
 
   // Revisão de 27/07: as três contagens (fontes monitoradas, itens coletados,
   // execuções) saíram deste card. Elas eram detalhe operacional competindo por
@@ -147,14 +160,14 @@ export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
     <div
       className="flex h-full flex-col items-center justify-center overflow-hidden rounded-[28px] px-6 py-8 text-center"
       style={{
-        // Revisão de 28/07: as duas pontas do degradê antigo (#334155→#1E293B)
-        // ficavam a um passo de distância na escala slate — quase a mesma cor,
-        // sem leitura de degradê. Cinza médio (#475569) até chumbo bem escuro
-        // (#0F172A) dá um gradiente chumbo+cinza de verdade e continua escuro
-        // o bastante pro texto branco por cima (pior caso medido: 4,9:1 AA).
-        background: "linear-gradient(165deg, #475569 0%, #0F172A 100%)",
+        // A superfície vem de superficieRadio.ts, importada — este card, a
+        // antena e os dois da Rádio Escuta são a MESMA superfície, e quatro
+        // cópias da receita só ficam iguais enquanto ninguém mexe numa delas.
+        // (Onda 2 de 03/08: a receita lá virou o chumbo quente da nova paleta,
+        // com o contraste remedido no comentário do próprio token.)
+        background: FUNDO_ESCUTA,
         minHeight,
-        boxShadow: "0 18px 40px -18px rgba(15,23,42,0.65)",
+        boxShadow: SOMBRA,
       }}
     >
       <div
