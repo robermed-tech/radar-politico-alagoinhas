@@ -717,18 +717,30 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                     nenhum do card. */}
                 {/* Sem max-w-[18ch]: a unidade ch resolve na fonte do PRÓPRIO
                     bloco (16px herdados), não no corpo do título, então o cap
-                    caía em 155px e engolia até a base do flex. Era ele que
-                    espremia o título e quebrava a frase em 3 e 4 linhas.
-                    Base de 19rem (304px) e não 11rem: é a largura de
-                    "PARCIALMENTE" em 36px, a palavra mais larga do vocabulário
-                    de rótulos. Com ela, o bloco só senta ao lado do ícone se a
-                    palavra couber inteira; abaixo disso o par quebra sozinho e
-                    o texto desce para baixo do ícone com a largura toda. Sem
-                    isso, larguras intermediárias de card (760 e 500px, medidas)
-                    cortavam no meio da palavra: "Parcialmen / te Nublado". */}
-                <div className="min-w-0 flex-[1_1_19rem]">
+                    caía em 155px e engolia até a base do flex.
+                    Base PEQUENA (8rem) de propósito, revertendo os 19rem da
+                    rodada anterior: com 19rem o bloco exigia 304px para sentar
+                    ao lado do ícone, e num número de DOIS dígitos isso não
+                    cabe — o bloco do número passa de 293 para 320px e sobram
+                    402px para o par, contra os 436 exigidos. O texto então
+                    descia para baixo do ícone, que é o defeito que apareceu no
+                    dashboard com "52% NUBLADO". Com base pequena e grow, o
+                    bloco fica SEMPRE ao lado e ocupa o que sobrar; quem se
+                    adapta é o corpo do título (ver o clamp abaixo).
+                    `container-type: inline-size` existe para o título poder
+                    medir ESTE bloco em cqi. */}
+                <div className="min-w-0 flex-[1_1_16rem]" style={{ containerType: "inline-size" }}>
                   <div
-                    className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 break-words sm:text-[36px]"
+                    /* 36px sempre que couber, encolhendo só quando não couber.
+                       A palavra mais larga do vocabulário é "PARCIALMENTE",
+                       304px em 36px, e ela é uma palavra só: não quebra. Como
+                       a largura livre depende de quantos dígitos o número tem
+                       (293px com um, 320px com dois), nenhum tamanho fixo
+                       serve para os dois casos. 11.5cqi resolve pela conta
+                       36/304 = 0,118 da largura deste bloco: num bloco de
+                       336px dá os 36px cheios, num de 270px dá 31px, que é
+                       exatamente onde "PARCIALMENTE" ainda cabe inteira. */
+                    className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 break-words sm:text-[clamp(30px,11.5cqi,36px)]"
                     style={{ fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
                   >
                     {wx.label}
