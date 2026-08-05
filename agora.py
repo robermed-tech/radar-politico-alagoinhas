@@ -536,7 +536,12 @@ RETENCAO_PII_DIAS = int(os.environ.get("RETENCAO_PII_DIAS", "180"))
 RETENCAO_RADIO_DIAS = int(os.environ.get("RETENCAO_RADIO_DIAS", "90"))
 
 # Limites de coleta
-MAX_POSTS_POR_PERFIL    = 10
+# 5 e nao 10: a Apify cobra por item devolvido (US$ 0,0023), entao cada rodada
+# pagava por ~138 publicacoes para achar ~10 novas. Medido na base em 04/08, um
+# perfil publica 1x/dia na mediana, 3 no p90 e 7 no pior dia registrado — com 3
+# coletas diarias, as 5 ultimas de cada perfil cobrem ate o dia de pico. Subir
+# de novo so faz sentido se a cadencia cair para 1 coleta/dia.
+MAX_POSTS_POR_PERFIL    = 5
 MAX_COMENTARIOS_POR_POST = 50
 DIAS_RETROATIVOS        = 5
 MAX_ALERTAS_POR_RUN     = 3   # cap de alertas WhatsApp por execução (anti-spam)
