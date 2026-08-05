@@ -45,11 +45,18 @@ function Fileira({ fundo, texto, rotulo }: { fundo: string; texto: string; rotul
  * useThemeStore da página real: aqui as duas seções convivem na mesma tela. */
 function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: number; temaEscuro?: boolean }) {
   const wx = getWeather(pct);
-  const inkFoto = wx.heroDark
-    ? { forte: "#F7F4ED", suave: "rgba(247,244,237,0.85)", rotulo: "rgba(247,244,237,0.92)" }
-    : !temaEscuro
-      ? { forte: "#0B0E14", suave: "#0B0E14", rotulo: "#0B0E14" }
+  // Espelha a regra da ClimaPage (04/08): tema claro = tinta preta em toda
+  // foto e véu que CLAREIA; tema escuro = tinta clara e véu que escurece.
+  const inkFoto = !temaEscuro
+    ? { forte: "#0B0E14", suave: "#0B0E14", rotulo: "#0B0E14" }
+    : wx.heroDark
+      ? { forte: "#F7F4ED", suave: "rgba(247,244,237,0.85)", rotulo: "rgba(247,244,237,0.92)" }
       : null;
+  const veuFoto = wx.heroDark
+    ? !temaEscuro
+      ? "linear-gradient(rgba(255,255,255,0.42), rgba(255,255,255,0.42)), "
+      : "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), "
+    : "";
   return (
     <div
       className="relative overflow-hidden rounded-[28px] border border-line bg-bg-1 p-7"
@@ -63,7 +70,7 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
         className="pointer-events-none absolute inset-y-0 right-0 hidden sm:block"
         style={{
           width: "52%",
-          background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), " : ""}url("${wx.image}") right center / cover no-repeat`,
+          background: `${veuFoto}url("${wx.image}") right center / cover no-repeat`,
           WebkitMaskImage:
             "linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
           maskImage:
@@ -74,7 +81,7 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
         className="pointer-events-none absolute inset-x-0 bottom-0 sm:hidden"
         style={{
           height: "62%",
-          background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), " : ""}url("${wx.image}") center bottom / cover no-repeat`,
+          background: `${veuFoto}url("${wx.image}") center bottom / cover no-repeat`,
           WebkitMaskImage:
             "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
           maskImage:
