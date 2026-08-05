@@ -490,11 +490,33 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
   // (revisão de 04/08: os tokens txt-1/txt-2 não eram pretos o bastante
   // sobre a foto cinza do nublado); no tema ESCURO volta aos tokens, porque
   // atrás da transição do fade o fundo é o card escuro e o preto sumiria.
-  const inkFoto = wx.heroDark
-    ? { forte: "#F7F4ED", suave: "rgba(247,244,237,0.85)", rotulo: "rgba(247,244,237,0.92)" }
-    : theme === "light"
+  // Revisão de 04/08 (pedido do cliente): no tema CLARO a tinta sobre a foto é
+  // PRETA nas seis condições, inclusive nas quatro de foto escura
+  // (Parcialmente Nublado, Chuva, Tempestade e Extremo), que antes usavam
+  // texto claro. Para o preto ler, o véu da foto inverteu junto — ver veuFoto.
+  // No tema ESCURO nada muda: ali o texto começa sobre o card escuro, onde a
+  // foto já desvaneceu, e o preto simplesmente sumiria (medido: 1,45 no pior
+  // pixel, contra 4,62 do mesmo texto no tema claro).
+  const inkFoto =
+    theme === "light"
       ? { forte: "#0B0E14", suave: "#0B0E14", rotulo: "#0B0E14" }
-      : null;
+      : wx.heroDark
+        ? { forte: "#F7F4ED", suave: "rgba(247,244,237,0.85)", rotulo: "rgba(247,244,237,0.92)" }
+        : null;
+
+  // O véu existe para dar assento à tinta, então acompanha a tinta: CLAREIA a
+  // foto no tema claro (texto preto) e a ESCURECE no tema escuro (texto
+  // claro). Medido pixel a pixel na faixa onde o título e a frase sentam, no
+  // pior caso de cada foto: com 42% de branco o preto fica em 6,70 no
+  // Parcialmente, 6,57 na Chuva e 4,62 na Tempestade e no Extremo, todos
+  // acima do mínimo AA de 4,5. Com o véu escuro de antes o mesmo preto caía
+  // para 1,09 e o texto claro que estava lá media 2,76 a 3,29, ou seja
+  // reprovava também. 42% é o menor véu que passa: 38% para em 4,06.
+  const veuFoto = wx.heroDark
+    ? theme === "light"
+      ? "linear-gradient(rgba(255,255,255,0.42), rgba(255,255,255,0.42)), "
+      : "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), "
+    : "";
 
   return (
     <div className="space-y-4 p-5">
@@ -556,7 +578,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             className="pointer-events-none absolute inset-y-0 right-0 hidden sm:block"
             style={{
               width: "52%",
-              background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), " : ""}url("${wx.image}") right center / cover no-repeat`,
+              background: `${veuFoto}url("${wx.image}") right center / cover no-repeat`,
               WebkitMaskImage:
                 "linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
               maskImage:
@@ -567,7 +589,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             className="pointer-events-none absolute inset-x-0 bottom-0 sm:hidden"
             style={{
               height: "62%",
-              background: `${wx.heroDark ? "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), " : ""}url("${wx.image}") center bottom / cover no-repeat`,
+              background: `${veuFoto}url("${wx.image}") center bottom / cover no-repeat`,
               WebkitMaskImage:
                 "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
               maskImage:

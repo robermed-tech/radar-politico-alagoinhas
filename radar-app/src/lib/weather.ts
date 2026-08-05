@@ -73,7 +73,10 @@ export function getWeather(pct: number): WeatherCond {
       accent: "#8B5CF6", dark: true, heroDark: true,
     };
   return {
-    label: "Severíssimo", sub: "Crise iminente — ação urgente necessária",
+    // "Extremo" e não "Severíssimo" (04/08, pedido do cliente). O `cls` segue
+    // "severe": renomear identificador de código por causa de rótulo de tela é
+    // troca sem ganho, a mesma regra da Rádio Escuta.
+    label: "Extremo", sub: "Crise iminente — ação urgente necessária",
     cls: "severe",
     bg: "linear-gradient(155deg, #1A1C20 0%, #121316 38%, #0A0B0D 72%, #050506 100%)",
     bgApp: "linear-gradient(160deg, #1A0410 0%, #200512 38%, #2A0818 70%, #120308 100%)",

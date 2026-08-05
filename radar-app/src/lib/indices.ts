@@ -83,7 +83,7 @@ export function calcIAD(posts: Post[]): number {
 /**
  * ICA — Índice de Confiança da Amostra (0-100).
  * Combina volume, diversidade de fontes, recência e balanço.
- * Evita conclusões fortes (ex.: "Severíssimo") com amostra fraca.
+ * Evita conclusões fortes (ex.: "Extremo") com amostra fraca.
  */
 export function calcICA(posts: Post[]): number {
   if (posts.length === 0) return 0;

@@ -193,7 +193,7 @@ export function GlossaryPage() {
           <div>☁️ <b className="text-txt-1">Nublado</b> · 45-59 · dividido</div>
           <div>🌧️ <b className="text-txt-1">Chuva</b> · 30-44 · ruim</div>
           <div>⛈️ <b className="text-txt-1">Tempestade</b> · 15-29 · crise</div>
-          <div>🌑 <b className="text-txt-1">Severíssimo</b> · 0-14 · crítico</div>
+          <div>🌑 <b className="text-txt-1">Extremo</b> · 0-14 · crítico</div>
         </div>
       </div>
 
