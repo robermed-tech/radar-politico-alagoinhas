@@ -20,6 +20,22 @@ import { useThemeStore } from "@/stores/theme";
 // Substitui os antigos CHUMBO/#334155 e CHUMBO_ESCURO/#1E293B (slate azulado).
 import { FUNDO_ESCUTA } from "@/components/superficieRadio";
 
+// Perfil do fade da foto de céu do hero. Vive numa constante porque a mesma
+// receita alimenta quatro declarações (camada lateral e camada de rodapé, cada
+// uma com o prefixo -webkit-) e três delas já divergiram uma vez.
+// Revisão de 04/08 (7ª rodada, pedido do cliente: "aumente mais a
+// desvanecência"): a foto começa a 88% em vez de 100%, cai mais cedo e some em
+// 88% da camada em vez de 96%. Anterior: 1 / 1 / .78 / .45 / .18 / 0 nos
+// stops 0-22-42-62-80-96%. O efeito procurado é o do tema escuro, onde a foto
+// se dissolve no card; no tema claro ela lia como um retângulo escuro colado
+// sobre o creme. Dissolver mais também AFASTA o texto da foto, então o
+// contraste do título só melhora com esta mudança.
+const PARADAS_FADE =
+  "rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.88) 16%, rgba(0,0,0,0.58) 34%, " +
+  "rgba(0,0,0,0.30) 54%, rgba(0,0,0,0.11) 72%, rgba(0,0,0,0) 88%";
+const FADE_LATERAL = `linear-gradient(to left, ${PARADAS_FADE})`;
+const FADE_RODAPE = `linear-gradient(to top, ${PARADAS_FADE})`;
+
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde",
   educacao: "Educação",
@@ -512,10 +528,16 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
   // acima do mínimo AA de 4,5. Com o véu escuro de antes o mesmo preto caía
   // para 1,09 e o texto claro que estava lá media 2,76 a 3,29, ou seja
   // reprovava também. 42% é o menor véu que passa: 38% para em 4,06.
+  // O véu do tema escuro subiu de 28% para 50% na 7ª rodada. Com o fade mais
+  // dissolvido o texto claro ganhou fôlego, mas ainda reprovava no pior pixel
+  // das fotos mais claras: 2,87 no Parcialmente e 3,88 na Tempestade e no
+  // Extremo, contra o mínimo AA de 4,5. Em 50% as quatro passam (4,99 a 7,89).
+  // Vai na mesma direção da referência do cliente, onde a foto do tema escuro
+  // é bem fechada.
   const veuFoto = wx.heroDark
     ? theme === "light"
       ? "linear-gradient(rgba(255,255,255,0.42), rgba(255,255,255,0.42)), "
-      : "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), "
+      : "linear-gradient(rgba(10,12,18,0.50), rgba(10,12,18,0.50)), "
     : "";
 
   return (
@@ -580,9 +602,9 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
               width: "52%",
               background: `${veuFoto}url("${wx.image}") right center / cover no-repeat`,
               WebkitMaskImage:
-                "linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+                FADE_LATERAL,
               maskImage:
-                "linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+                FADE_LATERAL,
             }}
           />
           <div
@@ -591,9 +613,9 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
               height: "62%",
               background: `${veuFoto}url("${wx.image}") center bottom / cover no-repeat`,
               WebkitMaskImage:
-                "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+                FADE_RODAPE,
               maskImage:
-                "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+                FADE_RODAPE,
             }}
           />
 

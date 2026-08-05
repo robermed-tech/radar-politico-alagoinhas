@@ -9,6 +9,13 @@ import { getWeather } from "./lib/weather";
 import { limparTravessoes } from "./lib/format";
 import "./index.css";
 
+// Mesmo perfil de fade da ClimaPage (04/08, 7a rodada: mais desvanecencia).
+const PARADAS_FADE =
+  "rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.88) 16%, rgba(0,0,0,0.58) 34%, " +
+  "rgba(0,0,0,0.30) 54%, rgba(0,0,0,0.11) 72%, rgba(0,0,0,0) 88%";
+const FADE_LATERAL = `linear-gradient(to left, ${PARADAS_FADE})`;
+const FADE_RODAPE = `linear-gradient(to top, ${PARADAS_FADE})`;
+
 const CONDICOES = [
   { cls: "sunny", pct: 80 },
   { cls: "partly", pct: 65 },
@@ -55,7 +62,7 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
   const veuFoto = wx.heroDark
     ? !temaEscuro
       ? "linear-gradient(rgba(255,255,255,0.42), rgba(255,255,255,0.42)), "
-      : "linear-gradient(rgba(10,12,18,0.28), rgba(10,12,18,0.28)), "
+      : "linear-gradient(rgba(10,12,18,0.50), rgba(10,12,18,0.50)), "
     : "";
   return (
     <div
@@ -72,9 +79,9 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
           width: "52%",
           background: `${veuFoto}url("${wx.image}") right center / cover no-repeat`,
           WebkitMaskImage:
-            "linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+            FADE_LATERAL,
           maskImage:
-            "linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+            FADE_LATERAL,
         }}
       />
       <div
@@ -83,9 +90,9 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
           height: "62%",
           background: `${veuFoto}url("${wx.image}") center bottom / cover no-repeat`,
           WebkitMaskImage:
-            "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+            FADE_RODAPE,
           maskImage:
-            "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.18) 80%, rgba(0,0,0,0) 96%)",
+            FADE_RODAPE,
         }}
       />
       <div className="relative z-10 flex h-full flex-col">
