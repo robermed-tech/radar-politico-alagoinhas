@@ -534,11 +534,19 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
   // Extremo, contra o mínimo AA de 4,5. Em 50% as quatro passam (4,99 a 7,89).
   // Vai na mesma direção da referência do cliente, onde a foto do tema escuro
   // é bem fechada.
-  const veuFoto = wx.heroDark
-    ? theme === "light"
+  // 8ª rodada: no tema CLARO o véu vale para as SEIS condições, não só para as
+  // quatro de foto escura. O pedido era "aumente a desvanecência de todas as
+  // imagens de fundo", e Céu Aberto e Nublado (heroDark: false) estavam
+  // ficando de fora — a foto entrava em força total. Era o que aparecia no
+  // print do cliente: o card de "52% NUBLADO" com a nuvem cinza contrastada,
+  // enquanto Tempestade e Extremo já estavam lavados. No tema ESCURO segue só
+  // nas fotos escuras: as claras ali usam os tokens e não têm texto por cima.
+  const veuFoto =
+    theme === "light"
       ? "linear-gradient(rgba(255,255,255,0.42), rgba(255,255,255,0.42)), "
-      : "linear-gradient(rgba(10,12,18,0.50), rgba(10,12,18,0.50)), "
-    : "";
+      : wx.heroDark
+        ? "linear-gradient(rgba(10,12,18,0.50), rgba(10,12,18,0.50)), "
+        : "";
 
   return (
     <div className="space-y-4 p-5">

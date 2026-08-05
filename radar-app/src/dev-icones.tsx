@@ -59,11 +59,11 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
     : wx.heroDark
       ? { forte: "#F7F4ED", suave: "rgba(247,244,237,0.85)", rotulo: "rgba(247,244,237,0.92)" }
       : null;
-  const veuFoto = wx.heroDark
-    ? !temaEscuro
-      ? "linear-gradient(rgba(255,255,255,0.42), rgba(255,255,255,0.42)), "
-      : "linear-gradient(rgba(10,12,18,0.50), rgba(10,12,18,0.50)), "
-    : "";
+  const veuFoto = !temaEscuro
+    ? "linear-gradient(rgba(255,255,255,0.42), rgba(255,255,255,0.42)), "
+    : wx.heroDark
+      ? "linear-gradient(rgba(10,12,18,0.50), rgba(10,12,18,0.50)), "
+      : "";
   return (
     <div
       className="relative overflow-hidden rounded-[28px] border border-line bg-bg-1 p-7"
