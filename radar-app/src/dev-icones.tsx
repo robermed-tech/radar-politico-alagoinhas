@@ -101,12 +101,12 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
             </p>
           </div>
           <div className="flex min-w-0 flex-[1_1_300px] flex-wrap items-center justify-center gap-x-7 gap-y-3">
-            <div className="w-[150px] shrink-0 sm:w-[180px] lg:w-[168px]">
+            <div className="w-[150px] shrink-0 sm:w-[180px] lg:w-[104px]">
               <ClimaIconeAnimado cls={wx.cls} />
             </div>
-            <div className="min-w-0 flex-[1_1_11rem]">
+            <div className="min-w-0 flex-[1_1_19rem]">
               <div
-                className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 break-words sm:text-[32px]"
+                className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 break-words sm:text-[36px]"
                 style={{ fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
               >
                 {wx.label}
