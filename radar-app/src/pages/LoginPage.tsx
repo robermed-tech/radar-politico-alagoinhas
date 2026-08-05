@@ -167,7 +167,7 @@ export function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="secretario@prefeitura.ba.gov.br"
+                  placeholder="e-mail"
                   required
                   autoFocus
                   autoComplete="email"

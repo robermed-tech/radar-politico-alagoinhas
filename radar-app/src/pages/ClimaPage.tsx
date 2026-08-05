@@ -653,16 +653,27 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                   encolhia em vez de descer e o conteúdo vazava por baixo do
                   overflow-hidden do card. */}
               <div className="flex min-w-0 flex-[1_1_300px] flex-wrap items-center justify-center gap-x-7 gap-y-3">
-                <div className="w-[150px] shrink-0 sm:w-[180px] lg:w-[205px]">
+                {/* 168px e não 205 no lg (04/08, 5ª rodada): medido no card
+                    real (822px de largura em tela de 1920), o par ícone+texto
+                    recebe 439px. Com o ícone em 205 sobravam 206px para o
+                    título, e 5 das 6 condições não cabiam: NUBLADO pede 192px,
+                    TEMPESTADE 261, SEVERÍSSIMO 268, PARCIALMENTE NUBLADO 303.
+                    Só CHUVA cabia, que é justamente a condição do print em que
+                    o defeito não aparece. */}
+                <div className="w-[150px] shrink-0 sm:w-[180px] lg:w-[168px]">
                   <ClimaIconeAnimado cls={wx.cls} />
                 </div>
                 {/* Título do clima em DESTAQUE (revisão de 04/08, 2ª rodada):
                     o nome da condição em caixa alta acima da frase — antes só
                     a frase aparecia e o nome do clima não estava em lugar
                     nenhum do card. */}
-                <div className="min-w-0 max-w-[18ch] flex-[1_1_11rem]">
+                {/* Sem max-w-[18ch]: a unidade ch resolve na fonte do PRÓPRIO
+                    bloco (16px herdados), não no corpo do título, então o cap
+                    caía em 155px e engolia até a base de 11rem do flex. Era ele
+                    que espremia o título e quebrava a frase em 3 e 4 linhas. */}
+                <div className="min-w-0 flex-[1_1_11rem]">
                   <div
-                    className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 sm:text-[36px]"
+                    className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 break-words sm:text-[32px]"
                     style={{ fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
                   >
                     {wx.label}
