@@ -331,11 +331,27 @@ export interface CrisisPlan {
   gerado_em: string;
 }
 
-/** Planos de contenção gerados pelo Agente Caçador de Crises. */
-export async function fetchCrisisPlans(): Promise<CrisisPlan[]> {
+/**
+ * Planos de contenção gerados pelo Agente Caçador de Crises, RECORTADOS pela
+ * mesma janela que o resto da tela (24h/7d/30d).
+ *
+ * O recorte é por `gerado_em` e é feito no SERVIDOR, não no cliente: a consulta
+ * pega os 20 de maior score, e filtrar depois deixaria a tela vazia sempre que
+ * os 20 mais graves fossem antigos, escondendo crise recente de score menor.
+ *
+ * Sem o recorte (comportamento até 05/08/26) a tela misturava o que já passou
+ * com o que está acontecendo: 39 dos 70 planos da base eram de junho e
+ * apareciam sob o cabeçalho "últimas 24 horas", com o rótulo "situações que
+ * precisam de atenção" e o botão de alertar secretário ao lado. Numa tela de
+ * crise isso é o pior erro possível, porque leva a acionar gente por um
+ * incidente encerrado.
+ */
+export async function fetchCrisisPlans(dias: number): Promise<CrisisPlan[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const corte = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
   const q =
     `${SUPABASE_URL}/rest/v1/crisis_plans?tenant=eq.${TENANT}` +
+    `&gerado_em=gte.${corte}` +
     `&select=*&order=score_risco.desc&limit=20`;
   const res = await fetch(q, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },

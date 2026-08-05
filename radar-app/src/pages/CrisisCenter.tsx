@@ -104,9 +104,11 @@ export function CrisisCenter() {
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });
+  // 30 dias: esta tela é a leitura HISTÓRICA da crise (série de daily_metrics),
+  // então usa a janela mais larga do produto. Ver fetchCrisisPlans.
   const { data: planosData } = useQuery({
-    queryKey: ["crisis-plans"],
-    queryFn: fetchCrisisPlans,
+    queryKey: ["crisis-plans", 30],
+    queryFn: () => fetchCrisisPlans(30),
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });

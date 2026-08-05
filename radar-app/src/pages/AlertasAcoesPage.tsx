@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchBriefing, fetchCrisisPlans, type CrisisPlan } from "@/lib/data";
 import { NIVEL_COLOR, NIVEL_LABEL, nivelBadgeStyle, type NivelCrise } from "@/lib/indices";
 import { IconAlertBell, IconCheckCircle } from "@/components/icons";
-import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
+import { PeriodoFilter, periodoLabel, periodoLabelCom, type Dias } from "@/components/PeriodoFilter";
 import { ContadorAnimado } from "@/components/ContadorAnimado";
 import { EnvioSecretario } from "@/components/EnvioSecretario";
 import { findSecretario } from "@/config/secretarios";
@@ -11,6 +11,16 @@ import { fraseCapitalizada } from "@/lib/format";
 
 /** Ordem de exibição: crítico sempre primeiro (prévia aprovada em 04/08). */
 const ORDEM_NIVEL: Record<string, number> = { critico: 0, alto: 1, moderado: 2, baixo: 3 };
+
+/** "há 2h" / "há 6 dias" — quão velho é o alerta que está pedindo ação. */
+function idadeDoAlerta(iso: string): string {
+  const horas = (Date.now() - new Date(iso).getTime()) / 3_600_000;
+  if (!Number.isFinite(horas) || horas < 0) return "";
+  if (horas < 1) return "agora há pouco";
+  if (horas < 24) return `há ${Math.round(horas)}h`;
+  const d = Math.round(horas / 24);
+  return `há ${d} ${d === 1 ? "dia" : "dias"}`;
+}
 
 /**
  * "Alertar Secretário" a partir de um plano do Caçador de Crises — o mesmo
@@ -87,7 +97,7 @@ function Tag({ children, color }: { children: ReactNode; color: string }) {
  * vindo de NIVEL_COLOR — o laranja/vermelho de RISCO é o sistema paralelo de
  * alerta, não a cor da marca.
  */
-function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
+function PlanosAcao({ planos, dias }: { planos: CrisisPlan[]; dias: Dias }) {
   const reais = useMemo(
     () =>
       planos
@@ -102,7 +112,25 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
   const criticos = reais.filter((p) => p.nivel === "critico").length;
   const altos = reais.filter((p) => p.nivel === "alto").length;
 
-  if (planos.length === 0) return null;
+  // Vazio na JANELA (não "vazio no banco"): desde o recorte por período, some
+  // dizer nada aqui deixaria a seção desaparecer sem explicação, e quem lê não
+  // sabe se não houve crise ou se a tela quebrou.
+  if (planos.length === 0) {
+    return (
+      <div className="rounded-[20px] border border-line bg-bg-1 p-5">
+        <div className="flex items-center gap-2">
+          <IconCheckCircle size={18} className="shrink-0 text-risk-low" />
+          <h2 className="text-base font-extrabold text-txt-1">
+            Nenhum alerta de crise {periodoLabelCom(dias)}
+          </h2>
+        </div>
+        <p className="mt-2 text-sm text-txt-2">
+          Nenhuma publicação do período foi classificada como risco alto. Amplie a janela
+          acima para ver situações anteriores.
+        </p>
+      </div>
+    );
+  }
 
   if (reais.length === 0) {
     return (
@@ -112,7 +140,8 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
           <h2 className="text-base font-extrabold text-txt-1">Nenhuma crise real identificada</h2>
         </div>
         <p className="mt-2 text-sm text-txt-2">
-          Os posts de alto risco foram analisados pela IA e classificados como ruído — não exigem ação imediata.
+          Os posts de alto risco {periodoLabelCom(dias)} foram analisados pela IA e
+          classificados como ruído, sem exigir ação imediata.
         </p>
       </div>
     );
@@ -172,6 +201,14 @@ function PlanosAcao({ planos }: { planos: CrisisPlan[] }) {
               >
                 {NIVEL_LABEL[(p.nivel as NivelCrise) ?? "alto"] ?? p.nivel}
               </span>
+              {/* Idade do alerta ao lado do nível: mesmo com o recorte por
+                  janela, "há 6 dias" e "há 2 horas" pedem resposta diferente,
+                  e o card não dizia qual era o caso. */}
+              {p.gerado_em && (
+                <span className="shrink-0 text-xs font-semibold text-txt-3">
+                  {idadeDoAlerta(p.gerado_em)}
+                </span>
+              )}
               <span className="ml-auto text-xs font-bold text-txt-3">@{p.autor}</span>
             </div>
 
@@ -226,9 +263,12 @@ export function AlertasAcoesPage() {
     refetchInterval: 15 * 60 * 1000,
   });
 
+  // `dias` entra na queryKey pelo mesmo motivo do briefing: os planos são
+  // recortados pela janela selecionada (ver fetchCrisisPlans). Sem isso a tela
+  // exibia plano de junho sob o cabeçalho "últimas 24 horas".
   const { data: planosData } = useQuery({
-    queryKey: ["crisis-plans"],
-    queryFn: fetchCrisisPlans,
+    queryKey: ["crisis-plans", dias],
+    queryFn: () => fetchCrisisPlans(dias),
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });
@@ -259,7 +299,7 @@ export function AlertasAcoesPage() {
       ) : (
         <>
           {/* Planos do Caçador de Crises */}
-          <PlanosAcao planos={planos} />
+          <PlanosAcao planos={planos} dias={dias} />
 
           {(b!.oportunidades ?? []).length > 0 && (
             <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">

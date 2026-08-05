@@ -1,7 +1,16 @@
 ﻿import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchRadar, fetchBoletimByRole, fetchBriefing, fetchComentariosPorTema, filtrarPorPeriodo, type Post, type Boletim, type BoletimFrente, type Briefing, type Periodo } from "@/lib/data";
-import { calcIAD, NIVEL_COLOR, NIVEL_LABEL, nivelBadgeStyle, type NivelCrise } from "@/lib/indices";
+import {
+  calcIAD,
+  temSinalIAD,
+  votosDeSentimento,
+  MIN_VOTOS_IAD,
+  NIVEL_COLOR,
+  NIVEL_LABEL,
+  nivelBadgeStyle,
+  type NivelCrise,
+} from "@/lib/indices";
 import { getWeather } from "@/lib/weather";
 import { fmtInt, fmtDataBR, fraseCapitalizada, limparTravessoes } from "@/lib/format";
 import { useAuth } from "@/components/AuthProvider";
@@ -455,11 +464,28 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
     const posts = filtrarPorPeriodo(data.data, dias);
     if (posts.length === 0) return { vazio: true } as const;
     const iad = Math.round(calcIAD(posts));
-    const wx = getWeather(iad);
+    // Houve comentário classificado bastante para o número significar algo?
+    // Sem isso o card exibia "50%" com a legenda "Aprovação da gestão" e o
+    // clima "Nublado - opiniões divididas" nos períodos em que NINGUÉM foi
+    // medido: o IAD conta neutro por 0,5, então ausência de medição converge
+    // para exatamente 50 (ver MIN_VOTOS_IAD em lib/indices.ts).
+    const semSinal = !temSinalIAD(posts);
+    const wx = semSinal
+      ? {
+          // Cinza do nublado como fundo NEUTRO (a foto e o ícone não afirmam
+          // nada por si), mas o texto passa a dizer que não houve leitura em
+          // vez de afirmar equilíbrio de opiniões.
+          ...getWeather(50),
+          label: "Sem leitura",
+          sub: "Não houve comentários suficientes para medir a aprovação",
+        }
+      : getWeather(iad);
     const totalComents = posts.reduce((s, p) => s + (p.comentarios_total || 0), 0);
     return {
       vazio: false as const,
       iad,
+      semSinal,
+      votos: votosDeSentimento(posts),
       wx,
       posts: posts.length,
       comentarios: totalComents,
@@ -659,6 +685,33 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                 trás do rótulo. */}
             <div className="mt-4 flex min-h-0 flex-1 flex-wrap items-center gap-x-8 gap-y-4">
               <div className="flex flex-col items-start">
+                {view.semSinal ? (
+                  /* SEM SINAL: o número sai da tela inteira (04/08 dizia "a
+                     porcentagem aparece pra todo papel" — continua valendo
+                     para quando ela EXISTE). Exibir "50%" aqui seria afirmar
+                     empate técnico onde ninguém foi medido, e é o pior erro
+                     possível numa tela que o gabinete usa para decidir. */
+                  <div
+                    className="flex flex-col items-start"
+                    aria-label="Índice de aprovação indisponível: amostra insuficiente"
+                  >
+                    <span
+                      className="text-[44px] leading-[0.95] text-txt-1 sm:text-[56px] lg:text-[64px]"
+                      style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                    >
+                      Sem sinal
+                    </span>
+                    <p className="mt-5 max-w-[26ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]">
+                      {view.votos === 0
+                        ? "Nenhum comentário do período foi classificado. Sem isso não há aprovação a medir."
+                        : `Só ${view.votos} ${view.votos === 1 ? "comentário classificado" : "comentários classificados"} no período, abaixo do mínimo de ${MIN_VOTOS_IAD} para calcular a aprovação.`}
+                    </p>
+                    <p className="mt-2 max-w-[26ch] text-[13.5px] leading-snug text-txt-3">
+                      Amplie o período acima ou aguarde a próxima coleta.
+                    </p>
+                  </div>
+                ) : (
+                  <>
                 <div className="flex items-start" aria-label={`Índice de aprovação: ${view.iad}%`}>
                   {/* Peso 600 desde a onda 2 (03/08): o 200 era da doutrina
                       fina de 11/07, e o briefing pede número em destaque com
@@ -695,6 +748,8 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                 <p className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]">
                   Aprovação da gestão nos comentários analisados no período
                 </p>
+                  </>
+                )}
               </div>
 
               {/* Revisão de 04/08 (vídeo de referência do cliente): a cena em

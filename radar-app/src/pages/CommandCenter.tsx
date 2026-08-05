@@ -9,7 +9,7 @@ import {
   setScriptUrl,
   type Post,
 } from "@/lib/data";
-import { calcIndices, calcDelta, type Delta, NIVEL_COLOR, NIVEL_LABEL } from "@/lib/indices";
+import { calcIndices, calcDelta, temSinalIAD, type Delta, NIVEL_COLOR, NIVEL_LABEL } from "@/lib/indices";
 import { KpiStat } from "@/components/KpiStat";
 import { AlertaCrise } from "@/components/AlertaCrise";
 import { AvisoAmostra } from "@/components/AvisoAmostra";
@@ -170,7 +170,11 @@ export function CommandCenter() {
 
     const temasRisco = calcTemasRisco(posts);
 
-    return { posts, serie, ind, negVelocity, delta, totalPosComents, totalNegComents, temasRisco };
+    return {
+      posts, serie, ind, negVelocity, delta,
+      totalPosComents, totalNegComents, temasRisco,
+      semSinalIAD: !temSinalIAD(posts),
+    };
   }, [data, dias]);
 
   const temaCrise = useMemo(() => {
@@ -226,7 +230,7 @@ export function CommandCenter() {
       </div>
     );
 
-  const { ind, serie, delta } = view;
+  const { ind, serie, delta, semSinalIAD } = view;
   const nivelColor = NIVEL_COLOR[ind.nivel];
 
   // Evolução do sentimento — 3 linhas: positivo, negativo, neutro
@@ -364,13 +368,24 @@ export function CommandCenter() {
           <div className="text-[12px] font-semibold uppercase tracking-wider text-txt-3">
             Aprovação Digital
           </div>
-          <div
-            className="mt-1 text-6xl font-extrabold leading-none"
-            style={{ color: colorByIAD(ind.iad) }}
-          >
-            {ind.iad}%
-          </div>
-          {delta !== null && <DeltaLine value={delta.iad} />}
+          {semSinalIAD ? (
+            /* Ver MIN_VOTOS_IAD: sem comentário classificado o IAD converge
+               para 50, e o card diria "50%" com a prova "0 pos · 0 neg"
+               logo abaixo, se contradizendo na mesma caixa. */
+            <div className="mt-2 text-center text-2xl font-extrabold leading-none text-txt-2">
+              Sem sinal
+            </div>
+          ) : (
+            <>
+              <div
+                className="mt-1 text-6xl font-extrabold leading-none"
+                style={{ color: colorByIAD(ind.iad) }}
+              >
+                {ind.iad}%
+              </div>
+              {delta !== null && <DeltaLine value={delta.iad} />}
+            </>
+          )}
           <div className="mt-2 text-center text-[12px] leading-snug text-txt-3">
             <span style={{ color: COLOR_SENTIMENT.pos }}>{fmtInt(view.totalPosComents)} pos</span>
             {" · "}

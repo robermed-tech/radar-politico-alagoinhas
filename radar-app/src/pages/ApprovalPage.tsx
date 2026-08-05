@@ -9,7 +9,7 @@ import {
   type Post,
   type Comment,
 } from "@/lib/data";
-import { calcIAD, calcICA } from "@/lib/indices";
+import { calcIAD, calcICA, temSinalIAD, votosDeSentimento, MIN_VOTOS_IAD } from "@/lib/indices";
 import { KpiStat } from "@/components/KpiStat";
 import { AlertaCrise } from "@/components/AlertaCrise";
 import { AvisoAmostra } from "@/components/AvisoAmostra";
@@ -321,6 +321,10 @@ export function ApprovalPage() {
     return {
       vazio: false as const,
       iad, ica, posts: posts.length, coments: totalComents,
+      // Ver MIN_VOTOS_IAD: sem comentário classificado o IAD converge para 50
+      // e o cartão afirmaria que metade da cidade aprova.
+      semSinal: !temSinalIAD(posts),
+      votos: votosDeSentimento(posts),
       pctPos, pctNeg, pctNeu,
       porPerfil, porTema,
     };
@@ -468,13 +472,31 @@ export function ApprovalPage() {
       <div className="grid overflow-hidden rounded-[20px] border border-line bg-bg-1 lg:grid-cols-[minmax(300px,1fr)_2fr]" style={{ boxShadow: "var(--shadow-ambient)" }}>
         <div className="flex flex-col items-center justify-center border-b border-line px-6 py-6 text-center lg:border-b-0 lg:border-r">
           <div className="section-label">Aprovação Digital</div>
-          <GaugeAprovacao pct={view.iad} />
-          <div className="tnum font-display text-[44px] font-bold leading-none" style={{ color: colorByIAD(view.iad) }}>
-            {view.iad}%
-          </div>
-          <div className="mt-1.5 max-w-[26ch] text-[13px] font-semibold text-txt-3">
-            dos comentários que tomam partido aprovam a gestão
-          </div>
+          {view.semSinal ? (
+            /* SEM SINAL: nem número nem ponteiro. O velocímetro em 50 é ainda
+               pior que o número, porque a agulha ao centro parece uma medição
+               de equilíbrio. Ver MIN_VOTOS_IAD em lib/indices.ts. */
+            <div className="flex flex-col items-center py-6">
+              <div className="font-display text-[30px] font-bold leading-none text-txt-2">
+                Sem sinal
+              </div>
+              <div className="mt-3 max-w-[30ch] text-[13px] font-semibold leading-snug text-txt-3">
+                {view.votos === 0
+                  ? "Nenhum comentário do período foi classificado, então não há aprovação a medir."
+                  : `Só ${view.votos} ${view.votos === 1 ? "comentário classificado" : "comentários classificados"} no período, abaixo do mínimo de ${MIN_VOTOS_IAD}.`}
+              </div>
+            </div>
+          ) : (
+            <>
+              <GaugeAprovacao pct={view.iad} />
+              <div className="tnum font-display text-[44px] font-bold leading-none" style={{ color: colorByIAD(view.iad) }}>
+                {view.iad}%
+              </div>
+              <div className="mt-1.5 max-w-[26ch] text-[13px] font-semibold text-txt-3">
+                dos comentários que tomam partido aprovam a gestão
+              </div>
+            </>
+          )}
         </div>
         <div className="px-5 py-4">
           <div className="section-label mb-1">Histórico do IAD · últimos 30 dias</div>

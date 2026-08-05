@@ -81,6 +81,47 @@ export function calcIAD(posts: Post[]): number {
 }
 
 /**
+ * Piso de comentários COM VOTO (positivo ou negativo) para o IAD significar
+ * alguma coisa. Abaixo disso a tela mostra "sem sinal", nunca o número.
+ *
+ * Por que o piso é necessário, e por que ele é 10: o IAD conta neutro com peso
+ * `iad_neutro` (0,5). Post sem nenhum comentário classificado entra como 100%
+ * neutro, e um período inteiro assim converge para EXATAMENTE 50 — que a tela
+ * exibia como "Aprovação da gestão", com a legenda de aprovação embaixo e o
+ * clima "Nublado — opiniões divididas" ao lado. Ou seja, o produto afirmava
+ * empate onde não houve medição nenhuma. Medido na base em 05/08/26: 166 dos
+ * 330 posts (50%) têm pct_pos e pct_neg zerados, e o índice bateu 50,0 exato
+ * em 14 dos 55 dias com métrica.
+ *
+ * O piso não é 1 porque o problema não some com um voto só: com N votos, um
+ * único comentário move o índice em 100/N pontos. Em N=10 ele vale 10 pontos,
+ * que já é a largura de uma faixa de clima inteira; abaixo disso um comentário
+ * sozinho troca a condição exibida, e o número não distingue mais nada.
+ */
+export const MIN_VOTOS_IAD = 10;
+
+/**
+ * Comentários que TOMARAM PARTIDO no período (estimativa a partir do agregado
+ * por post, que é o que o painel tem: `comentarios_total` × % que se
+ * posicionou). Neutro e indeterminado ficam de fora de propósito: eles entram
+ * no IAD, mas não são evidência de que houve medição.
+ */
+export function votosDeSentimento(posts: Post[]): number {
+  let votos = 0;
+  for (const p of posts) {
+    const n = p.comentarios_total || 0;
+    const pct = (p.comentarios_pct_pos || 0) + (p.comentarios_pct_neg || 0);
+    votos += (n * Math.min(100, pct)) / 100;
+  }
+  return Math.round(votos);
+}
+
+/** O IAD do período pode ser exibido como número? Ver MIN_VOTOS_IAD. */
+export function temSinalIAD(posts: Post[]): boolean {
+  return votosDeSentimento(posts) >= MIN_VOTOS_IAD;
+}
+
+/**
  * ICA — Índice de Confiança da Amostra (0-100).
  * Combina volume, diversidade de fontes, recência e balanço.
  * Evita conclusões fortes (ex.: "Extremo") com amostra fraca.

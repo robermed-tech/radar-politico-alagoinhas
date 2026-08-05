@@ -23,6 +23,16 @@ export function periodoLabel(dias: number): string {
   return dias === 1 ? "últimas 24h" : `últimos ${dias} dias`;
 }
 
+/**
+ * A mesma janela com preposição, para entrar no meio de uma frase ("nenhum
+ * alerta NAS últimas 24h"). Fica aqui junto do `periodoLabel` porque o gênero
+ * muda com a janela ("últimas 24h" é feminino, "últimos 7 dias" é masculino) e
+ * concatenar "nas " na tela erra em metade dos casos.
+ */
+export function periodoLabelCom(dias: number): string {
+  return dias === 1 ? "nas últimas 24h" : `nos últimos ${dias} dias`;
+}
+
 interface Props {
   dias: Dias;
   onChange: (d: Dias) => void;
