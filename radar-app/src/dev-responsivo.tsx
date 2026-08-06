@@ -1,11 +1,13 @@
 // Harness de desenvolvimento da revisão responsiva de 06/08 (responsivo-dev.html).
 // Não entra no bundle do app: é uma entrada Vite separada, usada só no dev
 // server para verificar em viewport de celular os COMPONENTES REAIS que a
-// revisão tocou — banner de saúde do pipeline (com o X de fechar), a lista
-// "Temas que merecem atenção", a faixa do radar e a linha de topo da Rádio
-// Escuta (antena + cadastro + gravar, a do corte lateral da 2ª rodada) — sem
-// depender de login no Supabase: as queries chegam pré-populadas no cache do
-// React Query e nada sai para a rede.
+// revisão tocou — banner de saúde do pipeline (com o X de fechar e o estado
+// "créditos da Apify esgotados", dispensável por causa), a lista "Temas que
+// merecem atenção", a faixa do radar (ociosa quando o pipeline está com
+// problema) e a linha de topo da Rádio Escuta (antena + cadastro + gravar,
+// a do corte lateral da 2ª rodada) — sem depender de login no Supabase: as
+// queries chegam pré-populadas no cache do React Query e nada sai para a
+// rede.
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PipelineHealthBanner } from "./components/PipelineHealthBanner";

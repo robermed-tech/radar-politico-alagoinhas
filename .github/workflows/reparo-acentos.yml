@@ -53,11 +53,11 @@ jobs:
       - name: Instalar dependências
         run: pip install -r requirements.txt
 
-      # Caminho SEM modelo: mapa determinístico derivado do corpus real (a API
-      # Anthropic está sem crédito — issue reparo-acentos — e o reparo via
-      # modelo abaixo degrada em silêncio até o crédito voltar). Cobre
+      # Caminho SEM modelo: mapa determinístico derivado do corpus real. Cobre
       # ai_briefings (Estação Meteorológica) e posts (Feed). Validado por
-      # teste de regressão local e revisão adversarial antes do push.
+      # teste de regressão local e revisão adversarial antes do push. Nasceu
+      # no incidente de crédito da Anthropic (resolvido em 06/08, o cliente
+      # recarregou) e SEGUE como caminho principal: não depende de saldo.
       - name: Acentuar textos sem modelo (mapa determinístico)
         timeout-minutes: 5
         env:
