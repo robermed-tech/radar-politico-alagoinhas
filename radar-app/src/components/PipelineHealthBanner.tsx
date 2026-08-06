@@ -29,6 +29,22 @@ function horasDesde(iso: string): number {
   return (Date.now() - new Date(iso).getTime()) / 3_600_000;
 }
 
+/**
+ * Estado de problema do pipeline — a MESMA régua do banner, exportada para o
+ * radar da Estação Meteorológica (pedido do cliente em 06/08: o radar dizia
+ * "em varredura" com o pipeline parado e "0 itens coletados hoje" ao lado,
+ * porque o critério era só "existe fonte ativa cadastrada"). Fonte única:
+ * banner aceso ⇒ radar ocioso, sem os dois indicadores discordarem.
+ * `health` null/indefinido não acusa problema — sem leitura ainda, o radar
+ * não deve abrir em âmbar por falta de dado.
+ */
+export function pipelineComProblema(health: PipelineHealth | null | undefined): boolean {
+  if (!health?.executado_em) return false;
+  const coletaVazia = health.status === "coleta_vazia" || (health.posts_coletados ?? 0) === 0;
+  const parado = horasDesde(health.executado_em) > LIMIAR_CRITICO_H || health.status === "erro";
+  return parado || coletaVazia;
+}
+
 function fmtQuando(iso: string): string {
   try {
     return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -51,11 +67,10 @@ export function PipelineHealthBanner({ health }: { health: PipelineHealth | null
   const executadoEm = health.executado_em;
 
   const horas = horasDesde(executadoEm);
-  const coletaVazia = health.status === "coleta_vazia" || (health.posts_coletados ?? 0) === 0;
   const parado = horas > LIMIAR_CRITICO_H || health.status === "erro";
 
   const critico = parado; // parado é sempre o estado mais grave
-  if ((!parado && !coletaVazia) || (!critico && fechadoEm === executadoEm)) return null;
+  if (!pipelineComProblema(health) || (!critico && fechadoEm === executadoEm)) return null;
 
   const fechar = () => {
     try {

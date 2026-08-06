@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchCollectionLogsHoje, fetchFontesUnificadas, calcKpis } from "@/lib/collection";
+import { fetchPipelineHealth } from "@/lib/data";
+import { pipelineComProblema } from "@/components/PipelineHealthBanner";
 import { fmtInt } from "@/lib/format";
 import { FUNDO_ESCUTA, SOMBRA } from "./superficieRadio";
 
@@ -85,6 +87,8 @@ interface Kpis {
   fontesAtivas: number;
   itensColetados: number;
   execucoes: number;
+  /** Varredura de verdade: há fonte ativa E o pipeline está saudável. */
+  ativo: boolean;
 }
 
 function useRadarKpis(): Kpis {
@@ -100,13 +104,25 @@ function useRadarKpis(): Kpis {
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
-  return calcKpis(logs ?? [], sources ?? []);
+  // Mesma queryKey do App: o cache é compartilhado, nenhuma requisição extra.
+  const { data: health } = useQuery({
+    queryKey: ["pipeline-health"],
+    queryFn: fetchPipelineHealth,
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  });
+  const kpis = calcKpis(logs ?? [], sources ?? []);
+  // "Em varredura" exigia só fonte cadastrada, e o radar girava com o
+  // pipeline parado e "0 itens coletados hoje" ao lado (pedido do cliente em
+  // 06/08). Agora o estado vem da MESMA régua do banner de saúde
+  // (pipelineComProblema): banner aceso ⇒ radar ocioso, sempre coerentes.
+  return { ...kpis, ativo: kpis.fontesAtivas > 0 && !pipelineComProblema(health) };
 }
 
 /** Faixa horizontal compacta. */
 export function RadarStatusBar() {
   const kpis = useRadarKpis();
-  const ativo = kpis.fontesAtivas > 0;
+  const ativo = kpis.ativo;
   const cor = ativo ? COR_RADAR_ATIVO : COR_RADAR_OCIOSO;
 
   return (
@@ -145,7 +161,7 @@ export function RadarStatusBar() {
  */
 export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
   const kpis = useRadarKpis();
-  const ativo = kpis.fontesAtivas > 0;
+  const ativo = kpis.ativo;
   const cor = ativo ? COR_RADAR_ATIVO : COR_RADAR_OCIOSO;
 
   // Revisão de 27/07: as três contagens (fontes monitoradas, itens coletados,

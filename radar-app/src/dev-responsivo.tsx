@@ -82,6 +82,28 @@ const HEALTH_COLETA_VAZIA: PipelineHealth = {
   duracao_s: 60, posts_coletados: 0, posts_analisados: 0, alertas_enviados: 0,
   status: "coleta_vazia",
 };
+// O radar lê a MESMA queryKey do banner: com a coleta vazia acima, o radar da
+// página tem que abrir OCIOSO (âmbar, sem giro) — critério de 06/08.
+qc.setQueryData(["pipeline-health"], HEALTH_COLETA_VAZIA);
+
+// Segundo cliente com pipeline SAUDÁVEL: prova o estado "Radar em varredura"
+// lado a lado com o ocioso, sem os dois caches brigarem pela mesma chave.
+const qcSaudavel = new QueryClient({
+  defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+});
+qcSaudavel.setQueryData(["coleta-logs-hoje"], [{
+  id: "1", source_id: null, platform: "instagram", data_type: "posts",
+  items_count: 37, status: "ok", collected_at: new Date().toISOString(), source: null,
+}]);
+qcSaudavel.setQueryData(
+  ["coleta-fontes-unificadas"],
+  Array.from({ length: 14 }, (_, i) => ({
+    id: String(i), platform: "instagram", handle: `fonte${i}`, label: null, active: true,
+  }))
+);
+qcSaudavel.setQueryData(["pipeline-health"], {
+  ...HEALTH_COLETA_VAZIA, posts_coletados: 37, status: "ok",
+});
 const HEALTH_PARADO: PipelineHealth = {
   ...HEALTH_COLETA_VAZIA,
   executado_em: new Date(Date.now() - 20 * 3_600_000).toISOString(),
@@ -147,7 +169,12 @@ function Shell() {
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="space-y-4 p-5">
+            {/* Coleta vazia (cache principal) ⇒ deve abrir "Radar ocioso". */}
             <RadarStatusBar />
+            {/* Pipeline saudável ⇒ deve abrir "Radar em varredura". */}
+            <QueryClientProvider client={qcSaudavel}>
+              <RadarStatusBar />
+            </QueryClientProvider>
             <TemasEmCrise alertas={ALERTAS} urlsNoPeriodo={new Set(URLS)} />
 
             {/* Linha de topo da Rádio Escuta — o MESMO grid da RadioPage,
