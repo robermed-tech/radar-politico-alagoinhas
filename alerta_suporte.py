@@ -325,8 +325,9 @@ _PROVEDORES_WHATSAPP = (
 )
 
 
-def _enviar_whatsapp(numero: str, texto: str) -> bool:
+def _enviar_whatsapp(numero: str, texto: str) -> str:
     """Tenta os provedores em ordem e para no primeiro que entrega.
+    Retorna o NOME do provedor que entregou ("" em falha total).
 
     Multi-provedor desde 31/07: o incidente da Evolution mostrou que amarrar o
     canal WhatsApp a um unico servico reintroduz o ponto unico de falha que o
@@ -336,18 +337,22 @@ def _enviar_whatsapp(numero: str, texto: str) -> bool:
     """
     if not numero:
         print("  [alerta_suporte] WhatsApp: numero ausente — pulando.")
-        return False
+        return ""
     configurados = [(nome, envia) for nome, tem_credencial, envia
                     in _PROVEDORES_WHATSAPP if tem_credencial()]
     if not configurados:
         print("  [alerta_suporte] WhatsApp: nenhum provedor configurado "
               "(Evolution, CallMeBot ou Twilio) — pulando.")
-        return False
+        return ""
     for nome, envia in configurados:
         if envia(numero, texto):
             print(f"  [alerta_suporte] WhatsApp entregue via {nome}.")
-            return True
-    return False
+            # Devolve o NOME do provedor (truthy), nao um bool: alerta_historico
+            # gravava so "whatsapp" e nao dava para auditar QUAL provedor
+            # entregou — em 06/08 os registros nao permitiam distinguir se era
+            # a Evolution de volta ou o CallMeBot segurando o canal sozinho.
+            return nome
+    return ""
 
 
 def _enviar_sms(numero: str, texto: str) -> bool:
@@ -527,8 +532,9 @@ def disparar(origem: str, motivo: str, tenant: str = None, forcar: bool = False,
 
     canais_ok = []
     if usa_whats:
-        if _enviar_whatsapp(numero, montar_mensagem(origem, motivo, longa=True)):
-            canais_ok.append("whatsapp")
+        provedor = _enviar_whatsapp(numero, montar_mensagem(origem, motivo, longa=True))
+        if provedor:
+            canais_ok.append(f"whatsapp:{provedor}")
     if usa_sms:
         if _enviar_sms(numero, montar_mensagem(origem, motivo, longa=False)):
             canais_ok.append("sms")
