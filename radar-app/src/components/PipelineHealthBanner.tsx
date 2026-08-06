@@ -17,6 +17,13 @@ import { IconAlertBell, IconWarningTriangle } from "@/components/icons";
  * NÃO ganha o X de propósito: ele diz que os números da tela estão defasados,
  * e um aviso desses dispensável viraria um painel desatualizado em silêncio.
  *
+ * EXCEÇÃO: quando a causa é o teto da Apify, a dispensa é pela CAUSA e não
+ * pela execução. A condição dura dias e quem a resolve é o dono da conta
+ * (recarregar em apify.com/billing); com a chave por execução, quem já sabe
+ * do problema teria de fechar o mesmo aviso 3x por dia. Fechou uma vez, some
+ * até a situação mudar — e volta sozinho quando o consumo cair abaixo do teto
+ * ou quando a coleta vazia passar a ter outra causa.
+ *
  * Limiar espelha heartbeat_check.py: agora.yml roda 3x/dia (08h/14h/19h BRT),
  * maior intervalo é o noturno 19h -> 08h do dia seguinte = 13h por desenho.
  * Fica acima disso + folga de atraso normal do runner do GitHub, senão o
@@ -25,6 +32,8 @@ import { IconAlertBell, IconWarningTriangle } from "@/components/icons";
 
 const LIMIAR_CRITICO_H = 15;
 const CHAVE_DISPENSA = "radar_aviso_coleta_fechado";
+/** Valor gravado na dispensa quando a causa é o teto da Apify (ver cabeçalho). */
+const DISPENSA_APIFY = "apify-sem-credito";
 
 function horasDesde(iso: string): number {
   return (Date.now() - new Date(iso).getTime()) / 3_600_000;
@@ -85,26 +94,31 @@ export function PipelineHealthBanner({ health }: { health: PipelineHealth | null
   const parado = horas > LIMIAR_CRITICO_H || health.status === "erro";
 
   const critico = parado; // parado é sempre o estado mais grave
-  if (!pipelineComProblema(health) || (!critico && fechadoEm === executadoEm)) return null;
-
-  const fechar = () => {
-    try {
-      localStorage.setItem(CHAVE_DISPENSA, executadoEm);
-    } catch {
-      /* sem localStorage (modo privado), a dispensa vale só até recarregar */
-    }
-    setFechadoEm(executadoEm);
-  };
-
-  const cor = critico ? "#EF4444" : "#F97316";
-  const bg = critico ? "rgba(239,68,68,0.10)" : "rgba(249,115,22,0.10)";
-  const borda = critico ? "rgba(239,68,68,0.35)" : "rgba(249,115,22,0.35)";
 
   // Causa CONHECIDA da coleta vazia: o teto da Apify estourou. Nesse caso o
   // aviso nomeia o serviço, mostra o consumo e diz o que fazer, em vez de
   // listar três hipóteses. Só vale para o estado de coleta vazia — com o
   // pipeline parado, o problema é outro (não rodou), e o crédito não explica.
   const apifyNoTeto = !critico && (apify?.uso_pct ?? 0) >= 100 && (apify?.teto_usd ?? 0) > 0;
+  // Chave da dispensa: por CAUSA quando é o crédito da Apify (dura dias),
+  // por execução no caso genérico (cada coleta vazia é um aviso novo).
+  const chaveDispensa = apifyNoTeto ? DISPENSA_APIFY : executadoEm;
+
+  if (!pipelineComProblema(health) || (!critico && fechadoEm === chaveDispensa)) return null;
+
+  const fechar = () => {
+    try {
+      localStorage.setItem(CHAVE_DISPENSA, chaveDispensa);
+    } catch {
+      /* sem localStorage (modo privado), a dispensa vale só até recarregar */
+    }
+    setFechadoEm(chaveDispensa);
+  };
+
+  const cor = critico ? "#EF4444" : "#F97316";
+  const bg = critico ? "rgba(239,68,68,0.10)" : "rgba(249,115,22,0.10)";
+  const borda = critico ? "rgba(239,68,68,0.35)" : "rgba(249,115,22,0.35)";
+
   // Vírgula decimal: em português "US$ 29.33" se lê como outro número.
   const usd = (v: number) => `US$ ${v.toFixed(2).replace(".", ",")}`;
   const usoApify = apifyNoTeto ? `${usd(apify!.uso_usd)} de ${usd(apify!.teto_usd)}` : "";

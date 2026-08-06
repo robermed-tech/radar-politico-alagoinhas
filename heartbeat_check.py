@@ -47,6 +47,35 @@ WHATSAPP_NUMBER = os.environ.get("WHATSAPP_NUMBER", "")
 # runner do GitHub, senao dispara falso alarme toda madrugada.
 LIMIAR_HORAS = float(os.environ.get("HEARTBEAT_LIMIAR_HORAS", "15"))
 
+# Coleta vazia por CRÉDITO ESGOTADO da Apify é uma condição que dura dias e
+# cuja correção é do dono da conta (recarregar em apify.com/billing), não do
+# sistema. Com a dedup padrão de 60min, o heartbeat (que roda a cada 15min)
+# mandaria um alerta por hora, indefinidamente — e, com o WhatsApp fora do ar,
+# uma issue por hora no repositório. Um lembrete por dia basta: a informação
+# não muda, e alerta que repete demais é alerta que ninguém lê.
+# (Situação real de 06/08: Apify em 101,1%, travada nesse valor desde 27/07.)
+DEDUP_CREDITO_MIN = int(os.environ.get("HEARTBEAT_DEDUP_CREDITO_MIN", "1440"))
+
+
+def _uso_apify() -> dict:
+    """Último uso registrado da Apify (service_status), gravado por
+    agora.py::verificar_creditos_apify a cada run. {} se indisponível — a
+    ausência do dado nunca pode impedir o alerta genérico de coleta vazia."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return {}
+    try:
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/service_status",
+            params={"tenant": f"eq.{TENANT}", "servico": "eq.apify", "limit": "1"},
+            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+            timeout=20,
+        )
+        if r.status_code == 200 and r.json():
+            return r.json()[0]
+    except Exception as e:
+        print(f"  service_status(apify): erro ao consultar ({e}) — seguindo sem esse dado.")
+    return {}
+
 
 def enviar_whatsapp(mensagem: str) -> bool:
     if not EVOLUTION_URL or not EVOLUTION_KEY or not WHATSAPP_NUMBER:
@@ -152,10 +181,28 @@ def main() -> int:
     ):
         print("Ultimos 2 runs com coleta vazia — pode ser bloqueio/token/credito, nao so dia parado.")
         if _ALERTA_SUPORTE_OK:
-            _alerta.disparar(
-                "heartbeat_coleta_vazia",
-                "As duas ultimas execucoes do ÁGORA coletaram 0 posts do Instagram.",
-            )
+            # Quando a causa é conhecida (teto da Apify), o alerta NOMEIA o
+            # serviço e o valor, e espaça para 1x/dia: a condição dura dias e
+            # quem resolve é o dono da conta. Sem esse dado, segue o texto
+            # genérico e a dedup padrão de 60min.
+            apify = _uso_apify()
+            pct = float(apify.get("uso_pct") or 0)
+            teto = float(apify.get("teto_usd") or 0)
+            if pct >= 100 and teto > 0:
+                uso = float(apify.get("uso_usd") or 0)
+                _alerta.disparar(
+                    "heartbeat_apify_sem_credito",
+                    f"Coleta parada: os creditos da Apify acabaram "
+                    f"(US$ {uso:.2f} de US$ {teto:.2f}, {pct:.0f}% do teto mensal). "
+                    f"O ÁGORA continua rodando, mas volta com 0 posts ate a recarga "
+                    f"em apify.com/billing.",
+                    janela_dedup_min=DEDUP_CREDITO_MIN,
+                )
+            else:
+                _alerta.disparar(
+                    "heartbeat_coleta_vazia",
+                    "As duas ultimas execucoes do ÁGORA coletaram 0 posts do Instagram.",
+                )
     else:
         print("Nada a fazer.")
     return 0
