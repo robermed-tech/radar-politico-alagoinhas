@@ -190,8 +190,11 @@ def main() -> int:
             teto = float(apify.get("teto_usd") or 0)
             if pct >= 100 and teto > 0:
                 uso = float(apify.get("uso_usd") or 0)
+                # MESMA origem que o agora.py usa para este incidente: com a
+                # dedup por origem, os dois vigias dividem a janela de 1 dia
+                # em vez de mandar um lembrete cada.
                 _alerta.disparar(
-                    "heartbeat_apify_sem_credito",
+                    "apify_sem_credito",
                     f"Coleta parada: os creditos da Apify acabaram "
                     f"(US$ {uso:.2f} de US$ {teto:.2f}, {pct:.0f}% do teto mensal). "
                     f"O ÁGORA continua rodando, mas volta com 0 posts ate a recarga "

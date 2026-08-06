@@ -450,19 +450,31 @@ def _enviar_github_issue(origem: str, motivo: str, sugestao: str) -> bool:
     return False
 
 
-def _ja_alertado_recentemente(tenant: str, janela_min: int) -> bool:
+def _ja_alertado_recentemente(tenant: str, janela_min: int, origem: str = "") -> bool:
+    """Houve alerta do MESMO incidente na janela?
+
+    A dedup era global por tenant: qualquer alerta calava qualquer outro pela
+    janela inteira. Com isso, um aviso de baixa urgência que se repete (ex.:
+    créditos da Apify, que dura dias) podia engolir um "pipeline parado" que
+    chegasse logo depois — e é justamente o crítico que não pode faltar.
+    Agora a checagem é por incidente, usando o prefixo `[origem]` que
+    `_registrar_alerta` já grava na mensagem desde sempre (retrocompatível,
+    sem migration). Sem `origem`, mantém o comportamento antigo.
+    """
     url, key = _supabase_url(), _supabase_key()
     if not url or not key:
         return False
     try:
         limite = (datetime.now(timezone.utc) - timedelta(minutes=janela_min)).isoformat()
+        params = {
+            "tenant_id": f"eq.{tenant}", "tipo": "eq.suporte",
+            "criado_em": f"gte.{limite}", "select": "id", "limit": "1",
+        }
+        if origem:
+            params["mensagem"] = f"like.[{origem}]%"
         r = requests.get(
             f"{url}/rest/v1/alerta_historico",
-            params={
-                "tenant_id": f"eq.{tenant}", "tipo": "eq.suporte",
-                "criado_em": f"gte.{limite}", "select": "id", "limit": "1",
-            },
-            headers=_headers_supabase(), timeout=15,
+            params=params, headers=_headers_supabase(), timeout=15,
         )
         return r.status_code == 200 and bool(r.json())
     except Exception:
@@ -494,8 +506,9 @@ def disparar(origem: str, motivo: str, tenant: str = None, forcar: bool = False,
     esperado)."""
     tenant = tenant or _tenant_padrao()
 
-    if not forcar and _ja_alertado_recentemente(tenant, janela_dedup_min):
-        print(f"  [alerta_suporte] Ja alertado nos ultimos {janela_dedup_min}min — pulando (mesmo incidente).")
+    if not forcar and _ja_alertado_recentemente(tenant, janela_dedup_min, origem):
+        print(f"  [alerta_suporte] '{origem}' ja alertado nos ultimos "
+              f"{janela_dedup_min}min — pulando (mesmo incidente).")
         return True
 
     cfg = _carregar_config_suporte(tenant)

@@ -970,9 +970,13 @@ def verificar_creditos_apify():
     Usa /users/me/limits — /users/me não retorna mais 'monthlyUsage' (a API da
     Apify mudou; o campo vem sempre ausente, e o .get(...,{}) mascarava isso
     caindo silenciosamente em $0,00/0% em toda execução, sem nunca dar erro).
-    Descoberto comparando com o valor real do console da Apify (11/07/26)."""
+    Descoberto comparando com o valor real do console da Apify (11/07/26).
+
+    Retorna `{'uso': float, 'teto': float, 'pct': float}` ou `{}` quando não deu
+    para medir — quem chama usa isso para dizer a CAUSA da coleta vazia em vez
+    de listar hipóteses (ver o bloco de coleta vazia no main)."""
     if not APIFY_TOKEN:
-        return
+        return {}
     try:
         r = requests.get(
             f"{APIFY_BASE}/users/me/limits",
@@ -981,13 +985,13 @@ def verificar_creditos_apify():
         )
         if r.status_code != 200:
             log(f"  Apify credits: HTTP {r.status_code} — ignorando")
-            return
+            return {}
         data = r.json().get("data", {})
         uso = data.get("current", {}).get("monthlyUsageUsd", 0) or 0
         teto = data.get("limits", {}).get("maxMonthlyUsageUsd", 0) or 0
         if not teto:
             log(f"  Apify credits: uso ${uso:.2f} (teto não identificado no plano)")
-            return
+            return {}
         pct = (uso / teto) * 100
         log(f"  Apify credits: ${uso:.2f} / ${teto:.2f} ({pct:.0f}%)")
         # Persiste no Supabase para o admin dashboard
@@ -1009,9 +1013,28 @@ def verificar_creditos_apify():
                 f"Acesse apify.com/billing para recarregar antes que a coleta pare."
             )
             if _enviar_whatsapp(msg):
-                log(f"  Alerta de créditos enviado via WhatsApp")
+                log(f"  Alerta de créditos enviado via WhatsApp (grupo)")
+            # ADITIVO, e a lição do incidente de 06/08: este aviso existe para
+            # a coleta não parar de surpresa, mas ia SÓ para o grupo pela
+            # Evolution — que estava fora do ar desde 31/07. O teto estourou em
+            # 27/07 e ninguém soube. Passando também pelo alerta_suporte, ele
+            # usa a cadeia multi-provedor (Evolution -> CallMeBot -> Twilio) e
+            # o número que o admin cadastrou, então um canal caído não cala o
+            # aviso inteiro. Dedup de 12h: o consumo não muda de hora em hora.
+            if _ALERTA_SUPORTE_OK:
+                _safe(
+                    "alerta de creditos ao admin",
+                    _alerta.disparar,
+                    "apify_creditos",
+                    f"Creditos da Apify em {pct:.0f}% (US$ {uso:.2f} de US$ {teto:.2f}). "
+                    f"Quando o teto fecha, a coleta volta com 0 posts. "
+                    f"Recarregue em apify.com/billing.",
+                    janela_dedup_min=720,
+                )
+        return {"uso": uso, "teto": teto, "pct": pct}
     except Exception as e:
         log(f"  Apify credits: erro ao verificar ({e})")
+    return {}
 
 # ==============================================================
 # MODULO 1 - COLETA DE POSTS VIA APIFY
@@ -5221,7 +5244,9 @@ def main():
     if not posts:
         log("  Nenhum post coletado. Pipeline encerrado.")
         _safe("log_coleta_ig_vazia", _registrar_coleta, "instagram", "posts", 0, "vazio")
-        _safe("creditos_apify", verificar_creditos_apify)  # registra status mesmo sem posts (ex: limite mensal atingido)
+        # Registra status mesmo sem posts (ex: limite mensal atingido) e
+        # devolve o consumo, para o alerta abaixo dizer a CAUSA.
+        _apify = _safe("creditos_apify", verificar_creditos_apify) or {}
         # Sem isto, um run com coleta vazia (Instagram bloqueando, token
         # expirado etc.) saia sem tocar pipeline_health — o banner de "coleta
         # vazia" no dashboard nunca via essa linha (so enxergava a saude do
@@ -5257,8 +5282,23 @@ def main():
         # se houver um. Coleta vazia e "parado" do ponto de vista do produto
         # mesmo sem excecao nenhuma ter subido (main() retorna normalmente).
         if _ALERTA_SUPORTE_OK:
-            _safe("alerta_suporte_coleta_vazia", _alerta.disparar,
-                  "coleta_vazia", "0 posts coletados do Instagram nesta execucao")
+            # Causa CONHECIDA (teto da Apify) vira um alerta próprio, com o
+            # valor e a ação, e só 1x/dia: a condição dura dias e quem resolve
+            # é o dono da conta. Com o texto genérico e a dedup de 60min, cada
+            # execução mandava um alerta novo (o pipeline roda 3x/dia e os runs
+            # ficam a 5-6h um do outro, então a janela nunca pegava) — medido
+            # em 06/08, com a Apify travada em 101% desde 27/07.
+            if float(_apify.get("pct") or 0) >= 100:
+                _safe("alerta_suporte_apify", _alerta.disparar,
+                      "apify_sem_credito",
+                      f"Coleta parada: creditos da Apify esgotados "
+                      f"(US$ {_apify['uso']:.2f} de US$ {_apify['teto']:.2f}). "
+                      f"O ÁGORA continua rodando e volta com 0 posts ate a "
+                      f"recarga em apify.com/billing.",
+                      janela_dedup_min=1440)
+            else:
+                _safe("alerta_suporte_coleta_vazia", _alerta.disparar,
+                      "coleta_vazia", "0 posts coletados do Instagram nesta execucao")
         return
 
     _safe("log_coleta_ig_posts", _registrar_coleta, "instagram", "posts", len(posts), "ok")

@@ -59,6 +59,10 @@ jobs:
           EVOLUTION_API_URL:    ${{ secrets.EVOLUTION_API_URL }}
           EVOLUTION_API_KEY:    ${{ secrets.EVOLUTION_API_KEY }}
           EVOLUTION_INSTANCE:   ${{ secrets.EVOLUTION_INSTANCE }}
+          # Sem a chave aqui, o diagnóstico enxergava um cenário DIFERENTE do
+          # envio real (que a recebe): diria "nenhum provedor" com o CallMeBot
+          # configurado e funcionando.
+          CALLMEBOT_APIKEY:     ${{ secrets.CALLMEBOT_APIKEY }}
         run: python alerta_suporte.py --diagnostico
 
       - name: Checar saude do pipeline ÁGORA
