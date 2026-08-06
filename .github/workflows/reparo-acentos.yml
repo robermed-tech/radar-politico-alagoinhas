@@ -54,6 +54,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Dry-run (auditoria do antes/depois)
+        timeout-minutes: 8
         env:
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
@@ -61,6 +62,7 @@ jobs:
         run: python agora.py --reparar-acentos-briefings --dry-run
 
       - name: Aplicar o reparo
+        timeout-minutes: 8
         if: ${{ github.event_name == 'push' || inputs.dry_run != true }}
         env:
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
