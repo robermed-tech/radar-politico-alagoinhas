@@ -2488,22 +2488,25 @@ def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
 # A ABORDAGEM (qual estrategia) e deterministica — depende so do cluster,
 # nao do humor do modelo. O Claude preenche o cluster; a regra fixa recomenda.
 
+# Texto EXIBIDO (vai para boletins e chega à tela), então vai acentuado e sem
+# travessão — ao contrário dos prompts, que são instrução para o modelo. Antes
+# estes quatro textos eram gravados sem acento e apareciam assim no painel.
 ABORDAGEM_POR_CLUSTER = {
     "vitima": {
-        "abordagem": "Esclarecer com evidencia factual (negacao factual + acao corretiva)",
-        "por_que": "A gestao e vitima do episodio. Confrontar rapido com fato funciona melhor que o silencio — boato nao confrontado vira verdade percebida.",
+        "abordagem": "Esclarecer com evidência factual (negação factual + ação corretiva)",
+        "por_que": "A gestão é vítima do episódio. Confrontar rápido com fato funciona melhor que o silêncio: boato não confrontado vira verdade percebida.",
     },
     "acidental": {
-        "abordagem": "Corrigir e contextualizar (acao corretiva + reducao da ofensa)",
-        "por_que": "Erro nao-intencional. Mostrar a correcao e o contexto preserva mais a imagem do que negar — negar soa como arrogancia.",
+        "abordagem": "Corrigir e contextualizar (ação corretiva + redução da ofensa)",
+        "por_que": "Erro não intencional. Mostrar a correção e o contexto preserva mais a imagem do que negar: negar soa como arrogância.",
     },
     "intencional": {
-        "abordagem": "Reconhecer e apresentar plano (mortificacao + acao corretiva)",
-        "por_que": "O publico atribui alta responsabilidade. Reconhecer e mostrar plano reduz o dano; negar ou minimizar amplia a crise.",
+        "abordagem": "Reconhecer e apresentar plano (mortificação + ação corretiva)",
+        "por_que": "O público atribui alta responsabilidade. Reconhecer e mostrar plano reduz o dano; negar ou minimizar amplia a crise.",
     },
     "nenhum": {
-        "abordagem": "Nenhuma acao reativa — monitorar",
-        "por_que": "Conteudo neutro/positivo. Se for positivo relevante, vale amplificar nos canais proprios.",
+        "abordagem": "Nenhuma ação reativa: monitorar",
+        "por_que": "Conteúdo neutro ou positivo. Se for positivo relevante, vale amplificar nos canais próprios.",
     },
 }
 

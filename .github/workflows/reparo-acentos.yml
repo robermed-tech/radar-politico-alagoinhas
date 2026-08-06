@@ -55,14 +55,15 @@ jobs:
 
       # Caminho SEM modelo: mapa determinístico derivado do corpus real (a API
       # Anthropic está sem crédito — issue reparo-acentos — e o reparo via
-      # modelo abaixo degrada em silêncio até o crédito voltar). Validado
-      # localmente contra as 8 linhas e por revisão adversarial antes do push.
-      - name: Acentuar briefings sem modelo (mapa determinístico)
+      # modelo abaixo degrada em silêncio até o crédito voltar). Cobre
+      # ai_briefings (Estação Meteorológica) e posts (Feed). Validado por
+      # teste de regressão local e revisão adversarial antes do push.
+      - name: Acentuar textos sem modelo (mapa determinístico)
         timeout-minutes: 5
         env:
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python .github/scripts/acentuar_briefings.py ${{ github.event_name != 'push' && inputs.dry_run == true && '--dry-run' || '' }}
+        run: python .github/scripts/acentuar_textos.py ${{ github.event_name != 'push' && inputs.dry_run == true && '--dry-run' || '' }}
 
       - name: Dry-run (auditoria do antes/depois)
         timeout-minutes: 8

@@ -34,7 +34,7 @@ falhou = False
 # 1) Anthropic: uma chamada mínima. O corpo do erro distingue crédito esgotado,
 #    chave inválida e instabilidade — a informação que faltou no primeiro run.
 #    Vira AVISO, não falha: desde 06/08 o passo do mapa determinístico
-#    (acentuar_briefings.py) corrige os textos SEM modelo, então crédito
+#    (acentuar_textos.py) corrige os textos SEM modelo, então crédito
 #    esgotado não impede o objetivo — o job só falha se restar briefing sem
 #    acento ou o Supabase estiver fora.
 chave = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -94,6 +94,31 @@ else:
                 "Ainda sem acento: "
                 + ", ".join(f"{r['periodo']}/{r['dia']}" for r in sem[:8])
             )
+
+    # 2b) posts (Feed "O que o povo diz") — mesma checagem, outra tabela: o
+    #     defeito de acentuação atingiu as duas e a sonda tem que enxergar as
+    #     duas, senão o job fica verde com metade do trabalho feito.
+    st, corpo = _http(
+        f"{url}/rest/v1/posts?tenant=eq.alagoinhas"
+        "&select=url,resumo,queixa_dominante,elogio_dominante&limit=5000",
+        headers={"apikey": skey, "Authorization": f"Bearer {skey}"},
+    )
+    if st != 200:
+        falhou = True
+        veredito.append(f"Supabase GET posts: FALHA HTTP {st} — {corpo[:200]}")
+    else:
+        linhas = json.loads(corpo)
+        acentos = "áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ"
+        n = sum(
+            1
+            for p in linhas
+            for c in ("resumo", "queixa_dominante", "elogio_dominante")
+            if isinstance(p.get(c), str) and len(p[c].strip()) > 20
+            and not any(ch in acentos for ch in p[c])
+        )
+        veredito.append(f"Supabase posts: OK — {len(linhas)} posts, {n} texto(s) sem nenhum acento")
+        if n:
+            falhou = True
 
 print("\n".join(veredito))
 
