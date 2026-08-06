@@ -22,10 +22,18 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/reparo-acentos.yml"
+      - ".github/scripts/diagnostico_reparo.py"
 
 concurrency:
   group: reparo-acentos
   cancel-in-progress: false
+
+# issues: write é para o passo de diagnóstico publicar o veredito numa issue
+# (rótulo reparo-acentos) — os LOGS do Actions não são legíveis sem token, e o
+# primeiro run saiu verde com efeito zero justamente por falha silenciosa.
+permissions:
+  contents: read
+  issues: write
 
 jobs:
   reparar:
@@ -71,3 +79,15 @@ jobs:
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python agora.py --testar-briefings-periodo
+
+      # Sonda camada por camada + issue com o veredito. FALHA o job quando o
+      # reparo não surtiu efeito — um job verde com efeito zero foi o que
+      # aconteceu no primeiro run, e ninguém de fora conseguia ler o porquê.
+      - name: Diagnóstico das camadas (falha se o efeito for zero)
+        if: ${{ always() }}
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GITHUB_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
+        run: python .github/scripts/diagnostico_reparo.py
