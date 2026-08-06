@@ -82,6 +82,22 @@ PROTEGIDOS = [
     ("periodo critica a gestao", "período critica a gestão"),
     ("periodo critica a administracao", "período critica a administração"),
     ("deles critica diretamente", "deles critica diretamente"),
+    # Textos PARCIALMENTE acentuados (06/08, 2ª leva): ali as 7 ocorrências de
+    # "critica" são VERBO — o inverso do corpus sem acento, onde 16 de 17 eram
+    # substantivo. Como o mapa é o mesmo para os dois escopos, cada padrão
+    # verbal precisa estar aqui; o texto já vem acentuado à direita quando for
+    # o caso, porque o miolo não passa pelo dicionário.
+    ("período critica a gestão", "período critica a gestão"),
+    ("período critica a administração", "período critica a administração"),
+    ("maioria critica ou questiona", "maioria critica ou questiona"),
+    ("dia critica a gestão", "dia critica a gestão"),
+    ("dia critica a gestao", "dia critica a gestão"),
+    ("maiores e critica a Secretaria", "maiores e critica a Secretaria"),
+    # "negligencia" é o segundo homógrafo com classes opostas nos dois corpora:
+    # substantivo na 1ª leva ("denunciam negligência do sistema de saúde") e
+    # VERBO aqui ("a gestão ... negligencia problemas básicos"). O dicionário
+    # acentua; este trecho passa intacto. Achado pela revisão adversarial.
+    ("enquanto negligencia problemas", "enquanto negligencia problemas"),
 ]
 
 # N-gramas para os casos que um dicionário cego erraria. A ENTRADA é o texto
@@ -187,6 +203,19 @@ NGRAMAS = [
     # Enclíticas e o "só" advérbio: acento que o dicionário por palavra não
     # alcança sozinho (o hífen separa "coloca" de "lo").
     ("ao coloca-lo em", "ao colocá-lo em"),
+
+    # ── Textos PARCIALMENTE acentuados (2ª leva de 06/08) ──
+    # "e" verbo ser: 3 casos entre 33 ocorrências; as outras 30 são conjunção
+    # e ficam intactas por não casarem estes contextos.
+    ("saldo do dia e negativo", "saldo do dia é negativo"),
+    ("saldo de sentimentos e negativo", "saldo de sentimentos é negativo"),
+    ("da amostra e muito alta", "da amostra é muito alta"),
+    ("oposicao esta capitalizando", "oposição está capitalizando"),
+    # Crases que a revisão apontou: regência de "dirigir (críticas) a" e de
+    # "dirigir-se a", com núcleo feminino. O "mas a um adversário" da mesma
+    # frase é masculino e continua sem crase.
+    ("explicitas a gestao municipal", "explícitas à gestão municipal"),
+    ("ao prefeito nem a gestao", "ao prefeito nem à gestão"),
 ]
 
 # Palavras inequívocas NESTE corpus (cada ambígua da língua foi conferida:
@@ -278,6 +307,12 @@ DICIONARIO = {
     # FORA daqui e são tratados por n-grama/PROTEGIDOS: "denuncia", "previa",
     # "seria" (verbo no corpus), "esta". "critica" entra porque 16 das 17
     # ocorrências são substantivo e a única verbal está em PROTEGIDOS. ──
+    # 2ª leva (textos parcialmente acentuados, 06/08).
+    "adversario": "adversário", "confiavel": "confiável",
+    "consideravel": "considerável", "diagnostico": "diagnóstico",
+    "indicacoes": "indicações", "irresponsavel": "irresponsável",
+    "transito": "trânsito",
+
     "admiracao": "admiração", "admissao": "admissão", "agua": "água",
     "aniversario": "aniversário", "aparicoes": "aparições",
     "aspiracao": "aspiração", "associacoes": "associações",
@@ -375,8 +410,12 @@ def acentuar(texto):
 
 
 def linha_alvo(row):
-    d = row.get("diagnostico") or ""
-    return len(d) > 120 and not any(ch in _ACENTOS for ch in d)
+    """Briefing com trabalho pendente. Usa o MESMO critério dos posts: tinha
+    uma cópia da regra antiga ("sem nenhum acento") e ficou para trás quando
+    o alvo passou a incluir os parcialmente acentuados — dois briefings
+    sobraram sem correção na 2ª leva de 06/08. Uma regra só para as duas
+    tabelas."""
+    return texto_alvo(row.get("diagnostico"))
 
 
 def corrigir_linha(row):
@@ -406,8 +445,18 @@ CAMPOS_POST = ("resumo", "queixa_dominante", "elogio_dominante")
 
 
 def texto_alvo(v):
-    """Texto gerado que ficou sem NENHUM acento — o mesmo critério da sonda."""
-    return isinstance(v, str) and len(v.strip()) > 20 and not any(c in v for c in _ACENTOS)
+    """Texto gerado que ainda tem palavra pendente de acento.
+
+    O critério era "sem NENHUM acento", e deixou de fora os PARCIALMENTE
+    acentuados — o modelo produziu frases como "expressam frustração com
+    mudancas eleitorais" (achado em 06/08: 17 textos). Agora o alvo é ter
+    alguma palavra que o dicionário conhece; os homógrafos desse escopo foram
+    auditados um a um e vivem em PROTEGIDOS (nos textos mistos, todas as 7
+    ocorrências de "critica" são VERBO, o inverso do corpus sem acento).
+    """
+    if not isinstance(v, str) or len(v.strip()) <= 20:
+        return False
+    return any(p.lower() in DICIONARIO for p in _PALAVRA.findall(v))
 
 
 def _reparar_briefings(url, headers, dry):

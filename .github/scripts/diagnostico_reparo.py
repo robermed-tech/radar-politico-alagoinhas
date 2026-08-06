@@ -12,11 +12,43 @@ o diagnóstico chega a quem não consegue abrir o log do job.
 Nunca imprime chave nem texto de briefing; o corpo de erro da Anthropic não
 contém segredo.
 """
+import importlib.util
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
+
+# A pergunta certa não é "este texto tem acento?", e sim "o corretor ainda
+# tem trabalho aqui?". Duas heurísticas mais simples já falharam:
+#   - "texto longo sem NENHUM acento": certeira enquanto 65% estavam quebrados,
+#     falsa depois do reparo — "Trabalho acontecendo diariamente" não tem uma
+#     única palavra acentuável (11 falsos positivos em 06/08);
+#   - "contém palavra do dicionário": acusa homógrafo legítimo, porque "o
+#     período critica a gestão" (verbo) está certo sem acento.
+# Rodar o próprio corretor, no MESMO escopo que ele usa em produção, responde
+# exatamente à pergunta e acompanha sozinho qualquer mudança no mapa.
+def _carregar_corretor():
+    caminho = os.path.join(os.path.dirname(os.path.abspath(__file__)), "acentuar_textos.py")
+    try:
+        spec = importlib.util.spec_from_file_location("_ac", caminho)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception as e:
+        print(f"AVISO: nao consegui carregar o corretor ({e}) — checagem de acento desativada.")
+        return None
+
+
+_AC = _carregar_corretor()
+
+
+def falta_acento(texto):
+    """True se o corretor ainda mudaria este texto dentro do escopo dele."""
+    if _AC is None or not _AC.texto_alvo(texto):
+        return False
+    return _AC.acentuar(texto) != texto
 
 def _http(url, headers=None, data=None, method="GET"):
     req = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
@@ -78,15 +110,10 @@ else:
         veredito.append(f"Supabase GET: FALHA HTTP {st} — {corpo[:200]}")
     else:
         rows = json.loads(corpo)
-        acentos = "áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ"
-        sem = [
-            r for r in rows
-            if len(r.get("diagnostico") or "") > 120
-            and not any(ch in acentos for ch in r["diagnostico"])
-        ]
+        sem = [r for r in rows if falta_acento(r.get("diagnostico"))]
         veredito.append(
             f"Supabase GET: OK — {len(rows)} briefings, "
-            f"{len(sem)} com diagnóstico longo sem nenhum acento"
+            f"{len(sem)} com palavra pendente de acento no diagnóstico"
         )
         if sem:
             falhou = True
@@ -108,15 +135,15 @@ else:
         veredito.append(f"Supabase GET posts: FALHA HTTP {st} — {corpo[:200]}")
     else:
         linhas = json.loads(corpo)
-        acentos = "áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ"
         n = sum(
             1
             for p in linhas
             for c in ("resumo", "queixa_dominante", "elogio_dominante")
-            if isinstance(p.get(c), str) and len(p[c].strip()) > 20
-            and not any(ch in acentos for ch in p[c])
+            if falta_acento(p.get(c))
         )
-        veredito.append(f"Supabase posts: OK — {len(linhas)} posts, {n} texto(s) sem nenhum acento")
+        veredito.append(
+            f"Supabase posts: OK — {len(linhas)} posts, {n} texto(s) com palavra pendente de acento"
+        )
         if n:
             falhou = True
 
