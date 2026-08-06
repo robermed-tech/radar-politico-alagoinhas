@@ -22,7 +22,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/reparo-acentos.yml"
-      - ".github/scripts/diagnostico_reparo.py"
+      - ".github/scripts/*.py"
 
 concurrency:
   group: reparo-acentos
@@ -52,6 +52,17 @@ jobs:
 
       - name: Instalar dependências
         run: pip install -r requirements.txt
+
+      # Caminho SEM modelo: mapa determinístico derivado do corpus real (a API
+      # Anthropic está sem crédito — issue reparo-acentos — e o reparo via
+      # modelo abaixo degrada em silêncio até o crédito voltar). Validado
+      # localmente contra as 8 linhas e por revisão adversarial antes do push.
+      - name: Acentuar briefings sem modelo (mapa determinístico)
+        timeout-minutes: 5
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python .github/scripts/acentuar_briefings.py ${{ github.event_name != 'push' && inputs.dry_run == true && '--dry-run' || '' }}
 
       - name: Dry-run (auditoria do antes/depois)
         timeout-minutes: 8

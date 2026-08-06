@@ -33,10 +33,13 @@ falhou = False
 
 # 1) Anthropic: uma chamada mínima. O corpo do erro distingue crédito esgotado,
 #    chave inválida e instabilidade — a informação que faltou no primeiro run.
+#    Vira AVISO, não falha: desde 06/08 o passo do mapa determinístico
+#    (acentuar_briefings.py) corrige os textos SEM modelo, então crédito
+#    esgotado não impede o objetivo — o job só falha se restar briefing sem
+#    acento ou o Supabase estiver fora.
 chave = os.environ.get("ANTHROPIC_API_KEY", "")
 if not chave:
-    veredito.append("ANTHROPIC_API_KEY: AUSENTE no ambiente do job")
-    falhou = True
+    veredito.append("AVISO Anthropic: ANTHROPIC_API_KEY ausente no ambiente do job")
 else:
     st, corpo = _http(
         "https://api.anthropic.com/v1/messages",
@@ -55,8 +58,7 @@ else:
     if st == 200:
         veredito.append("Anthropic: OK (sonda respondeu 200)")
     else:
-        falhou = True
-        veredito.append(f"Anthropic: FALHA HTTP {st} — {corpo[:300]}")
+        veredito.append(f"AVISO Anthropic: HTTP {st} — {corpo[:300]}")
 
 # 2) Supabase (service key): GET + quantas linhas seguem sem NENHUM acento num
 #    diagnóstico longo — um texto real de briefing sem acento nenhum é o
