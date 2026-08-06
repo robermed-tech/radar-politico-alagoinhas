@@ -3505,6 +3505,143 @@ def gerar_briefings_periodo():
 
 
 # ==============================================================
+# REPARO: acentuacao dos textos ja gravados em ai_briefings (06/08/26)
+# ==============================================================
+# Os prompts passaram a exigir portugues acentuado em 06/08, mas o que ja
+# estava gravado (diagnostico, alertas, oportunidades, recomendacoes) veio da
+# era em que o modelo imitava o estilo sem acento dos proprios prompts — e,
+# com a coleta vazia desde 02/08, o pipeline nao regenera briefing nenhum
+# sozinho (main() aborta antes da analise). Este reparo corrige APENAS
+# diacriticos e cedilha dos textos gravados; um validador rejeita item a item
+# qualquer outra mudanca: removidos os diacriticos, o antes e o depois tem
+# que ser IDENTICOS (pontuacao, caixa, numeros, palavras), senao o item volta
+# ao original. Idempotente: texto ja acentuado retorna igual e a linha nem e
+# regravada.
+
+# Campos de texto livre dentro de cada lista JSONB de ai_briefings. So eles
+# vao ao revisor; nivel/tema_categoria/janela/impacto/esforco sao vocabulario
+# fixo e nao passam pelo modelo.
+_CAMPOS_LIVRES_BRIEFING = {
+    "alertas": ("tema",),
+    "oportunidades": ("titulo", "acao"),
+    "recomendacoes": ("canal", "mensagem", "tom", "timing"),
+}
+
+def _sem_diacriticos(texto):
+    """Remove acentos/cedilha (NFD sem marcas de combinacao) para comparar."""
+    nfd = unicodedata.normalize("NFD", texto or "")
+    return "".join(ch for ch in nfd if not unicodedata.combining(ch))
+
+def _acentuar_lote(cliente, textos):
+    """Manda uma lista de textos ao Haiku (temp 0) e devolve a lista corrigida.
+
+    Item que voltar com QUALQUER mudanca alem de diacriticos/cedilha e
+    substituido pelo original — corrigir demais aqui seria reescrever o dado
+    historico, que e pior que exibi-lo sem acento."""
+    payload = json.dumps(textos, ensure_ascii=False)
+    resp = cliente.messages.create(
+        model=MODELO_ANALISTA, max_tokens=4000, temperature=0,
+        system=(
+            "Voce e um revisor ortografico de portugues do Brasil. Recebe um array "
+            "JSON de textos e devolve o MESMO array, na MESMA ordem, corrigindo "
+            "APENAS acentuacao e cedilha (ex.: 'gestao'->'gestão', 'saude "
+            "publica'->'saúde pública', 'comunicacao'->'comunicação'). Atencao a "
+            "classe gramatical: 'critica' so recebe acento como substantivo ou "
+            "adjetivo ('a crítica', 'fala crítica'); como verbo de criticar ('a "
+            "maioria critica a gestao') fica sem acento. PROIBIDO: trocar, inserir "
+            "ou remover palavras; mudar pontuacao, numeros, maiusculas, emojis ou "
+            "@mencoes; usar travessao. Responda APENAS o array JSON."
+        ),
+        messages=[{"role": "user", "content": payload}],
+    )
+    txt = resp.content[0].text.strip()
+    if txt.startswith("```"):
+        txt = txt.split("```")[1]
+        if txt.startswith("json"):
+            txt = txt[4:]
+    corrigidos = json.loads(txt.strip())
+    if not isinstance(corrigidos, list) or len(corrigidos) != len(textos):
+        return textos
+    finais = []
+    for antes, depois in zip(textos, corrigidos):
+        ok = isinstance(depois, str) and _sem_diacriticos(depois) == _sem_diacriticos(antes)
+        finais.append(depois if ok else antes)
+    return finais
+
+def reparar_acentos_briefings(dry_run=False, limite=0):
+    """Acentua os textos das linhas de ai_briefings. `limite` 0 = todas.
+
+    Regrava apenas o que mudou, pela mesma chave de upsert da producao
+    (tenant,dia,periodo) e so com as colunas de texto — nivel, risco e
+    gerado_em ficam como estao."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log("Supabase nao configurado — nada a reparar")
+        return 0
+    params = (f"tenant=eq.{TENANT}&select=dia,periodo,diagnostico,alertas,"
+              f"oportunidades,recomendacoes&order=dia.desc,periodo")
+    if limite:
+        params += f"&limit={int(limite)}"
+    linhas = _supabase_get("ai_briefings", params)
+    log(f"=== REPARO DE ACENTOS: {len(linhas)} briefing(s) de {TENANT} ===")
+    cliente = _cliente_anthropic()
+    gravadas = 0
+    for row in linhas:
+        rotulo = f"[{row.get('periodo')} {row.get('dia')}]"
+        # Achata todos os textos livres da linha numa lista so (1 chamada por
+        # linha), guardando onde cada um volta.
+        textos, destinos = [], []
+        diag = row.get("diagnostico") or ""
+        if diag.strip():
+            textos.append(diag)
+            destinos.append(("diagnostico", None, None))
+        for lista, campos in _CAMPOS_LIVRES_BRIEFING.items():
+            for i, item in enumerate(row.get(lista) or []):
+                for campo in campos:
+                    valor = (item or {}).get(campo)
+                    if isinstance(valor, str) and valor.strip():
+                        textos.append(valor)
+                        destinos.append((lista, i, campo))
+        if not textos:
+            continue
+        try:
+            corrigidos = _acentuar_lote(cliente, textos)
+        except Exception as e:
+            log(f"  {rotulo} erro na correcao ({e}) — linha mantida")
+            continue
+        if corrigidos == textos:
+            log(f"  {rotulo} ja estava correto — nada a fazer")
+            continue
+        novo = {
+            "diagnostico": diag,
+            "alertas": [dict(a or {}) for a in (row.get("alertas") or [])],
+            "oportunidades": [dict(o or {}) for o in (row.get("oportunidades") or [])],
+            "recomendacoes": [dict(r or {}) for r in (row.get("recomendacoes") or [])],
+        }
+        n_mudou = 0
+        for (lista, i, campo), antes, depois in zip(destinos, textos, corrigidos):
+            if depois == antes:
+                continue
+            n_mudou += 1
+            if lista == "diagnostico":
+                novo["diagnostico"] = depois
+            else:
+                novo[lista][i][campo] = depois
+        log(f"  {rotulo} {n_mudou} texto(s) corrigido(s)"
+            + (f"\n    antes:  {textos[0][:110]}\n    depois: {corrigidos[0][:110]}"
+               if corrigidos[0] != textos[0] else ""))
+        if dry_run:
+            continue
+        n = _supabase_upsert("ai_briefings", [{
+            "tenant": TENANT, "dia": row.get("dia"), "periodo": row.get("periodo"),
+            **novo,
+        }], "tenant,dia,periodo")
+        gravadas += n
+    log(f"Reparo de acentos: {gravadas} linha(s) regravada(s)"
+        + (" (dry-run: nada gravado)" if dry_run else ""))
+    return gravadas
+
+
+# ==============================================================
 # AGENTE: CAÇADOR DE CRISES (multi-agente, Fase B)
 # ==============================================================
 
@@ -6517,6 +6654,14 @@ if __name__ == "__main__":
         # Supabase — zero coleta, zero credito Apify. Usa o mesmo caminho do
         # run normal (gerar_briefings_periodo), so sem o guard de horario.
         gerar_briefings_periodo()
+    elif "--reparar-acentos-briefings" in sys.argv:
+        # --reparar-acentos-briefings [N] [--dry-run]  → acentua os textos ja
+        # gravados em ai_briefings (diagnostico, alertas, oportunidades,
+        # recomendacoes). N limita as linhas mais recentes; sem N vai a base
+        # inteira. Validador rejeita qualquer mudanca alem de diacriticos.
+        # Custo: so Anthropic (Haiku, 1 chamada por linha), zero Apify.
+        _n = next((int(a) for a in sys.argv if a.isdigit()), 0)
+        reparar_acentos_briefings(dry_run="--dry-run" in sys.argv, limite=_n)
     elif "--backfill-comentarios" in sys.argv:
         # --backfill-comentarios [N]  → N opcional limita quantos comentarios (teste)
         _lim = None

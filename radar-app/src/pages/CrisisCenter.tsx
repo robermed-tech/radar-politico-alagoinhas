@@ -81,7 +81,7 @@ function PlanosContencao({ planos }: { planos: CrisisPlan[] }) {
       {descartados.length > 0 && (
         <div className="mt-3 border-t border-line/40 pt-3">
           <div className="mb-2 text-[13px] font-bold uppercase tracking-wide text-txt-3">
-            ✅ {descartados.length} post(s) de alto risco avaliado(s) — não é crise (monitorar)
+            ✅ {descartados.length} {descartados.length === 1 ? "post de alto risco avaliado" : "posts de alto risco avaliados"} — não é crise (monitorar)
           </div>
           <div className="space-y-1.5">
             {descartados.map((p) => (

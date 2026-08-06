@@ -61,5 +61,11 @@ export const ALTURA_MIN = 340;
  * baixo sobra uma faixa vazia embaixo, porque o grid dimensiona a linha pelo
  * item mais alto. 470px é a altura que a linha tinha com as quatro estações
  * cadastradas hoje — o desenho que o cliente aprovou.
+ *
+ * Desde 06/08 o teto vale SÓ onde a linha existe (lg+): no celular os cards
+ * empilham, ninguém precisa casar altura com vizinho, e os 470px espremiam a
+ * lista de estações numa fresta de ~50px sob o formulário. O valor em px vive
+ * na var `--radio-altura-max` do index.css (none no mobile, 470px no lg) —
+ * mudou lá, mudou nos dois cards.
  */
-export const ALTURA_MAX = 470;
+export const ALTURA_MAX = "var(--radio-altura-max)";

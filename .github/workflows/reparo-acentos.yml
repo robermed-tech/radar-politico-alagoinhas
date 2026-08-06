@@ -1,0 +1,73 @@
+# Reparo de acentuação dos briefings gravados (06/08/26).
+#
+# Os prompts passaram a exigir português acentuado, mas o que já estava em
+# ai_briefings veio da era sem acento — e, com a coleta vazia desde 02/08, o
+# pipeline aborta cedo e não regenera briefing nenhum sozinho. Este workflow
+# roda o reparo com os MESMOS secrets do agora.yml (a máquina local não tem
+# credenciais do backend).
+#
+# Dispara UMA vez sozinho no push deste arquivo (é o jeito de executar um
+# one-off sem PAT local) e depois fica disponível em "Run workflow". O passo
+# de dry-run roda sempre antes, deixando o antes/depois auditável no log.
+name: Reparo — acentuação dos briefings
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Só mostrar o antes/depois, sem gravar"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/reparo-acentos.yml"
+
+concurrency:
+  group: reparo-acentos
+  cancel-in-progress: false
+
+jobs:
+  reparar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Dry-run (auditoria do antes/depois)
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python agora.py --reparar-acentos-briefings --dry-run
+
+      - name: Aplicar o reparo
+        if: ${{ github.event_name == 'push' || inputs.dry_run != true }}
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python agora.py --reparar-acentos-briefings
+
+      # Semana e mês ganham também um briefing NOVO do dia de hoje, gerado do
+      # histórico já no Supabase pelo mesmo caminho da produção — já nasce
+      # acentuado pelo prompt corrigido. (O "dia" não é regenerável sem posts
+      # novos; a linha antiga dele sai corrigida pelo passo acima.)
+      - name: Regenerar briefings de semana e mês
+        if: ${{ github.event_name == 'push' || inputs.dry_run != true }}
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python agora.py --testar-briefings-periodo

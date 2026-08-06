@@ -10,7 +10,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PipelineHealthBanner } from "./components/PipelineHealthBanner";
 import { RadarStatusBar } from "./components/RadarStatusBar";
 import { TemasEmCrise } from "./pages/ClimaPage";
+import { AntenaStatusColumn } from "./components/AntenaSinal";
+import { RadiosMonitoradas } from "./components/RadiosMonitoradas";
+import { GravarAgora } from "./components/GravarAgora";
 import type { PipelineHealth, Briefing } from "./lib/data";
+import type { RadioFonte } from "./lib/radio";
 import "./index.css";
 
 const qc = new QueryClient({
@@ -44,6 +48,32 @@ qc.setQueryData(
     id: String(i), platform: "instagram", handle: `fonte${i}`, label: null, active: true,
   }))
 );
+
+// Rádio Escuta: quatro estações como no cadastro real (uma pausada, URLs
+// longas), para reproduzir o corte lateral dos cards no celular.
+const RADIOS: RadioFonte[] = [
+  {
+    id: "r1", handle: "https://a.cdni.live/radio93fm-bahia/stream.m3u8", label: "93 FM",
+    active: false, config: { programas: [] }, created_at: "2026-07-29T10:00:00Z",
+  },
+  {
+    id: "r2", handle: "https://stream.zeno.fm/alagoinhas-fm-104", label: "Alagoinhas FM",
+    active: true,
+    config: { programas: [{ nome: "Manhã Total", hora_inicio: "07:00", duracao_min: 30, dias: ["seg", "ter", "qua", "qui", "sex"] }] },
+    created_at: "2026-07-29T10:00:00Z",
+  },
+  {
+    id: "r3", handle: "https://servidor29.brlogic.com:7104/live", label: "Rádio Boa FM",
+    active: true, config: { programas: [] }, created_at: "2026-07-30T10:00:00Z",
+  },
+  {
+    id: "r4", handle: "https://ice.fabricahost.com.br/radiosociedade", label: "Sociedade AM",
+    active: true,
+    config: { programas: [{ nome: "Jornal da Manhã", hora_inicio: "08:00", duracao_min: 60 }] },
+    created_at: "2026-07-30T10:00:00Z",
+  },
+];
+qc.setQueryData(["radios"], RADIOS);
 
 const HEALTH_COLETA_VAZIA: PipelineHealth = {
   tenant: "alagoinhas",
@@ -118,6 +148,21 @@ function Shell() {
           <div className="space-y-4 p-5">
             <RadarStatusBar />
             <TemasEmCrise alertas={ALERTAS} urlsNoPeriodo={new Set(URLS)} />
+
+            {/* Linha de topo da Rádio Escuta — o MESMO grid da RadioPage,
+                com os componentes reais (o corte lateral de 06/08 nascia do
+                min-content do formulário do cadastro). */}
+            <div className="grid gap-3 lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)_380px]">
+              <div className="min-w-0">
+                <AntenaStatusColumn ativo legenda="3 estações no ar" />
+              </div>
+              <div className="min-w-0">
+                <RadiosMonitoradas />
+              </div>
+              <div className="min-w-0">
+                <GravarAgora />
+              </div>
+            </div>
           </div>
         </main>
       </div>

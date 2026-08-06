@@ -44,7 +44,7 @@ function montarMensagem(
   const bloco = ev
     ? `🗣️ *O que a população está dizendo:*\n` +
       (ev.subtema ? `As reclamações se concentram em *${ev.subtema.replace(/_/g, " ")}*. ` : "") +
-      `Há ${ev.total} comentário(s) negativo(s) sobre este tema. Exemplo real:\n` +
+      `Há ${ev.total} ${ev.total === 1 ? "comentário negativo" : "comentários negativos"} sobre este tema. Exemplo real:\n` +
       `"${ev.citacao}"\n\n`
     : "";
   return (
@@ -167,7 +167,7 @@ export function AlertaCrise({ tema, pNeg, posts, iad }: Props) {
               <ComentarioTexto>{evidencia.citacao}</ComentarioTexto>
             </div>
             <ComentarioMeta>
-              {evidencia.total} comentário(s) negativo(s) sobre este tema
+              {evidencia.total} {evidencia.total === 1 ? "comentário negativo" : "comentários negativos"} sobre este tema
             </ComentarioMeta>
           </ComentarioBox>
         )}

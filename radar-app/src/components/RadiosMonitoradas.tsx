@@ -208,7 +208,7 @@ export function RadiosMonitoradas() {
       className="flex h-full w-full flex-col overflow-hidden rounded-[28px] p-5"
       style={{ background: FUNDO_ESCUTA, minHeight: ALTURA_MIN, maxHeight: ALTURA_MAX, boxShadow: SOMBRA }}
     >
-      <div className="flex items-baseline justify-between gap-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
         <div
           className="text-[13px] uppercase tracking-[0.14em]"
           style={{ color: "rgba(255,255,255,0.78)", fontWeight: 700 }}
@@ -218,7 +218,7 @@ export function RadiosMonitoradas() {
         <div className="text-[13px]" style={{ color: TINTA_CLARA_2, fontWeight: 600 }}>
           {editando
             ? `editando ${emEdicao?.label ?? "estação"}`
-            : `${radios.length} cadastrada(s) · ${radios.filter((r) => r.active).length} ativa(s)`}
+            : `${radios.length} ${radios.length === 1 ? "cadastrada" : "cadastradas"} · ${radios.filter((r) => r.active).length} ${radios.filter((r) => r.active).length === 1 ? "ativa" : "ativas"}`}
         </div>
       </div>
 
@@ -240,8 +240,14 @@ export function RadiosMonitoradas() {
         <div className="mt-2 max-h-[190px] space-y-1.5 overflow-y-auto">
           {form.programas.map((p, i) => (
             <div key={i} className="rounded-xl p-2" style={{ background: FUNDO_ITEM, border: BORDA }}>
-              <div className="flex gap-2">
-                <Campo valor={p.nome} onChange={(v) => setPrograma(i, "nome", v)} placeholder={`Programa ${i + 1} (opcional)`} />
+              {/* flex-wrap + basis-full no nome (06/08): input tem largura
+                  mínima intrínseca (~180px), e a linha única de nome + hora +
+                  min + ✕ definia um min-content de ~470px — mais largo que a
+                  tela do celular, cortando o card inteiro na borda. No mobile
+                  o nome ocupa a linha de cima e os campos curtos a de baixo;
+                  no sm+ volta a ser uma linha só. */}
+              <div className="flex flex-wrap gap-2">
+                <Campo valor={p.nome} onChange={(v) => setPrograma(i, "nome", v)} placeholder={`Programa ${i + 1} (opcional)`} largura="min-w-0 w-auto flex-1 basis-full sm:basis-0" />
                 <Campo valor={p.hora} onChange={(v) => setPrograma(i, "hora", v)} placeholder="07:00" largura="tnum w-24 shrink-0" />
                 <Campo valor={p.duracao} onChange={(v) => setPrograma(i, "duracao", v)} placeholder="min" largura="tnum w-16 shrink-0" />
                 <button
@@ -393,7 +399,11 @@ export function RadiosMonitoradas() {
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-1.5">
+                  {/* w-full no mobile: os três botões são shrink-0 e, na
+                      mesma linha, deixavam ~40px para o nome da estação —
+                      uma letra por linha. Em linha própria o nome respira;
+                      no sm+ volta tudo para uma linha. */}
+                  <div className="flex w-full shrink-0 items-center gap-1.5 sm:w-auto">
                     <button
                       onClick={() => (sel ? cancelar() : abrirEdicao(r))}
                       className="rounded-lg px-2.5 py-1 text-[13px] transition"

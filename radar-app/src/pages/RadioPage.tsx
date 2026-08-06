@@ -190,9 +190,9 @@ function CardEstacao({ r }: { r: EstacaoResumo }) {
           </div>
         </div>
         <div className="flex items-center gap-3 text-sm">
-          <span className="font-bold" style={{ color: TOM_COR.critico }}>{r.placar.critico} crítica(s)</span>
-          <span className="font-bold" style={{ color: TOM_COR.favoravel }}>{r.placar.favoravel} elogio(s)</span>
-          <span className="text-txt-3">{r.placar.neutro} neutra(s)</span>
+          <span className="font-bold" style={{ color: TOM_COR.critico }}>{r.placar.critico} {r.placar.critico === 1 ? "crítica" : "críticas"}</span>
+          <span className="font-bold" style={{ color: TOM_COR.favoravel }}>{r.placar.favoravel} {r.placar.favoravel === 1 ? "elogio" : "elogios"}</span>
+          <span className="text-txt-3">{r.placar.neutro} {r.placar.neutro === 1 ? "neutra" : "neutras"}</span>
         </div>
       </div>
 
@@ -219,7 +219,7 @@ function CardEstacao({ r }: { r: EstacaoResumo }) {
             onClick={() => setAberto((v) => !v)}
             className="mt-3 text-sm font-semibold text-brand hover:underline"
           >
-            {aberto ? "Ocultar" : `Ver ${r.pautas.length} assunto(s)`}
+            {aberto ? "Ocultar" : `Ver ${r.pautas.length} ${r.pautas.length === 1 ? "assunto" : "assuntos"}`}
             {r.deInteresse.length > 0 && ` · ${r.deInteresse.length} de interesse da gestão`}
           </button>
           {aberto && (
@@ -317,23 +317,27 @@ export function RadioPage() {
           telas grandes, e o vão vazio entre os dois cards era exatamente
           essa sobra. Coluna flexível em vez de fração fixa fecha o vão
           fechando o cálculo, não escondendo o sintoma. */}
+      {/* min-w-0 nos três itens (06/08): item de grid tem min-width:auto, e o
+          min-content do formulário do cadastro (~470px de inputs em linha)
+          alargava a coluna única do celular para além da tela — os três cards
+          apareciam cortados na borda direita. */}
       <div className="grid gap-3 lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)_380px]">
-        <div>
+        <div className="min-w-0">
           <AntenaStatusColumn
             ativo={captando}
             legenda={
               captando
-                ? `${estacoesCaptadas} estação(ões) no ar`
+                ? `${estacoesCaptadas} ${estacoesCaptadas === 1 ? "estação" : "estações"} no ar`
                 : estacoes.length > 0
                   ? "nenhuma gravação nesta janela"
                   : "nenhuma rádio cadastrada"
             }
           />
         </div>
-        <div>
+        <div className="min-w-0">
           <RadiosMonitoradas />
         </div>
-        <div>
+        <div className="min-w-0">
           <GravarAgora />
         </div>
       </div>
@@ -342,7 +346,7 @@ export function RadioPage() {
         <Kpi
           label="Rádios captadas"
           valor={estacoesCaptadas}
-          hint={`${estacoes.length} monitorada(s) na janela`}
+          hint={`${estacoes.length} ${estacoes.length === 1 ? "monitorada" : "monitoradas"} na janela`}
         />
         <Kpi label="Minutos transcritos" valor={Math.round(minutos)} hint="captação ao vivo" />
         <Kpi

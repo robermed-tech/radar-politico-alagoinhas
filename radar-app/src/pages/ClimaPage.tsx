@@ -419,7 +419,9 @@ function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
                 >
                   <WeatherIcon cls={FRENTE_TO_CLS[f.icone] ?? "cloudy"} size={17} strokeWidth={1.7} />
                 </span>
-                {f.tema}
+                {/* O tema da frente é slug do banco ("saude"); na tela vai o
+                    rótulo legível, como no termômetro por tema. */}
+                {TEMA_LABEL[f.tema] ?? f.tema}
               </span>
               <span
                 className="rounded px-2.5 py-0.5 text-xs font-extrabold uppercase"

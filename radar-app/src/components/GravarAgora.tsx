@@ -109,7 +109,7 @@ export function GravarAgora() {
         boxShadow: SOMBRA,
       }}
     >
-      <div className="flex items-baseline justify-between gap-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
         <div
           className="text-[13px] uppercase tracking-[0.14em]"
           style={{ color: "rgba(255,255,255,0.78)", fontWeight: 700 }}
@@ -117,7 +117,7 @@ export function GravarAgora() {
           Gravar agora
         </div>
         <div className="text-[13px]" style={{ color: TINTA_CLARA_2, fontWeight: 600 }}>
-          {escolhidas.length > 0 ? `${escolhidas.length} escolhida(s)` : "escolha abaixo"}
+          {escolhidas.length > 0 ? `${escolhidas.length} ${escolhidas.length === 1 ? "escolhida" : "escolhidas"}` : "escolha abaixo"}
         </div>
       </div>
 
@@ -218,7 +218,7 @@ export function GravarAgora() {
         title={
           escolhidas.length === 0
             ? "Escolha ao menos uma rádio na lista"
-            : `Gravar ${escolhidas.length} estação(ões) por ${duracao} min`
+            : `Gravar ${escolhidas.length} ${escolhidas.length === 1 ? "estação" : "estações"} por ${duracao} min`
         }
       >
         {enviando ? "Iniciando…" : "Gravar"}

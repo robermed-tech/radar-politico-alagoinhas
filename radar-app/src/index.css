@@ -610,3 +610,13 @@ button:disabled {
   outline: 2px solid #E2E8F4;
   outline-offset: 2px;
 }
+
+/* Teto de altura dos dois cards escuros da Rádio Escuta (superficieRadio.ts::
+   ALTURA_MAX consome esta var). O teto existe para a LINHA lado a lado do
+   desktop não crescer com o cadastro; no celular os cards empilham e o teto
+   só espremia a lista de estações numa fresta rolável sob o formulário —
+   então aqui ele é none e só vira 470px quando a linha existe (lg+). */
+:root { --radio-altura-max: none; }
+@media (min-width: 1024px) {
+  :root { --radio-altura-max: 470px; }
+}

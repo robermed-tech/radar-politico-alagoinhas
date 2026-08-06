@@ -251,7 +251,7 @@ function SourcesSection() {
             <div className="mb-1.5 flex items-baseline gap-2">
               <span className="section-label">Outras plataformas</span>
               <span className="text-xs font-semibold text-txt-3">
-                {coletaNaoIg.length} fonte(s)
+                {coletaNaoIg.length} {coletaNaoIg.length === 1 ? "fonte" : "fontes"}
               </span>
             </div>
             <div className="space-y-1.5">
