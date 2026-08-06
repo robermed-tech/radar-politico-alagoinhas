@@ -137,7 +137,10 @@ export function FeedPage() {
 
   if (isLoading) return <div className="p-8 text-txt-2">Carregando feed…</div>;
 
-  const periodoLabel = periodo === 1 ? "24 horas" : `${periodo} dias`;
+  // "últimas 24 horas" / "últimos 7 dias" — o adjetivo concorda com a
+  // unidade ("horas" é feminino, "dias" é masculino); antes o "últimas" era
+  // fixo no JSX e saía "últimas 7 dias".
+  const periodoLabel = periodo === 1 ? "últimas 24 horas" : `últimos ${periodo} dias`;
 
   return (
     <div className="space-y-4 p-5">
@@ -145,7 +148,7 @@ export function FeedPage() {
         <div>
           <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">O que o povo diz</h1>
           <p className="text-base text-txt-2">
-            {posts.length} publicaç{posts.length === 1 ? "ão" : "ões"} · últimas {periodoLabel}
+            {posts.length} publicaç{posts.length === 1 ? "ão" : "ões"} · {periodoLabel}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

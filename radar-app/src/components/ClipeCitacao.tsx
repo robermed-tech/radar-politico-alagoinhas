@@ -29,7 +29,7 @@ export function ClipeCitacao({ caminho }: { caminho: string | null }) {
 
   if (!caminho) {
     return (
-      <span className="text-[12px] text-txt-3" title="O áudio da captação expira em 3 dias na Apify; a pauta fica 90">
+      <span className="text-[12px] text-txt-3" title="O áudio da captação expira em 3 dias na Apify; a pauta fica 90 dias">
         sem áudio para conferir
       </span>
     );

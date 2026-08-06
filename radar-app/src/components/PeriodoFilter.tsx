@@ -23,14 +23,19 @@ export function periodoLabel(dias: number): string {
   return dias === 1 ? "últimas 24h" : `últimos ${dias} dias`;
 }
 
-/**
- * A mesma janela com preposição, para entrar no meio de uma frase ("nenhum
- * alerta NAS últimas 24h"). Fica aqui junto do `periodoLabel` porque o gênero
- * muda com a janela ("últimas 24h" é feminino, "últimos 7 dias" é masculino) e
- * concatenar "nas " na tela erra em metade dos casos.
- */
-export function periodoLabelCom(dias: number): string {
+/** "nas últimas 24h" / "nos últimos 7 dias" — janela no meio de frase, com a
+ * preposição "em" já no gênero certo: "24h" pede feminino e "dias" masculino,
+ * então concatenar "nas "/"nos " fixo na tela erra em metade dos casos (era o
+ * "nos últimas 24h" da revisão ortográfica de 06/08). Duas sessões criaram a
+ * mesma função em paralelo nesse dia (a outra como `periodoLabelCom`);
+ * unificada aqui — a concordância mora neste arquivo para não divergir. */
+export function periodoFrase(dias: number): string {
   return dias === 1 ? "nas últimas 24h" : `nos últimos ${dias} dias`;
+}
+
+/** "as últimas 24h" / "os últimos 7 dias" — para depois de "para"/"durante". */
+export function periodoArtigo(dias: number): string {
+  return dias === 1 ? "as últimas 24h" : `os últimos ${dias} dias`;
 }
 
 interface Props {

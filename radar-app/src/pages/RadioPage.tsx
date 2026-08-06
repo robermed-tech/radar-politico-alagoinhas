@@ -183,7 +183,7 @@ function CardEstacao({ r }: { r: EstacaoResumo }) {
           </div>
           <div className="text-sm text-txt-2">
             {r.programa ? `${r.programa} · ` : ""}
-            {r.capturas} captação(ões){r.minutos > 0 ? `, ${Math.round(r.minutos)} min` : ""}
+            {r.capturas} {r.capturas === 1 ? "captação" : "captações"}{r.minutos > 0 ? `, ${Math.round(r.minutos)} min` : ""}
             {r.ultima && ` · última em ${new Date(r.ultima.inicio_ts).toLocaleString("pt-BR", {
               day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
             })}`}
@@ -203,7 +203,7 @@ function CardEstacao({ r }: { r: EstacaoResumo }) {
            style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444" }}>
           {naoCaptada
             ? "Não captada: a gravação do stream falhou. Confira se a URL é o endereço direto do áudio."
-            : `${r.falhas} de ${r.capturas} captação(ões) falharam na gravação.`}
+            : `${r.falhas} de ${r.capturas} ${r.capturas === 1 ? "captação" : "captações"} ${r.falhas === 1 ? "falhou" : "falharam"} na gravação.`}
         </p>
       )}
 
@@ -348,7 +348,7 @@ export function RadioPage() {
         <Kpi
           label="Assuntos de interesse"
           valor={deInteresse.length}
-          hint={`de ${pautas.length} pauta(s) captada(s)`}
+          hint={`de ${pautas.length} ${pautas.length === 1 ? "pauta captada" : "pautas captadas"}`}
         />
         {/* Mesmo velocímetro do Termômetro por tema (Estação Meteorológica),
             sem forquilha: o número grande "N × M" saiu, o gauge já mostra a
@@ -365,7 +365,7 @@ export function RadioPage() {
         Este placar mede a <b>pressão da mídia</b>, não a aprovação popular: o rádio tem poucos
         microfones e muito tempo de fala, então ele não entra no IAD nem no clima da Estação
         Meteorológica. {vozOuvinte.length > 0
-          ? `Nesta janela, ${vozOuvinte.length} pauta(s) vieram da fala de ouvinte, que é o trecho mais próximo da voz da população.`
+          ? `Nesta janela, ${vozOuvinte.length === 1 ? "1 pauta veio" : `${vozOuvinte.length} pautas vieram`} da fala de ouvinte, que é o trecho mais próximo da voz da população.`
           : "Nenhuma pauta desta janela veio da fala de ouvinte."}
       </p>
 

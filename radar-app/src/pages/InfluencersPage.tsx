@@ -5,7 +5,7 @@ import { fetchInfluencers, type Influencer, type Post } from "@/lib/data";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
 import { fmtInt } from "@/lib/format";
-import { periodoLabel } from "@/components/PeriodoFilter";
+import { periodoFrase } from "@/components/PeriodoFilter";
 
 // Cores DEFINITIVAS por lado político (decisão de produto, não inferência):
 //   Oposição = VERMELHO · Aliado/Governo = VERDE · Imprensa = AMARELO
@@ -109,7 +109,7 @@ export function InfluencersSection({ postsPeriodo = [], dias = 30 }: Props) {
           return (
             `<b>@${i.handle}</b> — <b>${p.value}</b> pts` +
             `<div style="margin-top:4px; opacity:0.85;">` +
-            `Publicações ${periodoLabel(dias)}: <b>${nPosts}</b><br/>` +
+            `Publicações ${periodoFrase(dias)}: <b>${nPosts}</b><br/>` +
             `Alcance: <b>${fmtInt(i.alcance)}</b> curtidas (peso 40%)<br/>` +
             `Engajamento: <b>${i.engajamento.toFixed(1)}</b> coments/post (peso 40%)<br/>` +
             `Frequência: <b>${i.frequencia}</b> posts (peso 20%)` +
@@ -250,7 +250,7 @@ export function InfluencersSection({ postsPeriodo = [], dias = 30 }: Props) {
             do tamanho e dizia a mesma coisa. */}
         <p className="mt-3 text-sm font-semibold leading-relaxed text-txt-2">
           <b style={{ color: COR_DESTAQUE }}>Contorno laranja</b> = quem mais publicou{" "}
-          {periodoLabel(dias)}, independente do score acumulado. Só contas institucionais,
+          {periodoFrase(dias)}, independentemente do score acumulado. Só contas institucionais,
           imprensa e perfis políticos — cidadãos não entram (LGPD).
         </p>
       </div>

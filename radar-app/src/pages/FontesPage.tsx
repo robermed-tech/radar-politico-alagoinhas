@@ -212,7 +212,7 @@ function SourcesSection() {
             <div>
               <div className="mb-1.5 flex items-baseline gap-2">
                 <span className="section-label">Outros</span>
-                <span className="text-xs font-semibold text-txt-3">{outros.length} perfil(is)</span>
+                <span className="text-xs font-semibold text-txt-3">{outros.length} {outros.length === 1 ? "perfil" : "perfis"}</span>
               </div>
               <div className="space-y-1.5">
                 {outros.map((s) => (

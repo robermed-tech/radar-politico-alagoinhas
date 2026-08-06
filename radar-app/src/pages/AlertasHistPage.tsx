@@ -153,8 +153,8 @@ export function AlertasHistPage() {
           animada, sem o verde/azul decorativo — canal nao e sentimento. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
-          { label: "Total de envios", value: total, hint: "desde o inicio do registro" },
-          { label: "Via WhatsApp", value: totalWhats, hint: "abertos no wa.me do usuario" },
+          { label: "Total de envios", value: total, hint: "desde o início do registro" },
+          { label: "Via WhatsApp", value: totalWhats, hint: "abertos no wa.me do usuário" },
           { label: "Via e-mail", value: totalEmail, hint: "copiados para envio manual" },
         ].map(({ label, value, hint }) => (
           <div key={label} className="card-hover rounded-xl border border-line bg-bg-1 p-4">

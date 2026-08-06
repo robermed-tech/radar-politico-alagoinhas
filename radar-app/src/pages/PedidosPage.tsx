@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPedidos, fetchRadar, filtrarPorPeriodo, type Pedido } from "@/lib/data";
 import { IconHeart, IconInbox, IconWarningTriangle } from "@/components/icons";
-import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
+import { PeriodoFilter, periodoLabel, periodoFrase, type Dias } from "@/components/PeriodoFilter";
 import { labelBairro } from "@/lib/format";
 import { ComentarioBox, ComentarioTexto } from "@/components/ComentarioBox";
 // Superfície chumbo quente — a barra da régua de temas é dado neutro; o
@@ -99,7 +99,7 @@ export function PedidosPage() {
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-bg-2 text-txt-3">
             <IconInbox size={20} />
           </div>
-          <p className="font-semibold text-txt-1">Nenhum pedido nos {periodoLabel(dias)}</p>
+          <p className="font-semibold text-txt-1">Nenhum pedido {periodoFrase(dias)}</p>
           <p className="mt-1 text-sm text-txt-2">
             O AGORA extrai demandas concretas dos comentários. Amplie o período acima ou
             aguarde a próxima coleta processar comentários com pedidos.

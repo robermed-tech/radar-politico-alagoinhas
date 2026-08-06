@@ -322,9 +322,11 @@ export default function App() {
                 key={n.id}
                 onClick={() => setPage(n.id)}
                 className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all duration-200 ${
-                  n.id === page ? "text-white" : "text-txt-2"
+                  n.id === page ? "" : "text-txt-2"
                 }`}
-                style={n.id === page ? NAV_GLOW : undefined}
+                // Mesma tinta escura da pílula do menu desktop: branco sobre
+                // var(--brand) mede 2,24:1 e reprova o AA (regra do projeto).
+                style={n.id === page ? { ...NAV_GLOW, color: "#1A0F02" } : undefined}
               >
                 {n.label}
               </button>
@@ -334,7 +336,12 @@ export default function App() {
           <ThemeToggle compact />
         </div>
         <PipelineHealthBanner health={pipelineHealth} />
-        <main className="flex-1 overflow-y-auto">
+        {/* overflow-x-hidden: com overflow-y-auto sozinho, qualquer conteúdo
+            mais largo que a tela fazia o MAIN inteiro rolar de lado no celular
+            (o dashboard "andava" para a direita e a esquerda). Conteúdo largo
+            legítimo (tabelas) rola dentro do próprio card via overflow-x-auto,
+            nunca na página. */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <Suspense fallback={<div className="p-8 text-txt-2">Carregando…</div>}>
             {page === "clima"    && <ClimaPage onVerFeed={() => setPage("feed")} />}
             {page === "actions"  && <AlertasAcoesPage />}

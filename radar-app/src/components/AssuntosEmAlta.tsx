@@ -94,7 +94,7 @@ export function AssuntosEmAlta() {
       </div>
       <p className="mb-3 text-[12px] text-txt-3">
         Quando um mesmo assunto aparece em {limiar}+ comentários no dia, deixa de ser voz isolada
-        e vira pauta — independente do risco de cada post.
+        e vira pauta — independentemente do risco de cada post.
       </p>
 
       {emAlta.length === 0 ? (

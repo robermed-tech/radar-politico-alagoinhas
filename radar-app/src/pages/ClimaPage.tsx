@@ -253,7 +253,9 @@ function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number 
   );
 }
 
-function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]; urlsNoPeriodo: Set<string> }) {
+// Exportada para o harness de dev responsivo (dev-responsivo.tsx), que monta
+// o componente real em viewport de celular sem depender de login.
+export function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]; urlsNoPeriodo: Set<string> }) {
   const [aberto, setAberto] = useState<{ tema: string; categoria: string } | null>(null);
   // Contadores rápidos por tema (pedido da reunião de 24/07: "numerozinho"
   // verde/vermelho pro leitor bater o olho sem abrir o modal). Mesma fonte e
@@ -287,9 +289,15 @@ function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]
           const tema = a.tema ? a.tema.charAt(0).toUpperCase() + a.tema.slice(1).toLowerCase() : "";
           const cont = a.tema_categoria ? contagem[a.tema_categoria.toLowerCase()] : undefined;
           return (
+            // flex-wrap + ordem responsiva (06/08): no celular a linha única
+            // deixava o texto do tema com ~30px (badge, contadores e botão são
+            // shrink-0) — quebrava palavra por palavra e ainda estourava a
+            // largura da página, que passava a rolar de lado. No mobile o
+            // texto vai para uma linha própria de largura cheia (order-4 +
+            // w-full); no sm+ a ordem volta ao layout original de uma linha.
             <div
               key={i}
-              className="flex items-center gap-3 rounded-lg border bg-bg-2 px-4 py-2.5"
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-bg-2 px-4 py-2.5"
               style={{ borderColor: `${cor}33` }}
             >
               <span
@@ -298,7 +306,9 @@ function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]
               >
                 {NIVEL_LABEL[(a.nivel as NivelCrise) ?? "baixo"]}
               </span>
-              <span className="min-w-0 flex-1 font-semibold text-txt-1">{tema}</span>
+              <span className="order-4 w-full min-w-0 font-semibold text-txt-1 sm:order-none sm:w-auto sm:flex-1">
+                {tema}
+              </span>
               {cont && (cont.neg > 0 || cont.pos > 0) && (
                 <span className="tnum flex shrink-0 items-center gap-2 text-[13px] font-bold">
                   <span style={{ color: "var(--sent-ink-neg)" }}>{cont.neg} neg</span>
@@ -308,7 +318,7 @@ function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["alertas"]
               {a.tema_categoria && (
                 <button
                   onClick={() => setAberto({ tema, categoria: a.tema_categoria! })}
-                  className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition hover:opacity-90"
+                  className="ml-auto shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition hover:opacity-90 sm:ml-0"
                   style={{ background: FUNDO_ESCUTA }}
                 >
                   Ver comentários

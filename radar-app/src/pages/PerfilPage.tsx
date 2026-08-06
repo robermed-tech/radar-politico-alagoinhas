@@ -16,7 +16,7 @@ import { FUNDO_ESCUTA } from "@/components/superficieRadio";
 import { InfluencersSection } from "@/pages/InfluencersPage";
 import { RankingSeguidores } from "@/components/RankingSeguidores";
 import { montarRanking } from "@/lib/seguidores";
-import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
+import { PeriodoFilter, periodoLabel, periodoFrase, type Dias } from "@/components/PeriodoFilter";
 import { prepararKeywords, casaRelevancia } from "@/lib/relevancia";
 import { analisarPerfis, extremos, MIN_AMOSTRA, type PerfilAnalise } from "@/lib/analisePerfis";
 import {
@@ -452,7 +452,7 @@ export function PerfilPage() {
 
       {analise.length === 0 ? (
         <div className="rounded-xl border border-line bg-bg-1 p-6 text-sm text-txt-2">
-          Sem publicações {periodoLabel(dias)}. Amplie o período para ver os perfis.
+          Sem publicações {periodoFrase(dias)}. Amplie o período para ver os perfis.
         </div>
       ) : (
         <>
@@ -474,7 +474,7 @@ export function PerfilPage() {
             {negComments.length === 0 ? (
               <p className="text-sm text-txt-3">
                 Nenhum comentário contrário classificado nas publicações de @{autor} sobre a
-                gestão {periodoLabel(dias)}.
+                gestão {periodoFrase(dias)}.
               </p>
             ) : (
               <ul className="space-y-2">

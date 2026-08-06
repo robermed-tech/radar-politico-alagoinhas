@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchBriefing, fetchCrisisPlans, type CrisisPlan } from "@/lib/data";
 import { NIVEL_COLOR, NIVEL_LABEL, nivelBadgeStyle, type NivelCrise } from "@/lib/indices";
 import { IconAlertBell, IconCheckCircle } from "@/components/icons";
-import { PeriodoFilter, periodoLabel, periodoLabelCom, type Dias } from "@/components/PeriodoFilter";
+import { PeriodoFilter, periodoLabel, periodoFrase, periodoArtigo, type Dias } from "@/components/PeriodoFilter";
 import { ContadorAnimado } from "@/components/ContadorAnimado";
 import { EnvioSecretario } from "@/components/EnvioSecretario";
 import { findSecretario } from "@/config/secretarios";
@@ -121,7 +121,7 @@ function PlanosAcao({ planos, dias }: { planos: CrisisPlan[]; dias: Dias }) {
         <div className="flex items-center gap-2">
           <IconCheckCircle size={18} className="shrink-0 text-risk-low" />
           <h2 className="text-base font-extrabold text-txt-1">
-            Nenhum alerta de crise {periodoLabelCom(dias)}
+            Nenhum alerta de crise {periodoFrase(dias)}
           </h2>
         </div>
         <p className="mt-2 text-sm text-txt-2">
@@ -140,7 +140,7 @@ function PlanosAcao({ planos, dias }: { planos: CrisisPlan[]; dias: Dias }) {
           <h2 className="text-base font-extrabold text-txt-1">Nenhuma crise real identificada</h2>
         </div>
         <p className="mt-2 text-sm text-txt-2">
-          Os posts de alto risco {periodoLabelCom(dias)} foram analisados pela IA e
+          Os posts de alto risco {periodoFrase(dias)} foram analisados pela IA e
           classificados como ruído, sem exigir ação imediata.
         </p>
       </div>
@@ -293,7 +293,7 @@ export function AlertasAcoesPage() {
 
       {semBriefing ? (
         <div className="card-hover rounded-xl border border-line bg-bg-1 p-6 text-txt-2">
-          Ainda não há recomendações geradas para os {periodoLabel(dias)}. Tente outra
+          Ainda não há recomendações geradas para {periodoArtigo(dias)}. Tente outra
           janela acima ou execute o fluxo ÁGORA para popular esta página.
         </div>
       ) : (

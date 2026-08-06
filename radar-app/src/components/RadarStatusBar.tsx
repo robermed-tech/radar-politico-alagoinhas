@@ -126,7 +126,8 @@ export function RadarStatusBar() {
           <b className="tnum text-txt-1">{fmtInt(kpis.fontesAtivas)}</b> fonte{kpis.fontesAtivas === 1 ? "" : "s"} monitorada{kpis.fontesAtivas === 1 ? "" : "s"}
         </span>
         <span>
-          <b className="tnum text-txt-1">{fmtInt(kpis.itensColetados)}</b> item{kpis.itensColetados === 1 ? "" : "s"} coletado{kpis.itensColetados === 1 ? "" : "s"} hoje
+          {/* Plural de "item" é "itens" — concatenar "s" gerava "items". */}
+          <b className="tnum text-txt-1">{fmtInt(kpis.itensColetados)}</b> {kpis.itensColetados === 1 ? "item coletado" : "itens coletados"} hoje
         </span>
         <span>
           <b className="tnum text-txt-1">{fmtInt(kpis.execucoes)}</b> execuç{kpis.execucoes === 1 ? "ão" : "ões"}

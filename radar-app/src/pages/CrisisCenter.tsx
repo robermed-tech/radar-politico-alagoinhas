@@ -22,7 +22,7 @@ function PlanosContencao({ planos }: { planos: CrisisPlan[] }) {
       <div className="mb-1 flex items-center gap-2">
         <span className="text-lg">🚨</span>
         <h2 className="text-base font-extrabold" style={{ color: "#F97316" }}>
-          Agente Caçador de Crises — {reais.length} crise(s) real(is)
+          Agente Caçador de Crises — {reais.length} {reais.length === 1 ? "crise real" : "crises reais"}
         </h2>
       </div>
       <p className="mb-3 text-xs text-txt-2">

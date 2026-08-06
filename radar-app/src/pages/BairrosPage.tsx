@@ -11,7 +11,7 @@ import {
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
 import { IconInbox } from "@/components/icons";
-import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
+import { PeriodoFilter, periodoLabel, periodoFrase, type Dias } from "@/components/PeriodoFilter";
 import { ComentariosBairroModal } from "@/components/ComentariosBairroModal";
 import { labelBairro } from "@/lib/format";
 import { ContadorAnimado } from "@/components/ContadorAnimado";
@@ -164,7 +164,7 @@ export function BairrosPage() {
             <IconInbox size={20} />
           </div>
           <p className="font-semibold text-txt-1">
-            Nenhum bairro identificado {periodoLabel(dias)}
+            Nenhum bairro identificado {periodoFrase(dias)}
           </p>
           <p className="mt-1 text-sm text-txt-2">
             Os locais são extraídos dos comentários pelo AGORA. Amplie o período acima ou

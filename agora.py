@@ -1765,6 +1765,9 @@ Regras de analise:
 5. Seja preciso e direto - o assessor precisa de acao, nao de analise generica
 
 NUNCA use travessao (— ou –) nos textos gerados; use virgula, dois-pontos ou parenteses.
+Todo texto gerado deve estar em portugues do Brasil correto, com acentuacao e ortografia
+certas: escreva "saúde pública", "gestão", "crítica", nunca "saude publica", "gestao",
+"critica". As instrucoes deste prompt estao sem acento; NAO imite esse estilo na resposta.
 Responda APENAS com JSON valido, sem markdown, sem texto antes ou depois."""
 
 def montar_prompt(post, comentarios, memoria):
@@ -3241,7 +3244,11 @@ Exemplos do que NAO escrever: "IAD 52", "risco 21", "43% negativos", "29% positi
 relevante", "a maioria dos comentarios do dia foi critica".
 
 REGRA DE ESTILO: NUNCA use travessao (o caractere — ou –) em nenhum texto gerado.
-Separe ideias com virgula, dois-pontos ou parenteses."""
+Separe ideias com virgula, dois-pontos ou parenteses. Todo texto gerado (diagnostico,
+alertas, oportunidades, recomendacoes) deve estar em portugues do Brasil correto, com
+acentuacao e ortografia certas: escreva "saúde pública", "gestão", "crítica", nunca
+"saude publica", "gestao", "critica". As instrucoes deste prompt estao sem acento;
+NAO imite esse estilo na resposta."""
 
 # Salvaguarda: detecta numeros-metrica cravados no diagnostico (IAD, risco, %,
 # contagens de posts/comentarios) que deveriam viver so nos cards do dashboard.
@@ -3370,7 +3377,7 @@ def _gerar_briefing(posts, periodo, dia):
     prompt = ctx + f"""
 Retorne APENAS este JSON:
 {{
-  "diagnostico": "<2-3 frases QUALITATIVAS: como esta a imagem {_FRASE_PERIODO.get(periodo, 'no dia')} e por que. PROIBIDO citar numeros (IAD, risco, %, contagens) — descreva tudo em palavras. Ex: 'A imagem esta em risco baixo, mas com saldo negativo relevante: a maioria dos comentarios do periodo critica o Sao Joao — banda atrasada, contrato sob suspeita e infraestrutura precaria. Um perfil fiscal critico ja anunciou cobertura adversaria continua.'>",
+  "diagnostico": "<2-3 frases QUALITATIVAS: como esta a imagem {_FRASE_PERIODO.get(periodo, 'no dia')} e por que. PROIBIDO citar numeros (IAD, risco, %, contagens) — descreva tudo em palavras. Ex: 'A imagem está em risco baixo, mas com saldo negativo relevante: a maioria dos comentários do período critica o São João (banda atrasada, contrato sob suspeita e infraestrutura precária). Um perfil fiscal crítico já anunciou cobertura adversária contínua.'>",
   "oportunidades": [{{"titulo":"...","acao":"...","impacto":"alto|medio|baixo","esforco":"alto|medio|baixo"}}],
   "alertas": [{{"nivel":"baixo|moderado|alto|critico","tema":"...","tema_categoria":"<saude|educacao|obras|seguranca|transporte|emprego|impostos|saneamento|cultura_eventos|comunicacao — a categoria fixa mais proxima do assunto do alerta, usada pra puxar os comentarios reais que embasam a conclusao>","janela":"imediato|24h|esta semana"}}],
   "recomendacoes_comunicacao": [{{"canal":"...","mensagem":"...","tom":"...","timing":"..."}}]
@@ -3510,6 +3517,9 @@ Considere o historico de risco: risco subindo + comentarios organizados = crise 
 Reclamacao isolada, mesmo agressiva, raramente e crise.
 
 NUNCA use travessao (— ou –) nos textos gerados; use virgula, dois-pontos ou parenteses.
+Todo texto gerado deve estar em portugues do Brasil correto, com acentuacao e ortografia
+certas: escreva "saúde pública", "gestão", "crítica", nunca "saude publica", "gestao",
+"critica". As instrucoes deste prompt estao sem acento; NAO imite esse estilo na resposta.
 Responda APENAS com JSON valido, sem markdown."""
 
 def _registrar_agente(agente, modelo, gatilho, input_ref, tokens_in, tokens_out):
