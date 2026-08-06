@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { PipelineHealth } from "@/lib/data";
+import { useQuery } from "@tanstack/react-query";
+import { fetchServiceStatus, type PipelineHealth } from "@/lib/data";
 import { IconAlertBell, IconWarningTriangle } from "@/components/icons";
 
 /**
@@ -54,6 +55,20 @@ function fmtQuando(iso: string): string {
 }
 
 export function PipelineHealthBanner({ health }: { health: PipelineHealth | null | undefined }) {
+  // Uso da Apify (gravado a cada execução por agora.py::verificar_creditos_apify).
+  // Quando o teto mensal estoura, a coleta volta ZERO posts — e o aviso genérico
+  // ("possível bloqueio do Instagram, token expirado ou limite do Apify") mandava
+  // o leitor investigar três hipóteses enquanto o próprio painel já sabia qual
+  // era (medido em 06/08: 101,1% do teto, US$ 29,33 de US$ 29,00, travado nesse
+  // valor desde 27/07). Consulta barata e cacheada; sem o dado, o texto genérico
+  // continua valendo.
+  const { data: apify } = useQuery({
+    queryKey: ["service-status-apify"],
+    queryFn: () => fetchServiceStatus("apify"),
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  });
+
   // Última execução dispensada pelo usuário (persistida entre visitas).
   const [fechadoEm, setFechadoEm] = useState<string | null>(() => {
     try {
@@ -85,13 +100,26 @@ export function PipelineHealthBanner({ health }: { health: PipelineHealth | null
   const bg = critico ? "rgba(239,68,68,0.10)" : "rgba(249,115,22,0.10)";
   const borda = critico ? "rgba(239,68,68,0.35)" : "rgba(249,115,22,0.35)";
 
+  // Causa CONHECIDA da coleta vazia: o teto da Apify estourou. Nesse caso o
+  // aviso nomeia o serviço, mostra o consumo e diz o que fazer, em vez de
+  // listar três hipóteses. Só vale para o estado de coleta vazia — com o
+  // pipeline parado, o problema é outro (não rodou), e o crédito não explica.
+  const apifyNoTeto = !critico && (apify?.uso_pct ?? 0) >= 100 && (apify?.teto_usd ?? 0) > 0;
+  // Vírgula decimal: em português "US$ 29.33" se lê como outro número.
+  const usd = (v: number) => `US$ ${v.toFixed(2).replace(".", ",")}`;
+  const usoApify = apifyNoTeto ? `${usd(apify!.uso_usd)} de ${usd(apify!.teto_usd)}` : "";
+
   const titulo = critico
     ? `Radar parado há ${Math.round(horas)}h`
-    : "Última coleta não trouxe posts novos";
+    : apifyNoTeto
+      ? "Coleta parada: créditos da Apify esgotados"
+      : "Última coleta não trouxe posts novos";
 
   const detalhe = critico
     ? "O pipeline não roda ou não grava dados no horário esperado. Os números abaixo podem estar defasados."
-    : "O pipeline executou, mas não coletou nenhum post. Possíveis causas: bloqueio do Instagram, token expirado ou limite do Apify.";
+    : apifyNoTeto
+      ? `O serviço que busca as publicações atingiu o teto mensal (${usoApify}) e parou de coletar. Recarregue em apify.com/billing para o radar voltar a trazer posts novos.`
+      : "O pipeline executou, mas não coletou nenhum post. Possíveis causas: bloqueio do Instagram, token expirado ou limite do Apify.";
 
   return (
     <div

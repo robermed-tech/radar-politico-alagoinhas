@@ -85,6 +85,13 @@ const HEALTH_COLETA_VAZIA: PipelineHealth = {
 // O radar lê a MESMA queryKey do banner: com a coleta vazia acima, o radar da
 // página tem que abrir OCIOSO (âmbar, sem giro) — critério de 06/08.
 qc.setQueryData(["pipeline-health"], HEALTH_COLETA_VAZIA);
+// Cenário real de 06/08: Apify no teto (101,1%). O aviso de coleta vazia deve
+// nomear a causa e o valor, em vez de listar três hipóteses.
+qc.setQueryData(["service-status-apify"], {
+  tenant: "alagoinhas", servico: "apify",
+  uso_pct: 101.1, uso_usd: 29.3294, teto_usd: 29,
+  atualizado_em: new Date().toISOString(),
+});
 
 // Segundo cliente com pipeline SAUDÁVEL: prova o estado "Radar em varredura"
 // lado a lado com o ocioso, sem os dois caches brigarem pela mesma chave.
