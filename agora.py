@@ -2117,6 +2117,13 @@ PROMPT_COMENTARIOS = (
     "a populacao a protesto ou manifestacao; pedir cassacao, conselho de etica ou prisao "
     "do gestor. O destinatario de um pedido e a gestao prestando servico — nunca o "
     "eleitor, a camara ou o proprio prefeito deixando o cargo.\n"
+    "O pedido nomeia a ACAO e o OBJETO ('tapar buracos da rua X', 'pagar os medicos'). "
+    "Cobranca sem objeto executavel e null: 'facam um bom trabalho', 'cumpram as "
+    "promessas', 'realizar acoes', 'melhorar a gestao'. NAO invente pedido a partir de "
+    "constatacao, lamento ou concordancia com o post ('Parabens Luciano, a cidade esta "
+    "abandonada' -> null; 'Alagoinhas nao ta preparada' -> null). Pedido dirigido ao "
+    "VEICULO ou a pagina de midia (fazer materia, publicar video, dar creditos, melhorar "
+    "o jornalismo) tambem e null: nao e demanda a gestao municipal.\n"
     "CONFIANCA_TEMA: inteiro 0-100, confianca na classificacao de tema + sentimento deste "
     "comentario. Abaixo de 70 quando houver ironia, sarcasmo, giria ambigua, ou texto curto "
     "demais para decidir. ABAIXO DE 50 quando voce honestamente nao conseguiu decidir a "
@@ -2219,6 +2226,33 @@ _PEDIDO_RETORICO = [
 ]
 _PEDIDO_RETORICO_RE = [re.compile(p) for p in _PEDIDO_RETORICO]
 
+# Segunda leitura de 07/08 (revisao dos fronteiricos, pedida pelo Robério):
+# pedidos que nao sao retorica mas tambem nao sao demanda a gestao — cobranca
+# sem objeto executavel ("fazer trabalho direitinho", "realizar acoes para
+# mudar cenario"), pedido INVENTADO de constatacao ou eco do post ("Alagoinhas
+# n ta preparada" virou "preparar Alagoinhas para eventos" — o post era sobre
+# El Nino), e pedido dirigido ao VEICULO de imprensa, nao ao poder publico
+# ("fazer materias", "dar creditos", "melhorar o jornalismo"). Padroes
+# generalizaveis ficam curtos; ironia e indecidivel por regex, entao os casos
+# de ironia auditados entram como FRASE EXATA e o prompt cobre o futuro.
+_PEDIDO_SEM_DEMANDA = [
+    # Cobranca generica sem objeto executavel
+    r"\bpromessas? de campanha\b",
+    r"\bmudar (o )?cenario\b",
+    r"\bdireitinho\b",
+    r"^melhorar (a )?gestao( municipal)?$",
+    # Pedido ao veiculo/pagina de midia, nao a gestao
+    r"\bjornalismo\b",
+    r"\bfazer materias?\b",
+    r"\bdar (os )?creditos?\b",
+    # Frases exatas auditadas na leitura de 07/08 (ironia ou eco do post)
+    r"^cancelar programacao do sao joao$",
+    r"^publicar video do prefeito$",
+    r"^preparar (alagoinhas|o municipio|municipio|a cidade) para eventos$",
+    r"^mudar a fiscalizacao e as leis para politicos$",
+]
+_PEDIDO_SEM_DEMANDA_RE = [re.compile(p) for p in _PEDIDO_SEM_DEMANDA]
+
 
 def normalizar_pedido(pedido):
     """Pedido limpo, ou None quando nao ha demanda de servico de verdade.
@@ -2234,6 +2268,8 @@ def normalizar_pedido(pedido):
         return None
     p_norm = _norm(p)
     if any(rx.search(p_norm) for rx in _PEDIDO_RETORICO_RE):
+        return None
+    if any(rx.search(p_norm) for rx in _PEDIDO_SEM_DEMANDA_RE):
         return None
     return p
 
@@ -2259,6 +2295,20 @@ _CASOS_PEDIDO = [
     ("tirar o prefeito da prefeitura", None),
     ("fora Gustavo", None),
     ("tomar vergonha na cara", None),
+    # 2a leitura de 07/08 — cobranca sem objeto, pedido inventado de eco do
+    # post e pedido dirigido ao veiculo de imprensa (12 confirmados no texto):
+    ("fazer trabalho direitinho e perfeito", None),
+    ("cumprir promessas de campanha", None),
+    ("realizar acoes para mudar cenario atual", None),
+    ("melhorar gestão municipal", None),
+    ("preparar Alagoinhas para eventos", None),
+    ("preparar municipio para eventos", None),
+    ("cancelar programação do São João", None),
+    ("mudar a fiscalização e as leis para políticos", None),
+    ("melhorar qualidade do jornalismo", None),
+    ("fazer matérias sobre Alagoinhas", None),
+    ("dar créditos ao criador do conteúdo", None),
+    ("publicar video do prefeito", None),
     # Pedidos legitimos que DEVEM sobreviver (todos reais, da mesma base):
     ("pagar salarios dos medicos", "pagar salarios dos medicos"),
     ("melhorar atendimento na UPA", "melhorar atendimento na UPA"),
@@ -2272,6 +2322,18 @@ _CASOS_PEDIDO = [
     ("reduzir tarifa de água", "reduzir tarifa de água"),
     ("prender vendedores de som ilegal", "prender vendedores de som ilegal"),
     ("realizar concurso da guarda municipal", "realizar concurso da guarda municipal"),
+    # Vizinhos dos padroes novos que NAO podem cair junto: "melhorar X" com
+    # objeto nomeado, conserto/limpeza da cidade (objeto material), demanda de
+    # comunicacao A GESTAO e realocacao de verba explicita no texto.
+    ("melhorar a comunicação da prefeitura", "melhorar a comunicação da prefeitura"),
+    ("melhorar infraestrutura urbana", "melhorar infraestrutura urbana"),
+    ("consertar a cidade", "consertar a cidade"),
+    ("limpar a cidade e manter praças", "limpar a cidade e manter praças"),
+    ("investir em melhorias da cidade", "investir em melhorias da cidade"),
+    ("divulgar o link no site", "divulgar o link no site"),
+    ("continuar levando os óculos de Rui Barbosa", "continuar levando os óculos de Rui Barbosa"),
+    ("chamar populacao para trabalhar", "chamar populacao para trabalhar"),
+    ("conseguir um emprego", "conseguir um emprego"),
     (None, None),
     ("", None),
     ("   ", None),

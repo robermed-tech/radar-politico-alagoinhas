@@ -11,6 +11,11 @@
 # Dispara UMA vez sozinho no push deste arquivo (o jeito de executar um
 # one-off sem PAT local) e depois fica disponível em "Run workflow". O passo
 # de dry-run roda sempre antes, deixando o antes/depois auditável no log.
+#
+# 2ª rodada (07/08, revisão dos fronteiriços): mais 12 pedidos caem — cobrança
+# sem objeto executável, pedido inventado de eco do post e pedido dirigido ao
+# veículo de imprensa (_PEDIDO_SEM_DEMANDA). Este comentário também serve de
+# bump para o push disparar o reparo de novo.
 name: Reparo — pedidos retóricos
 
 on:
