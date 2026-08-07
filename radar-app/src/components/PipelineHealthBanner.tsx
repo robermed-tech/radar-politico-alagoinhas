@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchServiceStatus, type PipelineHealth } from "@/lib/data";
 import { IconAlertBell, IconWarningTriangle } from "@/components/icons";
+import { fmtUSD, fmtPctCredito } from "@/lib/creditos";
 
 /**
  * Hero de saúde do pipeline — visível para qualquer usuário logado (não só
@@ -119,9 +120,13 @@ export function PipelineHealthBanner({ health }: { health: PipelineHealth | null
   const bg = critico ? "rgba(239,68,68,0.10)" : "rgba(249,115,22,0.10)";
   const borda = critico ? "rgba(239,68,68,0.35)" : "rgba(249,115,22,0.35)";
 
-  // Vírgula decimal: em português "US$ 29.33" se lê como outro número.
-  const usd = (v: number) => `US$ ${v.toFixed(2).replace(".", ",")}`;
-  const usoApify = apifyNoTeto ? `${usd(apify!.uso_usd)} de ${usd(apify!.teto_usd)}` : "";
+  // Número e percentual saem de lib/creditos.ts, a MESMA fonte que a
+  // Configuração usa: as duas telas exibiam esta linha de `service_status` com
+  // grafias diferentes ("US$ 29,33" aqui, "$29.33 · 101%" lá), e quem olhava
+  // as duas via dois estados do mesmo serviço.
+  const usoApify = apifyNoTeto
+    ? `${fmtUSD(apify!.uso_usd)} de ${fmtUSD(apify!.teto_usd)}, ${fmtPctCredito(apify!.uso_pct)} do limite`
+    : "";
 
   const titulo = critico
     ? `Radar parado há ${Math.round(horas)}h`

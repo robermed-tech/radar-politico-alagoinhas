@@ -18,7 +18,7 @@ import json
 import time
 import math
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from anthropic import Anthropic
 from boletim import gerar_boletim
 
@@ -583,8 +583,78 @@ _SAUDE_ANTHROPIC = {"ok": 0, "falha_credito": 0, "falha_outra": 0, "ultimo_erro"
 # entao 3 ocorrencias ja significam "esgotou no meio do run e nada mais passa".
 _LIMIAR_FALHAS_CREDITO = 3
 
+# ── Consumo da API Anthropic ──────────────────────────────────────
+# A Anthropic NAO publica saldo por chave (nao existe o equivalente ao
+# /users/me/limits da Apify), entao o painel nao tem como exibir "quanto sobra
+# na conta". O que da para medir com honestidade e o que ESTE pipeline gastou:
+# cada resposta traz `usage`, e o preco de tabela por modelo converte token em
+# dolar. E uma ESTIMATIVA do consumo do radar, e a tela diz isso com todas as
+# letras — inventar um saldo seria pior que nao ter numero nenhum.
+# Precos em USD por 1 MILHAO de tokens (tabela publica da Anthropic).
+_PRECO_ANTHROPIC = {
+    "claude-haiku-4-5":  {"entrada": 1.00, "saida": 5.00},
+    "claude-sonnet-4-6": {"entrada": 3.00, "saida": 15.00},
+    "claude-sonnet-4-5": {"entrada": 3.00, "saida": 15.00},
+    "claude-opus-4-5":   {"entrada": 5.00, "saida": 25.00},
+}
+# Modelo desconhecido (troca de versao sem atualizar a tabela) cai no preco de
+# um Sonnet: erra para MAIS, e um custo subestimado e o erro que faz o alerta
+# de 80% chegar tarde demais.
+_PRECO_ANTHROPIC_PADRAO = {"entrada": 3.00, "saida": 15.00}
+
+_USO_ANTHROPIC = {"custo_usd": 0.0, "tokens_entrada": 0, "tokens_saida": 0, "chamadas": 0}
+
+# Teto mensal de gasto com o modelo, em USD. Nao e um limite tecnico (a API nao
+# corta em nenhum valor): e a referencia contra a qual o painel mostra a barra
+# e o alerta de 80% dispara. Lido em tempo de CHAMADA, como toda credencial
+# deste arquivo (load_dotenv roda depois dos imports).
+def _teto_anthropic():
+    try:
+        return float(os.environ.get("ANTHROPIC_BUDGET_USD", "") or 25.0)
+    except ValueError:
+        return 25.0
+
+def _preco_do_modelo(modelo):
+    """Preco do modelo pedido. Casa por PREFIXO porque o id em uso carrega
+    sufixo de data ('claude-haiku-4-5-20251001'), e o mais longo vence para um
+    prefixo curto nunca decidir no lugar do nome completo."""
+    m = str(modelo or "")
+    achado = ""
+    for chave in _PRECO_ANTHROPIC:
+        if m.startswith(chave) and len(chave) > len(achado):
+            achado = chave
+    return _PRECO_ANTHROPIC[achado] if achado else _PRECO_ANTHROPIC_PADRAO
+
+def _contabilizar_uso_anthropic(resposta, modelo):
+    """Soma o custo de UMA resposta ao acumulado do run. Nunca levanta: a
+    contabilidade e um efeito colateral da chamada, e derrubar uma analise ja
+    paga por causa de um campo de usage ausente seria o pior negocio possivel."""
+    try:
+        uso = getattr(resposta, "usage", None)
+        if uso is None:
+            return
+        entrada = int(getattr(uso, "input_tokens", 0) or 0)
+        saida = int(getattr(uso, "output_tokens", 0) or 0)
+        # O pipeline nao usa prompt caching hoje, mas os campos entram na conta
+        # com o multiplicador certo (leitura ~0,1x; escrita ~1,25x) para o dia
+        # em que passar a usar o numero nao ficar silenciosamente errado.
+        cache_leitura = int(getattr(uso, "cache_read_input_tokens", 0) or 0)
+        cache_escrita = int(getattr(uso, "cache_creation_input_tokens", 0) or 0)
+        preco = _preco_do_modelo(modelo)
+        custo = (
+            (entrada + cache_leitura * 0.1 + cache_escrita * 1.25) * preco["entrada"]
+            + saida * preco["saida"]
+        ) / 1_000_000
+        _USO_ANTHROPIC["custo_usd"] += custo
+        _USO_ANTHROPIC["tokens_entrada"] += entrada + cache_leitura + cache_escrita
+        _USO_ANTHROPIC["tokens_saida"] += saida
+        _USO_ANTHROPIC["chamadas"] += 1
+    except Exception:
+        pass
+
 def _zerar_saude_anthropic():
     _SAUDE_ANTHROPIC.update(ok=0, falha_credito=0, falha_outra=0, ultimo_erro="")
+    _USO_ANTHROPIC.update(custo_usd=0.0, tokens_entrada=0, tokens_saida=0, chamadas=0)
 
 def _erro_anthropic_de_credito(e):
     """Erro deterministico de conta (credito esgotado ou chave invalida), que
@@ -616,6 +686,7 @@ class _MessagesMonitorado:
             _SAUDE_ANTHROPIC["ultimo_erro"] = str(e)[:400]
             raise
         _SAUDE_ANTHROPIC["ok"] += 1
+        _contabilizar_uso_anthropic(r, kwargs.get("model") or (args[0] if args else ""))
         return r
 
 class _ClienteMonitorado:
@@ -658,6 +729,65 @@ def _verificar_saude_anthropic():
     if _ALERTA_SUPORTE_OK:
         # Dedup pela janela do alerta_historico, como os demais disparos.
         _alerta.disparar("anthropic_sem_credito", motivo)
+
+def registrar_uso_anthropic():
+    """Grava o consumo ESTIMADO do modelo em service_status(servico='anthropic')
+    e avisa o admin quando passa de 80% do teto — o mesmo par (barra no painel +
+    WhatsApp) que a Apify ja tinha, e que a Anthropic nao tinha nenhum dos dois.
+
+    O acumulado e MENSAL e mora na propria linha: cada run soma o proprio custo
+    ao que ja estava la e zera quando vira o mes. Guardar so o custo do run
+    daria uma barra que sobe e desce sem relacao com o teto mensal; guardar em
+    tabela nova exigiria migration, e este pipeline nao tem como aplicar uma."""
+    if _USO_ANTHROPIC["chamadas"] == 0:
+        return
+    custo_run = _USO_ANTHROPIC["custo_usd"]
+    agora_utc = datetime.now(timezone.utc)
+    acumulado = custo_run
+    anterior = _supabase_get(
+        "service_status", f"tenant=eq.{TENANT}&servico=eq.anthropic&limit=1"
+    )
+    if anterior:
+        try:
+            marca = str(anterior[0].get("atualizado_em") or "")
+            quando = datetime.fromisoformat(marca.replace("Z", "+00:00"))
+            if quando.tzinfo is None:
+                quando = quando.replace(tzinfo=timezone.utc)
+            mesmo_mes = (quando.year, quando.month) == (agora_utc.year, agora_utc.month)
+            if mesmo_mes:
+                acumulado += float(anterior[0].get("uso_usd") or 0)
+        except Exception:
+            # Marca ilegivel: comeca o mes do zero em vez de somar sobre um
+            # valor que nao da para datar. Subestimar por um run e melhor que
+            # arrastar para sempre um acumulado de origem desconhecida.
+            pass
+    teto = _teto_anthropic()
+    pct = (acumulado / teto) * 100 if teto else 0
+    log(f"  Anthropic: {_USO_ANTHROPIC['chamadas']} chamada(s), "
+        f"{_USO_ANTHROPIC['tokens_entrada']} tokens de entrada e "
+        f"{_USO_ANTHROPIC['tokens_saida']} de saida neste run "
+        f"(US$ {custo_run:.4f}); mes em US$ {acumulado:.2f} de US$ {teto:.2f} ({pct:.1f}%)")
+    _supabase_upsert("service_status", [{
+        "tenant": TENANT, "servico": "anthropic",
+        "uso_pct": round(pct, 1), "uso_usd": round(acumulado, 4),
+        "teto_usd": round(teto, 4),
+        "atualizado_em": agora_utc.isoformat(),
+    }], "tenant,servico")
+    if pct >= 80 and _ALERTA_SUPORTE_OK:
+        # Mesma janela de 12h do alerta de creditos da Apify: o consumo nao
+        # muda de hora em hora, e o canal de WhatsApp esta vivo (CallMeBot),
+        # entao cada disparo vira mensagem real no telefone do admin.
+        _safe(
+            "alerta de uso da Anthropic",
+            _alerta.disparar,
+            "anthropic_creditos",
+            f"Uso estimado da API Anthropic em {pct:.0f}% do teto do mes "
+            f"(US$ {acumulado:.2f} de US$ {teto:.2f}). Sem credito na conta, o "
+            f"pipeline grava analise DEFAULT e o painel para de receber leitura "
+            f"nova. Compre credito em console.anthropic.com ou ajuste o teto em "
+            f"ANTHROPIC_BUDGET_USD.",
+            janela_dedup_min=720,
+        )
 
 def timestamp_para_data(ts):
     try:
@@ -5388,6 +5518,10 @@ def main():
     # fora do ar (credito esgotado/chave invalida), tudo acima gravou defaults
     # sem nenhuma excecao subir — este e o unico ponto que enxerga o conjunto.
     _safe("saude_anthropic", _verificar_saude_anthropic)
+    # Consumo estimado do modelo neste run -> service_status (barra do painel)
+    # + alerta de 80%. Vem depois da saude porque as duas leem o mesmo run: uma
+    # olha o que FALHOU, a outra o que foi GASTO.
+    _safe("uso_anthropic", registrar_uso_anthropic)
 
     fim = datetime.now()
     duracao = (fim - inicio).seconds

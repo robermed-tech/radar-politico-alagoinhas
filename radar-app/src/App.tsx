@@ -10,7 +10,6 @@ const AceitarConvitePage = lazy(() =>
   import("@/pages/AceitarConvitePage").then((m) => ({ default: m.AceitarConvitePage }))
 );
 const ApprovalPage = lazy(() => import("@/pages/ApprovalPage").then((m) => ({ default: m.ApprovalPage })));
-const RelevanciaPage = lazy(() => import("@/pages/RelevanciaPage").then((m) => ({ default: m.RelevanciaPage })));
 const FontesPage = lazy(() => import("@/pages/FontesPage").then((m) => ({ default: m.FontesPage })));
 const AlertasHistPage = lazy(() => import("@/pages/AlertasHistPage").then((m) => ({ default: m.AlertasHistPage })));
 const BairrosPage = lazy(() => import("@/pages/BairrosPage").then((m) => ({ default: m.BairrosPage })));
@@ -37,7 +36,6 @@ type Page =
   | "pedidos"
   | "perfil"
   | "radio"
-  | "relevancia"
   | "fontes"
   | "admin"
   // avançado
@@ -60,9 +58,6 @@ function NIcoMessage() {
 }
 function NIcoTrending() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
-}
-function NIcoKey() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2"/><path d="m17 6 3 3"/><path d="m14 9 3 3"/></svg>;
 }
 function NIcoAntenna() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4.9 19.1A10 10 0 0 1 4.9 4.9"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4"/><path d="M19.1 4.9a10 10 0 0 1 0 14.2"/></svg>;
@@ -108,7 +103,8 @@ const NAV_MAIN: NavItem[] = [
   // Relevância e Fontes saíram da Configuração (admin-only) na revisão de
   // 25/07: qualquer usuário do tenant cadastra palavras-chave e perfis
   // monitorados. A permissão de escrita foi liberada na migration 007.
-  { id: "relevancia",  label: "Relevância",            icon: <NIcoKey /> },
+  // Em 06/08/26 a Relevância deixou de ter item próprio (pedido do cliente) e
+  // virou aba DENTRO de Fontes — as duas dizem o que o radar olha.
   { id: "fontes",      label: "Fontes",                icon: <NIcoAntenna /> },
   { id: "admin",       label: "Configuração",          icon: <NIcoSliders /> },
 ];
@@ -350,7 +346,6 @@ export default function App() {
             {page === "bairros"  && <BairrosPage />}
             {page === "perfil"   && <PerfilPage />}
             {page === "radio"    && <RequireAdmin><RadioPage /></RequireAdmin>}
-            {page === "relevancia" && <RelevanciaPage />}
             {page === "fontes"     && <FontesPage />}
             {page === "topics"   && <TemasPage />}
             {page === "admin"    && <RequireAdmin><AdminPage /></RequireAdmin>}

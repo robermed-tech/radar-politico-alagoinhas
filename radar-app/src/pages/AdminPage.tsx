@@ -10,12 +10,13 @@ import {
   fetchCollectionLogsHoje, fetchFontesUnificadas,
   calcKpis, resumoPorRede, volumePorHora,
 } from "@/lib/collection";
-import { fetchServiceStatus } from "@/lib/data";
+import { fetchServiceStatus, fetchAlertHistory } from "@/lib/data";
+import { CartaoCredito } from "@/components/CartaoCredito";
+import { fmtQuandoCredito, PCT_ALERTA_WHATSAPP } from "@/lib/creditos";
 import { DEFAULT_NOTIFICATION } from "@/lib/settings";
 import { type Role } from "@/lib/auth";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, glassBar } from "@/lib/chartTheme";
-import { IconWarningTriangle } from "@/components/icons";
 import { useOnlineUserIds } from "@/lib/presence";
 import { Card, Feedback } from "@/components/FormCard";
 import { ConfirmaModal } from "@/components/ConfirmaModal";
@@ -44,6 +45,12 @@ const TABS: { id: Tab; label: string }[] = [
  * uso, então na prática nunca era visto: no consumo normal de Alagoinhas
  * fica em 0-5%/mês). Vira widget de acompanhamento contínuo, com o mesmo
  * alerta visual de antes só quando o uso fica alto.
+ *
+ * O desenho e a escrita do número saíram daqui em 06/08 para `CartaoCredito` +
+ * `lib/creditos.ts`: este cartão e o banner de saúde exibiam a MESMA linha de
+ * `service_status` com grafias diferentes ("$29.33 · 101%" contra
+ * "US$ 29,33"), e a 101% aqui ainda se lia "quase esgotados". Ver o cabeçalho
+ * de lib/creditos.ts.
  */
 function ApifyStatusBanner() {
   const { data: status, isLoading } = useQuery({
@@ -56,53 +63,81 @@ function ApifyStatusBanner() {
     retry: false,
   });
 
-  if (isLoading) return null;
+  return (
+    <CartaoCredito
+      nome="Apify"
+      status={status}
+      carregando={isLoading}
+      descricao="Serviço que coleta as publicações e os comentários do Instagram."
+      vazio="Sem leitura ainda — aparece aqui depois da próxima execução do ÁGORA."
+      acao="Com o teto fechado a coleta volta com 0 posts. Recarregue em apify.com/billing."
+    />
+  );
+}
 
-  if (!status) {
-    return (
-      <div className="rounded-xl border border-line bg-bg-1 p-4">
-        <div className="text-sm font-bold text-txt-1">Créditos Apify</div>
-        <div className="mt-0.5 text-xs text-txt-3">
-          Sem leitura ainda — aparece aqui depois da próxima execução do ÁGORA.
-        </div>
-      </div>
-    );
-  }
+/**
+ * Uso da API Anthropic (06/08/26) — o serviço que ANALISA, ao lado do que
+ * coleta. Os dois param o produto de jeitos diferentes e, até aqui, só um
+ * tinha medidor: sem crédito na Apify o pipeline não traz post nenhum; sem
+ * crédito na Anthropic ele traz e grava `_DEFAULTS_ANALISE` em tudo, com o run
+ * saindo VERDE (incidente de 01/08).
+ *
+ * O número é o CONSUMO ESTIMADO deste pipeline, não o saldo da conta: a
+ * Anthropic não publica saldo por chave (não há equivalente ao
+ * /users/me/limits da Apify), então `agora.py::registrar_uso_anthropic` soma
+ * os tokens de cada resposta pelo preço de tabela do modelo. A tela diz isso
+ * com todas as letras — exibir um "saldo" que ninguém mediu seria pior que não
+ * ter número.
+ *
+ * "Funciona junto com o alerta de WhatsApp" literalmente: o mesmo limiar de
+ * 80% que dispara a mensagem acende a barra aqui, e o rodapé mostra o último
+ * disparo registrado em `alerta_historico` (com o provedor que entregou), para
+ * o admin ver na tela que a mensagem saiu — ou que nunca saiu.
+ */
+function MonitorAnthropic() {
+  const { data: status, isLoading } = useQuery({
+    queryKey: ["service-status-anthropic"],
+    queryFn: () => fetchServiceStatus("anthropic"),
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    retry: false,
+  });
+  // `alerta_historico` é a tabela do Alerta de Suporte (avisos automáticos de
+  // saúde do pipeline). Não confundir com a página "Histórico de Alertas", que
+  // lê `message_log` — envio MANUAL ao secretário, outro assunto.
+  const { data: alertas } = useQuery({
+    queryKey: ["alert-history"],
+    queryFn: () => fetchAlertHistory(100),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
 
-  const pct = status.uso_pct;
-  const critico = pct >= 90;
-  const atencao = pct >= 70;
-  const cor  = critico ? "#EF4444" : atencao ? "#F97316" : "#22C55E";
-  const bg   = critico ? "rgba(239,68,68,0.08)" : atencao ? "rgba(249,115,22,0.08)" : "rgba(34,197,94,0.06)";
-  const bord = critico ? "rgba(239,68,68,0.30)" : atencao ? "rgba(249,115,22,0.30)" : "rgba(34,197,94,0.22)";
-
-  const atualizado = (() => {
-    try { return new Date(status.atualizado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
-    catch { return "—"; }
-  })();
+  // `alerta_suporte._registrar_alerta` grava "[origem] motivo" na mensagem —
+  // é por esse prefixo que se separa o alerta da Anthropic dos demais.
+  const ultimo = (alertas ?? []).find(
+    (a) => a.tipo === "suporte" && (a.mensagem || "").startsWith("[anthropic")
+  );
 
   return (
-    <div className="rounded-xl border p-4" style={{ background: bg, borderColor: bord }}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-1.5 text-sm font-bold" style={{ color: cor }}>
-            {atencao && <IconWarningTriangle size={16} />}
-            {critico ? "Créditos Apify quase esgotados" : atencao ? "Créditos Apify em atenção" : "Créditos Apify"}
-          </div>
-          <div className="mt-0.5 text-xs text-txt-3">
-            ${status.uso_usd.toFixed(2)} de ${status.teto_usd.toFixed(2)} consumidos · {pct.toFixed(0)}% do limite mensal
-            {critico && " — coleta pode ser bloqueada a qualquer momento"}
-          </div>
-        </div>
-        <div className="text-[13px] text-txt-3">Atualizado {atualizado}</div>
+    <CartaoCredito
+      nome="Anthropic"
+      status={status}
+      carregando={isLoading}
+      descricao="Modelo que classifica sentimento, tema e risco. Consumo ESTIMADO deste pipeline pelos tokens de cada resposta (a API não publica saldo da conta); o teto vem de ANTHROPIC_BUDGET_USD."
+      vazio="Sem leitura ainda — o consumo aparece aqui depois da próxima execução do ÁGORA que chamar o modelo."
+      acao="Sem crédito, a análise é gravada com valores padrão e o painel para de receber leitura nova. Compre crédito em console.anthropic.com."
+    >
+      <div className="mt-3 border-t border-line/60 pt-2 text-[12px] text-txt-3">
+        {ultimo ? (
+          <>
+            Último aviso por WhatsApp: <span className="font-semibold text-txt-2">{fmtQuandoCredito(ultimo.criado_em)}</span>
+            {ultimo.canal && <> · canal <span className="font-semibold text-txt-2">{ultimo.canal}</span></>}
+          </>
+        ) : (
+          <>Nenhum aviso disparado até agora. O alerta sai por WhatsApp a partir de {PCT_ALERTA_WHATSAPP}% do teto.</>
+        )}
       </div>
-      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-bg-2">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${Math.min(pct, 100)}%`, background: cor }}
-        />
-      </div>
-    </div>
+    </CartaoCredito>
   );
 }
 
@@ -355,6 +390,10 @@ function ColetaMonitorSection() {
           </div>
         </div>
       </div>
+
+      {/* Consumo dos dois serviços externos que podem parar o produto: o que
+          COLETA (Apify, no topo da página) e o que ANALISA (Anthropic). */}
+      <MonitorAnthropic />
 
       {/* KPIs do dia */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
