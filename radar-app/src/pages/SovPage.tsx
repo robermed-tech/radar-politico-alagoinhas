@@ -8,8 +8,8 @@
  *
  * Cores: o laranja da marca é a GESTÃO — identidade, não sentimento (a mesma
  * razão que tirou verde/vermelho da tela Fontes). Oposição e imprensa ficam em
- * dois tons de chumbo por tema. Verde/vermelho aparecem apenas onde medem
- * sentimento (a reação negativa), nas tintas `--sent-ink-*`.
+ * dois tons de chumbo por tema. Vermelho aparece apenas onde mede sentimento:
+ * a reação negativa, sempre na tinta `--sent-ink-neg` (ver ReacaoNegativa).
  *
  * A reação negativa é sempre "dos que tomam partido" com o piso MIN_VOTOS_IAD
  * — nunca a média diluída por post sem medição (ver o cabeçalho de lib/sov.ts:
@@ -51,7 +51,13 @@ function fmtPct1(v: number): string {
   return `${v.toFixed(1).replace(".", ",")}%`;
 }
 
-/** Reação negativa como texto: tinta de sentimento ou o estado "sem votos". */
+/**
+ * Reação negativa como texto: SEMPRE na tinta vermelha de sentimento (ajuste de
+ * 07/08, primeira leitura do cliente). A versão anterior pintava de verde
+ * abaixo de 50%, para dizer "cenário bom" — mas verde colado no rótulo
+ * "Reação negativa" lia como contradição. O juízo bom/ruim vem do VALOR; a cor
+ * só nomeia o que o número conta.
+ */
 function ReacaoNegativa({ pctNeg, votos }: { pctNeg: number | null; votos: number }) {
   if (pctNeg === null) {
     return (
@@ -63,8 +69,9 @@ function ReacaoNegativa({ pctNeg, votos }: { pctNeg: number | null; votos: numbe
       </span>
     );
   }
-  const cor = pctNeg >= 50 ? "var(--sent-ink-neg)" : "var(--sent-ink-pos)";
-  return <span className="font-bold" style={{ color: cor }}>{fmtPct1(pctNeg)}</span>;
+  return (
+    <span className="font-bold" style={{ color: "var(--sent-ink-neg)" }}>{fmtPct1(pctNeg)}</span>
+  );
 }
 
 export function SovPage() {
@@ -214,6 +221,14 @@ export function SovPage() {
                 </div>
               ))}
             </div>
+            {/* A legenda fixa existe porque o rótulo sozinho gerou a dúvida "é
+                gente falando mal da imprensa?" na primeira leitura (07/08) — a
+                mesma solução da legenda do IAD em 28/07. */}
+            <p className="mt-2 text-[12.5px] font-medium text-txt-3">
+              Reação negativa: entre os comentários que tomam partido nas publicações de cada
+              lado, a fatia que critica a gestão. A opinião medida é sempre sobre a gestão,
+              nunca sobre quem publicou.
+            </p>
           </div>
 
           {/* ── 2. Voz por publicação ── */}
