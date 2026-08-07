@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchSources, addSource, toggleSource, deleteSource } from "@/lib/admin";
+import {
+  fetchSources, addSource, toggleSource, deleteSource,
+  fetchKeywords, addKeyword, toggleKeyword, deleteKeyword, type Keyword,
+} from "@/lib/admin";
+import { ConfirmaModal } from "@/components/ConfirmaModal";
 import {
   fetchSources as fetchColetaSources, addSource as addColetaSource,
   toggleSource as toggleColetaSource, deleteSource as deleteColetaSource,
@@ -296,21 +300,151 @@ function SourcesSection() {
 }
 
 /**
- * Perfis monitorados. Saiu da Configuração (admin-only) para a barra lateral
- * na revisão de 25/07 — qualquer usuário do tenant cadastra e pausa fontes
- * (policy liberada na migration 007). Instagram alimenta o pipeline atual
- * (monitored_sources); YouTube entra no subsistema de coleta (sources).
+ * Palavras-chave do filtro de relevância. Era a página "Relevância" da barra
+ * lateral e passou a ser uma aba DESTA tela em 06/08/26 (pedido do cliente):
+ * as duas respondem à mesma pergunta — o que o radar olha —, uma pelo perfil e
+ * outra pela palavra, e ficavam a dois itens de distância no menu.
+ *
+ * A regra do produto segue intocada: a lista é do CLIENTE. O sistema nunca
+ * adiciona, remove nem "melhora" palavra por conta própria; é esta lista que
+ * decide quais posts entram na análise (ver agora.py::_motivo_relevancia).
+ *
+ * Desenho da prévia 3 de 04/08: NUVEM DE PÍLULAS — todas as palavras num
+ * relance, ativa em laranja cheio (tinta escura, a regra da marca), desativada
+ * apagada com traço. Clicar na pílula ativa/desativa; o ✕ remove com o
+ * ConfirmaModal (window.confirm continua banido).
+ */
+function KeywordsSection() {
+  const qc = useQueryClient();
+  const { data: keywords } = useQuery({ queryKey: ["admin-keywords"], queryFn: fetchKeywords });
+  const [novo, setNovo] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [removendo, setRemovendo] = useState<Keyword | null>(null);
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-keywords"] });
+
+  async function run(fn: () => Promise<string | null>, sucesso: string) {
+    const err = await fn();
+    setMsg(err ? { ok: false, text: err } : { ok: true, text: sucesso });
+    if (!err) refresh();
+  }
+
+  const total = keywords?.length ?? 0;
+  const ativas = (keywords ?? []).filter((k) => k.active).length;
+
+  return (
+    <Card title={`Palavras-chave do filtro de relevância · ${total} palavra${total === 1 ? "" : "s"} · ${ativas} ativa${ativas === 1 ? "" : "s"}`}>
+      <div className="flex gap-2">
+        <input
+          value={novo}
+          onChange={(e) => setNovo(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && novo.trim()) { run(() => addKeyword(novo), "✔ Adicionada"); setNovo(""); } }}
+          placeholder="Nova palavra-chave…"
+          className="flex-1 rounded-lg border border-line bg-bg-2 px-3 py-2 text-sm outline-none focus:border-brand"
+        />
+        <button
+          onClick={() => { if (novo.trim()) { run(() => addKeyword(novo), "✔ Adicionada"); setNovo(""); } }}
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-ink transition hover:opacity-90"
+        >
+          Adicionar
+        </button>
+      </div>
+      <div className="my-3"><Feedback msg={msg} /></div>
+      <div className="flex flex-wrap gap-2.5">
+        {(keywords ?? []).map((k) => (
+          <span
+            key={k.id}
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[15px] font-bold transition ${
+              k.active
+                ? "bg-brand text-brand-ink"
+                : "border border-line bg-bg-2 text-txt-3 line-through"
+            }`}
+            style={k.active ? { boxShadow: "0 6px 16px var(--brand-glow, rgba(247,150,65,0.22))" } : undefined}
+          >
+            <button
+              onClick={() => run(() => toggleKeyword(k.id, !k.active), k.active ? "✔ Desativada" : "✔ Ativada")}
+              className="cursor-pointer"
+              title={k.active ? "Clique para desativar (a palavra sai do filtro)" : "Clique para reativar"}
+            >
+              {k.keyword}
+            </button>
+            <button
+              onClick={() => setRemovendo(k)}
+              className="cursor-pointer font-extrabold opacity-60 transition hover:opacity-100"
+              aria-label={`Remover a palavra ${k.keyword}`}
+            >
+              ✕
+            </button>
+          </span>
+        ))}
+        {total === 0 && <p className="text-sm text-txt-3">Nenhuma palavra-chave cadastrada.</p>}
+      </div>
+      {removendo && (
+        <ConfirmaModal
+          titulo={`Remover "${removendo.keyword}"?`}
+          mensagem={
+            <>
+              A palavra sai do filtro de relevância na próxima execução do ÁGORA: posts que só
+              casavam com ela deixam de entrar na análise. Para uma pausa temporária, prefira
+              desativar (clique na pílula) — o cadastro fica guardado.
+            </>
+          }
+          onConfirmar={() => {
+            run(() => deleteKeyword(removendo.id), "✔ Removida");
+            setRemovendo(null);
+          }}
+          onCancelar={() => setRemovendo(null)}
+        />
+      )}
+    </Card>
+  );
+}
+
+type Aba = "perfis" | "relevancia";
+
+const ABAS: { id: Aba; label: string }[] = [
+  { id: "perfis", label: "Perfis monitorados" },
+  { id: "relevancia", label: "Relevância" },
+];
+
+/**
+ * Fontes. Saiu da Configuração (admin-only) para a barra lateral na revisão de
+ * 25/07 — qualquer usuário do tenant cadastra e pausa fontes (policy liberada
+ * na migration 007). Instagram alimenta o pipeline atual (monitored_sources);
+ * YouTube entra no subsistema de coleta (sources).
+ *
+ * Desde 06/08/26 a tela tem DUAS abas, com a Relevância vindo da barra lateral
+ * para cá: as duas definem o que o radar olha (uma por perfil, outra por
+ * palavra) e o item próprio no menu saiu junto. Abas, e não os dois cards
+ * empilhados, porque cada lista é longa o suficiente para empurrar a outra
+ * para fora da dobra — o mesmo padrão da Configuração.
  */
 export function FontesPage() {
+  const [aba, setAba] = useState<Aba>("perfis");
+
   return (
     <div className="space-y-4 p-5">
       <div>
         <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Fontes</h1>
         <p className="text-base text-txt-2">
-          Perfis que o radar acompanha para coletar posts e comentários
+          Perfis que o radar acompanha e palavras que decidem o que entra na análise
         </p>
       </div>
-      <SourcesSection />
+
+      <div className="flex flex-wrap gap-1 rounded-xl border border-line bg-bg-1 p-1">
+        {ABAS.map((a) => (
+          <button
+            key={a.id}
+            onClick={() => setAba(a.id)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+              aba === a.id ? "bg-brand text-brand-ink" : "text-txt-2 hover:bg-bg-2 hover:text-txt-1"
+            }`}
+          >
+            {a.label}
+          </button>
+        ))}
+      </div>
+
+      {aba === "perfis" ? <SourcesSection /> : <KeywordsSection />}
     </div>
   );
 }
