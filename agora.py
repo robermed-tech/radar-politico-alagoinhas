@@ -2106,9 +2106,17 @@ PROMPT_COMENTARIOS = (
     "LOCALIDADE: bairro, praca, rua, escola ou equipamento publico citado NO COMENTARIO. "
     "Devolva EXATAMENTE como escrito pelo cidadao — nao normalize, nao corrija grafia. "
     "null se nenhum lugar for citado. NAO infira lugar a partir do tema nem do post.\n"
-    "PEDIDO: demanda concreta, ate 8 palavras, no infinitivo (ex.: 'recapear a Avenida Juracy "
-    "Magalhaes', 'aumentar o plantao medico na UPA'). null se for apenas opiniao, elogio ou "
-    "ofensa, sem pedido concreto.\n"
+    "PEDIDO: demanda concreta de SERVICO PUBLICO ou acao administrativa que a gestao "
+    "municipal pode EXECUTAR, ate 8 palavras, no infinitivo (ex.: 'recapear a Avenida Juracy "
+    "Magalhaes', 'aumentar o plantao medico na UPA', 'pagar salarios dos medicos'). null se "
+    "for apenas opiniao, elogio ou ofensa, sem pedido concreto.\n"
+    "NAO E PEDIDO (use null) a opiniao politica em forma imperativa — ela ja e capturada "
+    "pelo sentimento: exigir que o prefeito renuncie, saia ou 'entregue as chaves' ('tem "
+    "que entregar as chaves da prefeitura e dar tchau' -> pedido null, sentimento "
+    "negativo); desejar a volta ou a eleicao de outro politico ('volta Fulano'); conclamar "
+    "a populacao a protesto ou manifestacao; pedir cassacao, conselho de etica ou prisao "
+    "do gestor. O destinatario de um pedido e a gestao prestando servico — nunca o "
+    "eleitor, a camara ou o proprio prefeito deixando o cargo.\n"
     "CONFIANCA_TEMA: inteiro 0-100, confianca na classificacao de tema + sentimento deste "
     "comentario. Abaixo de 70 quando houver ironia, sarcasmo, giria ambigua, ou texto curto "
     "demais para decidir. ABAIXO DE 50 quando voce honestamente nao conseguiu decidir a "
@@ -2168,11 +2176,107 @@ def montar_prompt_comentarios(post, lote, offset):
         'Nome de equipamento ou programa (posto, CTA, hospital, UPA, escola, creche, '
         'secretaria) NAO e localidade: use null, a menos que o texto tambem diga em que '
         'bairro ele fica, e ai devolva o BAIRRO. null quando nao houver lugar citado>", '
-        '"pedido": "<demanda concreta ate 8 palavras no infinitivo, ou null>", '
+        '"pedido": "<demanda concreta de servico publico ate 8 palavras no infinitivo, ou '
+        'null — exigencia de renuncia, voto ou protesto NAO e pedido>", '
         '"confianca_tema": <0-100>}, ...\n'
         ']}\n'
         f'O array deve ter exatamente {len(lote)} itens (1 por comentario numerado acima).'
     )
+
+# Retorica politica em forma imperativa que o modelo transformava em "pedido".
+# Achado de 07/08 lendo os 569 pedidos gravados: "Ele tem que entregar e as
+# chaves da prefeitura e dar tchau" virou o pedido "entregar as chaves da
+# prefeitura" na tela Pedidos do Povo. O traco comum dos 8 casos contaminados
+# e o DESTINATARIO: pedido de verdade e acao que a gestao executa prestando
+# servico; nestes pedem a saida do gestor (renuncia/chaves), punicao politica
+# (cassacao, conselho de etica), voto ("volta Paulo Cezar", "fazer uma limpa
+# na camara") ou mobilizacao do proprio povo (protesto, manifestacao).
+# Os padroes casam contra o PEDIDO extraido (curto, ja normalizado por _norm),
+# nunca contra o texto do comentario — mesma separacao da localidade.
+_PEDIDO_RETORICO = [
+    # Saida do gestor
+    r"chaves? da (prefeitura|cidade)",
+    r"\brenunci",                                    # renuncia, renunciar
+    r"\b(deixar|entregar|largar|abandonar) o cargo\b",
+    r"\b(remover|tirar|afastar|derrubar|expulsar)\b.*\b(prefeito|prefeita|gestor)\b",
+    r"\b(prefeito|prefeita)\b.*\b(do cargo|da prefeitura)\b",
+    r"\b(dar tchau|ir embora|va embora|vai embora)\b",
+    r"^fora\b",
+    r"\b(tomar|tome|tomem) vergonha\b|\bvergonha na cara\b",
+    # Punicao politica do gestor (quem age e a camara/justica, nao a gestao)
+    r"\bconselho de etica\b",
+    r"\b(impeachment|impichar|cassar|cassacao)\b",
+    r"\b(prender|prisao|cadeia)\b.*\b(prefeito|prefeita|gestor|vereador|vereadores)\b",
+    # Voto / eleicao / volta de outro politico. "^volta|^volte" e o imperativo
+    # dirigido a uma PESSOA ("volta Paulo Cezar") — o infinitivo legitimo
+    # ("voltar com a micareta") nao casa porque "voltar" nao tem fronteira
+    # de palavra apos "volta".
+    r"^(volta|volte|voltem)\b",
+    r"\b(votar em|eleger|reeleger|virar prefeito|proximo prefeito|nas urnas)\b",
+    r"\b(renovar|trocar|mudar|limpar|fazer uma limpa)\b.*\b(camara|vereador|vereadores)\b",
+    # Conclamacao a mobilizacao (dirigida ao povo, nao a gestao)
+    r"\b(protesto|protestos|passeata|manifestacao|manifestacoes|mobilizacao)\b",
+]
+_PEDIDO_RETORICO_RE = [re.compile(p) for p in _PEDIDO_RETORICO]
+
+
+def normalizar_pedido(pedido):
+    """Pedido limpo, ou None quando nao ha demanda de servico de verdade.
+
+    Safety net pos-modelo: o PROMPT_COMENTARIOS ja manda devolver null para
+    opiniao politica em forma imperativa, mas pedir nao garante (a mesma licao
+    do completar_frase da radio). A duvida resolve para MANTER o pedido — so
+    cai o que casa um padrao retorico inequivoco; apagar demanda legitima e
+    pior que deixar passar uma retorica nova, que a proxima leitura da base
+    acrescenta a lista."""
+    p = " ".join((pedido or "").split()).strip()
+    if not p:
+        return None
+    p_norm = _norm(p)
+    if any(rx.search(p_norm) for rx in _PEDIDO_RETORICO_RE):
+        return None
+    return p
+
+
+# Bateria do --teste-pedidos. Os "None" vem da leitura dos 569 pedidos da base
+# em 07/08 (8 contaminados confirmados no texto original) mais blindagens; os
+# demais sao pedidos REAIS gravados que precisam continuar passando — o filtro
+# apertado demais custa dado, como na localidade.
+_CASOS_PEDIDO = [
+    # Contaminacao confirmada na base (lida linha a linha em 07/08):
+    ("entregar as chaves da prefeitura", None),
+    ("remover prefeito do cargo", None),
+    ("volta Paulo Cézar", None),
+    ("volte que Alagoinhas", None),
+    ("renovar composição da câmara de vereadores", None),
+    ("fazer protesto contra fechamento", None),
+    ("convocar manifestacao contra fechamento hospital", None),
+    ("acionar conselho de ética contra prefeito", None),
+    # Blindagem: padroes irmãos que ainda nao apareceram gravados.
+    ("renunciar ao mandato", None),
+    ("prender o prefeito", None),
+    ("votar em Luciano na proxima eleicao", None),
+    ("tirar o prefeito da prefeitura", None),
+    ("fora Gustavo", None),
+    ("tomar vergonha na cara", None),
+    # Pedidos legitimos que DEVEM sobreviver (todos reais, da mesma base):
+    ("pagar salarios dos medicos", "pagar salarios dos medicos"),
+    ("melhorar atendimento na UPA", "melhorar atendimento na UPA"),
+    ("nao fechar hospital Dantas Biao", "nao fechar hospital Dantas Biao"),
+    ("voltar com a micareta e blocos", "voltar com a micareta e blocos"),
+    ("trocar secretario de saude", "trocar secretario de saude"),
+    ("exonerar todos os cargos comissionados", "exonerar todos os cargos comissionados"),
+    ("demolir o viaduto", "demolir o viaduto"),
+    ("votar redução tarifa de água", "votar redução tarifa de água"),
+    ("manifestar-se sobre situacao da maternidade", "manifestar-se sobre situacao da maternidade"),
+    ("reduzir tarifa de água", "reduzir tarifa de água"),
+    ("prender vendedores de som ilegal", "prender vendedores de som ilegal"),
+    ("realizar concurso da guarda municipal", "realizar concurso da guarda municipal"),
+    (None, None),
+    ("", None),
+    ("   ", None),
+]
+
 
 def analisar_comentarios_haiku(post, cidadaos_ordenados, cliente):
     """Classifica TODOS os comentarios de cidadaos de um post via Haiku dedicado,
@@ -2597,7 +2701,7 @@ def analisar_com_agora(posts, comentarios_por_post, memoria, mapa_bairros):
                 c["tema"] = tema_c
                 c["subtema"] = normalizar_subtema(tema_c, item.get("subtema"))
                 c["localidade"] = normalizar_localidade(item.get("localidade"), mapa_bairros)
-                c["pedido"] = item.get("pedido") or None
+                c["pedido"] = normalizar_pedido(item.get("pedido"))
                 try:
                     c["confianca_tema"] = int(item.get("confianca_tema") or 0)
                 except (TypeError, ValueError):
@@ -6566,6 +6670,116 @@ def teste_localidade(limite=50):
     print("  Ela serve para achar contaminação e captura perdida, não como taxa de acerto.")
 
 
+def teste_pedidos(limite=0):
+    """Roda normalizar_pedido() sem chamar Claude e sem gravar nada.
+
+    `--teste-pedidos`      → regressao + varredura da base INTEIRA
+    `--teste-pedidos N`    → varre so os N pedidos mais curtidos
+
+    Duas partes, no molde do --teste-localidade:
+      1. Casos com resposta esperada (_CASOS_PEDIDO) — regressao do achado de
+         07/08 ("entregar as chaves da prefeitura" exibido como pedido do povo)
+         nos dois sentidos: retorica tem de cair E pedido real tem de passar.
+      2. Varredura dos pedidos gravados: lista o que o filtro anularia, com o
+         texto original do comentario, para leitura humana antes do reparo.
+    """
+    print(f"[teste-pedidos] Casos com resposta esperada ({len(_CASOS_PEDIDO)}):\n")
+    falhas = 0
+    for valor, esperado in _CASOS_PEDIDO:
+        obtido = normalizar_pedido(valor)
+        ok = obtido == esperado
+        falhas += 0 if ok else 1
+        print(f"  {'ok  ' if ok else 'FALHOU'}  {valor!r:<52} -> {obtido!r}"
+              f"{'' if ok else f'  (esperado {esperado!r})'}")
+    print(f"\n[teste-pedidos] {len(_CASOS_PEDIDO) - falhas}/{len(_CASOS_PEDIDO)} casos passaram.")
+    if falhas:
+        print("[teste-pedidos] ATENCAO: ha caso falhando — nao subir para producao.")
+
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("[teste-pedidos] SUPABASE_URL / SUPABASE_SERVICE_KEY não configurados — varredura pulada.")
+        return
+
+    linhas, offset = [], 0
+    while True:
+        lote = _supabase_get(
+            "comments",
+            f"tenant=eq.{TENANT}&pedido=not.is.null"
+            f"&select=id,pedido,texto&order=curtidas.desc&limit=1000&offset={offset}",
+        )
+        if not lote:
+            break
+        linhas.extend(lote)
+        if len(lote) < 1000 or (limite and len(linhas) >= limite):
+            break
+        offset += 1000
+    if limite:
+        linhas = linhas[:limite]
+
+    retoricos = [c for c in linhas if normalizar_pedido(c.get("pedido")) is None]
+    print(f"\n[teste-pedidos] {len(linhas)} pedidos gravados conferidos.")
+    for c in retoricos:
+        print(f"\n  ANULARIA: {c.get('pedido')!r}")
+        print(f"      texto: {' '.join((c.get('texto') or '').split())[:170]}")
+    print(f"\n[teste-pedidos] Varredura: {len(retoricos)} pedidos retoricos gravados.")
+    if retoricos:
+        print("  Rode `python agora.py --reparar-pedidos --dry-run` e leia os textos antes de gravar.")
+
+
+def reparar_pedidos(dry_run=False):
+    """Anula o campo `pedido` das linhas em que ele e retorica politica, nao
+    demanda de servico (tela Pedidos do Povo, achado de 07/08: "Ele tem que
+    entregar e as chaves da prefeitura e dar tchau" exibido como o pedido
+    "entregar as chaves da prefeitura").
+
+    `--reparar-pedidos --dry-run`  → so lista o que mudaria, com o texto
+    `--reparar-pedidos`            → grava (pedido -> null)
+
+    So toca o campo `pedido` — sentimento, tema e localidade da linha ficam
+    como estao (a critica que a retorica carrega ja esta contada no
+    sentimento). Nao chama o modelo: aplica normalizar_pedido ao pedido curto
+    ja gravado. Custo zero de token e de credito Apify. Idempotente: linha
+    reparada sai do filtro `pedido=not.is.null` da proxima varredura.
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("[reparar-pedidos] SUPABASE_URL / SUPABASE_SERVICE_KEY ausentes.")
+        return
+
+    linhas, offset = [], 0
+    while True:
+        lote = _supabase_get(
+            "comments",
+            f"tenant=eq.{TENANT}&pedido=not.is.null"
+            f"&select=id,pedido,texto&order=curtidas.desc&limit=1000&offset={offset}",
+        )
+        if not lote:
+            break
+        linhas.extend(lote)
+        if len(lote) < 1000:
+            break
+        offset += 1000
+    print(f"[reparar-pedidos] {len(linhas)} pedidos gravados conferidos.")
+
+    suspeitos = [c for c in linhas if normalizar_pedido(c.get("pedido")) is None]
+    if not suspeitos:
+        print("[reparar-pedidos] Nada a corrigir: nenhum pedido retorico gravado.")
+        return
+
+    print(f"[reparar-pedidos] {len(suspeitos)} pedidos retoricos:\n")
+    for c in suspeitos:
+        print(f"  {c.get('pedido')!r} -> null")
+        print(f"      texto: {' '.join((c.get('texto') or '').split())[:170]}")
+    if dry_run:
+        print("\n[reparar-pedidos] --dry-run: nada gravado.")
+        return
+
+    ok = 0
+    for c in suspeitos:
+        if _supabase_patch("comments", f"id=eq.{c['id']}&tenant=eq.{TENANT}",
+                           {"pedido": None}):
+            ok += 1
+    print(f"\n[reparar-pedidos] {ok}/{len(suspeitos)} corrigidos.")
+
+
 def reprocessar():
     """Busca os últimos 20 posts do Supabase e re-analisa com Claude (upsert).
     Não depende do Apify ter um run recente sem erros 429.
@@ -6707,7 +6921,7 @@ def backfill_comentarios(limite=None):
                 "tema": tema_c,
                 "subtema": normalizar_subtema(tema_c, item.get("subtema")),
                 "localidade": normalizar_localidade(item.get("localidade"), mapa_bairros),
-                "pedido": item.get("pedido") or None,
+                "pedido": normalizar_pedido(item.get("pedido")),
                 "confianca_tema": conf,
                 "autor_hash": hash_autor(TENANT, c.get("username", "")),
                 # sentimento sempre presente (mesma forma em toda a lista) —
@@ -6822,6 +7036,15 @@ if __name__ == "__main__":
         # Preenche bairro que o modelo deixou passar e o texto nomeia.
         # So le texto ja gravado: zero token.
         recuperar_localidade(dry_run="--dry-run" in sys.argv)
+    elif "--teste-pedidos" in sys.argv:
+        # Bateria de casos + varredura dos pedidos gravados procurando
+        # retorica politica ("entregar as chaves da prefeitura"). Zero token.
+        _n = next((int(a) for a in sys.argv if a.isdigit()), 0)
+        teste_pedidos(limite=_n)
+    elif "--reparar-pedidos" in sys.argv:
+        # Anula pedido que e retorica politica, nao demanda de servico.
+        # So le o pedido curto ja gravado: zero token.
+        reparar_pedidos(dry_run="--dry-run" in sys.argv)
     elif "--teste-subtema" in sys.argv:
         # Dry-run: mostra o que o alerta de subtema dispararia (24h reais do
         # Supabase), sem enviar WhatsApp nem gravar historico.

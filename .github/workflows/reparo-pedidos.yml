@@ -1,0 +1,94 @@
+# Reparo dos pedidos retóricos gravados (07/08/26).
+#
+# A tela Pedidos do Povo exibia "entregar as chaves da prefeitura" como pedido
+# do cidadão — o comentário era ironia pedindo a saída do prefeito, não uma
+# demanda de serviço. O PROMPT_COMENTARIOS e a safety net normalizar_pedido()
+# foram corrigidos para o fluxo novo; este workflow limpa o que JÁ está
+# gravado (8 pedidos retóricos em 569, lidos um a um em 07/08). Roda com os
+# MESMOS secrets do agora.yml (a máquina local não tem credenciais do
+# backend).
+#
+# Dispara UMA vez sozinho no push deste arquivo (o jeito de executar um
+# one-off sem PAT local) e depois fica disponível em "Run workflow". O passo
+# de dry-run roda sempre antes, deixando o antes/depois auditável no log.
+name: Reparo — pedidos retóricos
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Só mostrar o que mudaria, sem gravar"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/reparo-pedidos.yml"
+
+concurrency:
+  group: reparo-pedidos
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reparar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      # Bateria de casos com resposta esperada + varredura da base inteira.
+      # Falha aqui aborta o job ANTES de qualquer escrita.
+      - name: Bateria de casos + varredura (sem gravar)
+        timeout-minutes: 5
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python agora.py --teste-pedidos | tee /tmp/teste-pedidos.txt
+          ! grep -q "FALHOU" /tmp/teste-pedidos.txt
+
+      - name: Dry-run (auditoria do antes/depois)
+        timeout-minutes: 5
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python agora.py --reparar-pedidos --dry-run
+
+      - name: Aplicar o reparo
+        timeout-minutes: 5
+        if: ${{ github.event_name == 'push' || inputs.dry_run != true }}
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python agora.py --reparar-pedidos
+
+      # Job verde com efeito zero já aconteceu no reparo de acentos — aqui a
+      # varredura roda de novo depois da escrita e o job FALHA se restar
+      # pedido retórico gravado.
+      - name: Verificar efeito (falha se restar retórica)
+        timeout-minutes: 5
+        if: ${{ github.event_name == 'push' || inputs.dry_run != true }}
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python agora.py --teste-pedidos | tee /tmp/verifica-pedidos.txt
+          grep -q "Varredura: 0 pedidos retoricos" /tmp/verifica-pedidos.txt
