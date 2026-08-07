@@ -221,13 +221,16 @@ export function SovPage() {
                 </div>
               ))}
             </div>
-            {/* A legenda fixa existe porque o rótulo sozinho gerou a dúvida "é
-                gente falando mal da imprensa?" na primeira leitura (07/08) — a
-                mesma solução da legenda do IAD em 28/07. */}
+            {/* A legenda fixa existe porque o rótulo sozinho gerou as dúvidas
+                "é gente falando mal da imprensa?" e "o que significa sem
+                sinal?" na primeira leitura (07/08) — o significado morava só em
+                tooltip de hover, invisível em print e TV. Mesma solução da
+                legenda do IAD em 28/07. */}
             <p className="mt-2 text-[12.5px] font-medium text-txt-3">
               Reação negativa: entre os comentários que tomam partido nas publicações de cada
               lado, a fatia que critica a gestão. A opinião medida é sempre sobre a gestão,
-              nunca sobre quem publicou.
+              nunca sobre quem publicou. Quando menos de {MIN_VOTOS_IAD} comentários tomam
+              partido, o card diz "sem sinal" em vez de exibir um percentual sem base.
             </p>
           </div>
 
