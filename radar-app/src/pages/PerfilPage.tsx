@@ -13,7 +13,6 @@ import { fetchKeywords } from "@/lib/admin";
 import { fmtInt } from "@/lib/format";
 import { ContadorAnimado } from "@/components/ContadorAnimado";
 import { FUNDO_ESCUTA } from "@/components/superficieRadio";
-import { InfluencersSection } from "@/pages/InfluencersPage";
 import { RankingSeguidores } from "@/components/RankingSeguidores";
 import { montarRanking } from "@/lib/seguidores";
 import { PeriodoFilter, periodoLabel, periodoFrase, type Dias } from "@/components/PeriodoFilter";
@@ -496,9 +495,6 @@ export function PerfilPage() {
         </>
       )}
 
-      {/* Influenciadores — conteúdo da antiga página da sidebar, encaixado
-          aqui por decisão da reunião de 24/07 (menos itens no menu). */}
-      <InfluencersSection postsPeriodo={postsPeriodo} dias={dias} />
     </div>
   );
 }

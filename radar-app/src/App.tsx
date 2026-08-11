@@ -101,8 +101,10 @@ const NAV_MAIN: NavItem[] = [
   { id: "bairros",     label: "Mapa da Cidade",        icon: <NIcoMapPin /> },
   { id: "perfil",      label: "Análise por Perfil",    icon: <NIcoUser /> },
   // Share of Voice (07/08/26, mockup aprovado): quem domina a conversa —
-  // gestão, oposição ou imprensa. Aberta a qualquer usuário, como as demais
-  // telas de análise.
+  // gestão, oposição ou imprensa. TEMPORARIAMENTE admin-only (11/08/26,
+  // pedido do cliente): é atualização do SaaS ainda em teste. Ao liberar,
+  // basta tirar "sov" de SO_ADMIN e do RequireAdmin — os dados que ela lê
+  // (posts/comments) já são visíveis a qualquer usuário nas demais telas.
   { id: "sov",         label: "Divisão da Conversa",   icon: <NIcoConversa /> },
   // Escuta do Rádio é admin-only (pedido explícito): fica fora do menu para
   // usuário comum, e a página vem embrulhada em RequireAdmin. O RLS da
@@ -180,9 +182,10 @@ export default function App() {
   // Usuários — ver src/lib/presence.ts.
   useTrackPresence(session?.user?.id);
 
-  // Itens de menu visíveis conforme o papel (Configuração e Escuta do Rádio só
-  // para admin).
-  const SO_ADMIN = new Set<Page>(["admin", "radio"]);
+  // Itens de menu visíveis conforme o papel (Configuração, Rádio Escuta e —
+  // temporariamente, enquanto está em teste — Divisão da Conversa, só para
+  // admin).
+  const SO_ADMIN = new Set<Page>(["admin", "radio", "sov"]);
   const navMain = NAV_MAIN.filter((n) => !SO_ADMIN.has(n.id) || isAdmin);
 
   // Aplica tema no <html> + persiste
@@ -356,7 +359,7 @@ export default function App() {
             {page === "pedidos"  && <PedidosPage />}
             {page === "bairros"  && <BairrosPage />}
             {page === "perfil"   && <PerfilPage />}
-            {page === "sov"      && <SovPage />}
+            {page === "sov"      && <RequireAdmin><SovPage /></RequireAdmin>}
             {page === "radio"    && <RequireAdmin><RadioPage /></RequireAdmin>}
             {page === "fontes"     && <FontesPage />}
             {page === "topics"   && <TemasPage />}
