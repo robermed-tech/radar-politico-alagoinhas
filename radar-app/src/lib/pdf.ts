@@ -98,10 +98,18 @@ export class PDF {
   private titulo: string;
   /** Desenhado no rodapé de toda página, à esquerda. */
   private rodape: string;
+  /** Faixa fina da marca no topo de TODA página (a identidade sobrevive à
+   *  paginação automática; na primeira página o cabeçalho pintado por cima a
+   *  cobre, porque a faixa entra antes do conteúdo no stream). */
+  private faixaTopo?: Cor;
+  /** Quadradinho da marca antes do texto do rodapé. */
+  private pontoRodape?: Cor;
 
-  constructor(opcoes: { titulo: string; rodape?: string }) {
+  constructor(opcoes: { titulo: string; rodape?: string; faixaTopo?: Cor; pontoRodape?: Cor }) {
     this.titulo = opcoes.titulo;
     this.rodape = opcoes.rodape ?? "";
+    this.faixaTopo = opcoes.faixaTopo;
+    this.pontoRodape = opcoes.pontoRodape;
   }
 
   get larguraUtil(): number {
@@ -132,6 +140,32 @@ export class PDF {
     this.buffer.push(
       `${cor[0]} ${cor[1]} ${cor[2]} rg ${x.toFixed(2)} ${base.toFixed(2)} ` +
       `${largura.toFixed(2)} ${altura.toFixed(2)} re f`
+    );
+  }
+
+  /** Caminho de círculo em 4 Béziers (k = 0.5523, a aproximação padrão). */
+  private static caminhoCirculo(cx: number, cy: number, r: number): string {
+    const k = r * 0.5523;
+    const f = (n: number) => n.toFixed(2);
+    return (
+      `${f(cx + r)} ${f(cy)} m ` +
+      `${f(cx + r)} ${f(cy + k)} ${f(cx + k)} ${f(cy + r)} ${f(cx)} ${f(cy + r)} c ` +
+      `${f(cx - k)} ${f(cy + r)} ${f(cx - r)} ${f(cy + k)} ${f(cx - r)} ${f(cy)} c ` +
+      `${f(cx - r)} ${f(cy - k)} ${f(cx - k)} ${f(cy - r)} ${f(cx)} ${f(cy - r)} c ` +
+      `${f(cx + k)} ${f(cy - r)} ${f(cx + r)} ${f(cy - k)} ${f(cx + r)} ${f(cy)} c`
+    );
+  }
+
+  /** Círculo preenchido — o miolo da logomarca. */
+  circulo(cx: number, cy: number, r: number, cor: Cor): void {
+    this.buffer.push(`${cor[0]} ${cor[1]} ${cor[2]} rg ${PDF.caminhoCirculo(cx, cy, r)} f`);
+  }
+
+  /** Anel (círculo só de traço) — o aro da logomarca. */
+  anel(cx: number, cy: number, r: number, espessura: number, cor: Cor): void {
+    this.buffer.push(
+      `${cor[0]} ${cor[1]} ${cor[2]} RG ${espessura.toFixed(2)} w ` +
+      `${PDF.caminhoCirculo(cx, cy, r)} S`
     );
   }
 
@@ -209,18 +243,32 @@ export class PDF {
     // Rodapé é escrito no fim, quando o total de páginas já é conhecido.
     const total = this.paginas.length;
     this.paginas = this.paginas.map((conteudo, i) => {
-      const cor: Cor = [0.45, 0.45, 0.48];
+      const cor: Cor = [0.36, 0.35, 0.33]; // cinza QUENTE, a família da tinta do painel
       const base = this.margem - 12;
       const pagina = `${i + 1} de ${total}`;
       const larguraPagina = medirTexto(pagina, 8.5);
-      return [
-        conteudo,
-        `BT /F1 8.5 Tf ${cor[0]} ${cor[1]} ${cor[2]} rg 1 0 0 1 ${this.margem} ${base} Tm ` +
+      const partes: string[] = [];
+      if (this.faixaTopo) {
+        const c = this.faixaTopo;
+        partes.push(
+          `${c[0]} ${c[1]} ${c[2]} rg 0 ${(PDF.ALTURA - 4.5).toFixed(2)} ${PDF.LARGURA} 4.5 re f`
+        );
+      }
+      partes.push(conteudo);
+      let xTexto = this.margem;
+      if (this.pontoRodape) {
+        const c = this.pontoRodape;
+        partes.push(`${c[0]} ${c[1]} ${c[2]} rg ${this.margem} ${base - 0.5} 4 4 re f`);
+        xTexto += 9;
+      }
+      partes.push(
+        `BT /F1 8.5 Tf ${cor[0]} ${cor[1]} ${cor[2]} rg 1 0 0 1 ${xTexto} ${base} Tm ` +
           `(${escapar(this.rodape)}) Tj ET`,
         `BT /F1 8.5 Tf ${cor[0]} ${cor[1]} ${cor[2]} rg 1 0 0 1 ` +
           `${(PDF.LARGURA - this.margem - larguraPagina).toFixed(2)} ${base} Tm ` +
-          `(${escapar(pagina)}) Tj ET`,
-      ].join("\n");
+          `(${escapar(pagina)}) Tj ET`
+      );
+      return partes.join("\n");
     });
   }
 

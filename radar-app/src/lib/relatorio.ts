@@ -18,7 +18,7 @@
  * (nunca por `data_comentario_ts`, com backfill parcial) — a mesma regra da
  * revisão de 27/07 e do `agora.py::contar_comentarios_por_tema`.
  */
-import { PDF, type Cor } from "./pdf";
+import { PDF, medirTexto, type Cor } from "./pdf";
 import {
   filtrarPorPeriodo, type Briefing, type Comment, type Post,
 } from "./data";
@@ -31,15 +31,20 @@ import { vozDestacavel } from "./sentimento";
 import { fmtInt, limparTravessoes } from "./format";
 import { periodoFrase, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 
-/* Paleta do documento. Impressa em papel, então tinta escura sobre branco e
-   cor só onde ela carrega dado (crítica/elogio) ou marca (fio do título). */
-const TINTA: Cor = [0.09, 0.1, 0.12];
-const SUAVE: Cor = [0.42, 0.43, 0.46];
-const MARCA: Cor = [0.969, 0.588, 0.255]; // #F79641
-const NEG: Cor = [0.76, 0.15, 0.15];      // sent-ink-neg
-const POS: Cor = [0.07, 0.48, 0.24];      // sent-ink-pos
-const CAIXA: Cor = [0.95, 0.94, 0.92];
-const TRILHO: Cor = [0.89, 0.88, 0.86];
+/* Paleta do documento (11/08/26: o impresso passou a carregar a identidade do
+   painel). Mesmas famílias do index.css, traduzidas para papel: tinta chumbo
+   quente, painéis creme, marca #F79641 com tinta escura #1A0F02 por cima (a
+   regra auditada dos botões: nunca branco sobre a marca), e verde/vermelho
+   continuam reservados a sentimento. Cor 0..1, como o PDF espera. */
+const TINTA: Cor = [0.15, 0.157, 0.176];       // #26282D — txt1 do tema claro
+const SUAVE: Cor = [0.361, 0.376, 0.408];      // #5C6068 — txt3 do tema claro
+const MARCA: Cor = [0.969, 0.588, 0.255];      // #F79641 — hex único da marca
+const MARCA_TINTA: Cor = [0.102, 0.059, 0.008]; // #1A0F02 — tinta sobre a marca
+const MARCA_ARESTA: Cor = [0.851, 0.478, 0.149]; // #D97A26 — aresta da banda
+const NEG: Cor = [0.76, 0.15, 0.15];           // sent-ink-neg
+const POS: Cor = [0.07, 0.48, 0.24];           // sent-ink-pos
+const CAIXA: Cor = [0.965, 0.949, 0.918];      // #F6F2EA — o creme da página
+const TRILHO: Cor = [0.898, 0.875, 0.824];     // #E5DFD2 — hairline quente
 
 function pct(n: number): string {
   return `${Math.round(n)}%`;
@@ -154,16 +159,20 @@ export function resumoEscrito(
   return paragrafos;
 }
 
-/** Seção com título em caixa alta e fio, o padrão do documento. */
+/** Seção com título em caixa alta e fio, o padrão do documento: tique laranja
+ *  da marca antes do rótulo (o section-label do painel traduzido para papel). */
 function secao(pdf: PDF, titulo: string): void {
   pdf.precisa(34);
   pdf.espaco(6);
-  pdf.linha(titulo.toUpperCase(), { tamanho: 9.5, bold: true, cor: SUAVE });
+  const topo = pdf.y;
+  pdf.retangulo(pdf.margem, topo - 9.5, 3, 9.5, MARCA);
+  pdf.linha(titulo.toUpperCase(), { x: pdf.margem + 9, tamanho: 9.5, bold: true, cor: TINTA });
   pdf.retangulo(pdf.margem, pdf.y + 2, pdf.larguraUtil, 0.7, TRILHO);
   pdf.espaco(8);
 }
 
-/** Faixa de KPIs: caixa clara, número grande, rótulo pequeno. */
+/** Faixa de KPIs: caixa creme com fio da marca no topo, número grande, rótulo
+ *  pequeno — o card de vidro do painel traduzido para papel. */
 function kpis(pdf: PDF, itens: { rotulo: string; valor: string; nota?: string }[]): void {
   const altura = 56;
   pdf.precisa(altura + 10);
@@ -173,6 +182,7 @@ function kpis(pdf: PDF, itens: { rotulo: string; valor: string; nota?: string }[
   itens.forEach((it, i) => {
     const x = pdf.margem + i * (largura + vao);
     pdf.retangulo(x, topo - altura, largura, altura, CAIXA);
+    pdf.retangulo(x, topo - 2, largura, 2, MARCA);
     pdf.textoEm(pdf.cortar(it.rotulo.toUpperCase(), largura - 18, 7.5, true), x + 9, topo - 16, {
       tamanho: 7.5, bold: true, cor: SUAVE,
     });
@@ -210,13 +220,15 @@ function linhaRanking(
   pdf.espaco(28);
 }
 
-/** Citação de cidadão: fio de sentimento, texto e assinatura. */
+/** Citação de cidadão: painel creme (o ComentarioBox do painel em papel) com
+ *  fio de sentimento, texto e assinatura. */
 function citacao(pdf: PDF, c: Comment, cor: Cor): void {
   const texto = limparTravessoes(c.texto || "").slice(0, 260);
   const linhas = pdf.quebrar(texto, pdf.larguraUtil - 22, 9.5);
   const altura = linhas.length * 12.5 + 16;
   pdf.precisa(altura + 6);
   const topo = pdf.y;
+  pdf.retangulo(pdf.margem, topo - altura, pdf.larguraUtil, altura, CAIXA);
   pdf.retangulo(pdf.margem, topo - altura, 2.5, altura, cor);
   linhas.forEach((l, i) => {
     pdf.textoEm(l, pdf.margem + 12, topo - 11 - i * 12.5, { tamanho: 9.5, cor: TINTA });
@@ -267,10 +279,37 @@ export function gerarRelatorioPDF(entrada: EntradaRelatorio): SaidaRelatorio {
   const pdf = new PDF({
     titulo: `Avaz — relatório do clima (${rotulo})`,
     rodape: `Avaz · relatório gerado em ${carimbo(emitido)}`,
+    // Identidade em toda página: faixa da marca no topo (coberta na primeira
+    // pela banda do cabeçalho) e o quadradinho laranja antes do rodapé.
+    faixaTopo: MARCA,
+    pontoRodape: MARCA,
   });
 
-  // ── Cabeçalho ────────────────────────────────────────────────
-  pdf.linha("Avaz", { tamanho: 9.5, bold: true, cor: SUAVE });
+  // ── Cabeçalho: banda da marca com a logomarca do painel ──────
+  // Laranja #F79641 de ponta a ponta, tinta escura #1A0F02 por cima (a regra
+  // de contraste dos botões de marca: 8,44:1; branco mediria 2,24:1) e uma
+  // aresta um tom abaixo fechando a banda.
+  const BANDA = 84;
+  const baseBanda = PDF.ALTURA - BANDA;
+  pdf.retangulo(0, baseBanda, PDF.LARGURA, BANDA, MARCA);
+  pdf.retangulo(0, baseBanda, PDF.LARGURA, 2.5, MARCA_ARESTA);
+  // Logomarca: o aro com miolo da barra lateral, em tinta escura.
+  const cyBanda = baseBanda + BANDA / 2;
+  pdf.anel(pdf.margem + 13, cyBanda, 12, 2.4, MARCA_TINTA);
+  pdf.circulo(pdf.margem + 13, cyBanda, 3.6, MARCA_TINTA);
+  pdf.textoEm("AVAZ", pdf.margem + 34, cyBanda - 1, { tamanho: 21, bold: true, cor: MARCA_TINTA });
+  pdf.textoEm("INTELIGÊNCIA MUNICIPAL", pdf.margem + 34, cyBanda - 12, {
+    tamanho: 7.5, bold: true, cor: MARCA_TINTA,
+  });
+  // Chip do período à direita, como os chips do painel: fundo escuro quase
+  // sólido com texto claro (a mesma receita dos chips sobre degradê).
+  const chipTexto = rotulo.toUpperCase();
+  const chipLargura = medirTexto(chipTexto, 8, true) + 16;
+  const chipX = PDF.LARGURA - pdf.margem - chipLargura;
+  pdf.retangulo(chipX, cyBanda - 8, chipLargura, 17, MARCA_TINTA);
+  pdf.textoEm(chipTexto, chipX + 8, cyBanda - 2.5, { tamanho: 8, bold: true, cor: CAIXA });
+  pdf.y = baseBanda - 24;
+
   pdf.linha(`Relatório do clima · ${rotulo}`, { tamanho: 23, bold: true, cor: TINTA });
   pdf.retangulo(pdf.margem, pdf.y + 4, 64, 3, MARCA);
   pdf.espaco(12);
