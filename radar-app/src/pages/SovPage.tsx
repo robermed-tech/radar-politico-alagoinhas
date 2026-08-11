@@ -25,6 +25,7 @@ import { fmtInt } from "@/lib/format";
 import { PeriodoFilter, periodoFrase, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 import { useThemeStore } from "@/stores/theme";
 import { IconInbox } from "@/components/icons";
+import { EsqueletoPagina } from "@/components/EsqueletoPagina";
 
 /** Preenchimento e tinta de cada lado, por tema. Gestão é sempre a marca. */
 function coresDosLados(tema: "light" | "dark"): Record<Lado, { bg: string; ink: string }> {
@@ -95,7 +96,7 @@ export function SovPage() {
     [radar, fontes, dias]
   );
 
-  if (isLoading) return <div className="p-8 text-txt-2">Carregando divisão da conversa…</div>;
+  if (isLoading) return <EsqueletoPagina titulo="Divisão da Conversa" />;
   if (!sov) return null;
 
   const porLado = new Map(sov.lados.map((l) => [l.lado, l]));

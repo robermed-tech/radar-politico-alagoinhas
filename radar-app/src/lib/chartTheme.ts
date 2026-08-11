@@ -1,18 +1,27 @@
 import type { Theme } from "@/stores/theme";
 
-/** Cores de eixo/grid/tooltip/gauge por tema — todas com contraste AA. */
+/** Cores de eixo/grid/tooltip/gauge por tema — todas com contraste AA.
+ *
+ *  Família QUENTE desde 11/08/26: os valores anteriores eram o slate azulado
+ *  de antes do redesign de 03/08 (#475569/#CBD5E1, tooltip branco puro sobre
+ *  azul-marinho), e dentro do card creme o gráfico parecia de outro produto —
+ *  o mesmo defeito que trocou o mesh escuro de índigo para laranja. Agora o
+ *  eixo é a própria tinta txt2 do tema e grade/trilho/tooltip vêm da família
+ *  creme/chumbo do index.css. Medido: eixo claro #4B4F57 7,88:1 no card e
+ *  7,36:1 na página; eixo escuro #BDB7AC 9,24:1; texto de tooltip 14,52:1
+ *  (claro) e 15,24:1 (escuro). */
 export function chartInk(theme: Theme) {
   const light = theme === "light";
   return {
-    axis: light ? "#475569" : "#AEBCD6",       // labels dos eixos + legenda (slate-600 / claro)
-    axisLine: light ? "#CBD5E1" : "#3A4660",
-    grid: light ? "#E2E8F0" : "#283447",        // linhas de grade
-    tooltipBg: light ? "#FFFFFF" : "#1A2233",
-    tooltipBorder: light ? "#CBD5E1" : "#3A4660",
-    tooltipText: light ? "#0B1220" : "#EAF0FA",
-    detail: light ? "#0B1220" : "#EAF0FA",       // número central do gauge
-    track: light ? "#E2E8F0" : "#2A3650",        // trilho do gauge
-    title: light ? "#475569" : "#AEBCD6",
+    axis: light ? "#4B4F57" : "#BDB7AC",       // labels dos eixos + legenda (= txt2 do tema)
+    axisLine: light ? "#D8D2C6" : "#3A3835",
+    grid: light ? "#E8E2D6" : "#2A2825",        // linhas de grade
+    tooltipBg: light ? "#FFFDF9" : "#1D1B18",   // a cor do card do tema, não branco puro
+    tooltipBorder: light ? "#D8D2C6" : "#3A3835",
+    tooltipText: light ? "#26282D" : "#F5F1E8",
+    detail: light ? "#26282D" : "#F5F1E8",       // número central do gauge
+    track: light ? "#E8E2D6" : "#2E2C28",        // trilho do gauge
+    title: light ? "#4B4F57" : "#BDB7AC",
   };
 }
 
@@ -94,11 +103,13 @@ export function glowLine(color: string, width = 3) {
   return { width, color, shadowBlur: 10, shadowColor: withAlpha(color, 0.5) };
 }
 
-/** Tokens semânticos de sentimento — fonte única de verdade. */
+/** Tokens semânticos de sentimento — fonte única de verdade. O neutro é cinza
+ *  QUENTE (era o azulado #9FB0CC, com luminância ~0,43; #ABA598 mantém a mesma
+ *  luminância para o peso das séries não mudar, só a temperatura). */
 export const COLOR_SENTIMENT = {
   pos:      "#22C55E",
   neg:      "#EF4444",
-  neu:      "#9FB0CC",
+  neu:      "#ABA598",
   atenção:  "#EAB308",
   alto:     "#F97316",
   critico:  "#EF4444",

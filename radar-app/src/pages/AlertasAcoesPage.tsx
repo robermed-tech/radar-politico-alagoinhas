@@ -8,6 +8,7 @@ import { ContadorAnimado } from "@/components/ContadorAnimado";
 import { EnvioSecretario } from "@/components/EnvioSecretario";
 import { findSecretario } from "@/config/secretarios";
 import { fraseCapitalizada } from "@/lib/format";
+import { EsqueletoPagina } from "@/components/EsqueletoPagina";
 
 /** Ordem de exibição: crítico sempre primeiro (prévia aprovada em 04/08). */
 const ORDEM_NIVEL: Record<string, number> = { critico: 0, alto: 1, moderado: 2, baixo: 3 };
@@ -275,7 +276,7 @@ export function AlertasAcoesPage() {
 
   const planos = planosData ?? [];
 
-  if (loadBriefing) return <div className="p-8 text-txt-2">Carregando recomendações…</div>;
+  if (loadBriefing) return <EsqueletoPagina titulo="Alertas & Ações" />;
 
   const semBriefing = !b;
 

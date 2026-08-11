@@ -11,6 +11,7 @@ import {
 } from "@/components/ComentarioBox";
 import { IconNewspaper, IconSwords, IconBuilding, IconPerson, IconDocument } from "@/components/icons";
 import { PeriodoFilter, type Dias } from "@/components/PeriodoFilter";
+import { EsqueletoPagina } from "@/components/EsqueletoPagina";
 
 // A aba "Urgentes" saiu junto com o chip de urgência (revisão de 25/07):
 // sem a marcação no post, o filtro ficava sem explicação visível.
@@ -135,7 +136,7 @@ export function FeedPage() {
   }, [data, filtro, periodo]);
   const { lista: posts, contagens } = feed;
 
-  if (isLoading) return <div className="p-8 text-txt-2">Carregando feed…</div>;
+  if (isLoading) return <EsqueletoPagina titulo="O que o povo diz" />;
 
   // "últimas 24 horas" / "últimos 7 dias" — o adjetivo concorda com a
   // unidade ("horas" é feminino, "dias" é masculino); antes o "últimas" era

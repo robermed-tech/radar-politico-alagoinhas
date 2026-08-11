@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchEnviosManuais, type EnvioManual } from "@/lib/admin";
 import { IconAlertBell } from "@/components/icons";
 import { ContadorAnimado } from "@/components/ContadorAnimado";
+import { EsqueletoPagina } from "@/components/EsqueletoPagina";
 
 /**
  * Histórico de Alertas — decisão da reunião de 24/07: em vez dos disparos
@@ -134,7 +135,7 @@ export function AlertasHistPage() {
     return Array.from(by.entries());
   }, [envios]);
 
-  if (isLoading) return <div className="p-8 text-txt-2">Carregando histórico de alertas…</div>;
+  if (isLoading) return <EsqueletoPagina titulo="Histórico de Alertas" />;
 
   const total = envios.length;
   const totalWhats = envios.filter((e) => e.channel === "whatsapp").length;

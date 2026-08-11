@@ -28,6 +28,7 @@ import { useThemeStore } from "@/stores/theme";
 // escuros (radar, antena, Rádio Escuta), importada para chip e botão neutro.
 // Substitui os antigos CHUMBO/#334155 e CHUMBO_ESCURO/#1E293B (slate azulado).
 import { FUNDO_ESCUTA } from "@/components/superficieRadio";
+import { EsqueletoPagina } from "@/components/EsqueletoPagina";
 
 // Perfil do fade da foto de céu do hero. Vive numa constante porque a mesma
 // receita alimenta quatro declarações (camada lateral e camada de rodapé, cada
@@ -504,7 +505,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
     };
   }, [data, dias]);
 
-  if (isLoading) return <div className="p-8 text-txt-2">Lendo o clima político…</div>;
+  if (isLoading) return <EsqueletoPagina titulo={periodoTitulo(dias)} />;
   if (!view) return null;
 
   if (view.vazio)
@@ -902,7 +903,10 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                 </span>
               </div>
               <div className="mt-1 text-base font-bold" style={{ color: "rgba(26,15,2,0.85)" }}>
-                comentários analisados · {fmtInt(view.posts)} publicações
+                {/* Concordância real, nunca plural fixo: com uma publicação a
+                    linha saía "1 publicações" (correção P1 de 11/08/26). */}
+                {view.comentarios === 1 ? "comentário analisado" : "comentários analisados"} ·{" "}
+                {fmtInt(view.posts)} {view.posts === 1 ? "publicação" : "publicações"}
               </div>
             </div>
           </div>

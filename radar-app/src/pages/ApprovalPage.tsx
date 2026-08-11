@@ -26,6 +26,7 @@ import { chartInk, withAlpha, colorByIAD } from "@/lib/chartTheme";
 import { IconInbox, IconTrendUp, IconTrendDown, IconHeart, IconWarningTriangle } from "@/components/icons";
 import { PeriodoFilter, periodoLabel as rotuloPeriodo, type Dias } from "@/components/PeriodoFilter";
 import { vozDestacavel } from "@/lib/sentimento";
+import { EsqueletoPagina } from "@/components/EsqueletoPagina";
 
 /** Classifica o lado político a partir da categoria do perfil. */
 function classificaLado(cat: string): { label: string; cor: string } | null {
@@ -385,7 +386,7 @@ export function ApprovalPage() {
     };
   }, [hist, ink]);
 
-  if (lr) return <div className="p-8 text-txt-2">Carregando aprovação…</div>;
+  if (lr) return <EsqueletoPagina titulo="Análise do Clima" />;
   if (!view) return null;
 
   if (view.vazio)

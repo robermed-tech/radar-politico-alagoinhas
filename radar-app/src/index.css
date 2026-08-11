@@ -507,6 +507,36 @@ button:disabled {
   .led-pulso { animation: none; opacity: 0; }
 }
 
+/* ── Esqueleto de carga (components/EsqueletoPagina.tsx) ──────────────────
+   Bloco de vidro com um brilho que atravessa por TRANSFORM (::after
+   transladado), nunca por background-position: a mesma regra do velocímetro e
+   da antena — anima no compositor, sem repaint por quadro. Substitui os
+   "Carregando…" de texto puro que derrubavam o layout inteiro a cada troca de
+   página (correção P1 da avaliação de 11/08/26). */
+.esqueleto-bloco {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--g2);
+  border: 1px solid var(--line);
+}
+.esqueleto-bloco::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--g3), transparent);
+  animation: esqueleto-brilho 1.4s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes esqueleto-brilho {
+  to { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Sem o brilho os blocos continuam desenhando o lugar de cada card. */
+  .esqueleto-bloco::after { animation: none; opacity: 0; }
+}
+
 /* ── Modal noturno (shell único de todo pop-up do painel) ──────────────────
    Linha visual fixa em azul-marinho profundo, IGUAL nos dois temas: pop-up é
    um momento de foco, e a leitura em telão não pode depender do tema da

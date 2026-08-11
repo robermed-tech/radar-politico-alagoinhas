@@ -15,6 +15,7 @@ import { PeriodoFilter, periodoLabel, periodoFrase, type Dias } from "@/componen
 import { ComentariosBairroModal } from "@/components/ComentariosBairroModal";
 import { labelBairro } from "@/lib/format";
 import { ContadorAnimado } from "@/components/ContadorAnimado";
+import { EsqueletoPagina } from "@/components/EsqueletoPagina";
 
 type Ordem = "volume" | "negativo";
 
@@ -127,7 +128,7 @@ export function BairrosPage() {
     if (i >= 0) setAberto({ bairro: top[i], posicao: i + 1 });
   };
 
-  if (isLoading) return <div className="p-8 text-txt-2">Carregando bairros…</div>;
+  if (isLoading) return <EsqueletoPagina titulo="Mapa da Cidade" />;
 
   return (
     <div className="space-y-4 p-5">
