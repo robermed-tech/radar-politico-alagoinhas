@@ -24,7 +24,7 @@ import { fmtInt, fmtDiaBR } from "@/lib/format";
 import { useThemeStore } from "@/stores/theme";
 import { chartInk, withAlpha, colorByIAD } from "@/lib/chartTheme";
 import { IconInbox, IconTrendUp, IconTrendDown, IconHeart, IconWarningTriangle } from "@/components/icons";
-import { PeriodoFilter, periodoLabel as rotuloPeriodo, type Dias } from "@/components/PeriodoFilter";
+import { PeriodoFilter, periodoLabel as rotuloPeriodo, periodoFrase, type Dias } from "@/components/PeriodoFilter";
 import { vozDestacavel } from "@/lib/sentimento";
 import { EsqueletoPagina } from "@/components/EsqueletoPagina";
 
@@ -389,19 +389,36 @@ export function ApprovalPage() {
   if (lr) return <EsqueletoPagina titulo="Análise do Clima" />;
   if (!view) return null;
 
+  /* O estado vazio PRECISA do seletor de período (11/08): a tela abre em 7
+     dias e, com a coleta parada, essa janela fica vazia enquanto a de 30 dias
+     tem posts — sem o seletor aqui, o aviso mandava "ampliar no seletor
+     acima" e o seletor não existia, prendendo o usuário no vazio. A dica de
+     ampliar só aparece enquanto há janela maior para tentar. */
   if (view.vazio)
     return (
-      <div className="p-5">
-        <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Análise do Clima</h1>
-        <div className="mt-4 rounded-xl border border-line bg-bg-1 p-6">
+      <div className="space-y-4 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Análise do Clima</h1>
+            <p className="text-base text-txt-2">
+              Drill-down do IAD · quem aprova, quem rejeita e por quais temas
+            </p>
+          </div>
+          <PeriodoFilter dias={dias} onChange={setDias} ariaLabel="Período em destaque" />
+        </div>
+        <div className="rounded-xl border border-line bg-bg-1 p-6">
           <div className="flex items-center gap-2 font-bold text-txt-1">
             <IconInbox size={20} className="text-txt-3" />
-            Sem dados no período
+            Sem dados {periodoFrase(dias)}
           </div>
           <div className="mt-2 space-y-1 text-sm text-txt-2">
             <div>• Fonte atual: <span className="font-semibold">{radar?.source === "supabase" ? "Supabase (Postgres)" : "Google Sheets"}</span></div>
             <div>• Próximas coletas: AGORA roda às <span className="font-semibold">08h, 14h e 19h BRT</span></div>
-            <div>• Tente ampliar o período (24h → 7d → 30d) no seletor acima</div>
+            {dias < 30 ? (
+              <div>• Amplie o período no seletor acima (24h → 7 dias → 30 dias)</div>
+            ) : (
+              <div>• Nenhuma publicação coletada {periodoFrase(30)}</div>
+            )}
           </div>
         </div>
       </div>
