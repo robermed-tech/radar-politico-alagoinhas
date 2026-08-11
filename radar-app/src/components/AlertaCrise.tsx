@@ -48,7 +48,7 @@ function montarMensagem(
       `"${ev.citacao}"\n\n`
     : "";
   return (
-    `🚨 ALERTA DE CRISE — Radar Político Alagoinhas\n\n` +
+    `🚨 ALERTA DE CRISE — Avaz Alagoinhas\n\n` +
     `Prezado(a) ${cargo},\n\n` +
     `O sistema de inteligência política de Alagoinhas detectou um índice crítico de reprovação popular no tema *"${tema}"*:\n\n` +
     `📊 Negatividade: *${pNeg}%* dos comentários\n` +
@@ -58,7 +58,7 @@ function montarMensagem(
     bloco +
     `A população está expressando insatisfação crescente nas redes sociais, o que pode escalar caso não haja resposta imediata.\n\n` +
     `⚡ *Ação urgente solicitada:* O setor deve avaliar a situação e comunicar medidas à população o quanto antes.\n\n` +
-    `Enviado via Radar Político — Central de Inteligência Política de Alagoinhas/BA`
+    `Enviado via Avaz — Central de Inteligência Política de Alagoinhas/BA`
   );
 }
 

@@ -1,7 +1,7 @@
-# Radar Político Alagoinhas — Frameworks SCCT, Coombs e IRT no Pipeline
+# Avaz Alagoinhas — Frameworks SCCT, Coombs e IRT no Pipeline
 
 **Data original:** 2026-07-03 · **Revisado:** 2026-07-03 (pós-auditoria de código)
-**Projeto:** Radar Político Alagoinhas / pipeline `agora.py`
+**Projeto:** Avaz (ex-Radar Político) Alagoinhas / pipeline `agora.py`
 **Status:** Documento de formalização — base para posicionamento e para validação técnica
 
 > **Nota de revisão.** A primeira versão deste documento (em `Downloads/radar-politico-frameworks-scct-coombs-irt.md`) descrevia Coombs e IRT como "não implementados". A auditoria do código-fonte em 2026-07-03 mostrou que **Coombs já estava implementado** e, na mesma data, **IRT e a exposição de SCCT por post foram concluídos e colocados em produção**. Esta versão corrige o status de cada framework com o mapeamento real para funções do `agora.py`. Os "próximos passos" de implementação do documento original foram todos executados.

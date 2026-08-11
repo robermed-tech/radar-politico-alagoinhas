@@ -1,4 +1,4 @@
-# Radar Político — Arquitetura Multi-Agente
+# Avaz — Arquitetura Multi-Agente
 
 > Evolução de **1 agente** (Claude Haiku fazendo 2 tarefas) para uma **equipe de
 > agentes especializados** orquestrados, cada um com função, modelo e gatilho próprios.

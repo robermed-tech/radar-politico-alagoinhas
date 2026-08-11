@@ -1,0 +1,20 @@
+import{r as x,u as A,j as e}from"./query-DTbKPICY.js";import{f as C,E as N}from"./secretarios-BZooXvnc.js";import{k as D,l as E,m as y,r as $}from"./index-BccNL4L-.js";function h(a){return a.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim()}function w(a,t){const o=a.replace(/\s+/g," ").trim();return o.length>t?o.slice(0,t-1).trimEnd()+"…":o}function F(a,t,o,c,l,r){const i=new Date().toLocaleDateString("pt-BR"),m=r?`🗣️ *O que a população está dizendo:*
+`+(r.subtema?`As reclamações se concentram em *${r.subtema.replace(/_/g," ")}*. `:"")+`Há ${r.total} ${r.total===1?"comentário negativo":"comentários negativos"} sobre este tema. Exemplo real:
+"${r.citacao}"
+
+`:"";return`🚨 ALERTA DE CRISE — Avaz Alagoinhas
+
+Prezado(a) ${l},
+
+O sistema de inteligência política de Alagoinhas detectou um índice crítico de reprovação popular no tema *"${a}"*:
+
+📊 Negatividade: *${t}%* dos comentários
+📌 Posts analisados: ${o}
+📉 IAD (Aprovação Digital): ${c}/100
+📅 Data: ${i}
+
+`+m+`A população está expressando insatisfação crescente nas redes sociais, o que pode escalar caso não haja resposta imediata.
+
+⚡ *Ação urgente solicitada:* O setor deve avaliar a situação e comunicar medidas à população o quanto antes.
+
+Enviado via Avaz — Central de Inteligência Política de Alagoinhas/BA`}function g({className:a,fill:t}){return e.jsx("svg",{viewBox:"0 0 24 24",className:a,style:{fill:t},children:e.jsx("path",{d:"M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"})})}function B({tema:a,pNeg:t,posts:o,iad:c}){const[l,r]=x.useState(!1),i=C(a),{data:m=[]}=A({queryKey:["comentarios-tema"],queryFn:()=>$(),staleTime:5*60*1e3,retry:!1,enabled:l}),n=x.useMemo(()=>{var p;const f=h(a),d=m.filter(s=>h(s.tema)===f&&s.sentimento==="negativo"&&s.texto.length>4);if(d.length===0)return null;const u={};for(const s of d)s.subtema&&s.subtema!=="outro"&&(u[s.subtema]=(u[s.subtema]??0)+1);const j=((p=Object.entries(u).sort((s,v)=>v[1]-s[1])[0])==null?void 0:p[0])??"";return{total:d.length,subtema:j,citacao:w(d[0].texto,180)}},[m,a]),b=x.useMemo(()=>F(a,t,o,c,i.cargo,n),[a,t,o,c,i.cargo,n]);return e.jsxs(e.Fragment,{children:[e.jsxs("button",{onClick:()=>r(!0),className:"animate-pulse flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold text-white transition hover:opacity-90 active:scale-95",style:{background:"linear-gradient(135deg, #DC2626, #991B1B)",boxShadow:"0 0 16px rgba(220,38,38,0.5)"},"aria-label":`Alertar secretário sobre crise no tema ${a}`,children:[e.jsx(g,{className:"h-4 w-4 flex-shrink-0",fill:"#FFFFFF"}),e.jsx("span",{children:"Alertar Secretário"})]}),e.jsxs(N,{aberto:l,onFechar:()=>r(!1),titulo:"Alerta de Crise",subtitulo:"Notificação imediata ao secretário responsável",cor:"#DC2626",icone:e.jsx(g,{className:"h-5 w-5",fill:"#DC2626"}),assunto:`🚨 ALERTA DE CRISE — Tema: ${a}`,mensagemBase:b,tema:a,contatoWhatsapp:i.whatsapp,contatoEmail:i.email,children:[e.jsxs("div",{className:"mt-4 rounded-xl p-3",style:{background:"rgba(220,38,38,0.07)",border:"1px solid rgba(220,38,38,0.2)"},children:[e.jsx("div",{className:"text-[12px] font-bold uppercase tracking-widest",style:{color:"#DC2626"},children:"Tema crítico detectado"}),e.jsx("div",{className:"mt-1 text-base font-extrabold frase-cap text-txt-1",children:a}),e.jsxs("div",{className:"mt-1.5 flex flex-wrap gap-3 text-sm",children:[e.jsxs("span",{className:"font-bold",style:{color:"#DC2626"},children:[t,"% negatividade"]}),e.jsxs("span",{className:"text-txt-3",children:[o," posts analisados"]}),e.jsxs("span",{className:"text-txt-3",children:["IAD ",c,"/100"]})]})]}),n&&e.jsxs(D,{className:"mt-3",children:[e.jsxs("div",{className:"text-[12px] font-bold uppercase tracking-widest text-txt-3",children:["O que a população está dizendo",n.subtema&&e.jsxs("span",{className:"ml-1 normal-case",children:["· foco em ",e.jsx("b",{className:"frase-cap",children:n.subtema.replace(/_/g," ")})]})]}),e.jsx("div",{className:"mt-1.5",children:e.jsx(E,{children:n.citacao})}),e.jsxs(y,{children:[n.total," ",n.total===1?"comentário negativo":"comentários negativos"," sobre este tema"]})]})]})]})}export{B as A};

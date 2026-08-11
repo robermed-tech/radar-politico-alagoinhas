@@ -39,7 +39,7 @@ function AlertarSecretarioPlano({ p }: { p: CrisisPlan }) {
       `O que disparou: ${p.pavio}\n\n` +
       (p.risco_se_ignorar ? `Risco se ignorar: ${p.risco_se_ignorar}\n\n` : "") +
       (p.post_url ? `Post: ${p.post_url}\n\n` : "") +
-      `Identificado pelo monitoramento do Radar Político.`
+      `Identificado pelo monitoramento do Avaz.`
     );
   }, [p]);
   return (

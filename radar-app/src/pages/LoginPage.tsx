@@ -104,7 +104,7 @@ export function LoginPage() {
               ◉
             </span>
             <div>
-              <div className="text-xl font-extrabold tracking-tight">Radar Político</div>
+              <div className="text-xl font-extrabold tracking-tight">Avaz</div>
               <div className="text-sm text-white/80">Inteligência municipal</div>
             </div>
           </div>
@@ -145,7 +145,7 @@ export function LoginPage() {
               ◉
             </span>
             <div>
-              <div className="font-extrabold tracking-tight">Radar Político</div>
+              <div className="font-extrabold tracking-tight">Avaz</div>
               <div className="text-xs text-txt-3">Inteligência municipal</div>
             </div>
           </div>

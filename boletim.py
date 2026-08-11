@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-boletim.py — Boletim Climático do Radar Político (camada de apresentação).
+boletim.py — Boletim Climático do Avaz (camada de apresentação).
 
 Traduz as métricas que o agora.py JÁ calcula para a metáfora climática
-do Radar Comando. 100% determinístico, zero chamadas de IA.
+do painel. 100% determinístico, zero chamadas de IA.
 
 Escala: 0–100, espelhando calc_risco() do agora.py:
     céu limpo        = baixo     (0–39)

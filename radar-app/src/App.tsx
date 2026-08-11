@@ -262,8 +262,8 @@ export default function App() {
             </svg>
           </span>
           <div className="leading-tight">
-            <div className="text-[14px] font-extrabold uppercase tracking-[0.06em] text-txt-1">Radar</div>
-            <div className="text-[12px] font-medium tracking-widest text-txt-3">Político</div>
+            <div className="text-[14px] font-extrabold uppercase tracking-[0.06em] text-txt-1">Avaz</div>
+            <div className="text-[12px] font-medium tracking-widest text-txt-3">Inteligência municipal</div>
           </div>
         </div>
 

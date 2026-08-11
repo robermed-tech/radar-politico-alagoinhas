@@ -1,4 +1,4 @@
-# Como funcionam e como calibrar os alertas — Radar Político
+# Como funcionam e como calibrar os alertas — Avaz
 
 Este guia explica **por que** um post vira alerta e **como ajustar** os gatilhos.
 Serve de referência para você e para uma futura seção de ajuda no app.

@@ -1,7 +1,7 @@
-# Radar Político Alagoinhas — Clustering Temático e Ajuste de Alertas
+# Avaz Alagoinhas — Clustering Temático e Ajuste de Alertas
 
 **Data original:** 2026-07-03 · **Revisado:** 2026-07-03 (pós-auditoria de código)
-**Projeto:** Radar Político Alagoinhas / pipeline `agora.py`
+**Projeto:** Avaz (ex-Radar Político) Alagoinhas / pipeline `agora.py`
 **Origem:** Sugestão recebida via áudio (Stallone), 2026-07-03
 **Status:** Em grande parte **já implementado** — falta ativar o toggle e calibrar
 

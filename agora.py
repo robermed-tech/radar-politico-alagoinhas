@@ -1,7 +1,7 @@
 """
 +==============================================================+
 |  AGORA - Agente de Monitoramento Politico                     |
-|  Radar Politico Alagoinhas                                    |
+|  Avaz Alagoinhas (ex-Radar Politico)                          |
 |                                                               |
 |  Pipeline:                                                    |
 |    Apify -> Comentarios -> Memoria -> Claude Haiku             |
@@ -2943,7 +2943,7 @@ def _supabase_delete(tabela, filtro):
 
 def _registrar_coleta(platform, data_type, items_count, status="ok", source_id=None):
     """Registra o resumo de uma etapa de coleta em collection_logs, p/ a aba
-    Monitor de Coleta do Radar Comando. Best-effort: nunca derruba o pipeline.
+    Monitor de Coleta do painel Avaz. Best-effort: nunca derruba o pipeline.
     source_id fica None no Instagram (as fontes vivem em monitored_sources, não
     na tabela `sources` do subsistema novo — a coluna aceita null)."""
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -4195,7 +4195,7 @@ def verificar_alertas(posts_analisados):
 
     log(f"=== ALERTAS: {len(alertas)} disparo(s) ===")
     data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
-    mensagem  = f"*🚨 Radar Político — Alerta Automático ({data_hoje})*\n\n"
+    mensagem  = f"*🚨 Avaz — Alerta Automático ({data_hoje})*\n\n"
     mensagem += "\n".join(alertas)
     mensagem += f"\n\n_Alagoinhas/BA · IAD atual: {iad}%_"
 
@@ -4302,7 +4302,7 @@ def verificar_alerta_subtema(dry_run: bool = False):
         for d in disparos[:5]
     ]
     data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
-    mensagem = (f"*📈 Radar Politico — Assuntos em alta ({data_hoje})*\n\n"
+    mensagem = (f"*📈 Avaz — Assuntos em alta ({data_hoje})*\n\n"
                 + "\n".join(linhas)
                 + f"\n\n_Assunto repetido por varias pessoas = pauta, nao voz isolada. "
                   f"Limiar: {limiar} comentarios/24h._")
@@ -5118,7 +5118,7 @@ def formatar_mensagem_alerta(post):
     motivo   = (post.get("motivo_alerta", "") or f"Score risco {score_risco}").strip()
 
     linhas = [
-        f"{emoji} *ALERTA — Radar Político Alagoinhas*",
+        f"{emoji} *ALERTA — Avaz Alagoinhas*",
         "",
         f"*@{post.get('autor','')}* ({post.get('categoria','')})  ·  {post.get('data_post','')}",
         f"Imagem {score_img}/100  ·  Risco {score_risco}/100",
@@ -5200,7 +5200,7 @@ def disparar_alertas(posts_analisados):
         partes.append(bloco)
 
     data_hora = datetime.now().strftime("%d/%m/%Y %H:%M")
-    mensagem = f"🚨 *ALERTA AGORA — Radar Político ({data_hora})*\n{len(disparados)} post(s) em atenção\n\n"
+    mensagem = f"🚨 *ALERTA AGORA — Avaz ({data_hora})*\n{len(disparados)} post(s) em atenção\n\n"
     mensagem += "\n\n──────────\n\n".join(partes)
 
     if excedentes:
@@ -5234,7 +5234,7 @@ def enviar_update_coments(post, motivo_update):
     likes_d  = int(post.get("comentarios_destaque_curtidas", 0) or 0)
 
     linhas = [
-        "🔔 *ATUALIZAÇÃO — Radar Político Alagoinhas*",
+        "🔔 *ATUALIZAÇÃO — Avaz Alagoinhas*",
         "",
         f"*@{post.get('autor','')}* ({post.get('categoria','')})  ·  {post.get('data_post','')}",
         f"Risco {post.get('score_risco', 0)}/100  ·  {motivo_update}",
@@ -5312,7 +5312,7 @@ def enviar_briefing_matinal(posts_analisados, briefing_ia):
     recs    = briefing_ia.get("recomendacoes_comunicacao") or briefing_ia.get("recomendacoes") or []
 
     linhas = [
-        "☀️ *BRIEFING MATINAL — Radar Político*",
+        "☀️ *BRIEFING MATINAL — Avaz*",
         f"📅 {hoje} | {hora} BRT",
         "",
         "📊 *ÍNDICES*",
@@ -5355,7 +5355,7 @@ def enviar_briefing_matinal(posts_analisados, briefing_ia):
 # ==============================================================
 
 # ==============================================================
-# MODULO BOLETIM - BOLETIM CLIMATICO (Radar Comando)
+# MODULO BOLETIM - BOLETIM CLIMATICO (painel Avaz)
 # ==============================================================
 # Traduz risco/IAD/SCCT para a metafora climatica do dashboard.
 # Logica em boletim.py (puro, testavel); aqui so a coleta de dados
@@ -5617,7 +5617,7 @@ def main():
     _safe("expurgo_pii", expurgar_pii)                                             # LGPD: apaga texto/@ do autor fora da janela de retencao
     _safe("expurgo_pii_radio", expurgar_pii_radio)                                 # LGPD: apaga transcricao bruta de radio fora da retencao
     _safe("daily_metrics", gravar_daily_metrics, posts_analisados)                 # historico de indices (Fase 3)
-    _safe("boletim_climatico", gravar_boletim_climatico, posts_analisados)         # boletim climatico (Radar Comando)
+    _safe("boletim_climatico", gravar_boletim_climatico, posts_analisados)         # boletim climatico (painel Avaz)
     briefing_ia = _safe("briefing_estrategico", gerar_briefing_estrategico, posts_analisados)  # assistente IA (Fase 3d)
     # Briefing matinal: run das 08h BRT (11h UTC) — aceita 11 ou 12 UTC p/ tolerar
     # atraso do cron do GitHub Actions. Forcar com BRIEFING_MATINAL=true.

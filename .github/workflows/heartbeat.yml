@@ -1,4 +1,4 @@
-name: Radar Politico — Heartbeat
+name: Avaz — Heartbeat
 
 # Vigia independente do pipeline ÁGORA. Roda no seu próprio cron (não no do
 # agora.yml) para conseguir detectar o caso em que o AGENDAMENTO do agora.yml

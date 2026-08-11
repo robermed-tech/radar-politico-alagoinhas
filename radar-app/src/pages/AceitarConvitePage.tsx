@@ -40,7 +40,7 @@ export function AceitarConvitePage({ onDone }: { onDone: () => void }) {
             ◉
           </span>
           <div>
-            <div className="font-extrabold tracking-tight">Radar Político</div>
+            <div className="font-extrabold tracking-tight">Avaz</div>
             <div className="text-xs text-txt-3">Inteligência municipal</div>
           </div>
         </div>
@@ -49,7 +49,7 @@ export function AceitarConvitePage({ onDone }: { onDone: () => void }) {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <h2 className="text-[26px] font-extrabold leading-tight tracking-tight">
-                Bem-vindo(a) ao Radar Político
+                Bem-vindo(a) ao Avaz
               </h2>
               <p className="mt-1.5 text-base text-txt-2">
                 Defina sua senha para concluir o cadastro e continuar.
