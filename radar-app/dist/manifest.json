@@ -1,6 +1,6 @@
 {
-  "name": "Radar Político",
-  "short_name": "Radar",
+  "name": "Avaz",
+  "short_name": "Avaz",
   "description": "Inteligência política municipal em tempo real",
   "start_url": "/",
   "display": "standalone",

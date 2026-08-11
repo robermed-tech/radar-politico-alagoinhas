@@ -1,4 +1,4 @@
-# Pegadinhas de ambiente — Radar Político Alagoinhas
+# Pegadinhas de ambiente — Avaz (ex-Radar Político) Alagoinhas
 
 Erros que já custaram ciclos de depuração no passado. Checar aqui antes de assumir que é um bug novo.
 
@@ -15,7 +15,7 @@ Erros que já custaram ciclos de depuração no passado. Checar aqui antes de as
   - `GOOGLE_SA_JSON` (não `GOOGLE_CREDENTIALS`)
   - `GOOGLE_SHEET_ID` (não `SPREADSHEET_ID`)
   - `EVOLUTION_GROUP_ID` (não `WHATSAPP_NUMBER`)
-- **Workflow ativo é o `agora.yml`** ("ÁGORA — Radar Político Alagoinhas"), roda 3x/dia: `0 11 * * *`, `0 17 * * *`, `0 22 * * *` (08h, 14h e 19h BRT). Os horários no cron estão em UTC, não BRT — cuidado ao editar.
+- **Workflow ativo é o `agora.yml`** ("ÁGORA — Avaz Alagoinhas"), roda 3x/dia: `0 11 * * *`, `0 17 * * *`, `0 22 * * *` (08h, 14h e 19h BRT). Os horários no cron estão em UTC, não BRT — cuidado ao editar.
   - Maior intervalo é o noturno: 19h → 08h do dia seguinte = **13h por desenho** (não roda de madrugada). Limiares de "pipeline parado" precisam ficar acima disso: `heartbeat_check.py` e `PipelineHealthBanner.tsx` usam **15h** (13h + folga de atraso do runner). Já custou um falso alarme quando estavam em 9h.
 - O `radar.yml` ("Radar Politico — Pipeline Diario", 2x/dia) está **desabilitado manualmente no GitHub desde ~jun/2026** — descontinuado, substituído pelo `agora.yml`. Não confundir os dois ao depurar o agendamento.
 

@@ -1,4 +1,4 @@
-# Radar Político — Guia de Multi-Tenant (transformar em SaaS)
+# Avaz — Guia de Multi-Tenant (transformar em SaaS)
 
 > Passo a passo para evoluir de **1 cliente (Alagoinhas)** para **plataforma que
 > serve vários gabinetes pagantes**, com dados isolados e seguros.

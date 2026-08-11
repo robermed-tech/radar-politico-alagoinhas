@@ -1,5 +1,5 @@
 -- migracao_boletins.sql
--- Rodar no SQL Editor do Supabase (projeto do Radar Político)
+-- Rodar no SQL Editor do Supabase (projeto do Avaz, ref radar-politico)
 
 CREATE TABLE IF NOT EXISTS boletins (
   tenant     text        NOT NULL,

@@ -289,7 +289,7 @@ export function CommandCenter() {
       <div className="print-only print-header">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xl font-extrabold">Radar Político — Centro de Comando</div>
+            <div className="text-xl font-extrabold">Avaz — Centro de Comando</div>
             <div className="text-sm text-txt-2">Alagoinhas/BA</div>
           </div>
           <div className="text-right text-sm text-txt-3">
@@ -298,7 +298,7 @@ export function CommandCenter() {
           </div>
         </div>
         <div className="mt-2 text-[12px] text-txt-3">
-          Gerado pelo Radar Político · Não substitui pesquisa eleitoral
+          Gerado pelo Avaz · Não substitui pesquisa eleitoral
         </div>
       </div>
 

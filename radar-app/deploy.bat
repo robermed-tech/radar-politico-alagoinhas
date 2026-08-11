@@ -1,7 +1,7 @@
 @echo off
 echo.
 echo ==========================================
-echo  RADAR COMANDO (app novo) — Deploy MANUAL
+echo  AVAZ (app novo) — Deploy MANUAL
 echo  (fallback — o CI ja publica isto sozinho
 echo   a cada push em main que toque radar-app/**,
 echo   ver .github/workflows/deploy.yml)
@@ -22,12 +22,12 @@ if errorlevel 1 (
 echo [2/3] Preparando fallback de rotas (SPA)...
 copy /Y dist\index.html dist\200.html >nul
 
-echo [3/3] Publicando em radar-politico.surge.sh...
-call surge dist radar-politico.surge.sh
+echo [3/3] Publicando em avaz.surge.sh...
+call surge dist avaz.surge.sh
 
 echo.
 echo ==========================================
 echo  Deploy concluido!
-echo  URL: https://radar-politico.surge.sh
+echo  URL: https://avaz.surge.sh
 echo ==========================================
 pause

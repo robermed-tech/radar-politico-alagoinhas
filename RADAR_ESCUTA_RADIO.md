@@ -1,6 +1,6 @@
 # Escuta do Rádio — desenho da funcionalidade
 
-Spec da nova seção admin-only do Radar Político: coleta e transcrição de rádios
+Spec da nova seção admin-only do Avaz: coleta e transcrição de rádios
 locais via Apify, análise das pautas e envio ao secretário.
 
 Escrito antes da implementação, **calibrado contra a saída real** do ator

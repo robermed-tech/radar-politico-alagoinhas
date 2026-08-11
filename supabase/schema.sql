@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Radar Político — Schema Supabase (Fase 2)
+-- Avaz — Schema Supabase (Fase 2)
 -- Rode isto no Supabase: SQL Editor → New query → Run.
 -- Single-tenant (foco Alagoinhas). Coluna tenant deixa pronto p/ multi-tenant futuro.
 -- Leitura pública (mesma postura do Apps Script atual). Escrita só via service_role.

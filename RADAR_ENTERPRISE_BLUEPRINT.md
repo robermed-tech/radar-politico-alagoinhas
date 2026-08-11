@@ -1,6 +1,6 @@
-# Radar Político — Blueprint Enterprise (Centro de Comando de Inteligência Política)
+# Avaz — Blueprint Enterprise (Centro de Comando de Inteligência Política)
 
-> Documento de arquitetura e implementação para evoluir o Radar Político de
+> Documento de arquitetura e implementação para evoluir o Avaz de
 > dashboard para **plataforma SaaS multi-tenant de inteligência política**.
 > Stack-alvo: React + TypeScript + Tailwind + shadcn/ui + Apache ECharts +
 > Supabase (Postgres + Auth + Realtime + Edge Functions).

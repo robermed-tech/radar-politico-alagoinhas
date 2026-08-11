@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════
--- Radar Político — Schema do Banco Central (Supabase / PostgreSQL)
+-- Avaz — Schema do Banco Central (Supabase / PostgreSQL)
 -- Arquitetura: COLETORES → BANCO CENTRAL → CLAUDE → DASHBOARD
 --
 -- Execute este script no SQL Editor do Supabase:

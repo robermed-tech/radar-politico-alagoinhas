@@ -265,12 +265,12 @@ export function gerarRelatorioPDF(entrada: EntradaRelatorio): SaidaRelatorio {
   const elogios = cidadaos.filter((c) => c.sentimento === "positivo").sort(ordenar).slice(0, 3);
 
   const pdf = new PDF({
-    titulo: `Radar Político — relatório do clima (${rotulo})`,
-    rodape: `Radar Político · relatório gerado em ${carimbo(emitido)}`,
+    titulo: `Avaz — relatório do clima (${rotulo})`,
+    rodape: `Avaz · relatório gerado em ${carimbo(emitido)}`,
   });
 
   // ── Cabeçalho ────────────────────────────────────────────────
-  pdf.linha("Radar Político", { tamanho: 9.5, bold: true, cor: SUAVE });
+  pdf.linha("Avaz", { tamanho: 9.5, bold: true, cor: SUAVE });
   pdf.linha(`Relatório do clima · ${rotulo}`, { tamanho: 23, bold: true, cor: TINTA });
   pdf.retangulo(pdf.margem, pdf.y + 4, 64, 3, MARCA);
   pdf.espaco(12);
@@ -399,6 +399,6 @@ export function gerarRelatorioPDF(entrada: EntradaRelatorio): SaidaRelatorio {
   const janela = dias === 1 ? "24h" : `${dias}dias`;
   return {
     blob: pdf.blob(),
-    nomeArquivo: `radar-politico-clima-${janela}-${iso}.pdf`,
+    nomeArquivo: `avaz-clima-${janela}-${iso}.pdf`,
   };
 }

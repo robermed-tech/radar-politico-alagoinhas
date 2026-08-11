@@ -40,7 +40,7 @@ function montarMensagem(p: RadioPauta, cargo: string): string {
   const voz = p.voz ? ` (fala de ${p.voz})` : "";
 
   return (
-    `📻 ESCUTA DO RÁDIO — Radar Político Alagoinhas\n\n` +
+    `📻 ESCUTA DO RÁDIO — Avaz Alagoinhas\n\n` +
     `Prezado(a) ${cargo},\n\n` +
     `A escuta de rádio registrou um assunto que envolve a gestão municipal:\n\n` +
     `📣 Assunto: *${p.assunto}*\n` +
@@ -52,7 +52,7 @@ function montarMensagem(p: RadioPauta, cargo: string): string {
     bloco +
     (p.motivo_interesse ? `*Por que isso interessa à gestão:* ${p.motivo_interesse}\n\n` : "") +
     `⚡ *Solicitação:* avaliar o assunto e, se for o caso, preparar resposta ou esclarecimento à população.\n\n` +
-    `Enviado via Radar Político — Central de Inteligência Política de Alagoinhas/BA`
+    `Enviado via Avaz — Central de Inteligência Política de Alagoinhas/BA`
   );
 }
 
