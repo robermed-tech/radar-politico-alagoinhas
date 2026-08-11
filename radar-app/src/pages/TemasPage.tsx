@@ -50,7 +50,9 @@ function direcaoSlope(serie: number[]): "subindo" | "estavel" | "caindo" {
   return direcao(linearSlope(serie));
 }
 
-const COR_OUTROS = "#94A3B8";
+// Cinza QUENTE (11/08/26): era o slate azulado #94A3B8, destoando da família
+// creme/chumbo do card em que a série é desenhada. Luminância equivalente.
+const COR_OUTROS = "#A29C90";
 
 // ── Drill-down de subtemas (comments.subtema) ────────────────────────────────
 const TEMA_LABEL: Record<string, string> = {

@@ -8,6 +8,7 @@ import { ComentarioBox, ComentarioTexto } from "@/components/ComentarioBox";
 // Superfície chumbo quente — a barra da régua de temas é dado neutro; o
 // laranja fica reservado ao tema SELECIONADO (laranja = interação).
 import { FUNDO_ESCUTA } from "@/components/superficieRadio";
+import { EsqueletoPagina } from "@/components/EsqueletoPagina";
 
 const TEMA_LABEL: Record<string, string> = {
   saude: "Saúde", educacao: "Educação", obras: "Obras", seguranca: "Segurança",
@@ -66,7 +67,7 @@ export function PedidosPage() {
     [data]
   );
 
-  if (isLoading) return <div className="p-8 text-txt-2">Carregando pedidos…</div>;
+  if (isLoading) return <EsqueletoPagina titulo="Pedidos do Povo" />;
 
   return (
     <div className="space-y-4 p-5">

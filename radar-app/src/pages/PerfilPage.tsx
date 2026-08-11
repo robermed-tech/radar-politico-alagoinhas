@@ -18,6 +18,7 @@ import { montarRanking } from "@/lib/seguidores";
 import { PeriodoFilter, periodoLabel, periodoFrase, type Dias } from "@/components/PeriodoFilter";
 import { prepararKeywords, casaRelevancia } from "@/lib/relevancia";
 import { analisarPerfis, extremos, MIN_AMOSTRA, type PerfilAnalise } from "@/lib/analisePerfis";
+import { EsqueletoPagina } from "@/components/EsqueletoPagina";
 import {
   ComentarioBox,
   ComentarioTexto,
@@ -247,7 +248,7 @@ export function PerfilPage() {
     [comments, urlsPerfil]
   );
 
-  if (!data) return <div className="p-8 text-txt-2">Carregando…</div>;
+  if (!data) return <EsqueletoPagina titulo="Análise por Perfil" />;
 
   return (
     <div className="space-y-4 p-5">
