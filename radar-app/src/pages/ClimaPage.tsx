@@ -237,13 +237,19 @@ function WeatherIcon({ cls, size = 64, color = "currentColor", strokeWidth = 1.5
  */
 function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number }) {
   return (
-    <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6">
+    <div className="card-hover h-full rounded-[28px] border border-line bg-bg-1 p-6">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span
           className="section-label rounded-full px-3 py-1"
           style={{ background: FUNDO_ESCUTA, color: "#FFFFFF" }}
         >
           {periodoClima(dias)}
+        </span>
+        {/* Carimbo de origem (modelo Mesa de Comando do Viratempo, 21/08):
+            texto de análise diz de onde veio — quem lê num print ou telão
+            sabe que é a leitura da IA, não a fala de um assessor. */}
+        <span className="rounded-full border border-line bg-bg-2 px-2.5 py-0.5 text-xs text-txt-3">
+          análise gerada pela IA
         </span>
         <span className="text-xs text-txt-3">{fmtDataBR(briefing.dia)}</span>
       </div>
@@ -280,7 +286,7 @@ export function TemasEmCrise({ alertas, urlsNoPeriodo }: { alertas: Briefing["al
 
   if (!alertas?.length) return null;
   return (
-    <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6">
+    <div className="card-hover h-full rounded-[28px] border border-line bg-bg-1 p-6">
       <div className="mb-3 section-label">
         Temas que merecem atenção
       </div>
@@ -401,7 +407,7 @@ function RecomendacoesPeriodo({
 function FrentesInstabilidade({ frentes }: { frentes: Boletim["frentes"] }) {
   if (!frentes.length) return null;
   return (
-    <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6">
+    <div className="card-hover h-full rounded-[28px] border border-line bg-bg-1 p-6">
       <div className="section-label">
         Frentes de instabilidade
       </div>
@@ -618,10 +624,20 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           style={{ minHeight: 320 }}
           aria-label="Ver os comentários que explicam este clima"
         >
-          {/* Brilho quente do protótipo — atmosfera, atrás do conteúdo. */}
+          {/* Céu adaptativo do Viratempo (modelo Horizonte, aprovado em
+              21/08/26 com o ajuste do cliente: as FOTOS de clima continuam
+              sendo o fundo do card). A condição tonaliza a atmosfera em duas
+              camadas de alfa baixo: a lavagem diagonal (heroWash) e o brilho
+              do canto (heroGlow, que era o laranja fixo do protótipo). Elas
+              ficam SOB a foto e sob o conteúdo; a tinta medida do
+              inkFoto/veuFoto não muda. */}
           <div
-            className="pointer-events-none absolute -right-16 -top-28 h-[380px] w-[380px] rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(249,168,90,0.30) 0%, transparent 65%)" }}
+            className="pointer-events-none absolute inset-0 transition-[background] duration-700"
+            style={{ background: wx.heroWash }}
+          />
+          <div
+            className="pointer-events-none absolute -right-16 -top-28 h-[380px] w-[380px] rounded-full transition-[background] duration-700"
+            style={{ background: `radial-gradient(circle, ${wx.heroGlow} 0%, transparent 65%)` }}
           />
 
           {/* Foto de céu da condição em FADE (teste aprovado em 04/08): a foto
@@ -913,28 +929,44 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
         </div>
       </div>
 
-      {briefing ? (
-        <DiagnosticoCard briefing={briefing} dias={dias} />
-      ) : (
-        // Sem diagnóstico para semana/mês (histórico curto, tenant novo): diz
-        // isso explicitamente — nunca cai no diagnóstico de outro período
-        // disfarçado. Pro "dia", mantém o comportamento de sempre (some e
-        // cai no fallback de frentes) — o backend também gera na hora.
-        !loadingBriefing &&
-        periodo !== "dia" && (
-          <div className="card-hover rounded-[28px] border border-line bg-bg-1 p-6 text-sm text-txt-2">
-            Análise {periodo === "semana" ? "da semana" : "do mês"} ainda não disponível — dados insuficientes.
-          </div>
-        )
-      )}
-
-      {briefing?.alertas?.length ? (
-        <TemasEmCrise alertas={briefing.alertas} urlsNoPeriodo={urlsNoPeriodo} />
-      ) : (
-        boletim?.frentes && boletim.frentes.length > 0 && (
+      {/* Mesa de comando (modelo Viratempo, 21/08): no xl o diagnóstico e a
+          lista de temas sentam LADO A LADO em grade bento — a tela inteira do
+          dia se lê com menos rolagem (o mesmo racional das duas colunas do
+          Feed). Abaixo do xl, e quando só um dos dois existe, tudo volta a
+          empilhar em largura cheia. */}
+      {(() => {
+        const cardDiagnostico = briefing ? (
+          <DiagnosticoCard briefing={briefing} dias={dias} />
+        ) : (
+          // Sem diagnóstico para semana/mês (histórico curto, tenant novo): diz
+          // isso explicitamente — nunca cai no diagnóstico de outro período
+          // disfarçado. Pro "dia", mantém o comportamento de sempre (some e
+          // cai no fallback de frentes) — o backend também gera na hora.
+          !loadingBriefing && periodo !== "dia" ? (
+            <div className="card-hover h-full rounded-[28px] border border-line bg-bg-1 p-6 text-sm text-txt-2">
+              Análise {periodo === "semana" ? "da semana" : "do mês"} ainda não disponível — dados insuficientes.
+            </div>
+          ) : null
+        );
+        const cardTemas = briefing?.alertas?.length ? (
+          <TemasEmCrise alertas={briefing.alertas} urlsNoPeriodo={urlsNoPeriodo} />
+        ) : boletim?.frentes && boletim.frentes.length > 0 ? (
           <FrentesInstabilidade frentes={boletim.frentes} />
-        )
-      )}
+        ) : null;
+        if (cardDiagnostico && cardTemas)
+          return (
+            <div className="grid gap-4 xl:grid-cols-5">
+              <div className="xl:col-span-2">{cardDiagnostico}</div>
+              <div className="xl:col-span-3">{cardTemas}</div>
+            </div>
+          );
+        return (
+          <>
+            {cardDiagnostico}
+            {cardTemas}
+          </>
+        );
+      })()}
 
       <TermometroTemas allPosts={data!.data} dias={dias} />
 

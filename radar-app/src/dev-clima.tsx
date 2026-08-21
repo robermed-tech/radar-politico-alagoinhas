@@ -17,7 +17,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./components/AuthProvider";
 import { ClimaPage } from "./pages/ClimaPage";
-import type { Post } from "./lib/data";
+import type { Post, Briefing } from "./lib/data";
 import "./index.css";
 
 /** Hoje em dd/mm/yyyy: os posts precisam cair na janela de 24h, que é o padrão. */
@@ -70,6 +70,32 @@ const COM_SINAL: Post[] = [
 // C) Fronteira: exatamente 9 votos, um abaixo do piso de 10.
 const FRONTEIRA: Post[] = [post({ comentarios_total: 100, comentarios_pct_pos: 5, comentarios_pct_neg: 4 })];
 
+// D) Mesa de comando (modelo Viratempo, 21/08): IAD baixo o bastante para o
+// hero cair em "Chuva" (o céu adaptativo tonaliza a atmosfera do card) e
+// briefing presente, para o diagnóstico e os temas sentarem lado a lado na
+// grade bento do xl, com o carimbo "análise gerada pela IA".
+const CHUVA: Post[] = [
+  post({ comentarios_total: 220, comentarios_pct_pos: 14, comentarios_pct_neg: 58, sentimento_post: "negativo", tema: "transporte" }),
+  post({ comentarios_total: 90, comentarios_pct_pos: 20, comentarios_pct_neg: 50, autor: "alagonews", categoria: "Imprensa", sentimento_post: "negativo" }),
+];
+const BRIEFING_DEMO: Briefing = {
+  dia: new Date().toISOString().slice(0, 10),
+  periodo: "dia",
+  nivel_crise: "alto",
+  risco: 62,
+  diagnostico:
+    "A conversa do dia concentra críticas no transporte coletivo depois da mudança de linhas; elogios pontuais à pavimentação seguram o clima longe do extremo.",
+  oportunidades: [],
+  alertas: [
+    { nivel: "alto", tema: "transporte coletivo", tema_categoria: "transporte" },
+    { nivel: "moderado", tema: "iluminação pública", tema_categoria: "obras" },
+  ],
+  recomendacoes: [
+    { canal: "Instagram", mensagem: "Reconhecer o problema e publicar o cronograma das novas linhas." },
+  ],
+  gerado_em: new Date().toISOString(),
+};
+
 function clientePara(posts: Post[]): QueryClient {
   const qc = new QueryClient({
     defaultOptions: {
@@ -88,7 +114,19 @@ function clientePara(posts: Post[]): QueryClient {
   return qc;
 }
 
-function Cenario({ titulo, nota, posts }: { titulo: string; nota: string; posts: Post[] }) {
+function Cenario({
+  titulo,
+  nota,
+  posts,
+  briefing,
+}: {
+  titulo: string;
+  nota: string;
+  posts: Post[];
+  briefing?: Briefing;
+}) {
+  const qc = clientePara(posts);
+  if (briefing) qc.setQueryData(["briefing", "dia"], briefing);
   return (
     <section style={{ marginBottom: 40 }}>
       <div
@@ -104,7 +142,7 @@ function Cenario({ titulo, nota, posts }: { titulo: string; nota: string; posts:
           {nota}
         </div>
       </div>
-      <QueryClientProvider client={clientePara(posts)}>
+      <QueryClientProvider client={qc}>
         <AuthProvider>
           <ClimaPage />
         </AuthProvider>
@@ -136,6 +174,12 @@ createRoot(document.getElementById("root")!).render(
       titulo="C) FRONTEIRA — 9 votos, um abaixo do piso de 10"
       nota="Deve dizer 'Sem sinal' e informar quantos comentários foram classificados."
       posts={FRONTEIRA}
+    />
+    <Cenario
+      titulo="D) MESA DE COMANDO — chuva, com briefing (modelo Viratempo de 21/08)"
+      nota="Hero com a atmosfera tonalizada pela condição (foto continua); no xl o diagnóstico e os temas sentam lado a lado, com o carimbo 'análise gerada pela IA'."
+      posts={CHUVA}
+      briefing={BRIEFING_DEMO}
     />
   </>
 );

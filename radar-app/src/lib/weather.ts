@@ -19,6 +19,15 @@ export interface WeatherCond {
   // valor descreve a imagem real em public/sky, não a condição — partly.webp
   // é carregada de nuvens escuras e fica true mesmo sendo "clima estável".
   heroDark: boolean;
+  // Céu adaptativo do modelo Horizonte (Viratempo, aprovado em 21/08/26 com o
+  // ajuste "manter as fotos de clima no fundo do card"): a condição também
+  // TONALIZA a atmosfera do hero — o brilho do canto (heroGlow, cor do radial
+  // que antes era laranja fixo) e uma lavagem diagonal bem suave (heroWash).
+  // Alfas baixos de propósito: são atmosfera sob os tokens e sob a foto, não
+  // competem com a tinta medida do inkFoto/veuFoto (a foto continua sendo
+  // quem afirma a condição; estas camadas só acompanham).
+  heroGlow: string;
+  heroWash: string;
 }
 
 export function getWeather(pct: number): WeatherCond {
@@ -31,6 +40,8 @@ export function getWeather(pct: number): WeatherCond {
       bgLight: "linear-gradient(160deg, #E8F4FF 0%, #F3F8FF 45%, #FFF8E6 100%)",
       image: "/sky/sunny.jpg",
       accent: "#38BDF8", dark: true, heroDark: false,
+      heroGlow: "rgba(249, 168, 90, 0.32)",
+      heroWash: "linear-gradient(155deg, rgba(255, 211, 148, 0.15) 0%, rgba(247, 150, 65, 0.05) 55%, transparent 80%)",
     };
   if (pct >= 60)
     return {
@@ -41,6 +52,8 @@ export function getWeather(pct: number): WeatherCond {
       bgLight: "linear-gradient(160deg, #EAF2FF 0%, #F1F5FB 50%, #F6F4EC 100%)",
       image: "/sky/partly.jpg",
       accent: "#60A5FA", dark: true, heroDark: true,
+      heroGlow: "rgba(249, 168, 90, 0.22)",
+      heroWash: "linear-gradient(155deg, rgba(205, 232, 255, 0.12) 0%, rgba(236, 239, 230, 0.05) 55%, transparent 80%)",
     };
   if (pct >= 45)
     return {
@@ -51,6 +64,8 @@ export function getWeather(pct: number): WeatherCond {
       bgLight: "linear-gradient(160deg, #EEF1F5 0%, #E6EAF0 50%, #DDE3EB 100%)",
       image: "/sky/cloudy.jpg",
       accent: "#94A3B8", dark: true, heroDark: false,
+      heroGlow: "rgba(151, 145, 135, 0.26)",
+      heroWash: "linear-gradient(155deg, rgba(151, 145, 135, 0.13) 0%, rgba(151, 145, 135, 0.05) 55%, transparent 80%)",
     };
   if (pct >= 30)
     return {
@@ -61,6 +76,8 @@ export function getWeather(pct: number): WeatherCond {
       bgLight: "linear-gradient(160deg, #E6EDF3 0%, #DEE7EF 50%, #D6E1EB 100%)",
       image: "/sky/rain.jpg",
       accent: "#38BDF8", dark: true, heroDark: true,
+      heroGlow: "rgba(92, 96, 104, 0.30)",
+      heroWash: "linear-gradient(155deg, rgba(92, 96, 104, 0.15) 0%, rgba(92, 96, 104, 0.06) 55%, transparent 80%)",
     };
   if (pct >= 15)
     return {
@@ -71,6 +88,8 @@ export function getWeather(pct: number): WeatherCond {
       bgLight: "linear-gradient(160deg, #EFEAF5 0%, #E7E0F0 50%, #DFD6EC 100%)",
       image: "/sky/storm.jpg",
       accent: "#8B5CF6", dark: true, heroDark: true,
+      heroGlow: "rgba(58, 56, 53, 0.36)",
+      heroWash: "linear-gradient(155deg, rgba(58, 56, 53, 0.17) 0%, rgba(58, 56, 53, 0.07) 55%, transparent 80%)",
     };
   return {
     // "Extremo" e não "Severíssimo" (04/08, pedido do cliente). O `cls` segue
@@ -83,6 +102,8 @@ export function getWeather(pct: number): WeatherCond {
     bgLight: "linear-gradient(160deg, #F6E9ED 0%, #F0DEE4 50%, #EAD6DD 100%)",
     image: "/sky/severe.jpg",
     accent: "#EF4444", dark: true, heroDark: true,
+    heroGlow: "rgba(239, 68, 68, 0.14)",
+    heroWash: "linear-gradient(155deg, rgba(239, 68, 68, 0.08) 0%, rgba(58, 56, 53, 0.08) 55%, transparent 80%)",
   };
 }
 
