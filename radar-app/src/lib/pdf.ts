@@ -295,7 +295,7 @@ export class PDF {
     add(`<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>`);
     add(`<</Type/Font/Subtype/Type1/BaseFont/Helvetica-Bold/Encoding/WinAnsiEncoding>>`);
     add(
-      `<</Title(${escapar(this.titulo)})/Producer(${escapar("Avaz")})` +
+      `<</Title(${escapar(this.titulo)})/Producer(${escapar("Viratempo")})` +
       `/CreationDate(${dataPdf(new Date())})>>`
     );
     this.paginas.forEach((conteudo, i) => {

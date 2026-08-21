@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/lib/auth";
+import { SimboloViratempo, WordmarkViratempo } from "@/components/LogoViratempo";
 
 /**
  * Tela exibida quando o usuário chega pelo link de convite (e-mail enviado
@@ -32,16 +33,11 @@ export function AceitarConvitePage({ onDone }: { onDone: () => void }) {
   return (
     <div className="grid min-h-screen place-items-center p-6" style={{ background: "var(--wx-bg)" }}>
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex items-center gap-3">
-          <span
-            className="grid h-10 w-10 place-items-center rounded-2xl text-xl font-bold text-white"
-            style={{ background: "var(--brand)", color: "#1A0F02" }}
-          >
-            ◉
-          </span>
+        <div className="mb-8 flex items-center gap-3 text-txt-1">
+          <SimboloViratempo tamanho={40} />
           <div>
-            <div className="font-extrabold tracking-tight">Avaz</div>
-            <div className="text-xs text-txt-3">Inteligência municipal</div>
+            <div className="text-lg"><WordmarkViratempo /></div>
+            <div className="text-xs uppercase tracking-[0.14em] text-txt-3">Radar do clima político</div>
           </div>
         </div>
 
@@ -49,7 +45,7 @@ export function AceitarConvitePage({ onDone }: { onDone: () => void }) {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <h2 className="text-[26px] font-extrabold leading-tight tracking-tight">
-                Bem-vindo(a) ao Avaz
+                Bem-vindo(a) ao Viratempo
               </h2>
               <p className="mt-1.5 text-base text-txt-2">
                 Defina sua senha para concluir o cadastro e continuar.

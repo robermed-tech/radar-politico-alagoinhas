@@ -198,7 +198,7 @@ export function GlossaryPage() {
       </div>
 
       <div className="pb-4 text-center text-[13px] text-txt-3">
-        Avaz · inteligência para decisões — não substitui o julgamento humano, o potencializa.
+        Viratempo · inteligência para decisões: não substitui o julgamento humano, o potencializa.
       </div>
     </div>
   );

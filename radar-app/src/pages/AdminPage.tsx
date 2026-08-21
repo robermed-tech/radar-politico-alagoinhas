@@ -148,7 +148,7 @@ export function AdminPage() {
     <div className="space-y-4 p-5">
       <div>
         <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Administração</h1>
-        <p className="text-base text-txt-2">Configuração do Avaz — acesso exclusivo de administradores</p>
+        <p className="text-base text-txt-2">Configuração do Viratempo · acesso exclusivo de administradores</p>
       </div>
       <ApifyStatusBanner />
 

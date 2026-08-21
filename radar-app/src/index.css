@@ -500,8 +500,48 @@ button:disabled {
   will-change: transform;
 }
 
+/* Varredura do símbolo VIRATEMPO (components/LogoViratempo.tsx): o setor gira
+   como o feixe do radar. Transform no compositor, como todas as outras; com
+   prefers-reduced-motion o setor fica parado e o desenho continua completo.
+   Vive aqui porque o símbolo tem vários consumidores (sidebar, Login,
+   Aceitar Convite), a mesma regra dos demais keyframes compartilhados. */
+@keyframes vt-girar {
+  to { transform: rotate(360deg); }
+}
+.vt-varredura {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: vt-girar 9s linear infinite;
+  will-change: transform;
+}
+
+/* Barra que cresce da esquerda na entrada (termômetro de temas do Viratempo;
+   scaleX no compositor, nunca width). O delay vem inline, escalonado por
+   linha. */
+@keyframes vt-crescer-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.vt-crescer-x {
+  transform-origin: left;
+  animation: vt-crescer-x 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform;
+}
+
+/* Wordmark da marca: "vira" na tinta do texto, "tempo" em --brand-text. */
+.wordmark-vt {
+  font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+  font-synthesis-weight: none;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.wordmark-vt em {
+  font-style: normal;
+  color: var(--brand-text);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .wx-flutuar, .eq-barra { animation: none; }
+  .wx-flutuar, .eq-barra, .vt-varredura, .vt-crescer-x { animation: none; }
   /* O halo sem animação seria um anel parado sobre o LED; some. O ponto em si
      (o dado: ligado/desligado) continua visível. */
   .led-pulso { animation: none; opacity: 0; }

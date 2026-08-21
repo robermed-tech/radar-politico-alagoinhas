@@ -25,6 +25,7 @@ import { RequireAuth, RequireAdmin } from "@/components/ProtectedRoute";
 import { useAuth } from "@/components/AuthProvider";
 import { signOut } from "@/lib/auth";
 import { PipelineHealthBanner } from "@/components/PipelineHealthBanner";
+import { SimboloViratempo, WordmarkViratempo } from "@/components/LogoViratempo";
 import { useHydrateSettings } from "@/lib/settings";
 import { useTrackPresence } from "@/lib/presence";
 
@@ -255,18 +256,12 @@ export default function App() {
         style={{ boxShadow: "6px 0 28px -10px rgba(0,0,0,0.30)" }}
       >
         <div className="mb-6 flex items-center gap-2.5 px-2">
-          <span
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg shadow-md"
-            style={{ background: "var(--brand)" }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="2" fill="white"/>
-              <circle cx="12" cy="12" r="7"/>
-            </svg>
+          <span className="shrink-0 text-txt-1">
+            <SimboloViratempo tamanho={32} />
           </span>
           <div className="leading-tight">
-            <div className="text-[14px] font-extrabold uppercase tracking-[0.06em] text-txt-1">Avaz</div>
-            <div className="text-[12px] font-medium tracking-widest text-txt-3">Inteligência municipal</div>
+            <div className="text-[17px] text-txt-1"><WordmarkViratempo /></div>
+            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-txt-3">Radar do clima político</div>
           </div>
         </div>
 

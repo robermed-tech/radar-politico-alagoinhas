@@ -42,24 +42,30 @@ jobs:
       - name: Copiar index.html → 200.html (SPA routing no Surge)
         run: cp radar-app/dist/index.html radar-app/dist/200.html
 
-      # Endereço ÚNICO: o painel vive só em avaz.surge.sh. "Avaz" é o nome
-      # DEFINITIVO do SaaS (decisão do Robério em 10/08/26; substitui o
-      # provisório "radar-politico", que virou redirecionador abaixo). A
-      # allowlist do Supabase Auth usa https://*.surge.sh, então a troca de
-      # subdomínio não exigiu mexer no Auth.
-      - name: Deploy para Surge.sh (avaz.surge.sh)
-        run: npx surge --project radar-app/dist --domain avaz.surge.sh
+      # Endereço ÚNICO: o painel vive só em viratempo.surge.sh. "Viratempo" é
+      # o nome DEFINITIVO do SaaS (decisão do Robério em 21/08/26; substitui o
+      # "Avaz" de 10/08/26, que virou redirecionador abaixo, como antes dele o
+      # provisório "radar-politico"). A allowlist do Supabase Auth usa
+      # https://*.surge.sh, então a troca de subdomínio não exigiu mexer no Auth.
+      - name: Deploy para Surge.sh (viratempo.surge.sh)
+        run: npx surge --project radar-app/dist --domain viratempo.surge.sh
         env:
           SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
           SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
 
-      # Transição: os endereços antigos (radar-politico, radar-comando e
+      # Transição: os endereços antigos (avaz, radar-politico, radar-comando e
       # radar-politico-alg) recebem uma página de REDIRECIONAMENTO que preserva
       # rota e parâmetros — quem tem favorito antigo cai no endereço novo em
       # vez de num "project not found". Estes steps podem ser removidos
       # quando ninguém mais chegar pelos endereços antigos.
       - name: Preparar página de redirecionamento (SPA fallback)
         run: cp radar-app/redirect-legado/index.html radar-app/redirect-legado/200.html
+
+      - name: Redirecionador em avaz.surge.sh
+        run: npx surge --project radar-app/redirect-legado --domain avaz.surge.sh
+        env:
+          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
 
       - name: Redirecionador em radar-politico.surge.sh
         run: npx surge --project radar-app/redirect-legado --domain radar-politico.surge.sh

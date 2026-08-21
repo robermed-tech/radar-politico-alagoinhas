@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-boletim.py — Boletim Climático do Avaz (camada de apresentação).
+boletim.py — Boletim Climático do Viratempo (camada de apresentação).
 
 Traduz as métricas que o agora.py JÁ calcula para a metáfora climática
 do painel. 100% determinístico, zero chamadas de IA.

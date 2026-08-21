@@ -277,8 +277,8 @@ export function gerarRelatorioPDF(entrada: EntradaRelatorio): SaidaRelatorio {
   const elogios = cidadaos.filter((c) => c.sentimento === "positivo").sort(ordenar).slice(0, 3);
 
   const pdf = new PDF({
-    titulo: `Avaz — relatório do clima (${rotulo})`,
-    rodape: `Avaz · relatório gerado em ${carimbo(emitido)}`,
+    titulo: `Viratempo · relatório do clima (${rotulo})`,
+    rodape: `Viratempo · relatório gerado em ${carimbo(emitido)}`,
     // Identidade em toda página: faixa da marca no topo (coberta na primeira
     // pela banda do cabeçalho) e o quadradinho laranja antes do rodapé.
     faixaTopo: MARCA,
@@ -297,8 +297,8 @@ export function gerarRelatorioPDF(entrada: EntradaRelatorio): SaidaRelatorio {
   const cyBanda = baseBanda + BANDA / 2;
   pdf.anel(pdf.margem + 13, cyBanda, 12, 2.4, MARCA_TINTA);
   pdf.circulo(pdf.margem + 13, cyBanda, 3.6, MARCA_TINTA);
-  pdf.textoEm("AVAZ", pdf.margem + 34, cyBanda - 1, { tamanho: 21, bold: true, cor: MARCA_TINTA });
-  pdf.textoEm("INTELIGÊNCIA MUNICIPAL", pdf.margem + 34, cyBanda - 12, {
+  pdf.textoEm("VIRATEMPO", pdf.margem + 34, cyBanda - 1, { tamanho: 19, bold: true, cor: MARCA_TINTA });
+  pdf.textoEm("RADAR DO CLIMA POLÍTICO", pdf.margem + 34, cyBanda - 12, {
     tamanho: 7.5, bold: true, cor: MARCA_TINTA,
   });
   // Chip do período à direita, como os chips do painel: fundo escuro quase
@@ -438,6 +438,6 @@ export function gerarRelatorioPDF(entrada: EntradaRelatorio): SaidaRelatorio {
   const janela = dias === 1 ? "24h" : `${dias}dias`;
   return {
     blob: pdf.blob(),
-    nomeArquivo: `avaz-clima-${janela}-${iso}.pdf`,
+    nomeArquivo: `viratempo-clima-${janela}-${iso}.pdf`,
   };
 }
