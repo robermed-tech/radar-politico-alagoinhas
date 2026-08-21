@@ -20,7 +20,7 @@ import {
   ComentarioChip,
   tintaSentimento,
 } from "@/components/ComentarioBox";
-import { PeriodoFilter, type Dias } from "@/components/PeriodoFilter";
+import { PeriodoFilter, periodoFrase, type Dias } from "@/components/PeriodoFilter";
 
 // ── Métricas do gráfico — apenas Volume ──────────────────────────────────────
 type Metrica = "volume";
@@ -179,13 +179,40 @@ function TimelineClima({ themes, janela }: { themes: DailyTheme[]; janela: numbe
     const marcados = Array.from(new Set([...topDelta, peak])).filter(
       (i) => perDia[i].vol >= 10 && perDia[i].domTema && Math.abs(deltas[i]) >= 3
     );
-    return { perDia, deltas, marcados };
+    return { perDia, deltas, marcados, peak };
   }, [themes, janela]);
 
   if (!model) return null;
-  const { perDia } = model;
+  const { perDia, deltas, marcados, peak } = model;
   // Revisão de 25/07: os balões (pins) que anotavam o tema de cada virada
   // saíram do gráfico — a informação continua disponível no tooltip do dia.
+  // Revisão de 21/08 (modelo Trajetória do Viratempo, aprovado em prévia): os
+  // dias notáveis voltam como NÓS na própria curva — ponto colorido com a
+  // data, sem balão de texto (o tema do dia segue no tooltip, que é a parte
+  // da decisão de 25/07 que continua valendo). Vermelho = pico ou virada
+  // para pior; âmbar = alívio (a cor do "estabilizado" das Previsões);
+  // laranja da marca = última leitura. "Última leitura", e não "hoje": com a
+  // coleta parada o último dia com dado pode não ser hoje, e rotular de hoje
+  // afirmaria uma atualidade que o dado não tem.
+  const idxUltimo = perDia.length - 1;
+  const nosMarcados = marcados
+    .filter((i) => i !== idxUltimo)
+    .map((i) => ({
+      value: [i, perDia[i].pctNeg],
+      itemStyle: {
+        color: i === peak || deltas[i] > 0 ? "#EF4444" : "#F59E0B",
+        borderColor: ink.tooltipBg,
+        borderWidth: 2,
+      },
+      label: {
+        show: true,
+        position: "top" as const,
+        distance: 7,
+        color: ink.axis,
+        fontSize: 12,
+        formatter: fmtDiaBR(perDia[i].dia),
+      },
+    }));
 
   const option = {
     grid: { left: 38, right: 16, top: 30, bottom: 34 },
@@ -227,17 +254,70 @@ function TimelineClima({ themes, janela }: { themes: DailyTheme[]; janela: numbe
         lineStyle: { color: "#F79641", width: 2.5 },
         itemStyle: { color: "#F79641" },
         areaStyle: glassArea("#F79641"),
+        // O traçado se desenha na entrada (modelo Trajetória): é a animação
+        // nativa do ECharts, roda uma vez e o repouso é a curva completa.
+        animationDuration: 1400,
+        animationEasing: "cubicOut" as const,
+      },
+      {
+        // Nós dos marcos do período, por cima da curva.
+        type: "scatter",
+        z: 5,
+        symbolSize: 12,
+        data: nosMarcados,
+        animationDelay: 1200,
+        tooltip: { show: false },
+      },
+      {
+        // Última leitura: sempre marcada, na cor da marca.
+        type: "scatter",
+        z: 6,
+        symbolSize: 13,
+        data: [
+          {
+            value: [idxUltimo, perDia[idxUltimo].pctNeg],
+            itemStyle: { color: "#F79641", borderColor: ink.tooltipBg, borderWidth: 3 },
+            label: {
+              show: true,
+              // À esquerda do ponto: o nó é o último da série, encostado na
+              // borda direita do grid, e o rótulo centrado em cima cortava.
+              position: "left" as const,
+              distance: 9,
+              color: ink.axis,
+              fontSize: 12,
+              fontWeight: 700 as const,
+              formatter: "última leitura",
+            },
+          },
+        ],
+        animationDelay: 1300,
+        tooltip: { show: false },
       },
     ],
   };
 
   return (
     <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
-      <div className="text-sm font-bold">Linha do tempo do clima</div>
+      <div className="text-sm font-bold">Trajetória do clima</div>
       <p className="mb-2 text-[12px] text-txt-3">
-        % de críticas por dia — passe o mouse num ponto para ver o tema que puxou aquele dia
+        % de críticas por dia, com os marcos do período na curva. Passe o mouse num ponto
+        para ver o tema que puxou aquele dia
       </p>
       <ReactECharts option={option} style={{ height: 240 }} notMerge lazyUpdate />
+      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-txt-3">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#EF4444" }} />
+          pico ou virada para pior
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#F59E0B" }} />
+          alívio na crítica
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#F79641" }} />
+          última leitura
+        </span>
+      </div>
     </div>
   );
 }
@@ -330,6 +410,142 @@ function PainelSubtemas() {
                   comentarios={comentarios}
                   onFechar={() => setSel(null)}
                 />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Termômetro de temas em FAIXAS (modelo Viratempo aprovado em 21/08/26,
+ * inspirado na lista retrô do moodboard): cada tema é uma faixa de largura
+ * cheia, ordenada e tingida pela temperatura da crítica. A cor aqui é DADO
+ * (% de críticas), não decoração, e a receita é a mesma dos cards semânticos
+ * do painel: degradê CLARO da família do sentimento com tinta quase preta
+ * por cima (#1A0F02), AA nas duas pontas de cada degradê. Não substitui os
+ * velocímetros da Análise do Clima (decisão de 24/07, continuam lá): esta é
+ * a leitura de RANKING da página de Previsões. A faixa clicada expande a
+ * decomposição no lugar, sem trocar de página.
+ */
+const RECEITA_FAIXA: { min: number; fundo: string }[] = [
+  { min: 55, fundo: "linear-gradient(150deg, #FCA5A5, #EF4444)" },
+  { min: 45, fundo: "linear-gradient(150deg, #FBB89E, #F97352)" },
+  { min: 35, fundo: "linear-gradient(150deg, #FDE68A, #F59E0B)" },
+  { min: 25, fundo: "linear-gradient(150deg, #EDE4CF, #CFC5AC)" },
+  { min: 15, fundo: "linear-gradient(150deg, #A7F3C8, #4ADE80)" },
+  { min: 0, fundo: "linear-gradient(150deg, #86EFAC, #22C55E)" },
+];
+function fundoDaFaixa(pctNeg: number): string {
+  return (RECEITA_FAIXA.find((r) => pctNeg >= r.min) ?? RECEITA_FAIXA[RECEITA_FAIXA.length - 1]).fundo;
+}
+
+const TENDENCIA_FAIXA: Record<TemaResumido["direcao"], string> = {
+  subindo: "▲ crítica subindo",
+  caindo: "▼ crítica caindo",
+  estavel: "estável",
+};
+
+function TermometroFaixas({ themes, janela }: { themes: DailyTheme[]; janela: number }) {
+  const [aberto, setAberto] = useState<string | null>(null);
+
+  const lista = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - janela);
+    const cut = cutoff.toISOString().slice(0, 10);
+    // buildTemas sobre o RECORTE da janela: a mesma agregação do alerta, mas
+    // respeitando o PeriodoFilter da página (a regra de 27/07).
+    return buildTemas(themes.filter((r) => r.dia >= cut))
+      .filter((t) => t.tema.toLowerCase() !== "outros")
+      .slice(0, 8);
+  }, [themes, janela]);
+
+  if (lista.length === 0) return null;
+  const maxVol = Math.max(...lista.map((t) => t.volume), 1);
+
+  return (
+    <div className="card-hover rounded-xl border border-line bg-bg-1 p-4">
+      <div className="text-sm font-bold">Termômetro de temas</div>
+      <p className="mb-3 text-[12px] text-txt-3">
+        Da crítica mais quente ao elogio, {periodoFrase(janela)}. Clique numa faixa para a decomposição
+      </p>
+      <div className="space-y-2">
+        {lista.map((t, i) => {
+          const estaAberto = aberto === t.tema;
+          const neutro = Math.max(0, 100 - t.pctNeg - t.pctPos);
+          return (
+            <div key={t.tema} className="reveal" style={{ animationDelay: `${0.04 + i * 0.06}s` }}>
+              <button
+                onClick={() => setAberto(estaAberto ? null : t.tema)}
+                aria-expanded={estaAberto}
+                className="grid w-full items-center gap-x-4 gap-y-1 rounded-xl px-4 py-3 text-left transition-transform duration-200 hover:translate-x-1.5 sm:grid-cols-[minmax(140px,1.1fr)_2fr_auto]"
+                style={{
+                  background: fundoDaFaixa(t.pctNeg),
+                  color: "#1A0F02",
+                  border: "1px solid rgba(26,15,2,0.10)",
+                }}
+              >
+                <span className="min-w-0">
+                  <span
+                    className="block truncate text-lg font-bold leading-tight"
+                    style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                  >
+                    {labelTemaSub(t.tema)}
+                  </span>
+                  <span className="tnum text-[13px] font-semibold" style={{ color: "rgba(26,15,2,0.72)" }}>
+                    {t.volume} {t.volume === 1 ? "post no período" : "posts no período"}
+                  </span>
+                </span>
+                <span className="hidden min-w-0 sm:block">
+                  <span className="block text-[12px] font-semibold" style={{ color: "rgba(26,15,2,0.72)" }}>
+                    volume na janela
+                  </span>
+                  <span
+                    className="mt-1 block h-2 overflow-hidden rounded-full"
+                    style={{ background: "rgba(26,15,2,0.14)" }}
+                  >
+                    <span
+                      className="vt-crescer-x block h-full rounded-full"
+                      style={{
+                        width: `${Math.max(6, Math.round((t.volume / maxVol) * 100))}%`,
+                        background: "rgba(26,15,2,0.62)",
+                        animationDelay: `${0.1 + i * 0.06}s`,
+                      }}
+                    />
+                  </span>
+                </span>
+                <span className="text-right">
+                  <span
+                    className="tnum text-[26px] font-bold leading-none"
+                    style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                  >
+                    {t.pctNeg}
+                    <span className="text-[13px] font-bold" style={{ color: "rgba(26,15,2,0.78)" }}>
+                      % crítico
+                    </span>
+                  </span>
+                  <span className="block text-[12.5px] font-bold" style={{ color: "rgba(26,15,2,0.78)" }}>
+                    {TENDENCIA_FAIXA[t.direcao]}
+                  </span>
+                </span>
+              </button>
+              {estaAberto && (
+                <div className="mt-1.5 rounded-xl border border-line bg-bg-2 p-3">
+                  <div className="flex h-2.5 max-w-md overflow-hidden rounded-full">
+                    <span style={{ width: `${t.pctNeg}%`, background: "var(--sent-ink-neg)" }} />
+                    <span style={{ width: `${neutro}%`, background: "#ABA598" }} />
+                    <span style={{ width: `${t.pctPos}%`, background: "var(--sent-ink-pos)" }} />
+                  </div>
+                  <p className="tnum mt-1.5 text-[13px] text-txt-2">
+                    {t.pctNeg}% críticas · {neutro}% neutras · {t.pctPos}% elogios, na média dos
+                    últimos dias com dado no período
+                  </p>
+                  <p className="mt-0.5 text-[12px] text-txt-3">
+                    O detalhe do que o cidadão fala está em "Dentro de cada tema", logo abaixo.
+                  </p>
+                </div>
               )}
             </div>
           );
@@ -559,6 +775,13 @@ export function TemasPage() {
           </div>
         </div>
       </div>
+
+      {/* Termômetro em faixas (modelo Viratempo, 21/08): ranking dos temas
+          pela temperatura da crítica, entre o movimento (acima) e o detalhe
+          por subtema (abaixo). A ordem das seções de 01/08 continua intacta:
+          Trajetória no topo, Subindo/Caindo no meio, Dentro de cada tema no
+          rodapé — a faixa entra como leitura nova, sem substituir nenhuma. */}
+      <TermometroFaixas themes={themes} janela={janela} />
 
       {/* Drill-down de subtemas (a partir dos comentários) */}
       <PainelSubtemas />
