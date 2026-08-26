@@ -112,7 +112,7 @@ export function BairrosPage() {
           // gráfico de tela cheia deixava fio de cabelo separado por vão.
           barMaxWidth: 30,
           cursor: "pointer",
-          emphasis: { itemStyle: { shadowBlur: 14, shadowColor: "rgba(251,146,60,0.55)" } },
+          emphasis: { itemStyle: { shadowBlur: 14, shadowColor: "rgba(98,194,202,0.55)" } },
           data: dados.map((b) => ({
             value: b.total,
             itemStyle: glassBar(corPct(b.pctNeg), { horizontal: true, radius: [0, 6, 6, 0] }),
@@ -134,7 +134,7 @@ export function BairrosPage() {
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Mapa da Cidade</h1>
+          <h1 className="text-[27px] font-semibold leading-tight tracking-tight">Mapa da Cidade</h1>
           <p className="text-base text-txt-2">
             Onde a conversa se concentra — bairros e locais citados nos comentários
           </p>

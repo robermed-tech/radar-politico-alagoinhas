@@ -519,7 +519,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
       <div className="space-y-4 p-5">
         <div className="reveal reveal-1 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">{periodoTitulo(dias)}</h1>
+            <h1 className="text-[27px] font-semibold leading-tight tracking-tight">{periodoTitulo(dias)}</h1>
             <p className="text-base text-txt-2">Alagoinhas/BA · imagem do prefeito e da prefeitura</p>
           </div>
           <PeriodoFilter dias={dias} onChange={setDias} />
@@ -597,7 +597,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
     <div className="space-y-4 p-5">
       <div className="reveal reveal-1 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">{periodoTitulo(dias)}</h1>
+          <h1 className="text-[27px] font-semibold leading-tight tracking-tight">{periodoTitulo(dias)}</h1>
           <p className="text-base text-txt-2">Alagoinhas/BA · imagem do prefeito e da prefeitura</p>
         </div>
         <PeriodoFilter dias={dias} onChange={setDias} />
@@ -870,7 +870,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             // a troca de tom entre tema claro e escuro.
             background: "var(--brand)",
             minHeight: 320,
-            boxShadow: "0 18px 40px -14px rgba(247,150,65,0.5)",
+            boxShadow: "0 18px 40px -14px rgba(98,194,202,0.5)",
           }}
           aria-label="Ver as publicações analisadas no período"
         >
@@ -878,7 +878,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full"
             style={{ background: "rgba(255,255,255,0.12)" }}
           />
-          <div className="relative z-10 flex h-full flex-col" style={{ color: "#1A0F02" }}>
+          <div className="relative z-10 flex h-full flex-col" style={{ color: "#04242F" }}>
             <div className="flex items-start justify-between gap-2">
               <div className="text-[14px] font-bold tracking-[0.08em]" style={{ color: "rgba(26,15,2,0.75)" }}>
                 Engajamento no período
@@ -913,7 +913,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
               <div className="flex items-end gap-1">
                 <span
                   className="tnum text-[68px] leading-[0.85] tracking-tight"
-                  style={{ fontWeight: 700, color: "#1A0F02", fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                  style={{ fontWeight: 700, color: "#04242F", fontFamily: "Space Grotesk, Inter, sans-serif" }}
                 >
                   <ContadorAnimado valor={view.comentarios} formatar={fmtInt} />
                 </span>

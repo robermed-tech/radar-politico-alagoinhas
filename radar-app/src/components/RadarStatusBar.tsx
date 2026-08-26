@@ -14,7 +14,7 @@ import { FUNDO_ESCUTA, SOMBRA } from "./superficieRadio";
  * conic-gradient com sufixo de alpha (`${cor}55`), onde var() não resolve —
  * acompanhar o token à mão se ele mudar.
  */
-const COR_RADAR_ATIVO = "#F79641";
+const COR_RADAR_ATIVO = "#62C2CA";
 const COR_RADAR_OCIOSO = "#F59E0B";
 
 /**
@@ -156,7 +156,7 @@ export function RadarStatusBar() {
 /**
  * Painel vertical do radar, para ficar entre os dois cards da Estação
  * Meteorológica. Grafite com texto branco (paleta neutra da reunião de 24/07):
- * fica de pé entre a foto escura do clima à esquerda e o laranja à direita sem
+ * fica de pé entre a foto escura do clima à esquerda e a marca à direita sem
  * disputar atenção com nenhum dos dois.
  */
 export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {

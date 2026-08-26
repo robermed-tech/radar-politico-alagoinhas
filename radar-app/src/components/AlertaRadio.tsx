@@ -74,11 +74,11 @@ export function AlertaRadio({ pauta }: { pauta: RadioPauta }) {
           // é hex único desde 31/07, então preenchimento sólido já é a cor
           // certa nos dois temas).
           background: "var(--brand)",
-          color: "#1A0F02",
+          color: "#04242F",
         }}
         aria-label={`Alertar secretário sobre a pauta ${pauta.assunto}`}
       >
-        <IcoRadio className="h-3.5 w-3.5 flex-shrink-0" fill="#1A0F02" />
+        <IcoRadio className="h-3.5 w-3.5 flex-shrink-0" fill="#04242F" />
         <span>Alertar Secretário</span>
       </button>
 

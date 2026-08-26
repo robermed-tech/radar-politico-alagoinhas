@@ -91,7 +91,7 @@ function PautaItem({ p }: { p: RadioPauta }) {
             {p.interesse_gestao && (
               <span
                 className="rounded px-1.5 py-0.5 text-[12px] font-bold uppercase"
-                style={{ background: "rgba(247,150,65,0.14)", color: "var(--brand-text)" }}
+                style={{ background: "rgba(98,194,202,0.14)", color: "var(--brand-text)" }}
               >
                 interessa à gestão
               </span>
@@ -285,7 +285,7 @@ export function RadioPage() {
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Rádio Escuta</h1>
+          <h1 className="text-[27px] font-semibold leading-tight tracking-tight">Rádio Escuta</h1>
           <p className="text-base text-txt-2">
             O que as rádios debateram e o que disso afeta a imagem da gestão · {periodoLabel(dias)}
           </p>

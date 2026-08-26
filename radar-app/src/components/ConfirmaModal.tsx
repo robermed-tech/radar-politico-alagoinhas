@@ -47,7 +47,7 @@ export function ConfirmaModal({
             className="cursor-pointer rounded-xl px-5 py-2.5 text-sm font-extrabold transition hover:opacity-90"
             style={{
               background: "linear-gradient(150deg, #FCA5A5 0%, #EF4444 100%)",
-              color: "#1A0F02",
+              color: "#04242F",
             }}
           >
             {rotuloConfirmar}

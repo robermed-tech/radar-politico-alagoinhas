@@ -33,18 +33,18 @@ import { periodoFrase, periodoLabel, type Dias } from "@/components/PeriodoFilte
 
 /* Paleta do documento (11/08/26: o impresso passou a carregar a identidade do
    painel). Mesmas famílias do index.css, traduzidas para papel: tinta chumbo
-   quente, painéis creme, marca #F79641 com tinta escura #1A0F02 por cima (a
+   frio, painéis off-white, marca #62C2CA com tinta escura #04242F por cima (a
    regra auditada dos botões: nunca branco sobre a marca), e verde/vermelho
    continuam reservados a sentimento. Cor 0..1, como o PDF espera. */
-const TINTA: Cor = [0.15, 0.157, 0.176];       // #26282D — txt1 do tema claro
-const SUAVE: Cor = [0.361, 0.376, 0.408];      // #5C6068 — txt3 do tema claro
-const MARCA: Cor = [0.969, 0.588, 0.255];      // #F79641 — hex único da marca
-const MARCA_TINTA: Cor = [0.102, 0.059, 0.008]; // #1A0F02 — tinta sobre a marca
-const MARCA_ARESTA: Cor = [0.851, 0.478, 0.149]; // #D97A26 — aresta da banda
+const TINTA: Cor = [0.016, 0.141, 0.184];      // #04242F — txt1 do tema claro
+const SUAVE: Cor = [0.357, 0.451, 0.490];      // #5B737D — txt3 do tema claro
+const MARCA: Cor = [0.384, 0.761, 0.792];      // #62C2CA — hex único da marca
+const MARCA_TINTA: Cor = [0.016, 0.141, 0.184]; // #04242F — tinta sobre a marca
+const MARCA_ARESTA: Cor = [0.227, 0.604, 0.643]; // #3A9AA4 — aresta da banda
 const NEG: Cor = [0.76, 0.15, 0.15];           // sent-ink-neg
 const POS: Cor = [0.07, 0.48, 0.24];           // sent-ink-pos
-const CAIXA: Cor = [0.965, 0.949, 0.918];      // #F6F2EA — o creme da página
-const TRILHO: Cor = [0.898, 0.875, 0.824];     // #E5DFD2 — hairline quente
+const CAIXA: Cor = [0.929, 0.953, 0.957];      // #EDF3F4 — o off-white da página
+const TRILHO: Cor = [0.851, 0.894, 0.902];     // #D9E4E6 — hairline frio
 
 function pct(n: number): string {
   return `${Math.round(n)}%`;
@@ -280,26 +280,27 @@ export function gerarRelatorioPDF(entrada: EntradaRelatorio): SaidaRelatorio {
     titulo: `Viratempo · relatório do clima (${rotulo})`,
     rodape: `Viratempo · relatório gerado em ${carimbo(emitido)}`,
     // Identidade em toda página: faixa da marca no topo (coberta na primeira
-    // pela banda do cabeçalho) e o quadradinho laranja antes do rodapé.
+    // pela banda do cabeçalho) e o quadradinho da marca antes do rodapé.
     faixaTopo: MARCA,
     pontoRodape: MARCA,
   });
 
   // ── Cabeçalho: banda da marca com a logomarca do painel ──────
-  // Laranja #F79641 de ponta a ponta, tinta escura #1A0F02 por cima (a regra
-  // de contraste dos botões de marca: 8,44:1; branco mediria 2,24:1) e uma
+  // Teal #62C2CA de ponta a ponta, tinta escura #04242F por cima (a regra
+  // de contraste dos botões de marca: 7,77:1; branco mediria 2,08:1) e uma
   // aresta um tom abaixo fechando a banda.
   const BANDA = 84;
   const baseBanda = PDF.ALTURA - BANDA;
   pdf.retangulo(0, baseBanda, PDF.LARGURA, BANDA, MARCA);
   pdf.retangulo(0, baseBanda, PDF.LARGURA, 2.5, MARCA_ARESTA);
-  // Logomarca: o aro com miolo da barra lateral, em tinta escura.
+  // Marca: o tique do arquivo oficial, em tinta escura, e o nome ao lado. O
+  // aro de radar saiu junto com o símbolo do painel, e a tagline "Radar do
+  // clima político" saiu de todo lugar (decisão de 26/08/26).
   const cyBanda = baseBanda + BANDA / 2;
-  pdf.anel(pdf.margem + 13, cyBanda, 12, 2.4, MARCA_TINTA);
-  pdf.circulo(pdf.margem + 13, cyBanda, 3.6, MARCA_TINTA);
-  pdf.textoEm("VIRATEMPO", pdf.margem + 34, cyBanda - 1, { tamanho: 19, bold: true, cor: MARCA_TINTA });
-  pdf.textoEm("RADAR DO CLIMA POLÍTICO", pdf.margem + 34, cyBanda - 12, {
-    tamanho: 7.5, bold: true, cor: MARCA_TINTA,
+  const TIQUE = 26;
+  pdf.tique(pdf.margem, cyBanda - (TIQUE * PDF.TIQUE_PROPORCAO) / 2, TIQUE, MARCA_TINTA);
+  pdf.textoEm("VIRATEMPO", pdf.margem + TIQUE + 14, cyBanda - 6.5, {
+    tamanho: 21, bold: true, cor: MARCA_TINTA,
   });
   // Chip do período à direita, como os chips do painel: fundo escuro quase
   // sólido com texto claro (a mesma receita dos chips sobre degradê).

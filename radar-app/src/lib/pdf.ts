@@ -162,6 +162,51 @@ export class PDF {
   }
 
   /** Anel (círculo só de traço) — o aro da logomarca. */
+  /**
+   * Tique da marca VIRATEMPO (o "v" que abre a palavra), o carimbo curto do
+   * impresso — decisão de 26/08/26: cabeçalho e rodapé do PDF ficam só com a
+   * marca, e onde não cabe a palavra entra o tique.
+   *
+   * A tabela abaixo é o PRÓPRIO caminho do arquivo oficial da marca
+   * (MARCA/SVG/Ativo 1.svg), convertido uma vez para operadores de PDF e
+   * normalizado: largura 1, origem no canto inferior esquerdo do glifo, y para
+   * cima (o PDF conta ao contrário do SVG). Não foi redesenhado à mão — se o
+   * arquivo da marca mudar, gerar a tabela de novo em vez de ajustar número.
+   */
+  private static readonly TIQUE: (readonly (string | number)[])[] = [
+  ["m",0.0195,0.25753],
+    ["c",0.08022,0.20004,0.14104,0.14255,0.20176,0.08517],
+    ["c",0.22752,0.06082,0.25328,0.03132,0.28511,0.01495],
+    ["c",0.34169,-0.01425,0.40503,0.00182,0.4506,0.04233],
+    ["c",0.58163,0.15862,0.70489,0.28521,0.83158,0.40624],
+    ["c",0.88139,0.45383,0.9312,0.50131,0.98091,0.5489],
+    ["c",1.0397,0.60507,0.9505,0.69408,0.8918,0.63801],
+    ["c",0.7843,0.53536,0.6768,0.43271,0.56931,0.33007],
+    ["c",0.5095,0.27298,0.44979,0.2159,0.38998,0.15882],
+    ["c",0.38179,0.15094,0.36987,0.13397,0.35916,0.12942],
+    ["c",0.33572,0.11942,0.31522,0.15114,0.29976,0.16579],
+    ["c",0.23601,0.22611,0.17216,0.28642,0.10841,0.34674],
+    ["c",0.0495,0.4024,-0.03981,0.3135,0.0193,0.25763],
+    ["l",0.0193,0.25763],
+    ["h"]
+  ];
+
+  /** Altura do tique quando a largura é 1 (proporção do glifo). */
+  static readonly TIQUE_PROPORCAO = 0.65569;
+
+  /** Desenha o tique com `largura` pt, apoiado em (x, base). */
+  tique(x: number, base: number, largura: number, cor: Cor): void {
+    const partes = [`${cor[0]} ${cor[1]} ${cor[2]} rg`];
+    for (const op of PDF.TIQUE) {
+      const n = op.slice(1).map((v, i) =>
+        (i % 2 === 0 ? x + (v as number) * largura : base + (v as number) * largura).toFixed(3)
+      );
+      partes.push(`${n.join(" ")} ${op[0]}`);
+    }
+    partes.push("f");
+    this.buffer.push(partes.join(" "));
+  }
+
   anel(cx: number, cy: number, r: number, espessura: number, cor: Cor): void {
     this.buffer.push(
       `${cor[0]} ${cor[1]} ${cor[2]} RG ${espessura.toFixed(2)} w ` +

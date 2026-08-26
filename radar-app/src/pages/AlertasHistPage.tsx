@@ -78,7 +78,7 @@ function LinhaEnvio({ e }: { e: EnvioManual }) {
         {e.tema && (
           <span
             className="rounded px-2 py-0.5 text-[12.5px] font-bold frase-cap"
-            style={{ background: "rgba(247,150,65,0.10)", color: "var(--brand-text)" }}
+            style={{ background: "rgba(98,194,202,0.10)", color: "var(--brand-text)" }}
           >
             {e.tema}
           </span>
@@ -144,7 +144,7 @@ export function AlertasHistPage() {
   return (
     <div className="space-y-4 p-5">
       <div>
-        <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Histórico de Alertas</h1>
+        <h1 className="text-[27px] font-semibold leading-tight tracking-tight">Histórico de Alertas</h1>
         <p className="text-base text-txt-2">
           Alertas enviados manualmente aos secretários pelo botão "Alertar Secretário"
         </p>

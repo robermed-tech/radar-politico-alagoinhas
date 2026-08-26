@@ -114,7 +114,7 @@ export function ModalShell({
               style={{
                 background: corIcone ? `${corIcone}24` : "rgba(148,163,184,0.10)",
                 border: `1px solid ${corIcone ? `${corIcone}47` : "rgba(148,163,184,0.22)"}`,
-                color: corIcone ?? "#CBD5E1",
+                color: corIcone ?? "#C2D6DB",
               }}
             >
               {icone}

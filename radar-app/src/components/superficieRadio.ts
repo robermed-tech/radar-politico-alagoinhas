@@ -16,11 +16,16 @@
 
 /** Degradê chumbo→quase-preto: o mesmo do radar de coleta e do painel da antena.
  *  Onda 2 do redesign (03/08): as pontas saíram do slate azulado
- *  (#475569→#0F172A) para o chumbo QUENTE da nova paleta — o card escuro era o
+ *  (#475569→#0F172A) para o chumbo QUENTE do redesign de 03/08 e, em 26/08,
+ *  para o PETRÓLEO da paleta da marca (#2E5560→#04242F): pelo mesmo argumento
+ *  das duas vezes anteriores, a superfície escura tem que ser a mesma família
+ *  do resto do produto, senão o card lê como recorte de outro sistema.
+ *  Contraste remedido na ponta clara, o pior caso: branco 6,53:1, rótulo a 78%
+ *  de alpha 4,52:1 — o card escuro era o
  *  último pedaço frio numa tela inteira creme/laranja. Contraste conferido na
  *  ponta clara, que é o pior caso: branco 7,68:1 (era 7,58 no slate) e o
  *  rótulo a 78% de alpha 4,55:1 — os dois AA. */
-export const FUNDO_ESCUTA = "linear-gradient(165deg, #55534E 0%, #171613 100%)";
+export const FUNDO_ESCUTA = "linear-gradient(165deg, #2E5560 0%, #04242F 100%)";
 /**
  * Laranja da marca, chapado. Até 31/07 era um degradê de dois tons — a mesma
  * receita do antigo card "Engajamento no período". Com `--brand` virando um
@@ -31,11 +36,11 @@ export const FUNDO_ESCUTA = "linear-gradient(165deg, #55534E 0%, #171613 100%)";
  * qualquer outro botão de marca do painel.
  */
 export const FUNDO_LARANJA = "var(--brand)";
-/** Tinta sobre o laranja. Sólida, nunca preto com alpha: o alpha passa numa
+/** Tinta sobre a marca. Sólida, nunca preto com alpha: o alpha passa numa
  *  ponta do degradê e reprova na outra. */
-export const TINTA_PRETA = "#1A0F02";
-export const TINTA_CLARA = "#F8FAFC";
-export const TINTA_CLARA_2 = "#CBD5E1";
+export const TINTA_PRETA = "#04242F";
+export const TINTA_CLARA = "#F4FAFB";
+export const TINTA_CLARA_2 = "#C2D6DB";
 /** Caixa interna (lista, formulário) sobre o degradê. Base preta QUENTE
  *  (rgba(20,19,16)) acompanhando o degradê novo; a luminância é a mesma da
  *  base slate anterior, então as medições de contraste dos chips valem. */

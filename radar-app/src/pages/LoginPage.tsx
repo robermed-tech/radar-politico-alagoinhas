@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { signInWithPassword, sendPasswordSetupEmail } from "@/lib/auth";
-import { SimboloViratempo, WordmarkViratempo } from "@/components/LogoViratempo";
+import { WordmarkViratempo } from "@/components/LogoViratempo";
+import { FUNDO_ESCUTA } from "@/components/superficieRadio";
 
 const svgProps = {
   width: 22, height: 22, viewBox: "0 0 24 24", fill: "none",
@@ -79,33 +80,34 @@ export function LoginPage() {
       <div className="relative hidden overflow-hidden p-10 lg:flex lg:flex-col">
         {/* Prévia 3 de 04/08: o painel de marca troca o degradê laranja sobre
             foto (e o círculo verde-lima de uma identidade passada) pelo chumbo
-            quente do painel com o SOL da marca flutuando — a mesma cena que
+            escuro do painel com o SOL da marca flutuando — a mesma cena que
             recebe o usuário na Estação Meteorológica logo depois do login. */}
         <div
           className="absolute inset-4 rounded-[32px]"
           style={{
-            background: "linear-gradient(165deg, #55534E 0%, #171613 100%)",
-            boxShadow: "0 30px 70px -24px rgba(23,22,19,0.65)",
+            // Importado, nunca copiado: esta era uma segunda cópia da receita
+            // do FUNDO_ESCUTA e ficou para trás quando a superfície escura foi
+            // do chumbo quente para o petróleo (26/08/26).
+            background: FUNDO_ESCUTA,
+            boxShadow: "0 30px 70px -24px rgba(4,36,47,0.65)",
           }}
         />
         <div
           className="wx-flutuar pointer-events-none absolute right-10 top-10 h-44 w-44 rounded-full"
           style={{
-            background: "radial-gradient(circle at 35% 30%, #FFBE78, #F0862B)",
-            boxShadow: "0 0 70px 22px rgba(247,150,65,0.35)",
+            background: "radial-gradient(circle at 35% 30%, #9BDCE1, #3A9AA4)",
+            boxShadow: "0 0 70px 22px rgba(98,194,202,0.35)",
           }}
         />
 
         <div className="reveal reveal-1 relative z-10 flex h-full flex-col p-8 text-white">
-          <div className="flex items-center gap-3">
-            {/* Painel escuro FIXO nos dois temas: o wordmark não pode usar
-                --brand-text (que resolve escuro no tema claro e sumiria aqui);
-                o "tempo" fica no hex do tema escuro, que passa AA neste fundo. */}
-            <SimboloViratempo tamanho={44} />
-            <div>
-              <div className="wordmark-vt text-2xl">vira<em style={{ color: "#F9A85A" }}>tempo</em></div>
-              <div className="text-sm uppercase tracking-[0.14em] text-white/80">Radar do clima político</div>
-            </div>
+          <div className="flex items-center">
+            {/* Painel escuro FIXO nos dois temas. A marca do arquivo oficial é
+                de uma tinta só, então aqui ela é simplesmente branca — o
+                remendo antigo (o "tempo" no hex do tema escuro, porque
+                --brand-text resolveria escuro no tema claro e sumiria neste
+                fundo) morreu junto com o corte de duas cores. */}
+            <WordmarkViratempo altura={38} className="text-white" />
           </div>
 
           <div className="mt-auto">
@@ -136,12 +138,8 @@ export function LoginPage() {
       <div className="grid place-items-center p-6">
         <div className="w-full max-w-sm">
           {/* logo compacta — visível também no mobile */}
-          <div className="mb-8 flex items-center gap-3 text-txt-1 lg:hidden">
-            <SimboloViratempo tamanho={40} />
-            <div>
-              <div className="text-lg"><WordmarkViratempo /></div>
-              <div className="text-xs uppercase tracking-[0.14em] text-txt-3">Radar do clima político</div>
-            </div>
+          <div className="mb-8 text-txt-1 lg:hidden">
+            <WordmarkViratempo altura={30} />
           </div>
 
           <div className="reveal reveal-2 rounded-[28px] border border-line bg-bg-1 p-8">
@@ -206,7 +204,7 @@ export function LoginPage() {
                 type="submit"
                 disabled={loading || !email.trim() || !password}
                 className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-base font-bold text-white transition hover:opacity-90 disabled:opacity-50"
-                style={{ background: "#0B1220" }}
+                style={{ background: "#04242F" }}
               >
                 {loading ? "Entrando…" : "Entrar"}
                 {!loading && <span aria-hidden>→</span>}

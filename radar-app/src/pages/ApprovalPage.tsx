@@ -399,7 +399,7 @@ export function ApprovalPage() {
       <div className="space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Análise do Clima</h1>
+            <h1 className="text-[27px] font-semibold leading-tight tracking-tight">Análise do Clima</h1>
             <p className="text-base text-txt-2">
               Drill-down do IAD · quem aprova, quem rejeita e por quais temas
             </p>
@@ -428,7 +428,7 @@ export function ApprovalPage() {
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Análise do Clima</h1>
+          <h1 className="text-[27px] font-semibold leading-tight tracking-tight">Análise do Clima</h1>
           <p className="text-base text-txt-2">
             Drill-down do IAD · quem aprova, quem rejeita e por quais temas
           </p>

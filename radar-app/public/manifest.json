@@ -1,11 +1,11 @@
 {
   "name": "Viratempo",
   "short_name": "Viratempo",
-  "description": "Inteligência política municipal em tempo real",
+  "description": "O clima político da cidade, medido nos comentários e nas rádios locais.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0d1117",
-  "theme_color": "#0d1117",
+  "background_color": "#04242F",
+  "theme_color": "#04242F",
   "orientation": "portrait-primary",
   "icons": [
     {

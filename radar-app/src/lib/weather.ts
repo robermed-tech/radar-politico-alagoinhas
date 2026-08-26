@@ -40,8 +40,8 @@ export function getWeather(pct: number): WeatherCond {
       bgLight: "linear-gradient(160deg, #E8F4FF 0%, #F3F8FF 45%, #FFF8E6 100%)",
       image: "/sky/sunny.jpg",
       accent: "#38BDF8", dark: true, heroDark: false,
-      heroGlow: "rgba(249, 168, 90, 0.32)",
-      heroWash: "linear-gradient(155deg, rgba(255, 211, 148, 0.15) 0%, rgba(247, 150, 65, 0.05) 55%, transparent 80%)",
+      heroGlow: "rgba(98,194,202,0.32)",
+      heroWash: "linear-gradient(155deg, rgba(155,220,225,0.15) 0%, rgba(98,194,202,0.05) 55%, transparent 80%)",
     };
   if (pct >= 60)
     return {
@@ -52,7 +52,7 @@ export function getWeather(pct: number): WeatherCond {
       bgLight: "linear-gradient(160deg, #EAF2FF 0%, #F1F5FB 50%, #F6F4EC 100%)",
       image: "/sky/partly.jpg",
       accent: "#60A5FA", dark: true, heroDark: true,
-      heroGlow: "rgba(249, 168, 90, 0.22)",
+      heroGlow: "rgba(98,194,202,0.22)",
       heroWash: "linear-gradient(155deg, rgba(205, 232, 255, 0.12) 0%, rgba(236, 239, 230, 0.05) 55%, transparent 80%)",
     };
   if (pct >= 45)
@@ -64,8 +64,8 @@ export function getWeather(pct: number): WeatherCond {
       bgLight: "linear-gradient(160deg, #EEF1F5 0%, #E6EAF0 50%, #DDE3EB 100%)",
       image: "/sky/cloudy.jpg",
       accent: "#94A3B8", dark: true, heroDark: false,
-      heroGlow: "rgba(151, 145, 135, 0.26)",
-      heroWash: "linear-gradient(155deg, rgba(151, 145, 135, 0.13) 0%, rgba(151, 145, 135, 0.05) 55%, transparent 80%)",
+      heroGlow: "rgba(142, 158, 163, 0.26)",
+      heroWash: "linear-gradient(155deg, rgba(142, 158, 163, 0.13) 0%, rgba(142, 158, 163, 0.05) 55%, transparent 80%)",
     };
   if (pct >= 30)
     return {
@@ -76,8 +76,8 @@ export function getWeather(pct: number): WeatherCond {
       bgLight: "linear-gradient(160deg, #E6EDF3 0%, #DEE7EF 50%, #D6E1EB 100%)",
       image: "/sky/rain.jpg",
       accent: "#38BDF8", dark: true, heroDark: true,
-      heroGlow: "rgba(92, 96, 104, 0.30)",
-      heroWash: "linear-gradient(155deg, rgba(92, 96, 104, 0.15) 0%, rgba(92, 96, 104, 0.06) 55%, transparent 80%)",
+      heroGlow: "rgba(62, 91, 102, 0.30)",
+      heroWash: "linear-gradient(155deg, rgba(62, 91, 102, 0.15) 0%, rgba(62, 91, 102, 0.06) 55%, transparent 80%)",
     };
   if (pct >= 15)
     return {
@@ -88,8 +88,8 @@ export function getWeather(pct: number): WeatherCond {
       bgLight: "linear-gradient(160deg, #EFEAF5 0%, #E7E0F0 50%, #DFD6EC 100%)",
       image: "/sky/storm.jpg",
       accent: "#8B5CF6", dark: true, heroDark: true,
-      heroGlow: "rgba(58, 56, 53, 0.36)",
-      heroWash: "linear-gradient(155deg, rgba(58, 56, 53, 0.17) 0%, rgba(58, 56, 53, 0.07) 55%, transparent 80%)",
+      heroGlow: "rgba(20, 46, 56, 0.36)",
+      heroWash: "linear-gradient(155deg, rgba(20, 46, 56, 0.17) 0%, rgba(20, 46, 56, 0.07) 55%, transparent 80%)",
     };
   return {
     // "Extremo" e não "Severíssimo" (04/08, pedido do cliente). O `cls` segue
@@ -103,7 +103,7 @@ export function getWeather(pct: number): WeatherCond {
     image: "/sky/severe.jpg",
     accent: "#EF4444", dark: true, heroDark: true,
     heroGlow: "rgba(239, 68, 68, 0.14)",
-    heroWash: "linear-gradient(155deg, rgba(239, 68, 68, 0.08) 0%, rgba(58, 56, 53, 0.08) 55%, transparent 80%)",
+    heroWash: "linear-gradient(155deg, rgba(239, 68, 68, 0.08) 0%, rgba(20, 46, 56, 0.08) 55%, transparent 80%)",
   };
 }
 

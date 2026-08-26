@@ -76,7 +76,7 @@ export function ClipeCitacao({ caminho }: { caminho: string | null }) {
       disabled={carregando}
       // Pílula na marca (prévia aprovada em 04/08): o botão de conferir o
       // áudio é a ação principal da citação, não um detalhe cinza. Tinta
-      // escura sobre o laranja, como todo preenchimento de marca.
+      // escura sobre a marca, como todo preenchimento de marca.
       className="inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-[13px] font-bold text-brand-ink transition hover:opacity-90 disabled:opacity-60"
       title="Ouvir este trecho da captação para conferir a transcrição"
     >

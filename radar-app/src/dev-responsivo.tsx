@@ -160,7 +160,7 @@ function Shell() {
               style={{
                 background: "var(--brand)",
                 boxShadow: "0 8px 22px -6px var(--brand-glow), inset 0 1px 0 rgba(255,255,255,0.28)",
-                color: "#1A0F02",
+                color: "#04242F",
               }}
             >
               Estação Meteorológica

@@ -17,7 +17,7 @@ export function EsqueletoPagina({ titulo }: { titulo: string }) {
   return (
     <div className="space-y-4 p-5" role="status" aria-label={`Carregando ${titulo}`}>
       <div>
-        <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">{titulo}</h1>
+        <h1 className="text-[27px] font-semibold leading-tight tracking-tight">{titulo}</h1>
         <div className="esqueleto-bloco mt-2 h-4 w-72 max-w-full" />
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

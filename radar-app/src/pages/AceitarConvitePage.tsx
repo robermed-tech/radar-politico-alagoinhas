@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/lib/auth";
-import { SimboloViratempo, WordmarkViratempo } from "@/components/LogoViratempo";
+import { WordmarkViratempo } from "@/components/LogoViratempo";
 
 /**
  * Tela exibida quando o usuário chega pelo link de convite (e-mail enviado
@@ -33,12 +33,8 @@ export function AceitarConvitePage({ onDone }: { onDone: () => void }) {
   return (
     <div className="grid min-h-screen place-items-center p-6" style={{ background: "var(--wx-bg)" }}>
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex items-center gap-3 text-txt-1">
-          <SimboloViratempo tamanho={40} />
-          <div>
-            <div className="text-lg"><WordmarkViratempo /></div>
-            <div className="text-xs uppercase tracking-[0.14em] text-txt-3">Radar do clima político</div>
-          </div>
+        <div className="mb-8 text-txt-1">
+          <WordmarkViratempo altura={30} />
         </div>
 
         <div className="rounded-[28px] border border-line bg-bg-1 p-8">
@@ -96,7 +92,7 @@ export function AceitarConvitePage({ onDone }: { onDone: () => void }) {
               type="submit"
               disabled={loading || !password || !confirmPassword}
               className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-base font-bold text-brand-ink transition hover:opacity-90 disabled:opacity-50"
-              style={{ background: "var(--brand)", boxShadow: "0 8px 20px rgba(247,150,65,0.35)" }}
+              style={{ background: "var(--brand)", boxShadow: "0 8px 20px rgba(98,194,202,0.35)" }}
             >
               {loading ? "Salvando…" : "Definir senha e entrar"}
               {!loading && <span aria-hidden>→</span>}

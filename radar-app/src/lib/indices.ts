@@ -274,7 +274,7 @@ export const NIVEL_COLOR: Record<NivelCrise, string> = {
 export function nivelBadgeStyle(cor: string) {
   return {
     background: `linear-gradient(180deg, ${cor}E6 0%, ${cor} 100%)`,
-    color: "#1A0F02",
+    color: "#04242F",
     boxShadow: `0 3px 12px -3px ${cor}80, inset 0 1px 0 rgba(255,255,255,0.4)`,
   };
 }

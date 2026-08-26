@@ -52,7 +52,7 @@ function direcaoSlope(serie: number[]): "subindo" | "estavel" | "caindo" {
 
 // Cinza QUENTE (11/08/26): era o slate azulado #94A3B8, destoando da família
 // creme/chumbo do card em que a série é desenhada. Luminância equivalente.
-const COR_OUTROS = "#A29C90";
+const COR_OUTROS = "#95A6AB";
 
 // ── Drill-down de subtemas (comments.subtema) ────────────────────────────────
 const TEMA_LABEL: Record<string, string> = {
@@ -251,9 +251,9 @@ function TimelineClima({ themes, janela }: { themes: DailyTheme[]; janela: numbe
         data: perDia.map((d) => d.pctNeg),
         // Curva na MARCA (prévia 2 de 04/08): série única — a cor não está
         // comparando crítica com elogio, então não precisa do vermelho.
-        lineStyle: { color: "#F79641", width: 2.5 },
-        itemStyle: { color: "#F79641" },
-        areaStyle: glassArea("#F79641"),
+        lineStyle: { color: "#62C2CA", width: 2.5 },
+        itemStyle: { color: "#62C2CA" },
+        areaStyle: glassArea("#62C2CA"),
         // O traçado se desenha na entrada (modelo Trajetória): é a animação
         // nativa do ECharts, roda uma vez e o repouso é a curva completa.
         animationDuration: 1400,
@@ -276,7 +276,7 @@ function TimelineClima({ themes, janela }: { themes: DailyTheme[]; janela: numbe
         data: [
           {
             value: [idxUltimo, perDia[idxUltimo].pctNeg],
-            itemStyle: { color: "#F79641", borderColor: ink.tooltipBg, borderWidth: 3 },
+            itemStyle: { color: "#62C2CA", borderColor: ink.tooltipBg, borderWidth: 3 },
             label: {
               show: true,
               // À esquerda do ponto: o nó é o último da série, encostado na
@@ -314,7 +314,7 @@ function TimelineClima({ themes, janela }: { themes: DailyTheme[]; janela: numbe
           alívio na crítica
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#F79641" }} />
+          <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#62C2CA" }} />
           última leitura
         </span>
       </div>
@@ -425,7 +425,7 @@ function PainelSubtemas() {
  * cheia, ordenada e tingida pela temperatura da crítica. A cor aqui é DADO
  * (% de críticas), não decoração, e a receita é a mesma dos cards semânticos
  * do painel: degradê CLARO da família do sentimento com tinta quase preta
- * por cima (#1A0F02), AA nas duas pontas de cada degradê. Não substitui os
+ * por cima (#04242F), AA nas duas pontas de cada degradê. Não substitui os
  * velocímetros da Análise do Clima (decisão de 24/07, continuam lá): esta é
  * a leitura de RANKING da página de Previsões. A faixa clicada expande a
  * decomposição no lugar, sem trocar de página.
@@ -483,7 +483,7 @@ function TermometroFaixas({ themes, janela }: { themes: DailyTheme[]; janela: nu
                 className="grid w-full items-center gap-x-4 gap-y-1 rounded-xl px-4 py-3 text-left transition-transform duration-200 hover:translate-x-1.5 sm:grid-cols-[minmax(140px,1.1fr)_2fr_auto]"
                 style={{
                   background: fundoDaFaixa(t.pctNeg),
-                  color: "#1A0F02",
+                  color: "#04242F",
                   border: "1px solid rgba(26,15,2,0.10)",
                 }}
               >
@@ -662,7 +662,7 @@ export function TemasPage() {
   if (!view || themes.length === 0)
     return (
       <div className="p-5">
-        <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Previsões</h1>
+        <h1 className="text-[27px] font-semibold leading-tight tracking-tight">Previsões</h1>
         <div className="mt-4 rounded-xl border border-line bg-bg-1 p-6 text-txt-2">
           Ainda sem histórico de temas. Execute o fluxo ÁGORA para popular.
         </div>
@@ -679,7 +679,7 @@ export function TemasPage() {
       {/* Cabeçalho + controles */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Previsões</h1>
+          <h1 className="text-[27px] font-semibold leading-tight tracking-tight">Previsões</h1>
           <p className="text-base text-txt-2">
             Evolução de cada tema — quem está subindo, estável ou caindo
           </p>

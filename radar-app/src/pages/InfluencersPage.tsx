@@ -19,8 +19,8 @@ const COR_ALIADO   = "#22C55E";
 const COR_IMPRENSA = "#EAB308";
 /** Contorno do destaque "mais postou no período" — laranja da marca. Literal
  *  porque o ECharts não resolve `var(--brand)`; acompanhar o token à mão
- *  quando ele mudar (03/08: #FB923C -> #FF6A2B; 04/08: -> #F79641). */
-const COR_DESTAQUE = "#F79641";
+ *  quando ele mudar (03/08: #FB923C -> #FF6A2B; 04/08: -> #62C2CA). */
+const COR_DESTAQUE = "#62C2CA";
 
 const OPOSICAO_FIXA = new Set(["jaldicenunes", "jadilcenunes"]);
 
@@ -157,7 +157,7 @@ export function InfluencersSection({ postsPeriodo = [], dias = 30 }: Props) {
                     borderColor: COR_DESTAQUE,
                     borderWidth: 2,
                     shadowBlur: 14,
-                    shadowColor: "rgba(251,146,60,0.55)",
+                    shadowColor: "rgba(98,194,202,0.55)",
                   }
                 : { ...base, opacity: 0.7 },
               label: {

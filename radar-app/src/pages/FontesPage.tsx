@@ -358,7 +358,7 @@ function KeywordsSection() {
                 ? "bg-brand text-brand-ink"
                 : "border border-line bg-bg-2 text-txt-3 line-through"
             }`}
-            style={k.active ? { boxShadow: "0 6px 16px var(--brand-glow, rgba(247,150,65,0.22))" } : undefined}
+            style={k.active ? { boxShadow: "0 6px 16px var(--brand-glow, rgba(98,194,202,0.22))" } : undefined}
           >
             <button
               onClick={() => run(() => toggleKeyword(k.id, !k.active), k.active ? "✔ Desativada" : "✔ Ativada")}
@@ -424,7 +424,7 @@ export function FontesPage() {
   return (
     <div className="space-y-4 p-5">
       <div>
-        <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Fontes</h1>
+        <h1 className="text-[27px] font-semibold leading-tight tracking-tight">Fontes</h1>
         <p className="text-base text-txt-2">
           Perfis que o radar acompanha e palavras que decidem o que entra na análise
         </p>

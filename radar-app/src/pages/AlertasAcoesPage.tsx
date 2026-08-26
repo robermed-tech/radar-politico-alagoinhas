@@ -284,7 +284,7 @@ export function AlertasAcoesPage() {
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Alertas & Ações</h1>
+          <h1 className="text-[27px] font-semibold leading-tight tracking-tight">Alertas & Ações</h1>
           <p className="text-base text-txt-2">
             O que precisa de atenção e o que fazer · {periodoLabel(dias)}
           </p>

@@ -15,30 +15,33 @@
      mesma família quente da marca. O tema escuro não é uma paleta à parte —
      é a mesma linguagem com menos luz; blobs frios sob um laranja quente
      faziam o escuro parecer outro produto ao lado do claro. */
-  --bg-page: #0A0A0A;
-  --mesh-1: radial-gradient(38% 45% at 15% 20%, rgba(249, 168, 90, 0.16) 0%, transparent 70%);
-  --mesh-2: radial-gradient(45% 50% at 85% 15%, rgba(247, 150, 65, 0.13) 0%, transparent 70%);
-  --mesh-3: radial-gradient(55% 60% at 50% 100%, rgba(224, 80, 26, 0.10) 0%, transparent 70%);
+  --bg-page: #05202A;
+  --mesh-1: radial-gradient(38% 45% at 15% 20%, rgba(98, 194, 202, 0.16) 0%, transparent 70%);
+  --mesh-2: radial-gradient(45% 50% at 85% 15%, rgba(98, 194, 202, 0.12) 0%, transparent 70%);
+  --mesh-3: radial-gradient(55% 60% at 50% 100%, rgba(4, 36, 47, 0.55) 0%, transparent 70%);
   --wx-bg: var(--mesh-1), var(--mesh-2), var(--mesh-3), var(--bg-page);
 
   /* Cards — vidro fosco flutuando sobre o mesh. */
-  --bg-card: rgba(23, 23, 23, 0.55);
-  --border-card: rgba(41, 41, 41, 0.6);
+  --bg-card: rgba(10, 45, 58, 0.55);
+  --border-card: rgba(98, 194, 202, 0.16);
   --g1: var(--bg-card);
   --g2: rgba(255, 255, 255, 0.04);
   --g3: rgba(255, 255, 255, 0.10);
-  --g-raised: rgba(38, 38, 38, 0.72);
+  --g-raised: rgba(14, 55, 70, 0.72);
   --line: var(--border-card);
   --line-strong: rgba(255, 255, 255, 0.22);
   --hairline: rgba(255, 255, 255, 0.14); /* highlight superior do vidro */
   --shadow-ambient: 0 18px 48px -18px rgba(0, 0, 0, 0.66), 0 2px 8px -2px rgba(0, 0, 0, 0.5);
   --shadow-raised: 0 28px 64px -24px rgba(0, 0, 0, 0.72), 0 4px 14px -4px rgba(0, 0, 0, 0.55);
   /* Tinta neutra QUENTE (03/08). Era azulada (#F2F6FD/#AEBED6/#7C8BA6), o que
-     puxava o escuro para o azul justamente onde o claro é creme. Medido sobre
-     o vidro do card (~#141414): 16,34:1 / 9,24:1 / 5,89:1. */
-  --txt1: #F5F1E8;
-  --txt2: #BDB7AC;
-  --txt3: #979187;
+     puxava o escuro para o azul justamente onde o claro é creme. 26/08: com a
+     paleta da marca nova o produto inteiro virou frio, e a tinta seguiu junto
+     pelo MESMO argumento — creme quente sobre petróleo é que passaria a
+     destoar. Medido sobre o vidro do card (~#0C3240): 12,79:1 / 7,64:1 /
+     4,71:1. */
+  --txt1: #EAF2F3;
+  --txt2: #A9C0C6;
+  --txt3: #7E979E;
   --glass-btn: rgba(255, 255, 255, 0.06);
   --glass-btn-border: rgba(255, 255, 255, 0.12);
   --glass-btn-hover: rgba(255, 255, 255, 0.12);
@@ -54,20 +57,28 @@
      único, todo botão de marca usa esta variável direto, sem degradê.
      03/08: o tom passou de #F79641 para #FF6A2B (protótipo aprovado); 04/08:
      voltou para #F79641 a pedido do cliente, com os derivados (glow, texto,
-     degradês) recalibrados na mesma família dourada e re-medidos. A regra do
-     hex único continua valendo — o que muda é o hex, não o mecanismo. */
-  --brand: #F79641;
+     degradês) recalibrados na mesma família dourada e re-medidos.
+     26/08: a marca ganhou paleta própria (manual: teal #62C2CA, petróleo
+     #04242F, preto) e o token virou o TEAL, com toda a família derivada
+     recalibrada e re-medida na cor nova. Efeito colateral bom: o laranja de
+     RISCO (#F97316 e primos, chartTheme/temaColors) deixou de ser vizinho da
+     marca, então cor de marca e cor de alerta não se confundem mais — os dois
+     sistemas seguem paralelos, mas agora também separados no espectro.
+     A regra do hex único continua valendo — o que muda é o hex, não o
+     mecanismo. */
+  --brand: #62C2CA;
   --accent: var(--brand);
-  --brand-glow: rgba(247, 150, 65, 0.34);
-  --gradient-hero: linear-gradient(90deg, #FFBE78, #F79641, #D97A26);
+  --brand-glow: rgba(98, 194, 202, 0.34);
+  --gradient-hero: linear-gradient(90deg, #9BDCE1, #62C2CA, #3A9AA4);
 
   /* Marca como TEXTO é um token separado do preenchimento, e precisa ser
      (03/08). --brand é escolhido para receber tinta escura por cima; usado
-     como cor de letra sobre o fundo da página ele mede 2,56:1 no tema claro
-     e reprova o AA. Aqui no escuro o próprio laranja já passa (6,45:1), mas
-     o token existe nos dois temas para `.text-brand` resolver sozinho — ver
-     a regra de .text-brand mais abaixo. */
-  --brand-text: #F9A85A;
+     como cor de letra sobre o fundo da página ele mede 2,72:1 no tema claro
+     e reprova o AA. Aqui no escuro o próprio teal já passa (8,03:1), mas o
+     token existe nos dois temas para `.text-brand` resolver sozinho — ver a
+     regra de .text-brand mais abaixo. O tom sobe um degrau (9,49:1) para
+     não empatar com o preenchimento e sumir dentro de um botão. */
+  --brand-text: #7FD4DB;
 
   /* Semânticas genéricas de UI (distintas do sistema de clima/risco). */
   --success: #4ADE80;
@@ -90,20 +101,20 @@
      reprovaria num chip de 12px. Medido: 10,57:1 e 6,66:1 aqui no escuro. */
   --sent-ink-pos: #4ADE80;
   --sent-ink-neg: #F87171;
-  --sent-ink-link: #FB923C;
+  --sent-ink-link: #7FD4DB;
 
   /* Céu animado do hero do Clima (CeuAnimado.tsx): nuvens e gota por tema.
      No escuro a nuvem branca viraria um holofote; desce para o creme apagado. */
-  --ceu-nuvem: #BDB7AC;
-  --ceu-nuvem-2: #979187;
-  --ceu-nuvem-escura: #3A3835;
+  --ceu-nuvem: #A9C0C6;
+  --ceu-nuvem-2: #7E979E;
+  --ceu-nuvem-escura: #23414C;
   --ceu-nuvem-halo: rgba(0, 0, 0, 0.5);
-  --ceu-gota: rgba(189, 183, 172, 0.75);
+  --ceu-gota: rgba(169, 192, 198, 0.75);
 
   /* Card de estação da Rádio Escuta (prévia aprovada em 04/08): vidro quente
      com borda laranja. No escuro a superfície é âmbar apagado, não creme. */
-  --estacao-bg: linear-gradient(150deg, rgba(38, 32, 27, 0.85), rgba(26, 22, 18, 0.9));
-  --estacao-borda: rgba(247, 150, 65, 0.30);
+  --estacao-bg: linear-gradient(150deg, rgba(15, 52, 65, 0.85), rgba(8, 34, 44, 0.9));
+  --estacao-borda: rgba(98, 194, 202, 0.30);
 }
 
 /* ── TEMA CLARO ── */
@@ -120,14 +131,14 @@
      #F6F2EA (creme de verdade), o tom do protótipo. O card continua um degrau
      mais claro que a página — é essa diferença, e não a borda, que faz o vidro
      existir; se os dois forem creme igual, o card some. */
-  --bg-page: #F6F2EA;
-  --mesh-1: radial-gradient(42% 48% at 18% 14%, rgba(249, 168, 90, 0.20) 0%, transparent 72%);
-  --mesh-2: radial-gradient(48% 52% at 86% 10%, rgba(247, 150, 65, 0.14) 0%, transparent 70%);
-  --mesh-3: radial-gradient(60% 55% at 50% 106%, rgba(224, 80, 26, 0.09) 0%, transparent 75%);
+  --bg-page: #F1F5F6;
+  --mesh-1: radial-gradient(42% 48% at 18% 14%, rgba(98, 194, 202, 0.26) 0%, transparent 72%);
+  --mesh-2: radial-gradient(48% 52% at 86% 10%, rgba(98, 194, 202, 0.16) 0%, transparent 70%);
+  --mesh-3: radial-gradient(60% 55% at 50% 106%, rgba(4, 36, 47, 0.10) 0%, transparent 75%);
   --wx-bg: var(--mesh-1), var(--mesh-2), var(--mesh-3), var(--bg-page);
 
-  --bg-card: rgba(255, 253, 249, 0.72);
-  --border-card: rgba(58, 61, 66, 0.10);
+  --bg-card: rgba(255, 255, 255, 0.74);
+  --border-card: rgba(4, 36, 47, 0.10);
   --g1: var(--bg-card);
   --g2: rgba(255, 255, 255, 0.55);
   --g3: rgba(15, 23, 42, 0.05);
@@ -135,31 +146,33 @@
   --line: var(--border-card);
   --line-strong: rgba(58, 61, 66, 0.22);
   --hairline: rgba(255, 255, 255, 0.9); /* highlight superior do vidro */
-  --shadow-ambient: 0 14px 40px -18px rgba(58, 61, 66, 0.20), 0 2px 6px -2px rgba(58, 61, 66, 0.09);
-  --shadow-raised: 0 24px 56px -22px rgba(58, 61, 66, 0.26), 0 4px 12px -4px rgba(58, 61, 66, 0.13);
+  --shadow-ambient: 0 14px 40px -18px rgba(4, 36, 47, 0.20), 0 2px 6px -2px rgba(4, 36, 47, 0.09);
+  --shadow-raised: 0 24px 56px -22px rgba(4, 36, 47, 0.26), 0 4px 12px -4px rgba(4, 36, 47, 0.13);
   /* Tinta na família do CHUMBO do briefing (cinza quente), não mais o azul
      ardósia (#0b1220/#3f4b5e/#586577). Medido sobre a página (#F6F2EA) e
-     sobre o vidro do card (~#FCFAF6): 13,21/14,15 — 7,36/7,88 — 5,65/6,05.
-     Nenhum deles é o #8b8579 do protótipo, que mede 3,28:1 e reprova o AA
-     justamente nos rótulos de 11px em que ele estava aplicado. */
-  --txt1: #26282D;
-  --txt2: #4B4F57;
-  --txt3: #5C6068;
-  --glass-btn: rgba(255, 253, 249, 0.78);
-  --glass-btn-border: rgba(58, 61, 66, 0.12);
+     sobre o vidro do card (~#FDFEFE): 14,76/15,32 — 6,62/6,87 — 4,57/4,74.
+     26/08: a família saiu do chumbo quente e foi para o petróleo da marca —
+     a tinta 1 é o próprio #04242F do manual. Nenhum deles é o #8b8579 do
+     protótipo, que mede 3,28:1 e reprova o AA justamente nos rótulos de 11px
+     em que ele estava aplicado. */
+  --txt1: #04242F;
+  --txt2: #3E5B66;
+  --txt3: #5B737D;
+  --glass-btn: rgba(255, 255, 255, 0.80);
+  --glass-btn-border: rgba(4, 36, 47, 0.12);
   --glass-btn-hover: rgba(255, 255, 255, 0.96);
 
-  /* Mesmo hex do tema escuro (#F79641) — ver o comentário da marca no bloco
+  /* Mesmo hex do tema escuro (#62C2CA) — ver o comentário da marca no bloco
      .theme-dark acima. Só o glow muda de intensidade entre os temas, nunca
      a cor do botão em si. */
-  --brand: #F79641;
+  --brand: #62C2CA;
   --accent: var(--brand);
-  --brand-glow: rgba(247, 150, 65, 0.22);
-  --gradient-hero: linear-gradient(90deg, #C9660D, #A64B07, #7A3A05);
+  --brand-glow: rgba(98, 194, 202, 0.22);
+  --gradient-hero: linear-gradient(90deg, #12808C, #0E6B75, #084F57);
 
-  /* Marca como TEXTO no tema claro: laranja queimado da família do #F79641
-     (5,18:1 na página, 5,67:1 no card). O --brand chapado mediria ~2,2:1. */
-  --brand-text: #A64B07;
+  /* Marca como TEXTO no tema claro: teal fechado da família do #62C2CA
+     (5,67:1 na página, 5,88:1 no card). O --brand chapado mediria 2,08:1. */
+  --brand-text: #0E6B75;
 
   /* Verde e vermelho continuam sendo APENAS sentimento (a paleta do briefing
      — laranja/chumbo/off-white — é a da interface, não a do dado). Os tons
@@ -175,8 +188,8 @@
   --violet-soft: rgba(109, 40, 217, 0.07);
   --violet-border: rgba(109, 40, 217, 0.28);
 
-  --quote-bg: rgba(58, 61, 66, 0.035);
-  --quote-border: rgba(58, 61, 66, 0.10);
+  --quote-bg: rgba(4, 36, 47, 0.035);
+  --quote-border: rgba(4, 36, 47, 0.10);
 
   /* Tintas de sentimento para TEXTO no tema claro. Verde-700 e vermelho-700,
      não o par de gráfico: medido sobre o vidro do box (#FFFCF9), #22C55E dá
@@ -184,7 +197,7 @@
      12px. Estes dão 4,91:1, 6,33:1 e 5,67:1. */
   --sent-ink-pos: #15803D;
   --sent-ink-neg: #B91C1C;
-  --sent-ink-link: #A64B07;
+  --sent-ink-link: #0E6B75;
 
   /* Céu animado no tema claro. A primeira versão usava nuvem BRANCA (a do
      protótipo, que vivia colada no sol laranja) — medida sobre o card claro
@@ -192,15 +205,15 @@
      desaparecia (defeito apontado pelo cliente em 04/08 com print). Agora a
      nuvem é creme-acinzentada (1,34:1 de massa) e o CeuAnimado soma um
      contorno por drop-shadow (--ceu-nuvem-halo), que é o que define a borda. */
-  --ceu-nuvem: #E3D9C4;
-  --ceu-nuvem-2: #CDC1A8;
-  --ceu-nuvem-escura: #55534E;
-  --ceu-nuvem-halo: rgba(58, 61, 66, 0.35);
-  --ceu-gota: rgba(92, 96, 104, 0.7);
+  --ceu-nuvem: #DCE6E8;
+  --ceu-nuvem-2: #BFCFD3;
+  --ceu-nuvem-escura: #4E6068;
+  --ceu-nuvem-halo: rgba(4, 36, 47, 0.35);
+  --ceu-gota: rgba(62, 91, 102, 0.7);
 
   /* Card de estação da Rádio Escuta no claro: o creme quente do protótipo. */
-  --estacao-bg: linear-gradient(150deg, #FFF9F3, #FBEEE1);
-  --estacao-borda: rgba(247, 150, 65, 0.20);
+  --estacao-bg: linear-gradient(150deg, #FBFEFE, #E4F2F3);
+  --estacao-borda: rgba(98, 194, 202, 0.28);
 }
 
 /* Fallback sólido para navegadores sem backdrop-filter (Firefox < 103):
@@ -208,10 +221,10 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .theme-dark,
   :root {
-    --bg-card: #171717;
+    --bg-card: #0C3240;
   }
   .theme-light {
-    --bg-card: #FFFDF9;
+    --bg-card: #FDFEFE;
   }
 }
 
@@ -240,13 +253,19 @@ body {
    já causou um bug (a primeira versão do box "Publicações analisadas" saiu
    preta com texto em peso regular, porque font-bold apontava para 400). */
 
-/* Título de página, título de card e número em destaque vão para a DISPLAY
-   (Space Grotesk); o texto corrido fica na Inter. A regra é aplicada aqui, no
-   elemento, e não classe a classe nos componentes: os <h1> das páginas já são
-   padronizados (34px/800 desde 28/07) e passariam a divergir um do outro na
-   primeira tela que alguém esquecesse de marcar. `h3` fica de fora de
-   propósito — em vários cards ele é linha de conteúdo, não título. */
-h1,
+/* Título de CARD e número em destaque vão para a DISPLAY (Space Grotesk); o
+   texto corrido fica na Inter. A regra é aplicada aqui, no elemento, e não
+   classe a classe nos componentes: senão as telas divergiriam uma da outra na
+   primeira que alguém esquecesse de marcar. `h3` fica de fora de propósito —
+   em vários cards ele é linha de conteúdo, não título.
+
+   26/08/26: o `h1` SAIU desta regra. O título de página passou a ser Inter
+   600 / 27px (decisão do Robério sobre o modelo da paleta nova), e não mais
+   Space Grotesk 800 / 34px, que era o padrão de 28/07. O que continua valendo
+   da decisão de 28/07 é o principal: o título é o MESMO em toda página da
+   barra lateral. As páginas órfãs (CommandCenter, CrisisCenter, TrendsPage,
+   AssistantPage, GlossaryPage) ficaram no `text-2xl` antigo, como já estavam
+   — não têm rota nem item de menu. */
 h2,
 .section-label,
 .metric-hero {
@@ -279,7 +298,7 @@ button:disabled {
   cursor: not-allowed;
 }
 :focus-visible {
-  /* var(--brand), nunca um laranja escrito à mão: era #f97316 aqui, que virou
+  /* var(--brand), nunca um teal escrito à mão: era #f97316 aqui, que virou
      uma terceira fonte de laranja no app depois da unificação de 31/07. */
   outline: 2px solid var(--brand);
   outline-offset: 2px;
@@ -367,10 +386,10 @@ button:disabled {
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
-/* Degradê só na direção escura do laranja: sobre o creme, o stop claro
-   (#FDBA74) media 1,9:1 e o número hero ficava ilegível na ponta de cima. */
+/* Degradê só na direção escura do teal: sobre o off-white, o stop claro
+   (#9BDCE1) mede 1,5:1 e o número hero ficaria ilegível na ponta de cima. */
 .metric-accent {
-  background: linear-gradient(180deg, #C9660D 0%, #A64B07 62%, #7A3A05 100%);
+  background: linear-gradient(180deg, #12808C 0%, #0E6B75 62%, #084F57 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -409,7 +428,7 @@ button:disabled {
    fica aqui: a utilidade continua se chamando text-brand e passa a resolver
    por tema. Declarada depois de @tailwind utilities, então vence por ordem;
    `hover:text-brand` tem pseudo-classe e continua ganhando desta, que é o
-   comportamento desejado (o hover pode acender no laranja cheio). */
+   comportamento desejado (o hover pode acender na marca cheia). */
 .text-brand {
   color: var(--brand-text);
 }
@@ -505,16 +524,6 @@ button:disabled {
    prefers-reduced-motion o setor fica parado e o desenho continua completo.
    Vive aqui porque o símbolo tem vários consumidores (sidebar, Login,
    Aceitar Convite), a mesma regra dos demais keyframes compartilhados. */
-@keyframes vt-girar {
-  to { transform: rotate(360deg); }
-}
-.vt-varredura {
-  transform-box: view-box;
-  transform-origin: 50% 50%;
-  animation: vt-girar 9s linear infinite;
-  will-change: transform;
-}
-
 /* Barra que cresce da esquerda na entrada (termômetro de temas do Viratempo;
    scaleX no compositor, nunca width). O delay vem inline, escalonado por
    linha. */
@@ -528,20 +537,8 @@ button:disabled {
   will-change: transform;
 }
 
-/* Wordmark da marca: "vira" na tinta do texto, "tempo" em --brand-text. */
-.wordmark-vt {
-  font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
-  font-synthesis-weight: none;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-.wordmark-vt em {
-  font-style: normal;
-  color: var(--brand-text);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .wx-flutuar, .eq-barra, .vt-varredura, .vt-crescer-x { animation: none; }
+  .wx-flutuar, .eq-barra, .vt-crescer-x { animation: none; }
   /* O halo sem animação seria um anel parado sobre o LED; some. O ponto em si
      (o dado: ligado/desligado) continua visível. */
   .led-pulso { animation: none; opacity: 0; }
@@ -586,19 +583,19 @@ button:disabled {
    valores escuros já auditados de contraste — nada aqui reimplementa cor de
    texto de comentário. Estes estilos cuidam só da CASCA. */
 .modal-fundo {
-  background: rgba(2, 6, 23, 0.72);
+  background: rgba(2, 14, 18, 0.72);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   animation: modal-fundo-surgir 0.18s ease-out;
 }
 .modal-caixa {
   background:
-    radial-gradient(120% 60% at 50% -10%, rgba(96, 130, 195, 0.16) 0%, transparent 60%),
-    linear-gradient(180deg, #14203A 0%, #0C1527 52%, #0A111F 100%);
-  border: 1px solid rgba(148, 163, 184, 0.16);
+    radial-gradient(120% 60% at 50% -10%, rgba(98, 194, 202, 0.16) 0%, transparent 60%),
+    linear-gradient(180deg, #08232E 0%, #061A22 52%, #05151C 100%);
+  border: 1px solid rgba(150, 178, 184, 0.16);
   /* Fio de luz na aresta superior, como na referência: o brilho vem de cima. */
   box-shadow:
-    inset 0 1px 0 rgba(226, 232, 240, 0.22),
+    inset 0 1px 0 rgba(226, 238, 240, 0.22),
     0 42px 90px -28px rgba(0, 0, 0, 0.8),
     0 8px 24px -8px rgba(0, 0, 0, 0.6);
   animation: modal-caixa-surgir 0.22s cubic-bezier(0.16, 1, 0.3, 1);
@@ -637,13 +634,13 @@ button:disabled {
   background: transparent;
 }
 .modal-caixa ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.28);
+  background: rgba(150, 178, 184, 0.28);
   border: 3px solid transparent;
   background-clip: padding-box;
   border-radius: 999px;
 }
 .modal-caixa ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.45);
+  background: rgba(150, 178, 184, 0.45);
   background-clip: padding-box;
 }
 @keyframes modal-fundo-surgir {
@@ -660,24 +657,24 @@ button:disabled {
 /* Painel interno: um degrau mais escuro que a casca, como o corpo de texto da
    referência. Filho direto de texto herda tinta clara pelos tokens do tema. */
 .modal-painel {
-  background: rgba(2, 8, 23, 0.5);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(2, 14, 18, 0.5);
+  border: 1px solid rgba(150, 178, 184, 0.12);
 }
 /* Botão primário do modal: pílula clara com texto quase preto (a receita de
    contraste do painel: fundo claro + tinta escura, nunca o contrário). */
 .modal-botao-primario {
-  background: linear-gradient(150deg, #FFFFFF 0%, #E2E8F4 100%);
-  color: #0B1426;
-  box-shadow: 0 10px 24px -10px rgba(226, 232, 244, 0.35);
+  background: linear-gradient(150deg, #FFFFFF 0%, #E4F1F2 100%);
+  color: #04242F;
+  box-shadow: 0 10px 24px -10px rgba(226, 238, 240, 0.35);
   transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
 }
 .modal-botao-primario:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 14px 28px -10px rgba(226, 232, 244, 0.45);
+  box-shadow: 0 14px 28px -10px rgba(226, 238, 240, 0.45);
 }
 .modal-botao-primario:disabled { opacity: 0.4; }
 .modal-botao-primario:focus-visible {
-  outline: 2px solid #E2E8F4;
+  outline: 2px solid #E4F1F2;
   outline-offset: 2px;
 }
 

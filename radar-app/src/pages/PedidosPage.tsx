@@ -73,7 +73,7 @@ export function PedidosPage() {
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Pedidos do Povo</h1>
+          <h1 className="text-[27px] font-semibold leading-tight tracking-tight">Pedidos do Povo</h1>
           <p className="text-base text-txt-2">
             Demandas concretas extraídas dos comentários · {periodoLabel(dias)}
           </p>
@@ -130,8 +130,8 @@ export function PedidosPage() {
                     className="grid w-full items-center gap-3 rounded-xl border px-3 py-1.5 text-left transition"
                     style={{
                       gridTemplateColumns: "150px 1fr 70px",
-                      borderColor: ativo ? "rgba(247,150,65,0.35)" : "transparent",
-                      background: ativo ? "rgba(247,150,65,0.10)" : undefined,
+                      borderColor: ativo ? "rgba(98,194,202,0.35)" : "transparent",
+                      background: ativo ? "rgba(98,194,202,0.10)" : undefined,
                     }}
                     title={`Ver só os pedidos de ${labelTema(tema)}`}
                   >

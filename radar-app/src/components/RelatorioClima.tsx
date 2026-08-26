@@ -124,7 +124,7 @@ export function RelatorioClima({ posts, comentarios }: Props) {
                   type="radio"
                   name="periodo-relatorio"
                   className="h-4 w-4"
-                  style={{ accentColor: ativo ? "#1A0F02" : "var(--brand)" }}
+                  style={{ accentColor: ativo ? "#04242F" : "var(--brand)" }}
                   checked={ativo}
                   onChange={() => setDias(p.dias)}
                 />
@@ -161,7 +161,7 @@ export function RelatorioClima({ posts, comentarios }: Props) {
           titulo={`Relatório do clima · ${periodoLabel(pdf.dias)}`}
           subtitulo="Confira o documento abaixo e baixe o arquivo."
           icone={<IconeRelatorio />}
-          corIcone="#F79641"
+          corIcone="#62C2CA"
           larguraMax="max-w-4xl"
           rodape={
             <>

@@ -71,7 +71,7 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
     >
       <div
         className="pointer-events-none absolute -right-16 -top-28 h-[380px] w-[380px] rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(249,168,90,0.30) 0%, transparent 65%)" }}
+        style={{ background: "radial-gradient(circle, rgba(98,194,202,0.30) 0%, transparent 65%)" }}
       />
       <div
         className="pointer-events-none absolute inset-y-0 right-0 hidden sm:block"

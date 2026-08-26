@@ -62,20 +62,20 @@ export function PeriodoFilter({ dias, onChange, ariaLabel = "Período de anális
             className={`rounded-md px-3.5 py-1 text-sm transition ${
               ativo ? "" : "text-txt-2 hover:text-txt-1"
             }`}
-            // Tinta escura sobre o laranja, e não branca: é a decisão de
+            // Tinta escura sobre a marca, e não branca: é a decisão de
             // contraste da reunião de 24/07, já usada na pílula ativa do menu
-            // e no box de engajamento. Branco sobre o laranja da marca mede
-            // 2,86:1 e reprova no AA (mínimo 4,5); com #1A0F02 mede 6,60:1.
+            // e no box de engajamento. Branco sobre o teal da marca mede
+            // 2,86:1 e reprova no AA (mínimo 4,5); com #04242F mede 6,60:1.
             //
             // `var(--brand)` chapado, e não um degradê: até 30/07 o token
             // mudava de tom entre o tema claro e o escuro, e um degradê
             // hardcoded (dois stops fixos) foi o jeito de disfarçar isso —
             // só que aí o mesmo botão passou a ter dois tons DENTRO de si
-            // mesmo, e cada tela que precisava do "mesmo laranja" replicava
+            // mesmo, e cada tela que precisava da "mesma cor" replicava
             // um degradê ligeiramente diferente (a queixa de 31/07: os
             // botões de período e o "Mais citados" do Feed liam como dois
             // laranjas distintos lado a lado). Desde a revisão de 31/07,
-            // `--brand` é um hex único (#F79641) nos dois temas — o botão
+            // `--brand` é um hex único (#62C2CA) nos dois temas — o botão
             // fica chapado e casa com qualquer outro botão de marca da tela.
             //
             // O peso vem inline porque a diretriz tipográfica global do
@@ -83,7 +83,7 @@ export function PeriodoFilter({ dias, onChange, ariaLabel = "Período de anális
             // de peso aqui não teria efeito nenhum.
             style={
               ativo
-                ? { background: "var(--brand)", color: "#1A0F02", fontWeight: 800 }
+                ? { background: "var(--brand)", color: "#04242F", fontWeight: 800 }
                 : { fontWeight: 600 }
             }
           >

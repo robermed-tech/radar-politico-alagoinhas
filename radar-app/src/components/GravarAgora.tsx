@@ -27,7 +27,7 @@ import {
  * painel o poder de queimar crédito da Apify.
  *
  * Paleta: degradê chumbo→quase-preto (o mesmo do radar de coleta, do painel da
- * antena e do box de comentário) com o botão em laranja da marca (`var(--brand)`,
+ * antena e do box de comentário) com o botão na cor da marca (`var(--brand)`,
  * chapado) e texto quase preto — medido em 8,44:1 de contraste. Vermelho seria
  * o óbvio para "REC", mas neste painel vermelho é sentimento negativo, nunca
  * controle. As constantes moram em `superficieRadio.ts` desde que o card

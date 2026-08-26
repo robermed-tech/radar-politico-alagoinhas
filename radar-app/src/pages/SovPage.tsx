@@ -30,7 +30,7 @@ import { EsqueletoPagina } from "@/components/EsqueletoPagina";
 /** Preenchimento e tinta de cada lado, por tema. Gestão é sempre a marca. */
 function coresDosLados(tema: "light" | "dark"): Record<Lado, { bg: string; ink: string }> {
   return {
-    governo: { bg: "var(--brand)", ink: "#1A0F02" },
+    governo: { bg: "var(--brand)", ink: "#04242F" },
     oposicao:
       tema === "light"
         ? { bg: "#4B4A46", ink: "#F5F1E8" }
@@ -120,7 +120,7 @@ export function SovPage() {
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Divisão da Conversa</h1>
+          <h1 className="text-[27px] font-semibold leading-tight tracking-tight">Divisão da Conversa</h1>
           <p className="text-base text-txt-2">
             Quanto do debate público é da gestão, da oposição e da imprensa
           </p>
@@ -391,7 +391,7 @@ export function SovPage() {
                     />
                     <div
                       className="absolute right-0 top-0"
-                      style={{ width: `${100 - CORTE_X}%`, height: `${100 - corteY!}%`, background: "rgba(247,150,65,0.10)" }}
+                      style={{ width: `${100 - CORTE_X}%`, height: `${100 - corteY!}%`, background: "rgba(98,194,202,0.10)" }}
                     />
                     <div
                       className="absolute bottom-0 right-0"

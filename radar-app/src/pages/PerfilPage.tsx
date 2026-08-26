@@ -53,13 +53,16 @@ const ORDEM_GRUPO = ["Governo", "Imprensa", "Oposição", "Outros"];
  * qualquer ponto do chip porque a base NUNCA sai da faixa escura, e o brilho
  * tem teto baixo (24% no máximo, no estado ativo).
  *
- * A ponta clara da base é chumbo (#334155, slate-700), não um cinza mais
+ * A ponta clara da base é petróleo (#1F4552, a família da marca desde
+ * 26/08/26 — luminância idêntica à do slate-700 #334155 que ele substitui, de
+ * propósito: assim a medição de contraste abaixo continua valendo), não um
+ * cinza mais
  * aberto (slate-600): medido num harness de contraste, o brilho por cima
  * empurrava o texto branco pra 4,13:1 (inativo) e 2,54:1 (ativo) no canto
  * mais claro do botão — os dois abaixo do mínimo AA de 4,5. Com a base mais
  * escura e o teto do brilho reduzido, o mesmo cálculo dá 6,83:1 e 5,12:1.
  */
-const FUNDO_PERFIL_BASE = "linear-gradient(150deg, #334155 0%, #1E293B 55%, #020617 100%)";
+const FUNDO_PERFIL_BASE = "linear-gradient(150deg, #1F4552 0%, #0F2C35 55%, #010C10 100%)";
 const BRILHO_PERFIL = "linear-gradient(120deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 46%)";
 const BRILHO_PERFIL_ATIVO = "linear-gradient(120deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0) 58%)";
 
@@ -254,7 +257,7 @@ export function PerfilPage() {
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">Análise por Perfil</h1>
+          <h1 className="text-[27px] font-semibold leading-tight tracking-tight">Análise por Perfil</h1>
           <p className="text-base text-txt-2">
             Quem fala do prefeito, da prefeitura e da gestão · {periodoLabel(dias)}
           </p>
@@ -345,7 +348,7 @@ export function PerfilPage() {
                 `var(--brand-text)` (5,54:1 no claro). */}
             <span
               className="font-display text-[30px] font-bold leading-none tracking-tight sm:text-[40px]"
-              style={{ wordBreak: "break-all", color: "#F79641" }}
+              style={{ wordBreak: "break-all", color: "#62C2CA" }}
             >
               @{perfilAtivo.autor}
             </span>

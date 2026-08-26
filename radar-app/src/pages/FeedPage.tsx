@@ -147,7 +147,7 @@ export function FeedPage() {
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-tight tracking-tight">O que o povo diz</h1>
+          <h1 className="text-[27px] font-semibold leading-tight tracking-tight">O que o povo diz</h1>
           <p className="text-base text-txt-2">
             {posts.length} publicaç{posts.length === 1 ? "ão" : "ões"} · {periodoLabel}
           </p>
@@ -170,7 +170,7 @@ export function FeedPage() {
                   }`}
                   style={
                     ativo
-                      ? { background: "var(--brand)", color: "#1A0F02", fontWeight: 700 }
+                      ? { background: "var(--brand)", color: "#04242F", fontWeight: 700 }
                       : { fontWeight: 600 }
                   }
                 >

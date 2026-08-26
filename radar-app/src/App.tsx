@@ -25,7 +25,7 @@ import { RequireAuth, RequireAdmin } from "@/components/ProtectedRoute";
 import { useAuth } from "@/components/AuthProvider";
 import { signOut } from "@/lib/auth";
 import { PipelineHealthBanner } from "@/components/PipelineHealthBanner";
-import { SimboloViratempo, WordmarkViratempo } from "@/components/LogoViratempo";
+import { WordmarkViratempo } from "@/components/LogoViratempo";
 import { useHydrateSettings } from "@/lib/settings";
 import { useTrackPresence } from "@/lib/presence";
 
@@ -255,14 +255,14 @@ export default function App() {
         className="hidden w-56 shrink-0 flex-col border-r border-line bg-bg-1 p-3 md:flex"
         style={{ boxShadow: "6px 0 28px -10px rgba(0,0,0,0.30)" }}
       >
-        <div className="mb-6 flex items-center gap-2.5 px-2">
-          <span className="shrink-0 text-txt-1">
-            <SimboloViratempo tamanho={32} />
-          </span>
-          <div className="leading-tight">
-            <div className="text-[17px] text-txt-1"><WordmarkViratempo /></div>
-            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-txt-3">Radar do clima político</div>
-          </div>
+        {/* Marca sozinha (26/08/26, decisão do Robério sobre o modelo A): o anel
+            de varredura e a tagline "Radar do clima político" saíram daqui, do
+            Login e do PDF. A wordmark do arquivo oficial é larga (5,10:1) e
+            responde por si; um símbolo ao lado a espremeria numa coluna de
+            224px. O tique quadrado continua existindo para favicon e ícone do
+            app, onde a palavra não caberia — ver LogoViratempo.tsx. */}
+        <div className="mb-6 px-2 text-txt-1">
+          <WordmarkViratempo altura={26} />
         </div>
 
         <nav className="flex flex-col gap-1.5">
@@ -277,9 +277,9 @@ export default function App() {
                     ? ""
                     : "text-txt-2 hover:bg-bg-2 hover:text-txt-1"
                 }`}
-                style={isCurrent ? { ...NAV_GLOW, color: "#1A0F02" } : undefined}
+                style={isCurrent ? { ...NAV_GLOW, color: "#04242F" } : undefined}
               >
-                <span className="flex h-4 w-4 items-center justify-center shrink-0" style={{ color: isCurrent ? "#1A0F02" : "var(--txt2)" }}>
+                <span className="flex h-4 w-4 items-center justify-center shrink-0" style={{ color: isCurrent ? "#04242F" : "var(--txt2)" }}>
                   {n.icon}
                 </span>
                 {n.label}
@@ -331,7 +331,7 @@ export default function App() {
                 }`}
                 // Mesma tinta escura da pílula do menu desktop: branco sobre
                 // var(--brand) mede 2,24:1 e reprova o AA (regra do projeto).
-                style={n.id === page ? { ...NAV_GLOW, color: "#1A0F02" } : undefined}
+                style={n.id === page ? { ...NAV_GLOW, color: "#04242F" } : undefined}
               >
                 {n.label}
               </button>

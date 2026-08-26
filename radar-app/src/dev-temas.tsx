@@ -8,7 +8,7 @@
 //      vermelho, alívio em âmbar, última leitura na marca) e o traçado que se
 //      desenha na entrada.
 //   2) Termômetro de temas em faixas: ranking tingido pela temperatura da
-//      crítica (receita dos cards semânticos: degradê claro + tinta #1A0F02),
+//      crítica (receita dos cards semânticos: degradê claro + tinta #04242F),
 //      com a decomposição abrindo no clique.
 //
 // Rodar: npm run dev e abrir /temas-dev.html (?tema=light alterna o tema).

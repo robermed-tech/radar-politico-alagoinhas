@@ -24,17 +24,19 @@ export default {
         },
         line: { DEFAULT: "var(--line)", strong: "var(--line-strong)", card: "var(--border-card)" },
         txt: { 1: "var(--txt1)", 2: "var(--txt2)", 3: "var(--txt3)" },
-        // Marca — laranja de interação, único hex nos dois temas desde 31/07
+        // Marca — teal de interação (paleta da marca, 26/08/26), único hex nos
+        // dois temas desde 31/07
         // (ver o comentário de --brand no index.css). accent é alias de brand
         // (mesma cor, dois nomes) para reaproveitar os 40+ usos existentes de
         // bg-brand/text-brand sem duplicar o token. `ink` é a tinta quase
         // preta para texto SOBRE um preenchimento brand (mesmo par que
-        // `lime.ink` já usava): branco sobre #F79641 mede 2,24:1 e reprova o
-        // AA; `ink` mede 8,44:1. `2` e `skycard` eram cópias hardcoded do
+        // `lime.ink` já usava): branco sobre #62C2CA mede 2,08:1 e reprova o
+        // AA; `ink` (o petróleo #04242F do manual da marca) mede 7,77:1 e é o
+        // par que a própria identidade define. `2` e `skycard` eram cópias do
         // brand de antes da unificação (uma delas presa ao tom do tema
         // escuro) — viram alias do token único para não haver uma terceira
         // fonte de laranja no app.
-        brand: { DEFAULT: "var(--brand)", 2: "var(--brand)", ink: "#1A0F02" },
+        brand: { DEFAULT: "var(--brand)", 2: "var(--brand)", ink: "#04242F" },
         accent: "var(--accent)",
         risk: { low: "#22C55E", mod: "#EAB308", high: "#EF8C00", crit: "#EF4444" },
         sent: { pos: "#22C55E", neu: "#64748B", neg: "#EF4444" },

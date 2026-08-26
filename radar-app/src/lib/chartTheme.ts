@@ -7,21 +7,24 @@ import type { Theme } from "@/stores/theme";
  *  azul-marinho), e dentro do card creme o gráfico parecia de outro produto —
  *  o mesmo defeito que trocou o mesh escuro de índigo para laranja. Agora o
  *  eixo é a própria tinta txt2 do tema e grade/trilho/tooltip vêm da família
- *  creme/chumbo do index.css. Medido: eixo claro #4B4F57 7,88:1 no card e
- *  7,36:1 na página; eixo escuro #BDB7AC 9,24:1; texto de tooltip 14,52:1
+ *  creme/chumbo do index.css e, em 26/08, para a família FRIA da paleta da
+ *  marca — o gráfico segue a página, senão vira recorte de outro produto (o
+ *  mesmo argumento que o tirou do slate azulado em 03/08). Medido: eixo claro
+ *  #3E5B66 6,87:1 no card e 6,62:1 na página; eixo escuro #A9C0C6 7,64:1;
+ *  texto de tooltip 14,52:1
  *  (claro) e 15,24:1 (escuro). */
 export function chartInk(theme: Theme) {
   const light = theme === "light";
   return {
-    axis: light ? "#4B4F57" : "#BDB7AC",       // labels dos eixos + legenda (= txt2 do tema)
-    axisLine: light ? "#D8D2C6" : "#3A3835",
-    grid: light ? "#E8E2D6" : "#2A2825",        // linhas de grade
-    tooltipBg: light ? "#FFFDF9" : "#1D1B18",   // a cor do card do tema, não branco puro
-    tooltipBorder: light ? "#D8D2C6" : "#3A3835",
-    tooltipText: light ? "#26282D" : "#F5F1E8",
-    detail: light ? "#26282D" : "#F5F1E8",       // número central do gauge
-    track: light ? "#E8E2D6" : "#2E2C28",        // trilho do gauge
-    title: light ? "#4B4F57" : "#BDB7AC",
+    axis: light ? "#3E5B66" : "#A9C0C6",       // labels dos eixos + legenda (= txt2 do tema)
+    axisLine: light ? "#CFDDE0" : "#23414C",
+    grid: light ? "#E1EBED" : "#183541",        // linhas de grade
+    tooltipBg: light ? "#FDFEFE" : "#0C3240",   // a cor do card do tema, não branco puro
+    tooltipBorder: light ? "#CFDDE0" : "#23414C",
+    tooltipText: light ? "#04242F" : "#EAF2F3",
+    detail: light ? "#04242F" : "#EAF2F3",       // número central do gauge
+    track: light ? "#E1EBED" : "#1B3A46",        // trilho do gauge
+    title: light ? "#3E5B66" : "#A9C0C6",
   };
 }
 
@@ -109,7 +112,7 @@ export function glowLine(color: string, width = 3) {
 export const COLOR_SENTIMENT = {
   pos:      "#22C55E",
   neg:      "#EF4444",
-  neu:      "#ABA598",
+  neu:      "#9EAFB4",
   atenção:  "#EAB308",
   alto:     "#F97316",
   critico:  "#EF4444",
