@@ -16,7 +16,7 @@ import { fmtInt, fmtDataBR, fraseCapitalizada, limparTravessoes } from "@/lib/fo
 import { useAuth } from "@/components/AuthProvider";
 import { EvidenciaComentariosModal } from "@/components/EvidenciaComentariosModal";
 import { PublicacoesModal } from "@/components/PublicacoesModal";
-import { RadarStatusBar, RadarStatusColumn } from "@/components/RadarStatusBar";
+import { RadarStatusBar, RadarStatusChip } from "@/components/RadarStatusBar";
 import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 // Import direto: desde 27/07 o velocímetro é SVG puro (não puxa mais o chunk
 // de ~1 MB do ECharts), então não há mais motivo para carregá-lo em lazy.
@@ -235,9 +235,31 @@ function WeatherIcon({ cls, size = 64, color = "currentColor", strokeWidth = 1.5
  * "Análise do clima" entra para dentro do box, em chumbo e branco (cor neutra,
  * sem verde/vermelho que sugerisse julgamento).
  */
-function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number }) {
+function DiagnosticoCard({
+  briefing,
+  dias,
+  onVerFeed,
+}: {
+  briefing: Briefing;
+  dias: number;
+  onVerFeed?: () => void;
+}) {
   return (
-    <div className="card-hover h-full rounded-[28px] border border-line bg-bg-1 p-6">
+    // Desde 27/08 este é o card que leva a "O que o povo diz": o diagnóstico é
+    // a leitura da IA, e o caminho natural a partir dele é a evidência que ele
+    // resume. O card do clima deixou de ser um botão na mesma decisão — dois
+    // caminhos para a mesma tela, um deles sem afordância, era dizer a mesma
+    // coisa duas vezes.
+    <div
+      role={onVerFeed ? "button" : undefined}
+      tabIndex={onVerFeed ? 0 : undefined}
+      onClick={onVerFeed}
+      onKeyDown={(e) => {
+        if (onVerFeed && (e.key === "Enter" || e.key === " ")) onVerFeed();
+      }}
+      className={`card-hover group flex h-full flex-col rounded-[28px] border border-line bg-bg-1 p-6 ${onVerFeed ? "cursor-pointer" : ""}`}
+      aria-label={onVerFeed ? "Ver os comentários por trás desta análise" : undefined}
+    >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span
           className="section-label rounded-full px-3 py-1"
@@ -251,11 +273,24 @@ function DiagnosticoCard({ briefing, dias }: { briefing: Briefing; dias: number 
         <span className="rounded-full border border-line bg-bg-2 px-2.5 py-0.5 text-xs text-txt-3">
           análise gerada pela IA
         </span>
-        <span className="text-xs text-txt-3">{fmtDataBR(briefing.dia)}</span>
       </div>
       <p className="text-[16px] font-semibold leading-relaxed text-txt-1">
         {limparTravessoes(briefing.diagnostico)}
       </p>
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-4">
+        <span className="text-xs text-txt-3">{fmtDataBR(briefing.dia)}</span>
+        {onVerFeed && (
+          <span
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13.5px] font-bold text-white opacity-90 transition group-hover:opacity-100"
+            style={{ background: FUNDO_ESCUTA }}
+          >
+            Ver o que o povo diz
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -593,6 +628,33 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
         ? "linear-gradient(rgba(10,12,18,0.50), rgba(10,12,18,0.50)), "
         : "";
 
+  // Modelo Direção A: o diagnóstico é o terceiro bloco da faixa nobre, então
+  // precisa ser decidido ANTES do grid — é ele quem define se a linha tem três
+  // cards (5 + 3 + 4) ou dois (7 + 5). Sem briefing de semana/mês o card diz
+  // isso com todas as letras; no "dia" ele some (o backend gera na hora) e a
+  // linha fecha em dois.
+  const cardDiagnostico = briefing ? (
+    <DiagnosticoCard briefing={briefing} dias={dias} onVerFeed={onVerFeed} />
+  ) : !loadingBriefing && periodo !== "dia" ? (
+    <div className="card-hover h-full rounded-[28px] border border-line bg-bg-1 p-6 text-sm text-txt-2">
+      Análise {periodo === "semana" ? "da semana" : "do mês"} ainda não disponível: dados insuficientes.
+    </div>
+  ) : null;
+  const spanVeredito = cardDiagnostico ? "lg:col-span-5" : "lg:col-span-7";
+  const spanEngajamento = cardDiagnostico ? "lg:col-span-3" : "lg:col-span-5";
+
+  // Evidência (temas) e ação (sugestões) na MESMA linha, logo abaixo da faixa
+  // nobre: as sugestões viviam no rodapé da página, a uma rolagem inteira dos
+  // temas que as motivam. Quando só um dos dois existe, ele ocupa a linha.
+  const cardTemas = briefing?.alertas?.length ? (
+    <TemasEmCrise alertas={briefing.alertas} urlsNoPeriodo={urlsNoPeriodo} />
+  ) : boletim?.frentes && boletim.frentes.length > 0 ? (
+    <FrentesInstabilidade frentes={boletim.frentes} />
+  ) : null;
+  const cardSugestoes = briefing?.recomendacoes?.length ? (
+    <RecomendacoesPeriodo recomendacoes={briefing.recomendacoes} periodo={periodo} />
+  ) : null;
+
   return (
     <div className="space-y-4 p-5">
       <div className="reveal reveal-1 flex flex-wrap items-center justify-between gap-3">
@@ -600,12 +662,23 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           <h1 className="text-[27px] font-semibold leading-tight tracking-tight">{periodoTitulo(dias)}</h1>
           <p className="text-base text-txt-2">Alagoinhas/BA · imagem do prefeito e da prefeitura</p>
         </div>
-        <PeriodoFilter dias={dias} onChange={setDias} />
+        {/* O radar de coleta vive AQUI desde 27/08 (modelo Direção A): estado
+            do sistema fica na linha do título, junto do controle de período,
+            e não no meio da faixa nobre. Ver RadarStatusChip. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <RadarStatusChip />
+          <PeriodoFilter dias={dias} onChange={setDias} />
+        </div>
       </div>
 
-      {/* Clima · radar de coleta · engajamento. O radar saiu do topo da página
-          e passou a ocupar a coluna do meio (pedido de 27/07). */}
-      <div className="grid gap-4 lg:grid-cols-6">
+      {/* FAIXA NOBRE (modelo Direção A, aprovado em 27/08/26): os três blocos
+          que decidem, lado a lado — quanto (o veredito), com que lastro (o
+          engajamento) e por quê (o diagnóstico). Antes eram clima · radar ·
+          engajamento, e o "por quê" só aparecia depois de uma faixa de 420px,
+          já fora da primeira leitura. O radar virou selo no cabeçalho.
+          Sem diagnóstico (tenant novo, histórico curto), os dois cards
+          restantes ocupam as 12 colunas em vez de deixar um vão. */}
+      <div className="grid gap-4 lg:grid-cols-12">
         {/* Card do clima inteiro clicável: leva direto à curadoria de
             comentários que explica o clima ("O que o povo diz"). */}
         {/* Hero na linguagem aprovada em 03/08: card claro de vidro (tokens,
@@ -615,14 +688,14 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             vídeo de referência do cliente), no lugar da cena em CSS do
             CeuAnimado, e a foto de céu voltou de outro jeito: como FADE
             lateral esquerdo (camada mascarada abaixo), aprovado em prévia. */}
+        {/* O card do clima deixou de ser um botão em 27/08: o caminho para
+            "O que o povo diz" passou a ser o chip do card de diagnóstico, ao
+            lado. Card inteiro clicável sem afordância visível é pior que um
+            alvo menor e declarado — e ter os dois seria dizer duas vezes a
+            mesma coisa em lugares diferentes. */}
         <div
-          role="button"
-          tabIndex={0}
-          onClick={() => onVerFeed?.()}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onVerFeed?.(); }}
-          className="reveal reveal-2 card-hover group relative cursor-pointer overflow-hidden rounded-[28px] border border-line bg-bg-1 p-7 lg:col-span-3"
-          style={{ minHeight: 320 }}
-          aria-label="Ver os comentários que explicam este clima"
+          className={`reveal reveal-2 card-hover relative overflow-hidden rounded-[28px] border border-line bg-bg-1 p-7 ${spanVeredito}`}
+          style={{ minHeight: 336 }}
         >
           {/* Céu adaptativo do Viratempo (modelo Horizonte, aprovado em
               21/08/26 com o ajuste do cliente: as FOTOS de clima continuam
@@ -662,7 +735,10 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           <div
             className="pointer-events-none absolute inset-y-0 right-0 hidden sm:block"
             style={{
-              width: "52%",
+              // 46% e não 52%: o card estreitou de 3/6 para 5/12 da linha
+              // quando o diagnóstico entrou na faixa, e a foto precisa manter
+              // a mesma presença proporcional.
+              width: "46%",
               background: `${veuFoto}url("${wx.image}") right center / cover no-repeat`,
               WebkitMaskImage:
                 FADE_LATERAL,
@@ -683,200 +759,131 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           />
 
           <div className="relative z-10 flex h-full flex-col">
-            <div className="flex items-start justify-between gap-2">
-              {/* Com o fade invertido (4ª rodada), o topo e a coluna esquerda
-                  voltaram a ficar sobre o fundo do card: rótulo, número e
-                  legenda usam os TOKENS do tema. Quem senta sobre a foto
-                  agora é o bloco direito (título e frase), que carrega a
-                  tinta por luminância (inkFoto). */}
-              <div className="section-label">
-                Como a população vê a gestão
-              </div>
-              <span
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13.5px] font-bold text-white opacity-90 transition group-hover:opacity-100"
-                style={{ background: FUNDO_ESCUTA }}
-              >
-                Ver o que o povo diz
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
-              </span>
+            {/* Rótulo, número e legenda ficam sobre o fundo do card e usam os
+                TOKENS do tema. Quem pode encostar na foto é o par ícone +
+                título, que carrega a tinta por luminância (inkFoto). */}
+            <div className="section-label">
+              Como a população vê a gestão
             </div>
 
-            {/* Revisão de 27/07: o número passa a ocupar a altura do card e o
-                clima (ícone + frase) vai para a DIREITA dele, em corpo maior.
-                Antes o ícone ficava à esquerda do número e a frase embaixo,
-                sobrando faixa vazia no meio do card. Os chips de contagem
-                seguem fora daqui (25/07): vivem no box de engajamento ao lado.
-                Revisão de 28/07: a porcentagem do IAD passa a aparecer para
-                TODO papel, não só admin — antes o usuário comum via apenas o
-                nome do clima ("Chuva"), sem o número que dá a magnitude por
-                trás do rótulo. */}
-            <div className="mt-4 flex min-h-0 flex-1 flex-wrap items-center gap-x-8 gap-y-4">
-              <div className="flex flex-col items-start">
-                {view.semSinal ? (
-                  /* SEM SINAL: o número sai da tela inteira (04/08 dizia "a
-                     porcentagem aparece pra todo papel" — continua valendo
-                     para quando ela EXISTE). Exibir "50%" aqui seria afirmar
-                     empate técnico onde ninguém foi medido, e é o pior erro
-                     possível numa tela que o gabinete usa para decidir. */
-                  <div
-                    className="flex flex-col items-start"
-                    aria-label="Índice de aprovação indisponível: amostra insuficiente"
-                  >
-                    <span
-                      className="text-[44px] leading-[0.95] text-txt-1 sm:text-[56px] lg:text-[64px]"
-                      style={{ fontWeight: 600, fontFamily: "Inter, system-ui, sans-serif" }}
-                    >
-                      Sem sinal
-                    </span>
-                    <p className="mt-5 max-w-[26ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]">
-                      {view.votos === 0
-                        ? "Nenhum comentário do período foi classificado. Sem isso não há aprovação a medir."
-                        : `Só ${view.votos} ${view.votos === 1 ? "comentário classificado" : "comentários classificados"} no período, abaixo do mínimo de ${MIN_VOTOS_IAD} para calcular a aprovação.`}
-                    </p>
-                    <p className="mt-2 max-w-[26ch] text-[13.5px] leading-snug text-txt-3">
-                      Amplie o período acima ou aguarde a próxima coleta.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                <div className="flex items-start" aria-label={`Índice de aprovação: ${view.iad}%`}>
-                  {/* Peso 600 desde a onda 2 (03/08): o 200 era da doutrina
-                      fina de 11/07, e o briefing pede número em destaque com
-                      legibilidade alta. Não vai a 800: neste corpo (até 208px)
-                      o traço já fecha os vazados (valia para a Space Grotesk
-                      700 e continua valendo para a Inter, que desde 26/08 é a
-                      família única do painel).
-                      Dígitos PROPORCIONAIS, sem tnum e sem tracking custom
-                      (04/08, 3ª rodada): em caixas tabulares nenhum
-                      espaçamento fixo é harmônico — o 4 preenche a caixa
-                      inteira e o 5/2 sobram, então "44" colava com tracking
-                      negativo e "52" abria com o positivo. O kerning da
-                      própria fonte decide o espaço; tnum fica para colunas
-                      de métricas. A cópia invisível reserva a largura do
-                      valor FINAL e o contador anima em camada absoluta por
-                      cima — sem isso a largura oscila durante a rampa de
-                      0,9s e o ícone e a frase ao lado tremem a cada carga. */}
+            {/* Modelo Direção A (27/08): número e ícone dividem a primeira
+                linha, o nome da condição e a frase vêm abaixo dela, e a
+                legenda fixa fecha o card. O número desceu de 208px para 132px
+                porque deixou de ser o único bloco da faixa nobre: ele divide a
+                linha com o lastro e com o diagnóstico, e no corpo antigo
+                empurrava os dois para fora da primeira leitura.
+                Revisão de 28/07, que continua valendo: a porcentagem aparece
+                para TODO papel, não só admin — antes o usuário comum via
+                apenas o nome do clima ("Chuva"), sem a magnitude por trás. */}
+            <div className="mt-4 flex min-h-0 flex-1 flex-col">
+              {view.semSinal ? (
+                /* SEM SINAL: o número sai da tela inteira (04/08 dizia "a
+                   porcentagem aparece pra todo papel" — continua valendo para
+                   quando ela EXISTE). Exibir "50%" aqui seria afirmar empate
+                   técnico onde ninguém foi medido, e é o pior erro possível
+                   numa tela que o gabinete usa para decidir. A legenda fixa
+                   também não entra: ela explica um número que não existe. */
+                <div aria-label="Índice de aprovação indisponível: amostra insuficiente">
                   <span
-                    className="relative inline-block text-[120px] leading-[0.76] text-txt-1 sm:text-[168px] lg:text-[208px]"
-                    style={{ fontWeight: 600, fontFamily: "Inter, system-ui, sans-serif" }}
+                    className="text-[40px] leading-[0.95] text-txt-1 sm:text-[48px] lg:text-[56px]"
+                    style={{ fontWeight: 600 }}
                   >
-                    <span aria-hidden="true" className="invisible">{view.iad}</span>
-                    <span className="absolute inset-y-0 left-0">
-                      <ContadorAnimado valor={view.iad} />
-                    </span>
+                    Sem sinal
                   </span>
-                  <span className="mt-3 text-5xl font-medium text-txt-2 sm:text-6xl lg:text-7xl">
-                    %
-                  </span>
+                  <p className="mt-4 max-w-[32ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]">
+                    {view.votos === 0
+                      ? "Nenhum comentário do período foi classificado. Sem isso não há aprovação a medir."
+                      : `Só ${view.votos} ${view.votos === 1 ? "comentário classificado" : "comentários classificados"} no período, abaixo do mínimo de ${MIN_VOTOS_IAD} para calcular a aprovação.`}
+                  </p>
+                  <p className="mt-2 max-w-[32ch] text-[13.5px] leading-snug text-txt-3">
+                    Amplie o período acima ou aguarde a próxima coleta.
+                  </p>
                 </div>
-                {/* Legenda pedida pelo cliente em 28/07: o número sozinho não
-                    dizia o que media. Fica sempre igual, direto embaixo do
-                    número — o rótulo qualitativo ao lado (wx.sub) já varia
-                    por faixa, então essa linha é a única explicação fixa do
-                    que "44%" quer dizer. */}
-                <p className="mt-6 max-w-[24ch] text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]">
-                  Aprovação da gestão nos comentários analisados no período
-                </p>
-                  </>
-                )}
-              </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <div className="flex items-start" aria-label={`Índice de aprovação: ${view.iad}%`}>
+                      {/* Peso 600 desde a onda 2 (03/08). Dígitos
+                          PROPORCIONAIS, sem tnum e sem tracking custom (04/08,
+                          3ª rodada): em caixas tabulares nenhum espaçamento
+                          fixo é harmônico, e o kerning da própria fonte decide
+                          o espaço; tnum fica para colunas de métricas. A cópia
+                          invisível reserva a largura do valor FINAL e o
+                          contador anima em camada absoluta por cima — sem isso
+                          a largura oscila durante a rampa de 0,9s e o ícone ao
+                          lado treme a cada carga da página. */}
+                      <span
+                        className="relative inline-block text-[96px] leading-[0.76] text-txt-1 sm:text-[120px] lg:text-[132px]"
+                        style={{ fontWeight: 600 }}
+                      >
+                        <span aria-hidden="true" className="invisible">{view.iad}</span>
+                        <span className="absolute inset-y-0 left-0">
+                          <ContadorAnimado valor={view.iad} />
+                        </span>
+                      </span>
+                      <span className="mt-1.5 text-3xl font-medium text-txt-2 sm:text-4xl lg:text-[46px]">
+                        %
+                      </span>
+                    </div>
+                    {/* O ícone fecha a linha do número, encostado na borda
+                        direita, que é onde a foto da condição aparece: os dois
+                        dizem a mesma coisa e ficam juntos. */}
+                    <div className="ml-auto w-[104px] shrink-0 sm:w-[120px] lg:w-[96px]">
+                      <ClimaIconeAnimado cls={wx.cls} />
+                    </div>
+                  </div>
 
-              {/* Revisão de 04/08 (vídeo de referência do cliente): a cena em
-                  CSS (CeuAnimado) saiu; entra o ícone animado soft do
-                  ClimaIconeAnimado, grande, ocupando o centro do card, com a
-                  frase do clima à DIREITA dele. flex-basis REAL (não flex-1):
-                  base 0 nunca quebra linha num flex-wrap — no mobile o par
-                  encolhia em vez de descer e o conteúdo vazava por baixo do
-                  overflow-hidden do card. */}
-              <div className="flex min-w-0 flex-[1_1_300px] flex-wrap items-center justify-center gap-x-7 gap-y-3">
-                {/* 104px no lg (04/08, 6ª rodada: título de volta aos 36px
-                    pedidos, ícone menor para caber). Medido no card real (822px
-                    numa tela de 1920): o bloco do texto recebe 413px menos a
-                    largura do ícone. Em 36px o rótulo mais largo é
-                    "PARCIALMENTE" com 304px, e ele é UMA palavra, então não
-                    quebra: o ícone precisa ficar em 107px ou menos para a
-                    quebra cair no espaço ("Parcialmente / Nublado") em vez do
-                    meio da palavra ("Parcialmen / te Nublado"). 104 dá 3px de
-                    folga. Medido em 108, 109 e 110: todos quebram no meio.
-                    Quem manda na conta é o número, que sozinho ocupa 293px dos
-                    766px úteis do card. */}
-                <div className="w-[150px] shrink-0 sm:w-[180px] lg:w-[104px]">
-                  <ClimaIconeAnimado cls={wx.cls} />
-                </div>
-                {/* Título do clima em DESTAQUE (revisão de 04/08, 2ª rodada):
-                    o nome da condição em caixa alta acima da frase — antes só
-                    a frase aparecia e o nome do clima não estava em lugar
-                    nenhum do card. */}
-                {/* Sem max-w-[18ch]: a unidade ch resolve na fonte do PRÓPRIO
-                    bloco (16px herdados), não no corpo do título, então o cap
-                    caía em 155px e engolia até a base do flex.
-                    Base PEQUENA (8rem) de propósito, revertendo os 19rem da
-                    rodada anterior: com 19rem o bloco exigia 304px para sentar
-                    ao lado do ícone, e num número de DOIS dígitos isso não
-                    cabe — o bloco do número passa de 293 para 320px e sobram
-                    402px para o par, contra os 436 exigidos. O texto então
-                    descia para baixo do ícone, que é o defeito que apareceu no
-                    dashboard com "52% NUBLADO". Com base pequena e grow, o
-                    bloco fica SEMPRE ao lado e ocupa o que sobrar; quem se
-                    adapta é o corpo do título (ver o clamp abaixo).
-                    `container-type: inline-size` existe para o título poder
-                    medir ESTE bloco em cqi. */}
-                <div className="min-w-0 flex-[1_1_16rem]" style={{ containerType: "inline-size" }}>
-                  <div
-                    /* 36px sempre que couber, encolhendo só quando não couber.
-                       A palavra mais larga do vocabulário é "PARCIALMENTE", e
-                       ela é uma palavra só: não quebra. Como a largura livre
-                       depende de quantos dígitos o número tem, nenhum tamanho
-                       fixo serve para os dois casos, e o cqi resolve por
-                       proporção da largura DESTE bloco.
-                       O coeficiente é medido na fonte: em 36px "PARCIALMENTE"
-                       ocupa 278px na Inter (eram 304px na Space Grotesk, que
-                       saiu em 26/08), então o limite de encaixe é 36/278 =
-                       0,129 e o valor usado é 12.7cqi, com ~2% de folga. Com
-                       os 11.5cqi calibrados para a fonte antiga o título
-                       encolhia antes da hora, num bloco em que já cabia
-                       inteiro. Ao trocar a fonte outra vez, MEDIR de novo:
-                       este número é métrica de tipo, não preferência. */
-                    className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 break-words sm:text-[clamp(30px,12.7cqi,36px)]"
-                    style={{ fontFamily: "Inter, system-ui, sans-serif", color: inkFoto?.forte }}
-                  >
-                    {wx.label}
+                  {/* O nome da condição em caixa alta ganhou a linha inteira,
+                      então não disputa mais largura com o número: o clamp por
+                      container-query continua para o caso estreito (o coeficiente
+                      é métrica da fonte — ver o comentário do commit da Inter). */}
+                  <div className="mt-4 min-w-0" style={{ containerType: "inline-size" }}>
+                    <div
+                      className="text-[28px] font-extrabold uppercase leading-none tracking-tight text-txt-1 break-words sm:text-[clamp(28px,12.7cqi,34px)]"
+                      style={{ color: inkFoto?.forte }}
+                    >
+                      {wx.label}
+                    </div>
+                    <div
+                      className="mt-2 text-[17px] leading-snug text-txt-2 sm:text-[19px]"
+                      style={{ fontWeight: 600, color: inkFoto?.suave }}
+                    >
+                      {limparTravessoes(wx.sub)}
+                    </div>
                   </div>
-                  <div
-                    className="mt-2 text-[18px] leading-snug text-txt-2 sm:text-[20px]"
-                    style={{ fontWeight: 600, fontFamily: "Inter, system-ui, sans-serif", color: inkFoto?.suave }}
-                  >
-                    {limparTravessoes(wx.sub)}
-                  </div>
-                </div>
-              </div>
+
+                  {/* Legenda pedida pelo cliente em 28/07: o número sozinho não
+                      dizia o que media. Fica sempre igual e fecha o card, no
+                      rodapé — o rótulo qualitativo acima (wx.sub) varia por
+                      faixa, então esta linha é a única explicação fixa. */}
+                  <p className="mt-auto max-w-[36ch] pt-5 text-[15px] font-semibold leading-snug text-txt-2 sm:text-[17px]">
+                    Aprovação da gestão nos comentários analisados no período
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Radar de coleta, entre os dois cards. */}
-        <div className="reveal reveal-3 lg:col-span-1">
-          <RadarStatusColumn />
-        </div>
-
-        {/* Box de engajamento — clicável: abre a lista das publicações
-            analisadas no período, com link direto para cada post. Texto em
-            preto sobre o laranja (decisão de contraste da reunião de 24/07). */}
+        {/* LASTRO: quantos comentários sustentam o número ao lado. Fica grudado
+            no veredito de propósito (modelo Direção A) — amostra e aprovação se
+            qualificam uma à outra, e até 27/08 havia um card de status do
+            sistema separando as duas. Tinta escura sobre a marca (decisão de
+            contraste da reunião de 24/07; branco sobre o teal mede 2,08:1).
+            Clicável: abre a lista das publicações analisadas no período. */}
         <div
           role="button"
           tabIndex={0}
           onClick={() => setPublicacoesAbertas(true)}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setPublicacoesAbertas(true); }}
-          className="reveal reveal-4 group relative cursor-pointer overflow-hidden rounded-[28px] p-7 transition-transform duration-200 hover:-translate-y-0.5 lg:col-span-2"
+          className={`reveal reveal-3 group relative cursor-pointer overflow-hidden rounded-[28px] p-6 transition-transform duration-200 hover:-translate-y-0.5 ${spanEngajamento}`}
           style={{
             // Chapado, e não degradê: `--brand` é um hex único nos dois temas
             // desde 31/07, então o preenchimento sólido já é a cor de marca
             // certa nas duas telas, sem precisar de dois stops para disfarçar
             // a troca de tom entre tema claro e escuro.
             background: "var(--brand)",
-            minHeight: 320,
+            minHeight: 336,
             boxShadow: "0 18px 40px -14px rgba(98,194,202,0.5)",
           }}
           aria-label="Ver as publicações analisadas no período"
@@ -886,26 +893,29 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             style={{ background: "rgba(255,255,255,0.12)" }}
           />
           <div className="relative z-10 flex h-full flex-col" style={{ color: "#04242F" }}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="text-[14px] font-bold tracking-[0.08em]" style={{ color: "rgba(26,15,2,0.75)" }}>
-                Engajamento no período
-              </div>
-              <span
-                className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[13px] font-bold text-white opacity-90 transition group-hover:opacity-100"
-                style={{ background: FUNDO_ESCUTA }}
-              >
-                Ver publicações
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
-              </span>
+            <div className="text-[14px] font-bold tracking-[0.08em]" style={{ color: "rgba(4,36,47,0.75)" }}>
+              Engajamento no período
             </div>
-            <p className="mt-2 max-w-[26ch] text-base font-normal leading-snug" style={{ color: "rgba(26,15,2,0.85)" }}>
-              Quanto mais <b className="font-bold">comentários analisados</b>, mais confiável é a leitura do clima.
-            </p>
+
+            {/* O número subiu para logo abaixo do rótulo (antes fechava o card,
+                no rodapé): a leitura da faixa vai da esquerda para a direita e
+                de cima para baixo, então o segundo número da linha precisa
+                estar na mesma altura do primeiro para se comparar com ele. */}
+            <div
+              className="tnum mt-3.5 text-[52px] leading-[0.85] tracking-tight lg:text-[60px]"
+              style={{ fontWeight: 700 }}
+            >
+              <ContadorAnimado valor={view.comentarios} formatar={fmtInt} />
+            </div>
+            <div className="mt-1.5 text-base font-bold leading-snug" style={{ color: "rgba(4,36,47,0.85)" }}>
+              {/* Concordância real, nunca plural fixo: com uma publicação a
+                  linha saía "1 publicações" (correção P1 de 11/08/26). */}
+              {view.comentarios === 1 ? "comentário analisado" : "comentários analisados"} ·{" "}
+              {fmtInt(view.posts)} {view.posts === 1 ? "publicação" : "publicações"}
+            </div>
 
             <div
-              className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold text-white"
+              className="mt-3.5 inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold text-white"
               style={{ background: FUNDO_ESCUTA }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -916,68 +926,52 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
               {amostra.label}
             </div>
 
-            <div className="mt-auto pt-6">
-              <div className="flex items-end gap-1">
-                <span
-                  className="tnum text-[68px] leading-[0.85] tracking-tight"
-                  style={{ fontWeight: 700, color: "#04242F", fontFamily: "Inter, system-ui, sans-serif" }}
-                >
-                  <ContadorAnimado valor={view.comentarios} formatar={fmtInt} />
-                </span>
-              </div>
-              <div className="mt-1 text-base font-bold" style={{ color: "rgba(26,15,2,0.85)" }}>
-                {/* Concordância real, nunca plural fixo: com uma publicação a
-                    linha saía "1 publicações" (correção P1 de 11/08/26). */}
-                {view.comentarios === 1 ? "comentário analisado" : "comentários analisados"} ·{" "}
-                {fmtInt(view.posts)} {view.posts === 1 ? "publicação" : "publicações"}
-              </div>
+            <p className="mt-3 max-w-[30ch] text-[15px] font-normal leading-snug" style={{ color: "rgba(4,36,47,0.85)" }}>
+              Quanto mais <b className="font-bold">comentários analisados</b>, mais confiável é a leitura ao lado.
+            </p>
+
+            <div className="mt-auto pt-4">
+              <span
+                className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[13px] font-bold text-white opacity-90 transition group-hover:opacity-100"
+                style={{ background: FUNDO_ESCUTA }}
+              >
+                Ver publicações
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </span>
             </div>
           </div>
         </div>
+
+        {/* POR QUÊ: o diagnóstico da IA fecha a faixa nobre. Ele vivia abaixo,
+            depois de ~420px de cartões, e era a primeira coisa que respondia à
+            pergunta que a tela existe para responder. */}
+        {cardDiagnostico && <div className="reveal reveal-4 lg:col-span-4">{cardDiagnostico}</div>}
       </div>
 
-      {/* Mesa de comando (modelo Viratempo, 21/08): no xl o diagnóstico e a
-          lista de temas sentam LADO A LADO em grade bento — a tela inteira do
-          dia se lê com menos rolagem (o mesmo racional das duas colunas do
-          Feed). Abaixo do xl, e quando só um dos dois existe, tudo volta a
-          empilhar em largura cheia. */}
-      {(() => {
-        const cardDiagnostico = briefing ? (
-          <DiagnosticoCard briefing={briefing} dias={dias} />
-        ) : (
-          // Sem diagnóstico para semana/mês (histórico curto, tenant novo): diz
-          // isso explicitamente — nunca cai no diagnóstico de outro período
-          // disfarçado. Pro "dia", mantém o comportamento de sempre (some e
-          // cai no fallback de frentes) — o backend também gera na hora.
-          !loadingBriefing && periodo !== "dia" ? (
-            <div className="card-hover h-full rounded-[28px] border border-line bg-bg-1 p-6 text-sm text-txt-2">
-              Análise {periodo === "semana" ? "da semana" : "do mês"} ainda não disponível — dados insuficientes.
-            </div>
-          ) : null
-        );
-        const cardTemas = briefing?.alertas?.length ? (
-          <TemasEmCrise alertas={briefing.alertas} urlsNoPeriodo={urlsNoPeriodo} />
-        ) : boletim?.frentes && boletim.frentes.length > 0 ? (
-          <FrentesInstabilidade frentes={boletim.frentes} />
-        ) : null;
-        if (cardDiagnostico && cardTemas)
-          return (
-            <div className="grid gap-4 xl:grid-cols-5">
-              <div className="xl:col-span-2">{cardDiagnostico}</div>
-              <div className="xl:col-span-3">{cardTemas}</div>
-            </div>
-          );
-        return (
-          <>
-            {cardDiagnostico}
-            {cardTemas}
-          </>
-        );
-      })()}
+      {/* EVIDÊNCIA E AÇÃO na mesma linha (modelo Direção A, 27/08): os temas
+          que merecem atenção à esquerda, as sugestões à direita. As sugestões
+          moravam no rodapé da página, a uma rolagem inteira dos temas que as
+          motivam — quem lia o alerta tinha que descer e lembrar dele para
+          entender a sugestão. Quando só um dos dois existe, ele ocupa a linha.
+          A grade abre no xl porque a coluna de sugestões é texto corrido: em
+          5/12 de uma tela de 1024px ela viraria uma tira estreita. */}
+      {cardTemas && cardSugestoes ? (
+        <div className="grid gap-4 xl:grid-cols-12">
+          <div className="xl:col-span-7">{cardTemas}</div>
+          <div className="xl:col-span-5">{cardSugestoes}</div>
+        </div>
+      ) : (
+        <>
+          {cardTemas}
+          {cardSugestoes}
+        </>
+      )}
 
+      {/* Aprofundamento, no fim: o termômetro detalha por tema o que a faixa
+          nobre resume em um número. */}
       <TermometroTemas allPosts={data!.data} dias={dias} />
-
-      {briefing && <RecomendacoesPeriodo recomendacoes={briefing.recomendacoes} periodo={periodo} />}
 
       {publicacoesAbertas && (
         <PublicacoesModal

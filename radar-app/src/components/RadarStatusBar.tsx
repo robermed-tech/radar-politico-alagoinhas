@@ -159,6 +159,36 @@ export function RadarStatusBar() {
  * fica de pé entre a foto escura do clima à esquerda e a marca à direita sem
  * disputar atenção com nenhum dos dois.
  */
+/**
+ * Selo para a LINHA DO TÍTULO (modelo Direção A, aprovado em 27/08/26).
+ *
+ * O radar saiu da faixa nobre da Estação Meteorológica, onde ocupava a coluna
+ * do meio desde 27/07: ele é estado do SISTEMA, não dado de decisão, e ficava
+ * entre os dois números que a página existe para mostrar — separando a
+ * aprovação do tamanho da amostra, que se qualificam um ao outro. Continua
+ * visível, e pela MESMA régua (useRadarKpis, a do banner de saúde): o que muda
+ * é o tamanho que ele ocupa, agora proporcional ao que ele informa.
+ *
+ * `RadarStatusColumn` continua exportada e é a mesma peça em formato de
+ * coluna; nenhuma tela a consome hoje.
+ */
+export function RadarStatusChip() {
+  const { ativo } = useRadarKpis();
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-2 rounded-full border border-line bg-bg-1 py-1 pl-1.5 pr-3.5 text-[15px] font-semibold text-txt-2"
+      title={
+        ativo
+          ? "O radar está coletando publicações agora"
+          : "Nenhuma coleta em andamento; confira o monitor de coleta"
+      }
+    >
+      <RadarSweep ativo={ativo} size={22} />
+      {ativo ? "Coleta em varredura" : "Coleta ociosa"}
+    </span>
+  );
+}
+
 export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
   const kpis = useRadarKpis();
   const ativo = kpis.ativo;
