@@ -96,6 +96,30 @@ const BRIEFING_DEMO: Briefing = {
   gerado_em: new Date().toISOString(),
 };
 
+/**
+ * Comentários classificados sintéticos, presos à URL do primeiro post do
+ * cenário — é o que faz o "Termômetro por tema" (GaugeTema) aparecer no
+ * harness. As proporções cobrem a escala inteira: um tema 100% negativo, um
+ * majoritariamente positivo e três intermediários, para o degradê e a cor do
+ * valor serem conferíveis a olho. Antes esta query era semeada vazia e o
+ * termômetro nunca renderizava aqui.
+ */
+function comentariosPara(posts: Post[]) {
+  const urlPost = posts[0]?.url ?? "";
+  const base = { texto: "comentário do harness", autor: "cidadao", curtidas: 0, subtema: "", urlPost };
+  const temas: [string, number, number][] = [
+    ["saneamento", 9, 0],   // 100% — vermelho cheio
+    ["saude", 61, 14],      // 81%
+    ["comunicacao", 47, 19],// 71% — fronteira do alerta
+    ["obras", 11, 8],       // 58% — âmbar
+    ["educacao", 8, 21],    // 28% — verde
+  ];
+  return temas.flatMap(([tema, neg, pos]) => [
+    ...Array.from({ length: neg }, () => ({ ...base, tema, sentimento: "negativo" })),
+    ...Array.from({ length: pos }, () => ({ ...base, tema, sentimento: "positivo" })),
+  ]);
+}
+
 function clientePara(posts: Post[]): QueryClient {
   const qc = new QueryClient({
     defaultOptions: {
@@ -103,9 +127,9 @@ function clientePara(posts: Post[]): QueryClient {
     },
   });
   qc.setQueryData(["radar"], { data: posts, perfis: [], source: "supabase" });
-  // As demais queries da página: pré-populadas vazias para nenhuma delas
-  // disparar rede (a URL do .env.local é falsa de propósito).
-  qc.setQueryData(["comentarios-tema-todos"], []);
+  // As demais queries da página: pré-populadas com dado local para nenhuma
+  // delas disparar rede (a URL do .env.local é falsa de propósito).
+  qc.setQueryData(["comentarios-tema-todos"], comentariosPara(posts));
   for (const p of ["dia", "semana", "mes"]) {
     qc.setQueryData(["boletim", false, p], null);
     qc.setQueryData(["boletim", true, p], null);

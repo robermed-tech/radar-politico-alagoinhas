@@ -1,4 +1,4 @@
-import{r as x,u as A,j as e}from"./query-DTbKPICY.js";import{f as C,E as N}from"./secretarios-CBHlLAAW.js";import{k as D,l as E,m as y,r as $}from"./index-D1ep08fA.js";function h(a){return a.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim()}function w(a,t){const o=a.replace(/\s+/g," ").trim();return o.length>t?o.slice(0,t-1).trimEnd()+"…":o}function F(a,t,o,c,l,r){const i=new Date().toLocaleDateString("pt-BR"),m=r?`🗣️ *O que a população está dizendo:*
+import{r as x,u as A,j as e}from"./query-DTbKPICY.js";import{f as C,E as N}from"./secretarios-Eln-qkZU.js";import{i as D,j as E,k as y,o as $}from"./index-QJ-DRs35.js";function h(a){return a.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim()}function w(a,t){const o=a.replace(/\s+/g," ").trim();return o.length>t?o.slice(0,t-1).trimEnd()+"…":o}function F(a,t,o,c,l,r){const i=new Date().toLocaleDateString("pt-BR"),m=r?`🗣️ *O que a população está dizendo:*
 `+(r.subtema?`As reclamações se concentram em *${r.subtema.replace(/_/g," ")}*. `:"")+`Há ${r.total} ${r.total===1?"comentário negativo":"comentários negativos"} sobre este tema. Exemplo real:
 "${r.citacao}"
 
