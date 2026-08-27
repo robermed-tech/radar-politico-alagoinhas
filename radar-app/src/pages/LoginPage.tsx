@@ -96,8 +96,11 @@ export function LoginPage() {
             boxShadow: "0 30px 70px -24px rgba(4,36,47,0.65)",
           }}
         />
+        {/* O sol recuou para dentro do card (era right/top-10, a 24px da aresta
+            arredondada): com o painel chapado ele é a única atmosfera que
+            restou, e colado na quina lia como respingo em vez de astro. */}
         <div
-          className="wx-flutuar pointer-events-none absolute right-10 top-10 h-44 w-44 rounded-full"
+          className="wx-flutuar pointer-events-none absolute right-[77px] top-[74px] h-44 w-44 rounded-full"
           style={{
             background: "radial-gradient(circle at 35% 30%, #9BDCE1, #3A9AA4)",
             boxShadow: "0 0 70px 22px rgba(98,194,202,0.35)",
@@ -105,19 +108,21 @@ export function LoginPage() {
         />
 
         <div className="reveal reveal-1 relative z-10 flex h-full flex-col p-8 text-white">
-          <div className="flex items-center">
-            {/* Painel escuro FIXO nos dois temas, então a tinta da marca também
-                é fixa: `var(--brand)` é o mesmo #62C2CA nos dois temas e mede
-                7,9:1 sobre o petróleo do painel. Não usar a classe
-                `.text-brand` aqui — ela resolve por `--brand-text`, que é
-                escuro no tema claro (#0E6B75) e cairia para ~3,3:1 neste fundo.
-                27/08 (edição do Robério no canvas): a marca subiu de 38 para
-                55px de altura e saiu do branco para o teal. */}
-            {/* A cor vem do contêiner porque o traçado é `currentColor`; o
-                componente recebe altura e className, não style. */}
-            <span style={{ color: "var(--brand)" }}>
-              <WordmarkViratempo altura={55} />
-            </span>
+          {/* Painel escuro FIXO nos dois temas, então a tinta da marca também
+              é fixa: `var(--brand)` é o mesmo #62C2CA nos dois temas e mede
+              7,9:1 sobre o petróleo do painel. Não usar a classe
+              `.text-brand` aqui — ela resolve por `--brand-text`, que é
+              escuro no tema claro (#0E6B75) e cairia para ~3,3:1 neste fundo.
+              27/08 (edição do Robério no canvas): a marca saiu do branco para
+              o teal e subiu de 38 para 55px; na segunda rodada do mesmo dia
+              (canvas salvo às 10:16) foi para 68px e DESCEU da aresta do card
+              para o terço superior — deixou de ser carimbo de canto e passou a
+              abrir o painel. Os 85px são a distância medida no canvas, contada
+              do topo da caixa de conteúdo. */}
+          {/* A cor vem do contêiner porque o traçado é `currentColor`; o
+              componente recebe altura e className, não style. */}
+          <div className="mt-[85px] flex items-center" style={{ color: "var(--brand)" }}>
+            <WordmarkViratempo altura={68} />
           </div>
 
           <div className="mt-auto">
@@ -130,12 +135,16 @@ export function LoginPage() {
                 acrescentar o peso 200 ou 300 na URL da fonte E declarar aqui;
                 declarar um peso que não existe no arquivo só produz o 400 de
                 novo, em silêncio. */}
-            <h1 className="max-w-md text-[52px] font-normal leading-[1.05] tracking-tight">
+            <h1 className="max-w-md text-pretty text-[52px] font-normal leading-[1.05] tracking-tight">
               A opinião da cidade, em tempo real.
             </h1>
+            {/* A linha de apoio perdeu o "tudo num só painel" na segunda rodada
+                de 27/08, e com ele o travessão — que é proibido em texto
+                exibido. O ponto final voltou a pedido do Robério: no canvas o
+                trecho foi apagado sem retomar a pontuação. */}
             <p className="mt-4 max-w-sm text-lg font-normal text-white/85">
               Acompanhe o clima político, antecipe crises e saiba o que a população
-              comenta — tudo num só painel.
+              comenta.
             </p>
 
             <div className="mt-8 space-y-3">
