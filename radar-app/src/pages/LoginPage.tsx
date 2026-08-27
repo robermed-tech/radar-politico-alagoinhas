@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { signInWithPassword, sendPasswordSetupEmail } from "@/lib/auth";
 import { WordmarkViratempo } from "@/components/LogoViratempo";
-import { FUNDO_ESCUTA } from "@/components/superficieRadio";
 
 const svgProps = {
   width: 22, height: 22, viewBox: "0 0 24 24", fill: "none",
@@ -85,10 +84,15 @@ export function LoginPage() {
         <div
           className="absolute inset-4 rounded-[32px]"
           style={{
-            // Importado, nunca copiado: esta era uma segunda cópia da receita
-            // do FUNDO_ESCUTA e ficou para trás quando a superfície escura foi
-            // do chumbo quente para o petróleo (26/08/26).
-            background: FUNDO_ESCUTA,
+            // PETRÓLEO CHAPADO desde 27/08 (edição do Robério no canvas do
+            // Login): era o degradê `FUNDO_ESCUTA`, importado de
+            // superficieRadio.ts. O painel deixou de compartilhar a superfície
+            // dos cards escuros do painel de dados de propósito — aqui o fundo
+            // é uma chapada da cor da marca, e a única coisa que acontece sobre
+            // ela é o sol. Os cards internos da Rádio Escuta, o radar e a
+            // antena seguem no degradê; não há mais nada a manter em sincronia
+            // entre as duas telas.
+            background: "#04242F",
             boxShadow: "0 30px 70px -24px rgba(4,36,47,0.65)",
           }}
         />
@@ -102,19 +106,34 @@ export function LoginPage() {
 
         <div className="reveal reveal-1 relative z-10 flex h-full flex-col p-8 text-white">
           <div className="flex items-center">
-            {/* Painel escuro FIXO nos dois temas. A marca do arquivo oficial é
-                de uma tinta só, então aqui ela é simplesmente branca — o
-                remendo antigo (o "tempo" no hex do tema escuro, porque
-                --brand-text resolveria escuro no tema claro e sumiria neste
-                fundo) morreu junto com o corte de duas cores. */}
-            <WordmarkViratempo altura={38} className="text-white" />
+            {/* Painel escuro FIXO nos dois temas, então a tinta da marca também
+                é fixa: `var(--brand)` é o mesmo #62C2CA nos dois temas e mede
+                7,9:1 sobre o petróleo do painel. Não usar a classe
+                `.text-brand` aqui — ela resolve por `--brand-text`, que é
+                escuro no tema claro (#0E6B75) e cairia para ~3,3:1 neste fundo.
+                27/08 (edição do Robério no canvas): a marca subiu de 38 para
+                55px de altura e saiu do branco para o teal. */}
+            {/* A cor vem do contêiner porque o traçado é `currentColor`; o
+                componente recebe altura e className, não style. */}
+            <span style={{ color: "var(--brand)" }}>
+              <WordmarkViratempo altura={55} />
+            </span>
           </div>
 
           <div className="mt-auto">
-            <h1 className="max-w-md text-[52px] font-extrabold leading-[1.05] tracking-tight">
+            {/* Peso 400 nos dois blocos (27/08, edição do Robério no canvas:
+                a manchete era 800 e a linha de apoio 500). No canvas ele
+                escreveu 100, mas a Inter do painel é carregada em
+                400/500/600/700/800 (index.html), então o navegador resolveu
+                para o 400 — o 400 é literalmente o que ele viu e aprovou.
+                Se a intenção for um traço ainda mais fino, o caminho é
+                acrescentar o peso 200 ou 300 na URL da fonte E declarar aqui;
+                declarar um peso que não existe no arquivo só produz o 400 de
+                novo, em silêncio. */}
+            <h1 className="max-w-md text-[52px] font-normal leading-[1.05] tracking-tight">
               A opinião da cidade, em tempo real.
             </h1>
-            <p className="mt-4 max-w-sm text-lg font-medium text-white/85">
+            <p className="mt-4 max-w-sm text-lg font-normal text-white/85">
               Acompanhe o clima político, antecipe crises e saiba o que a população
               comenta — tudo num só painel.
             </p>
@@ -217,11 +236,14 @@ export function LoginPage() {
               disabled={enviandoSenha}
               className="mt-4 w-full text-center text-sm font-semibold text-brand transition hover:underline disabled:opacity-50"
             >
-              {enviandoSenha ? "Enviando link…" : "Primeiro acesso ou esqueci a senha — definir senha"}
+              {/* 27/08 (edição do Robério no canvas): o rótulo perdeu o
+                  "— definir senha". Além de encurtar, tira desta tela o
+                  travessão, que o produto proíbe em texto exibido. */}
+              {enviandoSenha ? "Enviando link…" : "Primeiro acesso ou esqueci a senha"}
             </button>
 
             <p className="mt-4 text-center text-xs text-txt-3">
-              Acesso restrito a usuários cadastrados pela prefeitura.
+              Acesso restrito a usuários cadastrados
             </p>
           </div>
         </div>
