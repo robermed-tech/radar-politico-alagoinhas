@@ -134,9 +134,17 @@ function AntenaCaptando({ ativo, size = 210 }: { ativo: boolean; size?: number }
         className="absolute inset-0 h-full w-full"
         fill="none"
         stroke={cor}
-        /* Um peso só para tudo (torre e ondas), como no ícone de 16px: peso
-           diferente por camada é a outra metade do efeito "apagado". */
-        strokeWidth="1.1"
+        /* Um peso só para tudo (torre e ondas): peso diferente por camada era a
+           outra metade do efeito "apagado" que saiu em 27/08.
+           0.6 e não 1.1 (segunda rodada do mesmo dia: "mais fina, moderna,
+           tecnológica"). O peso do traço aqui é medido em unidades do viewBox
+           de 24, então ele ESCALA com o desenho: num painel de 228px, 1.1
+           virava um traço de 10,5px de tela, que é peso de ícone pequeno
+           ampliado, não de instrumento. 0.6 dá 5,7px — a treliça da torre volta
+           a ser treliça e as ondas ficam com cara de sinal, não de tubo.
+           Ao mexer no tamanho do painel, conferir de novo: o que importa é o
+           traço em PIXELS, e ele muda junto. */
+        strokeWidth="0.6"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
@@ -151,7 +159,11 @@ function AntenaCaptando({ ativo, size = 210 }: { ativo: boolean; size?: number }
             <ParDeOndas r={r} />
           </g>
         ))}
-        <circle cx={FOCO.x} cy={FOCO.y} r="1.55" fill={cor} stroke="none" />
+        {/* O foco encolheu junto (1.55 → 0.9): num traço de 0.6 o ponto antigo
+            virava um bolo no meio do desenho. Continua mais pesado que a linha,
+            porque ele é o nó de onde o sinal sai — cerca de 3x a espessura, que
+            é a proporção de nó em desenho técnico. */}
+        <circle cx={FOCO.x} cy={FOCO.y} r="0.9" fill={cor} stroke="none" />
       </svg>
     </div>
   );
