@@ -98,6 +98,9 @@ interface ElCfg {
   cor?: string;
   margemTopo?: number;
   margemBaixo?: number;
+  /** Só para BLOCOS das páginas internas: colunas (1 a 12) e visibilidade. */
+  largura?: number;
+  visivel?: boolean;
 }
 
 interface ElMeta {
@@ -136,6 +139,178 @@ const ELEMENTOS: Record<string, ElMeta> = {
   "convite.botao": { rotulo: "Convite · botão", texto: "Definir senha e entrar", tamanho: 16, peso: 700 },
   "pdf.nome": { rotulo: "PDF · nome na banda", texto: "VIRATEMPO", tamanho: 19, peso: 800 },
 };
+
+// ─── Páginas internas (wireframes pelo retrato painel-viratempo.json) ────
+
+interface KpiDef { id: string; rotulo: string; valor: string; sub: string }
+interface BlocoDef { id: string; titulo: string; largura: number; visivel: boolean }
+interface PaginaDef { id: string; titulo: string; kpis: KpiDef[]; blocos: BlocoDef[] }
+
+/** As 10 telas de dados, transcritas do painel-viratempo.json (27/08) — só os
+ * KPIs ativos; os valores são de EXEMPLO (na tela real o valor vem do dado).
+ * Único desvio do JSON: "Alertas & Ações" leva o rótulo real do menu. */
+const PAGINAS: PaginaDef[] = [
+  {
+    id: "estacao", titulo: "Estação Meteorológica",
+    kpis: [
+      { id: "iad", rotulo: "Aprovação", valor: "58%", sub: "Nos comentários do período" },
+      { id: "coment", rotulo: "Comentários", valor: "1.284", sub: "Analisados nos últimos 7 dias" },
+      { id: "posts", rotulo: "Publicações", valor: "96", sub: "Coletadas de 14 perfis" },
+      { id: "alertas", rotulo: "Alertas", valor: "3", sub: "Planos de crise abertos" },
+    ],
+    blocos: [
+      { id: "veredito", titulo: "Veredito do clima", largura: 6, visivel: true },
+      { id: "radar", titulo: "Radar de coleta", largura: 3, visivel: true },
+      { id: "engajamento", titulo: "Engajamento no período", largura: 3, visivel: true },
+      { id: "diagnostico", titulo: "Diagnóstico da IA", largura: 12, visivel: true },
+      { id: "temas", titulo: "Temas que merecem atenção", largura: 7, visivel: true },
+      { id: "sugestoes", titulo: "Sugestões a serem avaliadas por especialista", largura: 5, visivel: true },
+      { id: "termometro", titulo: "Termômetro de temas", largura: 12, visivel: true },
+      { id: "divisao", titulo: "Divisão da conversa", largura: 12, visivel: false },
+    ],
+  },
+  {
+    id: "feed", titulo: "O que o povo diz",
+    kpis: [
+      { id: "coment", rotulo: "Comentários", valor: "1.284", sub: "No período escolhido" },
+      { id: "criticos", rotulo: "Críticos", valor: "47%", sub: "Da conversa que toma partido" },
+      { id: "favoraveis", rotulo: "Favoráveis", valor: "21%", sub: "Da conversa que toma partido" },
+      { id: "neutros", rotulo: "Neutros", valor: "32%", sub: "Sem juízo sobre a gestão" },
+    ],
+    blocos: [
+      { id: "feed-posts", titulo: "Publicações e reação", largura: 8, visivel: true },
+      { id: "feed-citados", titulo: "Mais citados", largura: 4, visivel: true },
+      { id: "feed-coment", titulo: "Comentários em destaque", largura: 12, visivel: true },
+    ],
+  },
+  {
+    id: "aprovacao", titulo: "Análise do Clima",
+    kpis: [
+      { id: "iad", rotulo: "Aprovação", valor: "58%", sub: "IAD do período" },
+      { id: "votos", rotulo: "Tomam partido", valor: "812", sub: "Comentários com posição" },
+      { id: "coment", rotulo: "Comentários", valor: "1.284", sub: "Analisados no período" },
+      { id: "posts", rotulo: "Publicações", valor: "96", sub: "Na janela escolhida" },
+    ],
+    blocos: [
+      { id: "apr-gauge", titulo: "Aprovação no período", largura: 5, visivel: true },
+      { id: "apr-historico", titulo: "Histórico do IAD", largura: 7, visivel: true },
+      { id: "apr-vozes", titulo: "Vozes da população", largura: 7, visivel: true },
+      { id: "apr-relatorio", titulo: "Relatórios em PDF", largura: 5, visivel: true },
+    ],
+  },
+  {
+    id: "mapa", titulo: "Mapa da Cidade",
+    kpis: [
+      { id: "bairros", rotulo: "Bairros", valor: "12", sub: "Com menção no período" },
+      { id: "mencoes", rotulo: "Menções", valor: "214", sub: "Comentários com localidade" },
+      { id: "critico", rotulo: "Mais crítico", valor: "Centro", sub: "64% de reação negativa" },
+      { id: "elogiado", rotulo: "Mais elogiado", valor: "Riacho", sub: "Creche entregue puxa elogios" },
+    ],
+    blocos: [
+      { id: "mapa-rank", titulo: "Bairros por crítica", largura: 12, visivel: true },
+      { id: "mapa-coment", titulo: "Comentários do bairro", largura: 12, visivel: false },
+    ],
+  },
+  {
+    id: "pedidos", titulo: "Pedidos do Povo",
+    kpis: [
+      { id: "pedidos", rotulo: "Pedidos", valor: "569", sub: "Registrados na base" },
+      { id: "revisar", rotulo: "Revisar", valor: "14", sub: "Confiança abaixo de 60" },
+      { id: "temas", rotulo: "Temas", valor: "8", sub: "Com pedido no período" },
+      { id: "semana", rotulo: "Na semana", valor: "+37", sub: "Pedidos novos em 7 dias" },
+    ],
+    blocos: [
+      { id: "ped-regua", titulo: "Temas por volume", largura: 5, visivel: true },
+      { id: "ped-lista", titulo: "Pedidos", largura: 7, visivel: true },
+    ],
+  },
+  {
+    id: "perfil", titulo: "Análise por Perfil",
+    kpis: [
+      { id: "perfis", rotulo: "Perfis", valor: "14", sub: "Monitorados nas Fontes" },
+      { id: "posts", rotulo: "Publicações", valor: "96", sub: "No período escolhido" },
+      { id: "critica", rotulo: "Publica criticando", valor: "41%", sub: "Posts com tom crítico" },
+      { id: "elogia", rotulo: "Publica elogiando", valor: "22%", sub: "Posts com tom favorável" },
+    ],
+    blocos: [
+      { id: "per-chips", titulo: "Perfis monitorados", largura: 12, visivel: true },
+      { id: "per-extremos", titulo: "Quem puxa a conversa", largura: 7, visivel: true },
+      { id: "per-seguidores", titulo: "Ranking de seguidores", largura: 5, visivel: true },
+    ],
+  },
+  {
+    id: "previsoes", titulo: "Previsões",
+    kpis: [
+      { id: "subindo", rotulo: "Subindo", valor: "3", sub: "Temas ganhando crítica" },
+      { id: "caindo", rotulo: "Caindo", valor: "2", sub: "Temas em alívio" },
+      { id: "estaveis", rotulo: "Estabilizados", valor: "4", sub: "Sem movimento na semana" },
+      { id: "alerta", rotulo: "Em alerta", valor: "1", sub: "Risco de virada para pior" },
+    ],
+    blocos: [
+      { id: "prev-linha", titulo: "Trajetória do clima", largura: 12, visivel: true },
+      { id: "prev-sobe", titulo: "Subindo e caindo", largura: 5, visivel: true },
+      { id: "prev-termo", titulo: "Termômetro de temas", largura: 7, visivel: true },
+    ],
+  },
+  {
+    id: "alertas", titulo: "Alertas & Ações",
+    kpis: [
+      { id: "criticos", rotulo: "Críticos", valor: "1", sub: "Exigem ação imediata" },
+      { id: "altos", rotulo: "Altos", valor: "2", sub: "Acompanhar de perto" },
+      { id: "total", rotulo: "Total", valor: "3", sub: "Planos abertos na janela" },
+      { id: "resolvidos", rotulo: "Resolvidos", valor: "5", sub: "Nos últimos 30 dias" },
+    ],
+    blocos: [{ id: "ale-planos", titulo: "Planos de crise", largura: 12, visivel: true }],
+  },
+  {
+    id: "radio", titulo: "Rádio Escuta",
+    kpis: [
+      { id: "estacoes", rotulo: "Estações", valor: "4", sub: "Cadastradas no tenant" },
+      { id: "captando", rotulo: "Captando", valor: "2", sub: "Gravaram na janela" },
+      { id: "pautas", rotulo: "Pautas", valor: "6", sub: "Captadas hoje" },
+      { id: "ouvinte", rotulo: "Voz de ouvinte", valor: "2", sub: "Trechos de cidadão no ar" },
+    ],
+    blocos: [
+      { id: "rad-estacoes", titulo: "Rádios monitoradas", largura: 7, visivel: true },
+      { id: "rad-gravar", titulo: "Gravar agora", largura: 5, visivel: true },
+      { id: "rad-pautas", titulo: "Pautas captadas", largura: 12, visivel: true },
+    ],
+  },
+  {
+    id: "sov", titulo: "Divisão da Conversa",
+    kpis: [
+      { id: "gestao", rotulo: "Gestão", valor: "46%", sub: "Da conversa gerada" },
+      { id: "oposicao", rotulo: "Oposição", valor: "33%", sub: "Da conversa gerada" },
+      { id: "imprensa", rotulo: "Imprensa", valor: "21%", sub: "Da conversa gerada" },
+      { id: "coment", rotulo: "Comentários", valor: "1.284", sub: "Base da divisão" },
+    ],
+    blocos: [
+      { id: "sov-divisao", titulo: "Quem domina a conversa", largura: 12, visivel: true },
+      { id: "sov-voz", titulo: "Voz por publicação", largura: 6, visivel: true },
+      { id: "sov-rank", titulo: "Perfis que geram conversa", largura: 6, visivel: true },
+    ],
+  },
+];
+
+/** Largura/visibilidade padrão de cada bloco, para o painel e o export. */
+const BLOCO_DEFAULTS: Record<string, { largura: number; visivel: boolean }> = {};
+
+// Registra os elementos das páginas internas (título da página, KPIs e títulos
+// de bloco), com os padrões reais do painel: H1 27/600, .section-label 15/700,
+// número de KPI na display 34/800, legenda 14.
+PAGINAS.forEach((p) => {
+  ELEMENTOS[`pg.${p.id}.titulo`] = { rotulo: `${p.titulo} · título da página`, texto: p.titulo, tamanho: 27, peso: 600 };
+  p.kpis.forEach((k) => {
+    ELEMENTOS[`pg.${p.id}.kpi.${k.id}.rotulo`] = { rotulo: `${p.titulo} · KPI ${k.rotulo} · rótulo`, texto: k.rotulo, tamanho: 15, peso: 700 };
+    ELEMENTOS[`pg.${p.id}.kpi.${k.id}.valor`] = { rotulo: `${p.titulo} · KPI ${k.rotulo} · valor`, texto: k.valor, tamanho: 34, peso: 800 };
+    ELEMENTOS[`pg.${p.id}.kpi.${k.id}.sub`] = { rotulo: `${p.titulo} · KPI ${k.rotulo} · legenda`, texto: k.sub, tamanho: 14, peso: 400 };
+  });
+  p.blocos.forEach((b) => {
+    ELEMENTOS[`pg.${p.id}.bloco.${b.id}`] = { rotulo: `${p.titulo} · bloco ${b.titulo}`, texto: b.titulo, tamanho: 15, peso: 700 };
+    BLOCO_DEFAULTS[`pg.${p.id}.bloco.${b.id}`] = { largura: b.largura, visivel: b.visivel };
+  });
+});
+ELEMENTOS["pg.periodo"] = { rotulo: "Páginas · seletor de período (24h/7d/30d)", texto: "", tamanho: 16, peso: 700 };
 
 type ElOverrides = Record<string, ElCfg>;
 
@@ -518,6 +693,93 @@ function PdfReplica() {
   );
 }
 
+/** Réplica do seletor de período compartilhado (PeriodoFilter). */
+function PeriodoReplica() {
+  return (
+    <Editavel id="pg.periodo" className="flex shrink-0 items-center gap-1 rounded-xl border border-line bg-bg-1 p-1">
+      {["24h", "7 dias", "30 dias"].map((rotulo, i) => (
+        <span
+          key={rotulo}
+          className={`rounded-lg px-2.5 py-1 ${i === 1 ? "" : "text-txt-2"}`}
+          style={i === 1 ? { background: "var(--brand)", color: "#04242F" } : undefined}
+        >
+          {rotulo}
+        </span>
+      ))}
+    </Editavel>
+  );
+}
+
+/** Wireframe de uma página interna: título + KPIs + blocos na grade de 12.
+ * A disposição vem do retrato painel-viratempo.json; o conteúdo dos cards é
+ * stub (na tela real quem preenche é o dado). */
+function PaginaReplica({ pg }: { pg: PaginaDef }) {
+  const { els } = useContext(Ctx);
+  return (
+    <div className="w-full space-y-4" style={{ maxWidth: 1060 }}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Editavel
+          id={`pg.${pg.id}.titulo`}
+          tag="h1"
+          className="text-[27px] font-semibold leading-tight tracking-tight"
+        >
+          {pg.titulo}
+        </Editavel>
+        <PeriodoReplica />
+      </div>
+
+      {pg.kpis.length > 0 && (
+        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+          {pg.kpis.map((k) => (
+            <div key={k.id} className="rounded-2xl border border-line bg-bg-1 p-4">
+              <Editavel id={`pg.${pg.id}.kpi.${k.id}.rotulo`} className="section-label">
+                {k.rotulo}
+              </Editavel>
+              <Editavel id={`pg.${pg.id}.kpi.${k.id}.valor`} className="mt-1 text-[34px] font-extrabold leading-none">
+                {k.valor}
+              </Editavel>
+              <Editavel id={`pg.${pg.id}.kpi.${k.id}.sub`} className="mt-1.5 text-xs text-txt-3">
+                {k.sub}
+              </Editavel>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}>
+        {pg.blocos.map((b) => {
+          const idEl = `pg.${pg.id}.bloco.${b.id}`;
+          const cfg = els[idEl] ?? {};
+          const largura = Math.min(12, Math.max(1, cfg.largura ?? b.largura));
+          const visivel = cfg.visivel ?? b.visivel;
+          return (
+            <div
+              key={b.id}
+              className={`rounded-2xl border bg-bg-1 p-4 ${visivel ? "border-line" : "border-dashed border-line opacity-50"}`}
+              style={{ gridColumn: `span ${largura} / span ${largura}`, minHeight: 110 }}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <Editavel id={idEl} className="section-label">
+                  {b.titulo}
+                </Editavel>
+                <span className="text-xs font-semibold text-txt-3">
+                  {visivel ? `${largura}/12` : "oculto"}
+                </span>
+              </div>
+              {visivel && (
+                <div className="mt-3 space-y-2">
+                  <div className="h-3 w-5/6 rounded bg-bg-2" />
+                  <div className="h-3 w-2/3 rounded bg-bg-2" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Controles ───────────────────────────────────────────────────────────
 
 function BotaoPilula({
@@ -554,11 +816,13 @@ function Deslizante({
   min,
   max,
   onChange,
+  sufixo = "px",
 }: {
   valor: number;
   min: number;
   max: number;
   onChange: (v: number) => void;
+  sufixo?: string;
 }) {
   return (
     <div className="flex w-full items-center gap-2">
@@ -571,7 +835,7 @@ function Deslizante({
         className="flex-1"
         style={{ accentColor: "var(--brand)" }}
       />
-      <span className="w-12 text-right text-sm font-bold tabular-nums">{valor}px</span>
+      <span className="w-12 text-right text-sm font-bold tabular-nums">{valor}{sufixo}</span>
     </div>
   );
 }
@@ -601,6 +865,7 @@ function App() {
   const [cfgs, setCfgs] = useState<Cfgs>(estadoInicial.cfgs);
   const [els, setEls] = useState<ElOverrides>(estadoInicial.els);
   const [sel, setSel] = useState<Sel>({ tipo: "marca", id: "sidebar" });
+  const [pagAtiva, setPagAtiva] = useState<string>("estacao");
   const [tema, setTema] = useState<"claro" | "escuro">("claro");
   const [avisoCopia, setAvisoCopia] = useState(false);
 
@@ -712,9 +977,31 @@ function App() {
     const cfg = els[sel.id] ?? {};
     const muda = (parcial: Partial<ElCfg>) => mudaEl(sel.id, parcial);
     const pesoEfetivo = cfg.peso ?? meta.peso;
+    const blocoDef = BLOCO_DEFAULTS[sel.id];
     painelSelecao = (
       <>
         <div className="text-sm font-bold text-txt-1">{meta.rotulo}</div>
+        {blocoDef && (
+          <>
+            <LinhaControle rotulo="Largura (colunas de 12)">
+              <Deslizante
+                valor={cfg.largura ?? blocoDef.largura}
+                min={1}
+                max={12}
+                sufixo=""
+                onChange={(v) => muda({ largura: v })}
+              />
+            </LinhaControle>
+            <LinhaControle rotulo="Visibilidade">
+              <BotaoPilula ativo={(cfg.visivel ?? blocoDef.visivel) === true} onClick={() => muda({ visivel: true })}>
+                visível
+              </BotaoPilula>
+              <BotaoPilula ativo={(cfg.visivel ?? blocoDef.visivel) === false} onClick={() => muda({ visivel: false })}>
+                oculto
+              </BotaoPilula>
+            </LinhaControle>
+          </>
+        )}
         {meta.texto !== "" && (
           <LinhaControle rotulo="Texto">
             <textarea
@@ -858,6 +1145,23 @@ function App() {
             <section>
               <div className="section-label mb-2 px-1">Nav mobile (topo)</div>
               <NavMobileReplica />
+            </section>
+
+            <section>
+              <div className="section-label mb-2 px-1">Páginas internas do painel</div>
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {PAGINAS.map((p) => (
+                  <BotaoPilula key={p.id} ativo={p.id === pagAtiva} onClick={() => setPagAtiva(p.id)}>
+                    {p.titulo}
+                  </BotaoPilula>
+                ))}
+              </div>
+              <PaginaReplica pg={PAGINAS.find((p) => p.id === pagAtiva)!} />
+              <p className="mt-2 max-w-3xl text-xs text-txt-3">
+                Wireframe pelo retrato painel-viratempo.json: título, indicadores e blocos na grade de 12
+                colunas. Os valores dos indicadores são de exemplo (na tela real quem preenche é o dado);
+                nos blocos dá para ajustar também largura e visibilidade.
+              </p>
             </section>
 
             <section>
