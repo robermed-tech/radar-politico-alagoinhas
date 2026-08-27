@@ -184,23 +184,34 @@ export function AntenaStatusColumn({
         boxShadow: SOMBRA,
       }}
     >
+      {/* Corpos e desenho subiram em 27/08, junto com os do RadarStatusColumn
+          (o pedido foi "aumenta a antena na mesma proporção"): rótulo 16→18px,
+          estado 21→24px, LED 12→14px — os mesmos valores do radar, que é o que
+          mantém as duas como o MESMO card e não dois parecidos.
+          O desenho vai a 228 e não além: a coluna desta linha é
+          `minmax(280px,320px)` e, no pior caso, sobram 232px úteis depois do
+          `px-6`. O radar renderiza 210 na Estação Meteorológica pelo mesmo tipo
+          de limite — em cada tela, o desenho é o maior que cabe inteiro. */}
       <div
-        className="text-sm uppercase tracking-[0.16em]"
+        className="text-[18px] uppercase tracking-[0.16em]"
         style={{ color: "rgba(255,255,255,0.78)", fontWeight: 700 }}
       >
         Escuta
       </div>
 
-      <div className="my-8">
-        <AntenaCaptando ativo={ativo} />
+      {/* Respiro de 32 para 24px pela mesma razão do radar: o desenho cresceu e
+          a folga em volta não é dado nenhum. Mantém a linha de topo da Rádio
+          Escuta na altura que ela já tinha (~470px, o teto dos cards ao lado). */}
+      <div className="my-6">
+        <AntenaCaptando ativo={ativo} size={228} />
       </div>
 
       <div className="flex items-center justify-center gap-2.5">
-        <span className="text-[21px] leading-tight text-white" style={{ fontWeight: 800 }}>
+        <span className="text-[24px] leading-tight text-white" style={{ fontWeight: 800 }}>
           {ativo ? "Captando sinal" : "Sem captação"}
         </span>
         <span
-          className="inline-block h-3 w-3 shrink-0 rounded-full"
+          className="inline-block h-3.5 w-3.5 shrink-0 rounded-full"
           style={{ background: cor, boxShadow: `0 0 10px ${cor}` }}
         />
       </div>
