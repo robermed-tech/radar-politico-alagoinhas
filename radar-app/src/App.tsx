@@ -261,8 +261,11 @@ export default function App() {
             responde por si; um símbolo ao lado a espremeria numa coluna de
             224px. O tique quadrado continua existindo para favicon e ícone do
             app, onde a palavra não caberia — ver LogoViratempo.tsx. */}
-        <div className="mb-6 px-2 text-txt-1">
-          <WordmarkViratempo altura={26} />
+        {/* Teal via var(--brand) no contêiner (traçado é currentColor), nunca
+            a classe .text-brand — ela resolve por --brand-text, escuro no tema
+            claro. Mesma regra do painel de marca do Login. */}
+        <div className="mb-6 px-2" style={{ color: "var(--brand)" }}>
+          <WordmarkViratempo altura={30} />
         </div>
 
         <nav className="flex flex-col gap-1.5">
