@@ -85,9 +85,20 @@ export function IconAntena({ size = 16 }: { size?: number }) {
  * `requestAnimationFrame` — rAF para em aba oculta e o ícone congelaria num
  * quadro qualquer.
  *
- * Os arcos existem DUAS vezes: uma camada fixa e apagada (é o desenho da
- * referência, que precisa continuar legível com `prefers-reduced-motion`) e uma
- * camada acesa por cima, que é a que pulsa.
+ * TRAÇO FLAT desde 27/08 (pedido do Robério): uma tinta só, cheia, do mesmo
+ * peso na torre e nos arcos. Antes o desenho vinha em três forças ao mesmo
+ * tempo — arcos fantasma a 28%, torre a 62% e arcos acesos a 95% com um
+ * `drop-shadow` de halo por cima —, o que dava o efeito de traço apagado que
+ * ele apontou. A camada fantasma existia como desenho de repouso para
+ * `prefers-reduced-motion`; esse papel passou para os próprios arcos, que
+ * param acesos e completos quando a animação está desligada (ver o @media no
+ * <style> abaixo).
+ *
+ * O que fica: a onda. Cada arco nasce no foco, cresce para fora e some, em
+ * sequência, e o traço é sólido o tempo todo em que está visível.
+ * Bônus: o painel passou a ter exatamente o mesmo traço do `IconAntena` de
+ * 16px da barra lateral, que sempre foi flat — que é justamente o que faz o
+ * ícone do menu e o card da página serem lidos como a mesma coisa.
  */
 function AntenaCaptando({ ativo, size = 210 }: { ativo: boolean; size?: number }) {
   // Mesmas cores de estado do radar de coleta (COR_RADAR_* em
@@ -102,14 +113,20 @@ function AntenaCaptando({ ativo, size = 210 }: { ativo: boolean; size?: number }
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }} aria-hidden>
       <style>{`
+        /* A onda passa a maior parte do ciclo em opacidade CHEIA: o traço é
+           sólido enquanto está no ar, e só o rabo do movimento desvanece —
+           sem isso o arco sumiria de estalo no meio do quadro. */
         @keyframes antena-onda {
-          0%   { opacity: 0;    transform: scale(0.62); }
-          18%  { opacity: 0.95; }
-          100% { opacity: 0;    transform: scale(1.10); }
+          0%   { opacity: 0; transform: scale(0.62); }
+          12%  { opacity: 1; }
+          70%  { opacity: 1; }
+          100% { opacity: 0; transform: scale(1.10); }
         }
         .antena-onda { animation: antena-onda 2.4s ease-out infinite; }
         @media (prefers-reduced-motion: reduce) {
-          .antena-onda { animation: none; opacity: 0.9; transform: none; }
+          /* Sem animação, os três arcos ficam acesos e parados: é o desenho
+             completo da antena, que antes vinha de uma camada fantasma. */
+          .antena-onda { animation: none; opacity: 1; transform: none; }
         }
       `}</style>
       <svg
@@ -117,30 +134,19 @@ function AntenaCaptando({ ativo, size = 210 }: { ativo: boolean; size?: number }
         className="absolute inset-0 h-full w-full"
         fill="none"
         stroke={cor}
-        strokeWidth="0.9"
+        /* Um peso só para tudo (torre e ondas), como no ícone de 16px: peso
+           diferente por camada é a outra metade do efeito "apagado". */
+        strokeWidth="1.1"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        {/* Camada apagada: o desenho da antena, sempre visível. */}
-        <g strokeOpacity="0.28">
-          {RAIOS.map((r) => (
-            <ParDeOndas key={r} r={r} />
-          ))}
-        </g>
-        <g strokeOpacity="0.62">
-          <Torre />
-        </g>
-        {/* Camada acesa: uma onda por raio, saindo em sequência do foco. */}
+        <Torre />
+        {/* Uma onda por raio, saindo em sequência do foco. */}
         {RAIOS.map((r, i) => (
           <g
             key={r}
             className="antena-onda"
-            style={{
-              animationDelay: `${i * 0.55}s`,
-              transformOrigin: origem,
-              filter: `drop-shadow(0 0 1px ${cor})`,
-            }}
-            strokeWidth="1.35"
+            style={{ animationDelay: `${i * 0.55}s`, transformOrigin: origem }}
           >
             <ParDeOndas r={r} />
           </g>
