@@ -225,28 +225,33 @@ export function RadarStatusColumn({
         boxShadow: SOMBRA,
       }}
     >
+      {/* Corpos subiram em 27/08 (pedido do Robério: "aumente o tamanho dos
+          elementos e do ícone dentro do card"): rótulo 16→18px, estado 21→24px
+          e LED 12→14px. A AntenaStatusColumn da Rádio Escuta, que é a gêmea
+          desta desde 29/07, ficou nos corpos antigos — o pedido foi sobre este
+          card. Se as duas tiverem que voltar a casar, é lá que se mexe. */}
       <div
-        className="text-sm uppercase tracking-[0.16em]"
+        className="text-[18px] uppercase tracking-[0.16em]"
         style={{ color: "rgba(255,255,255,0.78)", fontWeight: 700 }}
       >
         Coleta
       </div>
 
-      {/* Ícone e texto sobem junto com os da AntenaStatusColumn (31/07):
-          as duas são gêmeas de propósito, e um pedido de "aumentar a antena"
-          só é honesto se o radar cresce a mesma proporção, senão as duas
-          voltam a divergir e o "igual" que o cliente pediu em 29/07 quebra de
-          novo — 150→210 na antena é ×1,4; aqui 168→235 mantém a mesma razão. */}
-      <div className="my-9">
+      {/* O diâmetro vem de quem posiciona (ver `tamanho`): esta coluna tem
+          largura fixa no grid e o card recorta o que passa dela. */}
+      {/* Respiro menor (36→24px) porque o desenho cresceu: sem isso o card
+          passa a ditar a altura da faixa inteira, e o veredito ao lado estica
+          junto para acompanhar uma folga que não é dado nenhum. */}
+      <div className="my-6">
         <RadarSweep ativo={ativo} size={tamanho} />
       </div>
 
       <div className="flex items-center justify-center gap-2.5">
-        <span className="text-[21px] leading-tight text-white" style={{ fontWeight: 800 }}>
+        <span className="text-[24px] leading-tight text-white" style={{ fontWeight: 800 }}>
           {ativo ? "Em varredura" : "Ocioso"}
         </span>
         <span
-          className="inline-block h-3 w-3 shrink-0 rounded-full"
+          className="inline-block h-3.5 w-3.5 shrink-0 rounded-full"
           style={{ background: cor, boxShadow: `0 0 10px ${cor}` }}
         />
       </div>

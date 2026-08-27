@@ -640,8 +640,9 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
       Análise {periodo === "semana" ? "da semana" : "do mês"} ainda não disponível: dados insuficientes.
     </div>
   ) : null;
-  const spanVeredito = cardDiagnostico ? "lg:col-span-4" : "lg:col-span-5";
-  const spanEngajamento = cardDiagnostico ? "lg:col-span-3" : "lg:col-span-5";
+  // A faixa nobre tem sempre os MESMOS três blocos (6 + 3 + 3), com ou sem
+  // diagnóstico: ele saiu da faixa em 27/08 e virou banda de largura cheia
+  // logo abaixo, então não há mais vão a preencher quando ele falta.
 
   // Evidência (temas) e ação (sugestões) na MESMA linha, logo abaixo da faixa
   // nobre: as sugestões viviam no rodapé da página, a uma rolagem inteira dos
@@ -665,17 +666,15 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
         <PeriodoFilter dias={dias} onChange={setDias} />
       </div>
 
-      {/* FAIXA NOBRE (modelo Direção A, aprovado em 27/08/26, com o radar
-          reposto no mesmo dia a pedido do Robério): quanto (o veredito), o
-          radar de coleta, com que lastro (o engajamento) e por quê (o
-          diagnóstico) — 4 + 2 + 3 + 3 de doze colunas. O que a Direção A
-          resolveu e continua valendo é o "por quê" na primeira leitura: antes
-          o diagnóstico só aparecia depois de uma faixa de 420px. O radar
-          voltou para o lugar que tinha desde 27/07, entre o clima e o
-          engajamento, e o selo do cabeçalho (RadarStatusChip) saiu junto —
-          os dois ao mesmo tempo diriam o mesmo estado duas vezes.
-          Sem diagnóstico (tenant novo, histórico curto), os três cards
-          restantes ocupam as 12 colunas em vez de deixar um vão. */}
+      {/* FAIXA NOBRE — 6 + 3 + 3 de doze colunas: o veredito (quanto), o radar
+          de coleta e o engajamento (com que lastro). O diagnóstico (por quê)
+          sai daqui e vira banda de largura cheia logo abaixo.
+          Como se chegou aqui, no mesmo dia: a Direção A pôs os três blocos de
+          decisão lado a lado e mandou o radar para o cabeçalho; o Robério pediu
+          o radar de volta (e o selo do cabeçalho saiu, para o estado não ser
+          dito duas vezes); depois pediu o radar maior e a análise noutro lugar.
+          O que sobrevive das três rodadas é o principal da Direção A: o "por
+          quê" na primeira leitura, e não depois de uma faixa de 420px. */}
       <div className="grid gap-4 lg:grid-cols-12">
         {/* Card do clima inteiro clicável: leva direto à curadoria de
             comentários que explica o clima ("O que o povo diz"). */}
@@ -692,7 +691,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             alvo menor e declarado — e ter os dois seria dizer duas vezes a
             mesma coisa em lugares diferentes. */}
         <div
-          className={`reveal reveal-2 card-hover relative overflow-hidden rounded-[28px] border border-line bg-bg-1 p-7 ${spanVeredito}`}
+          className="reveal reveal-2 card-hover relative overflow-hidden rounded-[28px] border border-line bg-bg-1 p-7 lg:col-span-6"
           style={{ minHeight: 336 }}
         >
           {/* Céu adaptativo do Viratempo (modelo Horizonte, aprovado em
@@ -868,8 +867,8 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
             card recorta o que passa disso, então o radar vem no diâmetro que
             CABE. O padrão do componente (235) é a medida gêmea da antena da
             Rádio Escuta e continua valendo lá. */}
-        <div className="reveal reveal-3 lg:col-span-2">
-          <RadarStatusColumn minHeight={336} tamanho={132} />
+        <div className="reveal reveal-3 lg:col-span-3">
+          <RadarStatusColumn minHeight={336} tamanho={210} />
         </div>
 
         {/* LASTRO: quantos comentários sustentam o número ao lado. Tinta escura sobre a marca (decisão de
@@ -880,7 +879,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           tabIndex={0}
           onClick={() => setPublicacoesAbertas(true)}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setPublicacoesAbertas(true); }}
-          className={`reveal reveal-4 group relative cursor-pointer overflow-hidden rounded-[28px] p-6 transition-transform duration-200 hover:-translate-y-0.5 ${spanEngajamento}`}
+          className="reveal reveal-4 group relative cursor-pointer overflow-hidden rounded-[28px] p-6 transition-transform duration-200 hover:-translate-y-0.5 lg:col-span-3"
           style={{
             // Chapado, e não degradê: `--brand` é um hex único nos dois temas
             // desde 31/07, então o preenchimento sólido já é a cor de marca
@@ -948,11 +947,16 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           </div>
         </div>
 
-        {/* POR QUÊ: o diagnóstico da IA fecha a faixa nobre. Ele vivia abaixo,
-            depois de ~420px de cartões, e era a primeira coisa que respondia à
-            pergunta que a tela existe para responder. */}
-        {cardDiagnostico && <div className="reveal reveal-5 lg:col-span-3">{cardDiagnostico}</div>}
       </div>
+
+      {/* POR QUÊ: o diagnóstico da IA em banda de largura cheia, logo abaixo da
+          faixa nobre (27/08, pedido do Robério para mudar a posição dele).
+          Ele chegou a ser o quarto card da faixa; quando o radar voltou, os
+          quatro dividiram doze colunas e a análise ficou espremida numa coluna
+          de 278px, o que transforma um parágrafo de prosa numa tira alta e
+          estreita. Aqui ele tem a largura da página e continua onde importa:
+          imediatamente depois do número, antes dos temas. */}
+      {cardDiagnostico && <div className="reveal reveal-5">{cardDiagnostico}</div>}
 
       {/* EVIDÊNCIA E AÇÃO na mesma linha (modelo Direção A, 27/08): os temas
           que merecem atenção à esquerda, as sugestões à direita. As sugestões
