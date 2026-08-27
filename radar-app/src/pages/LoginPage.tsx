@@ -155,7 +155,12 @@ export function LoginPage() {
 
       {/* ── FORMULÁRIO (direita) ── */}
       <div className="grid place-items-center p-6">
-        <div className="w-full max-w-sm">
+        {/* 440px desde 27/08 (pedido do Robério no canvas), no lugar do
+            `max-w-sm` de 384. Continua sendo TETO, e não largura fixa: no
+            celular quem manda é o `w-full` dentro do respiro de 24px do
+            container, e a altura segue livre — o cartão precisa crescer quando
+            entram a mensagem de erro ou o aviso de link enviado. */}
+        <div className="w-full max-w-[440px]">
           {/* logo compacta — visível também no mobile */}
           <div className="mb-8 text-txt-1 lg:hidden">
             <WordmarkViratempo altura={30} />
