@@ -16,7 +16,7 @@ import { fmtInt, fmtDataBR, fraseCapitalizada, limparTravessoes } from "@/lib/fo
 import { useAuth } from "@/components/AuthProvider";
 import { EvidenciaComentariosModal } from "@/components/EvidenciaComentariosModal";
 import { PublicacoesModal } from "@/components/PublicacoesModal";
-import { RadarStatusBar, RadarStatusChip } from "@/components/RadarStatusBar";
+import { RadarStatusBar, RadarStatusColumn } from "@/components/RadarStatusBar";
 import { PeriodoFilter, periodoLabel, type Dias } from "@/components/PeriodoFilter";
 // Import direto: desde 27/07 o velocímetro é SVG puro (não puxa mais o chunk
 // de ~1 MB do ECharts), então não há mais motivo para carregá-lo em lazy.
@@ -640,7 +640,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
       Análise {periodo === "semana" ? "da semana" : "do mês"} ainda não disponível: dados insuficientes.
     </div>
   ) : null;
-  const spanVeredito = cardDiagnostico ? "lg:col-span-5" : "lg:col-span-7";
+  const spanVeredito = cardDiagnostico ? "lg:col-span-4" : "lg:col-span-5";
   const spanEngajamento = cardDiagnostico ? "lg:col-span-3" : "lg:col-span-5";
 
   // Evidência (temas) e ação (sugestões) na MESMA linha, logo abaixo da faixa
@@ -662,21 +662,19 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           <h1 className="text-[27px] font-semibold leading-tight tracking-tight">{periodoTitulo(dias)}</h1>
           <p className="text-base text-txt-2">Alagoinhas/BA · imagem do prefeito e da prefeitura</p>
         </div>
-        {/* O radar de coleta vive AQUI desde 27/08 (modelo Direção A): estado
-            do sistema fica na linha do título, junto do controle de período,
-            e não no meio da faixa nobre. Ver RadarStatusChip. */}
-        <div className="flex flex-wrap items-center gap-3">
-          <RadarStatusChip />
-          <PeriodoFilter dias={dias} onChange={setDias} />
-        </div>
+        <PeriodoFilter dias={dias} onChange={setDias} />
       </div>
 
-      {/* FAIXA NOBRE (modelo Direção A, aprovado em 27/08/26): os três blocos
-          que decidem, lado a lado — quanto (o veredito), com que lastro (o
-          engajamento) e por quê (o diagnóstico). Antes eram clima · radar ·
-          engajamento, e o "por quê" só aparecia depois de uma faixa de 420px,
-          já fora da primeira leitura. O radar virou selo no cabeçalho.
-          Sem diagnóstico (tenant novo, histórico curto), os dois cards
+      {/* FAIXA NOBRE (modelo Direção A, aprovado em 27/08/26, com o radar
+          reposto no mesmo dia a pedido do Robério): quanto (o veredito), o
+          radar de coleta, com que lastro (o engajamento) e por quê (o
+          diagnóstico) — 4 + 2 + 3 + 3 de doze colunas. O que a Direção A
+          resolveu e continua valendo é o "por quê" na primeira leitura: antes
+          o diagnóstico só aparecia depois de uma faixa de 420px. O radar
+          voltou para o lugar que tinha desde 27/07, entre o clima e o
+          engajamento, e o selo do cabeçalho (RadarStatusChip) saiu junto —
+          os dois ao mesmo tempo diriam o mesmo estado duas vezes.
+          Sem diagnóstico (tenant novo, histórico curto), os três cards
           restantes ocupam as 12 colunas em vez de deixar um vão. */}
       <div className="grid gap-4 lg:grid-cols-12">
         {/* Card do clima inteiro clicável: leva direto à curadoria de
@@ -865,10 +863,16 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           </div>
         </div>
 
-        {/* LASTRO: quantos comentários sustentam o número ao lado. Fica grudado
-            no veredito de propósito (modelo Direção A) — amostra e aprovação se
-            qualificam uma à outra, e até 27/08 havia um card de status do
-            sistema separando as duas. Tinta escura sobre a marca (decisão de
+        {/* Radar de coleta, de volta entre o clima e o engajamento (27/08).
+            `tamanho` existe por causa desta coluna: aqui ela tem 183px e o
+            card recorta o que passa disso, então o radar vem no diâmetro que
+            CABE. O padrão do componente (235) é a medida gêmea da antena da
+            Rádio Escuta e continua valendo lá. */}
+        <div className="reveal reveal-3 lg:col-span-2">
+          <RadarStatusColumn minHeight={336} tamanho={132} />
+        </div>
+
+        {/* LASTRO: quantos comentários sustentam o número ao lado. Tinta escura sobre a marca (decisão de
             contraste da reunião de 24/07; branco sobre o teal mede 2,08:1).
             Clicável: abre a lista das publicações analisadas no período. */}
         <div
@@ -876,7 +880,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
           tabIndex={0}
           onClick={() => setPublicacoesAbertas(true)}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setPublicacoesAbertas(true); }}
-          className={`reveal reveal-3 group relative cursor-pointer overflow-hidden rounded-[28px] p-6 transition-transform duration-200 hover:-translate-y-0.5 ${spanEngajamento}`}
+          className={`reveal reveal-4 group relative cursor-pointer overflow-hidden rounded-[28px] p-6 transition-transform duration-200 hover:-translate-y-0.5 ${spanEngajamento}`}
           style={{
             // Chapado, e não degradê: `--brand` é um hex único nos dois temas
             // desde 31/07, então o preenchimento sólido já é a cor de marca
@@ -947,7 +951,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
         {/* POR QUÊ: o diagnóstico da IA fecha a faixa nobre. Ele vivia abaixo,
             depois de ~420px de cartões, e era a primeira coisa que respondia à
             pergunta que a tela existe para responder. */}
-        {cardDiagnostico && <div className="reveal reveal-4 lg:col-span-4">{cardDiagnostico}</div>}
+        {cardDiagnostico && <div className="reveal reveal-5 lg:col-span-3">{cardDiagnostico}</div>}
       </div>
 
       {/* EVIDÊNCIA E AÇÃO na mesma linha (modelo Direção A, 27/08): os temas

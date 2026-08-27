@@ -160,17 +160,14 @@ export function RadarStatusBar() {
  * disputar atenção com nenhum dos dois.
  */
 /**
- * Selo para a LINHA DO TÍTULO (modelo Direção A, aprovado em 27/08/26).
+ * Selo para a LINHA DO TÍTULO, nascido no modelo Direção A (27/08/26), quando
+ * o radar saiu da faixa nobre da Estação Meteorológica.
  *
- * O radar saiu da faixa nobre da Estação Meteorológica, onde ocupava a coluna
- * do meio desde 27/07: ele é estado do SISTEMA, não dado de decisão, e ficava
- * entre os dois números que a página existe para mostrar — separando a
- * aprovação do tamanho da amostra, que se qualificam um ao outro. Continua
- * visível, e pela MESMA régua (useRadarKpis, a do banner de saúde): o que muda
- * é o tamanho que ele ocupa, agora proporcional ao que ele informa.
- *
- * `RadarStatusColumn` continua exportada e é a mesma peça em formato de
- * coluna; nenhuma tela a consome hoje.
+ * HOJE ELE ESTÁ SEM CONSUMIDOR: horas depois, o Robério pediu o radar animado
+ * de volta à faixa, e ter os dois ao mesmo tempo seria dizer o mesmo estado
+ * duas vezes na mesma tela. Fica exportado porque a régua é a mesma
+ * (useRadarKpis) e o formato compacto resolve qualquer tela em que a coluna
+ * não caiba.
  */
 export function RadarStatusChip() {
   const { ativo } = useRadarKpis();
@@ -189,7 +186,18 @@ export function RadarStatusChip() {
   );
 }
 
-export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
+export function RadarStatusColumn({
+  minHeight = 320,
+  tamanho = 235,
+}: {
+  minHeight?: number;
+  /** Diâmetro do radar. 235 é a medida gêmea da AntenaStatusColumn (ver
+   *  abaixo) e vale para a coluna larga da Rádio Escuta. Na Estação
+   *  Meteorológica a coluna tem 183px e o card recorta o que passa disso, então
+   *  a página passa um valor que CABE — radar cortado na borda lê como defeito,
+   *  não como desenho. */
+  tamanho?: number;
+}) {
   const kpis = useRadarKpis();
   const ativo = kpis.ativo;
   const cor = ativo ? COR_RADAR_ATIVO : COR_RADAR_OCIOSO;
@@ -230,7 +238,7 @@ export function RadarStatusColumn({ minHeight = 320 }: { minHeight?: number }) {
           voltam a divergir e o "igual" que o cliente pediu em 29/07 quebra de
           novo — 150→210 na antena é ×1,4; aqui 168→235 mantém a mesma razão. */}
       <div className="my-9">
-        <RadarSweep ativo={ativo} size={235} />
+        <RadarSweep ativo={ativo} size={tamanho} />
       </div>
 
       <div className="flex items-center justify-center gap-2.5">
