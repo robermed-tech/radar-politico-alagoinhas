@@ -490,7 +490,7 @@ function TermometroFaixas({ themes, janela }: { themes: DailyTheme[]; janela: nu
                 <span className="min-w-0">
                   <span
                     className="block truncate text-lg font-bold leading-tight"
-                    style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                    style={{ fontFamily: "Inter, system-ui, sans-serif" }}
                   >
                     {labelTemaSub(t.tema)}
                   </span>
@@ -519,7 +519,7 @@ function TermometroFaixas({ themes, janela }: { themes: DailyTheme[]; janela: nu
                 <span className="text-right">
                   <span
                     className="tnum text-[26px] font-bold leading-none"
-                    style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                    style={{ fontFamily: "Inter, system-ui, sans-serif" }}
                   >
                     {t.pctNeg}
                     <span className="text-[13px] font-bold" style={{ color: "rgba(26,15,2,0.78)" }}>

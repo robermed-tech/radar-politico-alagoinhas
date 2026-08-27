@@ -192,7 +192,7 @@ export function GaugeTema({ label, neg, pos }: Props) {
           y={CY + 66}
           textAnchor="middle"
           fill={corValor}
-          style={{ fontFamily: "Space Grotesk, Inter, sans-serif", fontSize: 26, fontWeight: 700, letterSpacing: "0.02em" }}
+          style={{ fontFamily: "Inter, system-ui, sans-serif", fontSize: 26, fontWeight: 700, letterSpacing: "0.02em" }}
         >
           {valor}%
         </text>

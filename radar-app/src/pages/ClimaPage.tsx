@@ -726,7 +726,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                   >
                     <span
                       className="text-[44px] leading-[0.95] text-txt-1 sm:text-[56px] lg:text-[64px]"
-                      style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                      style={{ fontWeight: 600, fontFamily: "Inter, system-ui, sans-serif" }}
                     >
                       Sem sinal
                     </span>
@@ -745,7 +745,9 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                   {/* Peso 600 desde a onda 2 (03/08): o 200 era da doutrina
                       fina de 11/07, e o briefing pede número em destaque com
                       legibilidade alta. Não vai a 800: neste corpo (até 208px)
-                      o traço da Space Grotesk 700 já fecha os vazados.
+                      o traço já fecha os vazados (valia para a Space Grotesk
+                      700 e continua valendo para a Inter, que desde 26/08 é a
+                      família única do painel).
                       Dígitos PROPORCIONAIS, sem tnum e sem tracking custom
                       (04/08, 3ª rodada): em caixas tabulares nenhum
                       espaçamento fixo é harmônico — o 4 preenche a caixa
@@ -758,7 +760,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                       0,9s e o ícone e a frase ao lado tremem a cada carga. */}
                   <span
                     className="relative inline-block text-[120px] leading-[0.76] text-txt-1 sm:text-[168px] lg:text-[208px]"
-                    style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                    style={{ fontWeight: 600, fontFamily: "Inter, system-ui, sans-serif" }}
                   >
                     <span aria-hidden="true" className="invisible">{view.iad}</span>
                     <span className="absolute inset-y-0 left-0">
@@ -824,22 +826,27 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
                 <div className="min-w-0 flex-[1_1_16rem]" style={{ containerType: "inline-size" }}>
                   <div
                     /* 36px sempre que couber, encolhendo só quando não couber.
-                       A palavra mais larga do vocabulário é "PARCIALMENTE",
-                       304px em 36px, e ela é uma palavra só: não quebra. Como
-                       a largura livre depende de quantos dígitos o número tem
-                       (293px com um, 320px com dois), nenhum tamanho fixo
-                       serve para os dois casos. 11.5cqi resolve pela conta
-                       36/304 = 0,118 da largura deste bloco: num bloco de
-                       336px dá os 36px cheios, num de 270px dá 31px, que é
-                       exatamente onde "PARCIALMENTE" ainda cabe inteira. */
-                    className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 break-words sm:text-[clamp(30px,11.5cqi,36px)]"
-                    style={{ fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
+                       A palavra mais larga do vocabulário é "PARCIALMENTE", e
+                       ela é uma palavra só: não quebra. Como a largura livre
+                       depende de quantos dígitos o número tem, nenhum tamanho
+                       fixo serve para os dois casos, e o cqi resolve por
+                       proporção da largura DESTE bloco.
+                       O coeficiente é medido na fonte: em 36px "PARCIALMENTE"
+                       ocupa 278px na Inter (eram 304px na Space Grotesk, que
+                       saiu em 26/08), então o limite de encaixe é 36/278 =
+                       0,129 e o valor usado é 12.7cqi, com ~2% de folga. Com
+                       os 11.5cqi calibrados para a fonte antiga o título
+                       encolhia antes da hora, num bloco em que já cabia
+                       inteiro. Ao trocar a fonte outra vez, MEDIR de novo:
+                       este número é métrica de tipo, não preferência. */
+                    className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 break-words sm:text-[clamp(30px,12.7cqi,36px)]"
+                    style={{ fontFamily: "Inter, system-ui, sans-serif", color: inkFoto?.forte }}
                   >
                     {wx.label}
                   </div>
                   <div
                     className="mt-2 text-[18px] leading-snug text-txt-2 sm:text-[20px]"
-                    style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.suave }}
+                    style={{ fontWeight: 600, fontFamily: "Inter, system-ui, sans-serif", color: inkFoto?.suave }}
                   >
                     {limparTravessoes(wx.sub)}
                   </div>
@@ -913,7 +920,7 @@ export function ClimaPage({ onVerFeed }: { onVerFeed?: () => void }) {
               <div className="flex items-end gap-1">
                 <span
                   className="tnum text-[68px] leading-[0.85] tracking-tight"
-                  style={{ fontWeight: 700, color: "#04242F", fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                  style={{ fontWeight: 700, color: "#04242F", fontFamily: "Inter, system-ui, sans-serif" }}
                 >
                   <ContadorAnimado valor={view.comentarios} formatar={fmtInt} />
                 </span>

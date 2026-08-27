@@ -104,7 +104,7 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
             <div className="flex items-start">
               <span
                 className="text-[120px] leading-[0.76] text-txt-1 sm:text-[168px] lg:text-[208px]"
-                style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif" }}
+                style={{ fontWeight: 600, fontFamily: "Inter, system-ui, sans-serif" }}
               >
                 {iad}
               </span>
@@ -121,13 +121,13 @@ function HeroReplica({ pct, iad, temaEscuro = false }: { pct: number; iad: numbe
             <div className="min-w-0 flex-[1_1_16rem]" style={{ containerType: "inline-size" }}>
               <div
                 className="text-[30px] font-extrabold uppercase leading-none tracking-tight text-txt-1 break-words sm:text-[clamp(30px,11.5cqi,36px)]"
-                style={{ fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.forte }}
+                style={{ fontFamily: "Inter, system-ui, sans-serif", color: inkFoto?.forte }}
               >
                 {wx.label}
               </div>
               <div
                 className="mt-2 text-[18px] leading-snug text-txt-2 sm:text-[20px]"
-                style={{ fontWeight: 600, fontFamily: "Space Grotesk, Inter, sans-serif", color: inkFoto?.suave }}
+                style={{ fontWeight: 600, fontFamily: "Inter, system-ui, sans-serif", color: inkFoto?.suave }}
               >
                 {limparTravessoes(wx.sub)}
               </div>

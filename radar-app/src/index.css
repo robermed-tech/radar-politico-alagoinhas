@@ -253,29 +253,25 @@ body {
    já causou um bug (a primeira versão do box "Publicações analisadas" saiu
    preta com texto em peso regular, porque font-bold apontava para 400). */
 
-/* Título de CARD e número em destaque vão para a DISPLAY (Space Grotesk); o
-   texto corrido fica na Inter. A regra é aplicada aqui, no elemento, e não
-   classe a classe nos componentes: senão as telas divergiriam uma da outra na
-   primeira que alguém esquecesse de marcar. `h3` fica de fora de propósito —
-   em vários cards ele é linha de conteúdo, não título.
+/* O painel tem UMA família: Inter (26/08/26, pedido do Robério). Até aqui
+   havia duas com papéis distintos — a Space Grotesk carregava título de card,
+   rótulo de seção e número em destaque, e a Inter carregava o texto corrido —,
+   e a regra morava neste bloco (h2, .section-label, .metric-hero) para as
+   telas não divergirem uma da outra. Ela foi removida inteira: sem
+   `font-family` própria, os três herdam a Inter do `body`, que é o que a
+   decisão pede, e não sobra um seletor pronto para reintroduzir a segunda
+   família sem querer.
 
-   26/08/26: o `h1` SAIU desta regra. O título de página passou a ser Inter
-   600 / 27px (decisão do Robério sobre o modelo da paleta nova), e não mais
-   Space Grotesk 800 / 34px, que era o padrão de 28/07. O que continua valendo
-   da decisão de 28/07 é o principal: o título é o MESMO em toda página da
-   barra lateral. As páginas órfãs (CommandCenter, CrisisCenter, TrendsPage,
-   AssistantPage, GlossaryPage) ficaram no `text-2xl` antigo, como já estavam
-   — não têm rota nem item de menu. */
-h2,
-.section-label,
-.metric-hero {
-  font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
-  /* A Space Grotesk vai até 700, e os <h1> do painel são `font-extrabold`
-     (800). Sem esta linha o navegador FABRICA o 800 engordando o traço do
-     700, e o título grande sai borrado nas bordas. Com ela, o 800 cai no 700
-     real da fonte. */
-  font-synthesis-weight: none;
-}
+   O `h1` já tinha saído desta regra em 26/08 (título de página em Inter 600 /
+   27px, no lugar de Space Grotesk 800 / 34px); agora o resto acompanhou. O que
+   continua valendo da decisão de 28/07 é o principal: o título é o MESMO em
+   toda página da barra lateral.
+
+   `font-synthesis-weight: none` saiu junto: ele existia porque a Space Grotesk
+   para no 700 e o navegador fabricava o 800 engordando o traço. A Inter é
+   carregada em 400/500/600/700/800 (index.html), então cada peso usado no
+   painel tem arquivo real e não há o que sintetizar. Ao acrescentar um peso
+   novo em componente, acrescentar também na URL da fonte. */
 
 /* Exceção declarada à diretriz acima (pedido de 27/07): o box "Publicações
    analisadas" é o único ponto do painel em que TODA fonte é bold, nunca
@@ -378,7 +374,8 @@ button:disabled {
    O weight 300 daqui era da doutrina fina de 11/07, revogada em 27/07 (o
    cliente pediu letra maior e mais pesada) e revogada de novo pelo briefing
    de 03/08 ("números em destaque, tamanho grande, legibilidade alta", para
-   quem lê o painel de relance). Peso 700 na Space Grotesk. */
+   quem lê o painel de relance). Peso 700 na Inter (26/08/26: a família única
+   do painel; era a Space Grotesk). */
 .metric-hero {
   font-size: clamp(2.4rem, 5.5vw, 3.6rem);
   font-weight: 700;

@@ -49,15 +49,20 @@ export default {
         lime: { DEFAULT: "#BEDB1D", ink: "#1A2400" },
         skycard: { DEFAULT: "var(--brand)", deep: "var(--brand)" },
       },
-      // Duas famílias com papéis distintos (briefing de 03/08): Space Grotesk
-      // carrega título, rótulo de card e NÚMERO (as formas geométricas e o
-      // corte reto dos dígitos sustentam corpo grande sem virar peso morto);
-      // Inter carrega o texto corrido, que é onde a leitura acontece. Não
-      // trocar `sans` por uma display: o painel tem parágrafo de análise e
-      // citação de cidadão, e display em corpo pequeno cansa.
+      // UMA família no painel: Inter (26/08/26, pedido do Robério). O briefing
+      // de 03/08 tinha criado duas com papéis distintos — Space Grotesk em
+      // título, rótulo de card e número; Inter no texto corrido —, e a segunda
+      // família saiu inteira: do CSS, da URL de fontes do index.html e dos
+      // estilos inline dos números.
+      // `display` continua existindo como ALIAS de `sans`, e não foi removido:
+      // são ~30 usos de `font-display` espalhados por 12 telas, e trocar
+      // classe por classe só para apagar um nome é mexer em 12 arquivos sem
+      // ganho (a mesma razão que manteve `brand.2` e `skycard` como alias do
+      // token único). Enquanto os dois apontarem para a mesma pilha, nenhuma
+      // tela pode divergir por esquecimento.
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["Space Grotesk", "Inter", "system-ui", "sans-serif"],
+        display: ["Inter", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
     },
