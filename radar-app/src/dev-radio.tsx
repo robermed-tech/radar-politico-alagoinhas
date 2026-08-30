@@ -6,6 +6,11 @@
 // `gravar-radio` interceptada — então dá para percorrer o ciclo inteiro sem
 // login, sem admin e sem gastar um centavo de Apify:
 //
+// Traz também o player do clipe da citação com o MEDIDOR DE NÍVEL, alimentado
+// por um WAV sintetizado aqui mesmo (fala simulada, com um estouro perto do
+// fim para a zona âmbar e a retenção de pico aparecerem). O medidor lê o áudio
+// de verdade pelo AnalyserNode, então o que se vê aqui é o que a tela mostra.
+//
 //   ocioso      → o botão é a pílula teal "Gravar"
 //   iniciando   → clicar em Gravar; o run ainda não apareceu na Apify
 //   gravando    → o botão VIRA o medidor: avanço em teal + tempo que falta
@@ -21,6 +26,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { supabase } from "./lib/auth";
 import { GravarAgora } from "./components/GravarAgora";
+import { ClipeCitacao } from "./components/ClipeCitacao";
 import type { EstadoGravacao, RadioFonte } from "./lib/radio";
 import "./index.css";
 
@@ -90,6 +96,63 @@ Object.defineProperty(supabase, "functions", {
   },
 });
 
+/**
+ * WAV de teste: fala simulada (portadora grave com harmônicos, envelope
+ * silábico) e um estouro perto do fim, para o medidor mostrar a zona âmbar e a
+ * retenção de pico. Sintetizado no navegador — o harness não baixa nada.
+ */
+function wavDeTeste(segundos = 12, taxa = 22050): Blob {
+  const n = segundos * taxa;
+  const amostras = new Int16Array(n);
+  for (let i = 0; i < n; i += 1) {
+    const t = i / taxa;
+    // Envelope silábico: sílabas de ~4/s, com pausas entre frases.
+    const silaba = Math.max(0, Math.sin(2 * Math.PI * 3.7 * t)) ** 1.6;
+    const estourando = t > 9 && t < 9.6;
+    // O estouro ignora a pausa entre frases: sem isso ele cai num trecho mudo
+    // e a zona âmbar nunca aparece (foi o que aconteceu na primeira versão).
+    const frase = estourando || t % 5 < 3.4 ? 1 : 0.06;
+    const env = Math.min(1, 0.34 * silaba * frase * (estourando ? 3.4 : 1));
+    const voz =
+      Math.sin(2 * Math.PI * 165 * t) * 0.6 +
+      Math.sin(2 * Math.PI * 330 * t) * 0.25 +
+      Math.sin(2 * Math.PI * 620 * t) * 0.15;
+    amostras[i] = Math.max(-32768, Math.min(32767, voz * env * 32767));
+  }
+  const cabecalho = new ArrayBuffer(44);
+  const v = new DataView(cabecalho);
+  const texto = (pos: number, str: string) => {
+    for (let i = 0; i < str.length; i += 1) v.setUint8(pos + i, str.charCodeAt(i));
+  };
+  texto(0, "RIFF");
+  v.setUint32(4, 36 + amostras.byteLength, true);
+  texto(8, "WAVEfmt ");
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);          // PCM
+  v.setUint16(22, 1, true);          // mono
+  v.setUint32(24, taxa, true);
+  v.setUint32(28, taxa * 2, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  texto(36, "data");
+  v.setUint32(40, amostras.byteLength, true);
+  return new Blob([cabecalho, amostras], { type: "audio/wav" });
+}
+
+const URL_DEMO = URL.createObjectURL(wavDeTeste());
+
+// Dublê do Storage: `urlDoClipe` pede uma URL assinada do bucket privado, e
+// aqui ela é o WAV sintetizado. Mesma razão do dublê de `functions` para
+// trocar a propriedade inteira, não o método.
+Object.defineProperty(supabase, "storage", {
+  configurable: true,
+  value: {
+    from: () => ({
+      createSignedUrl: async () => ({ data: { signedUrl: URL_DEMO }, error: null }),
+    }),
+  },
+});
+
 function Palco() {
   const [atual, setAtual] = useState<Cenario>("ocioso");
   const [chave, setChave] = useState(0);
@@ -134,6 +197,22 @@ function Palco() {
         <QueryClientProvider client={qc} key={chave}>
           <GravarAgora />
         </QueryClientProvider>
+      </div>
+
+      <div
+        style={{
+          marginTop: 28, maxWidth: 560, padding: 20, borderRadius: 20,
+          background: "var(--bg-1)", border: "1px solid var(--line)",
+        }}
+      >
+        <p style={{ margin: 0, marginBottom: 4, fontWeight: 700, color: "var(--txt-1)" }}>
+          Medidor de nível do clipe
+        </p>
+        <p style={{ margin: 0, marginBottom: 14, fontSize: 13, color: "var(--txt-2)" }}>
+          Fala sintetizada de 12s, com um estouro aos 9s para ver a zona âmbar e a
+          retenção de pico. O medidor lê o áudio pelo AnalyserNode: é medição, não animação.
+        </p>
+        <ClipeCitacao caminho="demo.wav" />
       </div>
     </div>
   );
