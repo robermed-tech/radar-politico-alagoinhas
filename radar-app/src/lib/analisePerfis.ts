@@ -33,6 +33,10 @@ import { casaRelevancia } from "@/lib/relevancia";
 /**
  * Confiança mínima para o tom de uma publicação contar como crítica ou elogio.
  * Gêmeo de `CONFIANCA_MIN_TOM` no agora.py: se mudar aqui, mude lá.
+ *
+ * AO MEXER, rodar `python agora.py --teste-tom` antes e ver quantas publicações
+ * saem de cada lado com o corte novo: o valor certo vem da distribuição de
+ * confiança na base, não de arredondar para um número redondo.
  */
 export const CONFIANCA_MIN_TOM = 60;
 
@@ -75,7 +79,11 @@ export interface PerfilAnalise {
 }
 
 /** Amostra mínima para um perfil entrar nos rankings de polaridade. Abaixo
- *  disso "quem tem menos críticas" seria só quem teve dois comentários. */
+ *  disso "quem tem menos críticas" seria só quem teve dois comentários.
+ *
+ *  AO MEXER, contar antes quantos perfis da base sobrevivem ao piso novo: um
+ *  ranking que exclui quase todo mundo mente tanto quanto um que aceita quem
+ *  teve dois comentários. */
 export const MIN_AMOSTRA = 10;
 
 export function analisarPerfis(

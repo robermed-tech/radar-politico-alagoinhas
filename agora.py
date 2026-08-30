@@ -844,6 +844,10 @@ _TOKENS_GENERICOS = {
 # total, nao soma em nenhum dos lados. Medido em 25/07: 464 dos 1302 comentarios
 # classificados como positivo/negativo tinham confianca < 70, e 79 tinham < 50.
 # O espelho deste valor no frontend fica em radar-app/src/lib/sentimento.ts.
+# AO MEXER: rodar `python agora.py --teste-sentimento` e medir de novo a
+# distribuicao de confianca na base (a contagem de 25/07 acima e o retrato que
+# justificou o 50). Limiar se calibra contra o dado real; corte que descarta
+# quase tudo e corte que nao descarta nada anulam a checagem do mesmo jeito.
 CONFIANCA_MIN_SENTIMENTO = 50
 
 
@@ -1134,6 +1138,12 @@ def verificar_creditos_apify():
             }], "tenant,servico")
         except Exception:
             pass
+        # 80% e o ponto em que ainda da tempo de recarregar antes da coleta
+        # parar. AO MEXER: olhar o historico de consumo real do mes (service_status)
+        # e perguntar as duas coisas — com que frequencia dispararia em mes normal,
+        # e se sobra prazo util depois do aviso. Alerta que dispara todo mes vira
+        # ruido; alerta tardio demais chega depois da coleta ja parada, que foi o
+        # que aconteceu em 27/07 quando o teto estourou sem ninguem saber.
         if pct >= 80:
             restante = teto - uso
             msg = (
@@ -1479,6 +1489,9 @@ def carregar_memoria():
 # publicacao conta no total mas nao entra em nenhum dos dois lados — mesma
 # politica de CONFIANCA_MIN_SENTIMENTO nos comentarios: quando o modelo declara
 # que nao conseguiu decidir, contar como certeza infla o lado maior.
+# AO MEXER: `python agora.py --teste-tom` numa amostra real antes, e conferir
+# o placar por perfil — o valor certo vem da distribuicao de confianca, nao de
+# um numero redondo. Espelho no frontend: radar-app/src/lib/analisePerfis.ts.
 CONFIANCA_MIN_TOM = 60
 
 TONS_VALIDOS = ("critico", "favoravel", "neutro")

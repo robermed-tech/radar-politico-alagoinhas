@@ -29,7 +29,15 @@ import { useEffect, useRef, useState } from "react";
 /** Piso da escala. Abaixo disso é silêncio para efeito de exibição. */
 const DB_MIN = -60;
 const SEGMENTOS = 20;
-/** Últimos 6 dB: a zona quente, onde o sinal encosta no teto digital. */
+/**
+ * Últimos 6 dB: a zona quente, onde o sinal encosta no teto digital.
+ *
+ * AO MEXER NESTE VALOR (ou em DB_MIN), medir antes contra um CLIPE REAL, não
+ * escolher pela teoria: fala de rádio comprimida medida em 30/08/26 vive entre
+ * ~-42 dBFS (pausas) e ~-14 dBFS (picos), média -21,1, e por isso a zona
+ * quente não acende em material normal. Com o alarme em -12 toda pauta
+ * piscaria âmbar, e aviso que dispara sempre não avisa nada.
+ */
 const DB_QUENTE = -6;
 /** Queda da retenção de pico, em dB por segundo (PPM de broadcast é lento). */
 const QUEDA_PICO = 14;

@@ -19,6 +19,15 @@ from __future__ import annotations
 from typing import Optional
 
 # Faixas espelham os níveis de calc_risco (baixo/moderado/alto/critico).
+#
+# AO MEXER NESTES CORTES (aqui ou em tenant_settings.climate_thresholds), varrer
+# antes a distribuição real de risco e ver que fatia cai em cada faixa. É o erro
+# que já aconteceu: com os pesos do calc_risco somando 0,65 numa escala dita de
+# 0 a 100, o teto real era 65 — "tempestade" tinha probabilidade ZERO e 69,7%
+# dos dias caíam em "céu limpo", ou seja, o produto que vende alerta de crise
+# não conseguia declarar uma. Depois da normalização: céu limpo 53,7%,
+# tempestade 1,0%. Faixa que nunca acende e faixa que acende sempre falham
+# igual; o corte certo vem da distribuição, não de números redondos.
 # (min, max, condicao, nivel_cor)
 FAIXAS_CONDICAO = [
     (0.0,  39.9,  "ceu_limpo",       None),

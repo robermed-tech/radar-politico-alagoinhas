@@ -13,6 +13,10 @@
  *
  * O valor gêmeo no backend é `CONFIANCA_MIN_SENTIMENTO` (agora.py). Se mudar
  * aqui, mude lá: os dois calculam o mesmo percentual por caminhos diferentes.
+ *
+ * AO MEXER, medir antes: quantos comentários da base saem da contagem e como
+ * o IAD do período se move com o corte novo. Limiar que descarta quase tudo e
+ * limiar que não descarta nada falham igual — os dois anulam a checagem.
  */
 export const CONFIANCA_MIN = 50;
 
@@ -58,6 +62,10 @@ export function comSentimentoConfiavel<T extends { sentimento?: string; confianc
  * Diferença deliberada do sentimentoConfiavel: confiança 0/ausente (comentário
  * anterior ao campo) NÃO passa aqui. Na contagem esse escape evita descartar a
  * base antiga; numa citação individual, "nunca medido" não é credencial.
+ *
+ * AO MEXER, contar antes quantas vozes sobram para a vitrine na base real: um
+ * piso alto demais deixa a seção vazia em período normal, e vitrine vazia é
+ * defeito tão visível quanto citação mal classificada.
  */
 export const CONFIANCA_MIN_DESTAQUE = 70;
 

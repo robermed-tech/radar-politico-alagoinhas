@@ -97,6 +97,11 @@ export function calcIAD(posts: Post[]): number {
  * único comentário move o índice em 100/N pontos. Em N=10 ele vale 10 pontos,
  * que já é a largura de uma faixa de clima inteira; abaixo disso um comentário
  * sozinho troca a condição exibida, e o número não distingue mais nada.
+ *
+ * AO MEXER NESTE NÚMERO, medir antes contra a base, não escolher no olho:
+ * quantos dias/posts passam a exibir IAD e quantos passam a dizer "sem sinal".
+ * Piso alto demais esconde medição legítima; baixo demais devolve o número que
+ * este piso existe para calar. Limiar se calibra contra a distribuição real.
  */
 export const MIN_VOTOS_IAD = 10;
 
