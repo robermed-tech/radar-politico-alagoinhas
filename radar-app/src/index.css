@@ -534,8 +534,20 @@ button:disabled {
   will-change: transform;
 }
 
+/* Avanço do medidor no botão GRAVAR/PARAR (components/GravarAgora.tsx). É
+   DADO, não enfeite: a largura vem do tempo decorrido da captação e é
+   recalculada a cada segundo. A transição existe só para o passo de 1s não
+   pular; com prefers-reduced-motion ela sai e a barra continua marcando a
+   posição certa — o contrário do que se faz com decoração, que simplesmente
+   some. Width e não transform de propósito: aqui a borda direita da barra é a
+   informação, e escalar deformaria o que ela mede. */
+.medidor-avanco {
+  transition: width 1s linear;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .wx-flutuar, .eq-barra, .vt-crescer-x { animation: none; }
+  .medidor-avanco { transition: none; }
   /* O halo sem animação seria um anel parado sobre o LED; some. O ponto em si
      (o dado: ligado/desligado) continua visível. */
   .led-pulso { animation: none; opacity: 0; }

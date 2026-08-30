@@ -1,6 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRadios, gravarAgora, programasDe, type RadioFonte } from "@/lib/radio";
+import {
+  estadoGravacao, fetchRadios, gravarAgora, pararGravacao, programasDe,
+  type RadioFonte,
+} from "@/lib/radio";
+import { ConfirmaModal } from "@/components/ConfirmaModal";
+import { OndasEq } from "@/components/SinalVivo";
 import {
   FUNDO_ESCUTA, FUNDO_LARANJA, TINTA_PRETA, TINTA_CLARA, TINTA_CLARA_2,
   FUNDO_LISTA, FUNDO_ITEM, BORDA, SOMBRA, ALTURA_MIN, ALTURA_MAX,
@@ -26,6 +31,21 @@ import {
  * permissão de Actions, e esse token no bundle daria a qualquer visitante do
  * painel o poder de queimar crédito da Apify.
  *
+ * O MESMO botão para a captação. Duas decisões sustentam isso:
+ *
+ * 1. O estado vem da APIFY, não do GitHub. O `workflow_dispatch` é
+ *    disparar-e-esquecer (o GitHub responde 204 sem id de run), e cancelar o
+ *    job não interrompe o ator, que grava e cobra por conta própria. Enquanto a
+ *    função não souber o que está no ar (`indisponivel`), o botão continua só
+ *    GRAVAR: melhor não oferecer PARAR do que oferecer um PARAR que não para.
+ *
+ * 2. Os dois estados não se parecem. GRAVAR é a pílula teal chapada com tinta
+ *    escura; gravando, o botão vira o MEDIDOR da captação — trilho petróleo,
+ *    avanço em teal, equalizador e o tempo que falta, com tinta clara. Um
+ *    toggle que só troca a palavra convida ao clique errado, e aqui o clique
+ *    errado ou queima crédito ou joga fora áudio já pago. Vermelho seria o
+ *    óbvio para parar e continua proibido: neste painel vermelho é sentimento.
+ *
  * Paleta: degradê chumbo→quase-preto (o mesmo do radar de coleta, do painel da
  * antena e do box de comentário) com o botão na cor da marca (`var(--brand)`,
  * chapado) e texto quase preto — medido em 8,44:1 de contraste. Vermelho seria
@@ -48,6 +68,24 @@ const DURACAO_LONGA = 90;
  *  (10,3 min por US$ 0,14). Serve para dar ordem de grandeza, não para cobrar. */
 const USD_POR_MINUTO = 0.014;
 
+/** Trilho do medidor: a mesma receita de chip sobre superfície escura já usada
+ *  no selo "pausada" e no banner de mensagem — fundo quase sólido, porque alfa
+ *  baixo sobre o degradê derruba o contraste do que vai por cima. */
+const MEDIDOR_TRILHO = "rgba(2,6,23,0.88)";
+/** Avanço em teal translúcido: sobre o trilho ele fica em torno de #1E4A55, e a
+ *  tinta clara mede acima de 8:1 nos dois lados da fronteira — por isso o rótulo
+ *  pode atravessar o medidor sem trocar de cor no meio. */
+const MEDIDOR_AVANCO = "rgba(98,194,202,0.34)";
+
+/** Espera até a captação aparecer na Apify. O job precisa subir, instalar o
+ *  ffmpeg e iniciar o ator; passado esse teto, o botão para de prometer. */
+const ESPERA_INICIO_MS = 6 * 60 * 1000;
+
+function mmss(seg: number): string {
+  const s = Math.max(0, Math.round(seg));
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
 function rotulo(r: RadioFonte): string {
   return (r.label || r.handle || "").trim() || "sem nome";
 }
@@ -62,7 +100,61 @@ export function GravarAgora() {
   const [sel, setSel] = useState<string[]>([]);
   const [duracao, setDuracao] = useState<number>(30);
   const [enviando, setEnviando] = useState(false);
+  const [parando, setParando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  /** Instante do pedido, para cobrir a janela entre o disparo e o run aparecer. */
+  const [pedidoEm, setPedidoEm] = useState<number | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
+
+  // Estado real da captação. Enquanto algo grava, pergunta de 10 em 10s (o
+  // contador precisa fechar sozinho quando o bloco termina); parado, de minuto
+  // em minuto, que é só para pegar captação iniciada pelo horário do programa.
+  const { data: estado, refetch: refetchEstado } = useQuery({
+    queryKey: ["radio-gravacao"],
+    queryFn: estadoGravacao,
+    refetchInterval: (q) =>
+      q.state.data?.gravando || pedidoEm !== null ? 10 * 1000 : 60 * 1000,
+    // Erro de consulta mantém o último estado conhecido: trocar para "nada
+    // gravando" ofereceria GRAVAR por cima de uma captação viva.
+    retry: false,
+  });
+
+  const emCurso = estado?.runs?.[0] ?? null;
+  const gravando = Boolean(estado?.gravando && emCurso);
+  // Sem APIFY_API_TOKEN na função não há como saber nem abortar: o botão fica
+  // só com GRAVAR, em vez de exibir um PARAR que não cumpre o que promete.
+  const podeParar = !estado?.indisponivel;
+
+  // Relógio de 1s: só existe enquanto há algo para contar.
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    if (!gravando && pedidoEm === null) return;
+    const t = setInterval(() => setAgora(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [gravando, pedidoEm]);
+
+  // O run apareceu: a espera acabou. Ou estourou o teto e a promessa cai.
+  useEffect(() => {
+    if (pedidoEm === null) return;
+    if (gravando) { setPedidoEm(null); return; }
+    if (agora - pedidoEm > ESPERA_INICIO_MS) {
+      setPedidoEm(null);
+      setMsg({
+        ok: false,
+        texto: "A captação não apareceu na Apify em 6 min. Confira o run do radio.yml no GitHub.",
+      });
+    }
+  }, [agora, gravando, pedidoEm]);
+
+  const decorrido = emCurso?.desde
+    ? Math.max(0, (agora - new Date(emCurso.desde).getTime()) / 1000)
+    : 0;
+  const total = emCurso?.duracaoMin ? emCurso.duracaoMin * 60 : null;
+  const restante = total !== null ? Math.max(0, total - decorrido) : null;
+  // Sem duração no INPUT do run o medidor não inventa avanço: fica em zero e o
+  // botão mostra o tempo DECORRIDO, que é o que se sabe de verdade.
+  const pct = total !== null && total > 0 ? Math.min(100, (decorrido / total) * 100) : 0;
+  const aguardandoInicio = pedidoEm !== null && !gravando;
 
   // Só mantém escolhida estação que ainda existe no cadastro: apagar uma rádio
   // com ela marcada deixaria um id fantasma no pedido.
@@ -92,6 +184,33 @@ export function GravarAgora() {
       texto: `Gravando ${nomes} por ${resultado?.duracao ?? duracao} min. As pautas aparecem quando a captação terminar.`,
     });
     setSel([]);
+    // A captação leva ~1 min para existir na Apify (o job sobe, instala o
+    // ffmpeg, inicia o ator). Até lá o botão diz "Iniciando", em vez de voltar
+    // a oferecer GRAVAR e convidar a um segundo disparo pago.
+    setPedidoEm(Date.now());
+  }
+
+  async function parar() {
+    setConfirmando(false);
+    if (parando) return;
+    setParando(true);
+    setMsg(null);
+    const { erro, resultado } = await pararGravacao();
+    setParando(false);
+    setPedidoEm(null);
+    if (erro) {
+      setMsg({ ok: false, texto: erro });
+      return;
+    }
+    await refetchEstado();
+    setMsg(
+      resultado?.nada
+        ? { ok: true, texto: "A captação já havia terminado sozinha. Nada foi interrompido." }
+        : {
+            ok: true,
+            texto: "Captação encerrada. O áudio já gravado foi descartado e não vira pauta.",
+          },
+    );
   }
 
   return (
@@ -141,7 +260,8 @@ export function GravarAgora() {
                   <button
                     onClick={() => alternar(r.id)}
                     aria-pressed={ativo}
-                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition"
+                    disabled={gravando}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-50"
                     style={
                       ativo
                         ? { background: FUNDO_LARANJA, color: TINTA_PRETA, fontWeight: 800 }
@@ -197,7 +317,8 @@ export function GravarAgora() {
               key={d}
               onClick={() => setDuracao(d)}
               aria-pressed={ativo}
-              className="tnum rounded-lg px-2.5 py-1 text-[13px] transition"
+              disabled={gravando}
+              className="tnum rounded-lg px-2.5 py-1 text-[13px] transition disabled:cursor-not-allowed disabled:opacity-50"
               style={
                 ativo
                   ? { background: FUNDO_LARANJA, color: TINTA_PRETA, fontWeight: 800 }
@@ -210,19 +331,53 @@ export function GravarAgora() {
         })}
       </div>
 
-      <button
-        onClick={disparar}
-        disabled={escolhidas.length === 0 || enviando}
-        className="mt-3 w-full rounded-full py-3 text-[17px] uppercase tracking-[0.08em] transition disabled:cursor-not-allowed disabled:opacity-45"
-        style={{ background: FUNDO_LARANJA, color: TINTA_PRETA, fontWeight: 800 }}
-        title={
-          escolhidas.length === 0
-            ? "Escolha ao menos uma rádio na lista"
-            : `Gravar ${escolhidas.length} ${escolhidas.length === 1 ? "estação" : "estações"} por ${duracao} min`
-        }
-      >
-        {enviando ? "Iniciando…" : "Gravar"}
-      </button>
+      {gravando && podeParar ? (
+        /* O botão VIRA o medidor da captação: trilho petróleo, avanço em teal e
+           o tempo que falta. A tinta é clara nos dois lados da fronteira do
+           avanço (medido acima de 8:1 nas duas), então o rótulo atravessa o
+           medidor sem trocar de cor no meio. */
+        <button
+          onClick={() => setConfirmando(true)}
+          disabled={parando}
+          className="relative mt-3 w-full overflow-hidden rounded-full py-3 text-[17px] uppercase tracking-[0.08em] transition disabled:cursor-not-allowed disabled:opacity-60"
+          // Sem a borda hairline da lista de propósito: com ela o botão lia
+          // como campo de formulário, e aqui ele é o instrumento da captação.
+          style={{ background: MEDIDOR_TRILHO, color: TINTA_CLARA, fontWeight: 800 }}
+          aria-label={
+            restante !== null
+              ? `Parar a captação em curso — faltam ${mmss(restante)}`
+              : `Parar a captação em curso — gravando há ${mmss(decorrido)}`
+          }
+          title="Encerra a captação agora e descarta o áudio já gravado"
+        >
+          <span
+            className="medidor-avanco absolute inset-y-0 left-0"
+            style={{ width: `${pct}%`, background: MEDIDOR_AVANCO }}
+            aria-hidden
+          />
+          <span className="relative flex items-center justify-center gap-2.5">
+            <OndasEq ativo={!parando} cor="var(--brand)" altura={14} barras={5} />
+            <span>{parando ? "Parando…" : "Parar"}</span>
+            <span className="tnum text-[15px]" style={{ color: TINTA_CLARA_2, fontWeight: 700 }}>
+              {restante !== null ? mmss(restante) : mmss(decorrido)}
+            </span>
+          </span>
+        </button>
+      ) : (
+        <button
+          onClick={disparar}
+          disabled={escolhidas.length === 0 || enviando || aguardandoInicio}
+          className="mt-3 w-full rounded-full py-3 text-[17px] uppercase tracking-[0.08em] transition disabled:cursor-not-allowed disabled:opacity-45"
+          style={{ background: FUNDO_LARANJA, color: TINTA_PRETA, fontWeight: 800 }}
+          title={
+            escolhidas.length === 0
+              ? "Escolha ao menos uma rádio na lista"
+              : `Gravar ${escolhidas.length} ${escolhidas.length === 1 ? "estação" : "estações"} por ${duracao} min`
+          }
+        >
+          {enviando || aguardandoInicio ? "Iniciando…" : "Gravar"}
+        </button>
+      )}
 
       {msg ? (
         <div
@@ -236,6 +391,21 @@ export function GravarAgora() {
         >
           {msg.texto}
         </div>
+      ) : gravando ? (
+        <p className="mt-2 text-[12px] leading-snug" style={{ color: TINTA_CLARA_2, fontWeight: 500 }}>
+          {emCurso?.estacoes.length
+            ? `Captando ${emCurso.estacoes.join(", ")}`
+            : "Captação em curso"}
+          {restante !== null && emCurso?.duracaoMin
+            ? ` · faltam ${mmss(restante)} de ${emCurso.duracaoMin} min`
+            : ` · gravando há ${mmss(decorrido)}`}
+          . Parar encerra agora e descarta o áudio: a transcrição só sai no fim do bloco.
+        </p>
+      ) : aguardandoInicio ? (
+        <p className="mt-2 text-[12px] leading-snug" style={{ color: TINTA_CLARA_2, fontWeight: 500 }}>
+          A captação leva cerca de um minuto para começar: o job precisa subir e
+          iniciar o ator. O contador aparece aqui quando ela estiver no ar.
+        </p>
       ) : duracao >= DURACAO_LONGA ? (
         <p className="mt-2 text-[12px] leading-snug" style={{ color: "#FED7AA", fontWeight: 600 }}>
           {duracao} min ao vivo custam cerca de US$ {(duracao * USD_POR_MINUTO).toFixed(2)} de
@@ -246,6 +416,28 @@ export function GravarAgora() {
           Captação ao vivo, fora do horário do programa: {duracao} min pedidos são {duracao} min
           de gravação.
         </p>
+      )}
+
+      {/* Parar é destrutivo: encerra uma captação paga e joga fora o áudio dela.
+          Confirmação pela casca única do painel, dizendo a consequência de
+          frente — nunca `window.confirm`. */}
+      {confirmando && (
+        <ConfirmaModal
+          titulo="Parar a captação?"
+          rotuloConfirmar="Parar e descartar"
+          onConfirmar={parar}
+          onCancelar={() => setConfirmando(false)}
+          mensagem={
+            <>
+              O áudio já gravado é <strong>descartado</strong>: o ator só transcreve no fim
+              do bloco, então uma captação interrompida não vira pauta nenhuma.
+              {restante !== null
+                ? ` Parar agora evita os ${mmss(restante)} que faltam; os minutos já
+                    consumidos na Apify não voltam.`
+                : " Os minutos já consumidos na Apify não voltam."}
+            </>
+          }
+        />
       )}
     </div>
   );

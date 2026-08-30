@@ -293,7 +293,7 @@ export async function gravarAgora(
     return { erro: "Escolha ao menos uma rádio para gravar.", resultado: null };
   }
   const { data, error } = await supabase.functions.invoke("gravar-radio", {
-    body: { estacoes, duracao },
+    body: { acao: "iniciar", estacoes, duracao },
   });
 
   if (error) {
@@ -313,6 +313,77 @@ export async function gravarAgora(
   const r = data as GravacaoResultado | { error?: string } | null;
   if (r && "error" in r && r.error) return { erro: r.error, resultado: null };
   return { erro: null, resultado: r as GravacaoResultado };
+}
+
+/** Uma captação em curso, como a Apify a reporta. */
+export interface GravacaoEmCurso {
+  id: string;
+  /** ISO de quando o run começou a gravar; null quando a Apify não informou. */
+  desde: string | null;
+  /** Minutos pedidos. null quando o INPUT do run não pôde ser lido. */
+  duracaoMin: number | null;
+  estacoes: string[];
+}
+
+export interface EstadoGravacao {
+  gravando: boolean;
+  runs: GravacaoEmCurso[];
+  /** true quando falta o APIFY_API_TOKEN na função: o painel não sabe o estado
+   *  e, por isso, não oferece PARAR. Não é erro, é ausência de configuração. */
+  indisponivel?: boolean;
+}
+
+/**
+ * O que está gravando AGORA, perguntado à Apify pela Edge Function.
+ *
+ * Por que não perguntar ao GitHub: o job só espera o run terminar, e ele pode
+ * ter desistido enquanto a gravação segue (e cobrando). Quem grava é o ator, e
+ * é o estado dele que o botão precisa refletir para não mentir.
+ */
+export async function estadoGravacao(): Promise<EstadoGravacao> {
+  const { data, error } = await supabase.functions.invoke("gravar-radio", {
+    body: { acao: "estado" },
+  });
+  // Falha de consulta não vira "nada gravando": nesse caso o botão fica no
+  // estado que já tinha, em vez de oferecer GRAVAR por cima de uma captação viva.
+  if (error) throw new Error(await detalheDoErro(error));
+  return data as EstadoGravacao;
+}
+
+export interface ParadaResultado {
+  ok: boolean;
+  abortados: number;
+  jobsCancelados: number;
+  /** true quando não havia nada gravando — a captação terminou sozinha. */
+  nada?: boolean;
+}
+
+/**
+ * Aborta a captação em curso. Para de gastar crédito imediatamente e DESCARTA o
+ * áudio já gravado: o ator só transcreve no fim do bloco, então bloco abortado
+ * não vira pauta nenhuma. Quem chama precisa dizer isso a quem clica.
+ */
+export async function pararGravacao(): Promise<{ erro: string | null; resultado: ParadaResultado | null }> {
+  const { data, error } = await supabase.functions.invoke("gravar-radio", {
+    body: { acao: "parar" },
+  });
+  if (error) return { erro: await detalheDoErro(error), resultado: null };
+  const r = data as ParadaResultado | { error?: string } | null;
+  if (r && "error" in r && r.error) return { erro: r.error, resultado: null };
+  return { erro: null, resultado: r as ParadaResultado };
+}
+
+/** `functions.invoke` embrulha o corpo do erro; a mensagem útil (ex.: secret
+ *  ausente) está no JSON da resposta, não no `error.message` genérico. */
+async function detalheDoErro(error: unknown): Promise<string> {
+  const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+  try {
+    const corpo = await ctx?.json?.();
+    if (corpo?.error) return corpo.error;
+  } catch {
+    /* resposta sem JSON — fica a mensagem genérica */
+  }
+  return (error as { message?: string })?.message || "Falha ao falar com a gravação.";
 }
 
 // ── Agregações (puras) ───────────────────────────────────────
