@@ -76,9 +76,11 @@ interface RunEmCurso {
 /**
  * Runs do ator de rádio que estão gravando AGORA.
  *
- * O `INPUT` do run é lido aqui e NUNCA devolvido inteiro: ele carrega o
- * `groqApiKey`, e o navegador não precisa dele para desenhar um contador.
- * Saem só a duração pedida e o nome das estações.
+ * O `INPUT` do run é lido aqui e NUNCA devolvido inteiro: saem só a duração
+ * pedida e o nome das estações. Ele carrega o campo `groqApiKey` — que a Apify
+ * guarda cifrado (`ENCRYPTED_VALUE:…`), então o risco não é chave em claro — e
+ * o resto da configuração do run, que o navegador não precisa ver para
+ * desenhar um contador.
  */
 async function runsEmCurso(): Promise<RunEmCurso[]> {
   const resp = await fetch(
