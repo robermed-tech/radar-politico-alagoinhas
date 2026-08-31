@@ -26,3 +26,7 @@ rotulos*.csv
 # backstop do agora.yml (ver alerta_suporte.py e o step final do workflow).
 # Vive só durante o job, nunca deveria ser commitado.
 .alerta_suporte_enviado
+
+# Lixo de ambiente local (macOS) e link do Supabase CLI (CLAUDE.md: nao commitar)
+.DS_Store
+supabase/.temp/
