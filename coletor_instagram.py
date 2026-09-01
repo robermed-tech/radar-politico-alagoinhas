@@ -133,6 +133,27 @@ def criar_cliente() -> "Client":
     return cl
 
 
+def _info_do_perfil(cl, username: str):
+    """Resolve um perfil pela API AUTENTICADA primeiro (`i.instagram.com`),
+    caindo para o caminho padrão só se ela falhar.
+
+    Medido em 01/09/26, em dois runs seguidos do ÁGORA: `user_id_from_username`
+    resolve pelo endpoint PÚBLICO (`www.instagram.com/api/v1/users/
+    web_profile_info`) e os 14 perfis voltavam 429 — antes e DEPOIS de ligar o
+    proxy, o que descartou o IP como causa. O endpoint público é estrangulado
+    para qualquer chamador; a sessão que já está carregada não vale nada ali.
+    A v1 usa a sessão de verdade, que é para isso que ela existe.
+
+    O fallback fica porque um 429 no público é recuperável (a Apify assume),
+    enquanto um erro não tratado derrubaria o módulo inteiro.
+    """
+    try:
+        return cl.user_info_by_username_v1(username)
+    except Exception as e:
+        print(f"    v1 falhou para @{username} ({type(e).__name__}) — tentando o público")
+        return cl.user_info_by_username(username)
+
+
 # ── Coleta de posts ────────────────────────────────────────────────────────────
 
 def coletar_posts(perfis: list[str], dias_atras: int = DIAS_ATRAS) -> list[dict]:
@@ -151,7 +172,7 @@ def coletar_posts(perfis: list[str], dias_atras: int = DIAS_ATRAS) -> list[dict]
 
     for username in perfis:
         try:
-            user_id = cl.user_id_from_username(username)
+            user_id = _info_do_perfil(cl, username).pk
             medias  = cl.user_medias(user_id, amount=POSTS_POR_PERFIL)
 
             perfil_posts = 0
@@ -228,7 +249,7 @@ def coletar_perfis(perfis: list[str]) -> list[dict]:
 
     for idx, username in enumerate(perfis):
         try:
-            info = cl.user_info_by_username(username)
+            info = _info_do_perfil(cl, username)
             coletados.append({
                 "username":       username,
                 "followersCount": int(info.follower_count or 0),
