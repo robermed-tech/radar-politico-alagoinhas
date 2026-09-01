@@ -112,7 +112,10 @@ def _sessao_viva(cl) -> bool:
     except (LoginRequired, ChallengeRequired) as e:
         global _SESSAO_JA_RECUSADA
         _SESSAO_JA_RECUSADA = True
-        print(f"  ✗ Sessao INVALIDA ({type(e).__name__}): o Instagram nao aceita "
+        # ASCII de proposito nesta linha: ela vem imediatamente ANTES do envio
+        # do alerta, e um UnicodeEncodeError do console (cp1252 no Windows) aqui
+        # mataria justamente o aviso que a funcao existe para dar.
+        print(f"  [!] Sessao INVALIDA ({type(e).__name__}): o Instagram nao aceita "
               f"esta sessao. A coleta vai cair para a Apify (paga).")
         _avisar_sessao_invalida(type(e).__name__)
         return False
@@ -170,37 +173,47 @@ def criar_cliente() -> "Client":
     # motivou o `usar_proxy=False` era do HTTPS_PROXY global do workflow, não
     # deste proxy — está registrado no comentário do `_NO_PROXY` acima.
     if IG_SESSION_JSON:
+        # Duas falhas DIFERENTES, e por isso dois blocos: nao conseguir LER a
+        # sessao (JSON quebrado) permite tentar o arquivo/login; a sessao lida e
+        # RECUSADA pelo Instagram nao permite, porque insistir com login a cada
+        # run e o caminho mais rapido para a conta ser endurecida. A primeira
+        # versao deste detector punha o `raise` dentro do try abaixo, o proprio
+        # `except Exception` o engolia e o login acontecia assim mesmo — medido
+        # no run 33470485272, que terminou em PleaseWaitFewMinutes.
+        cl = None
         try:
             cl = _novo_cliente(usar_proxy=True)
-            settings = json.loads(IG_SESSION_JSON)
-            cl.set_settings(settings)
-            # "Carregada" nao e "autenticada": so a checagem abaixo distingue.
+            cl.set_settings(json.loads(IG_SESSION_JSON))
+        except Exception as e:
+            print(f"  ⚠ IG_SESSION_JSON ilegível ({e}) — tentando arquivo...")
+            cl = None
+        if cl is not None:
             if _sessao_viva(cl):
                 print("  ✓ Sessão válida via IG_SESSION_JSON")
                 return cl
-            # NAO cai para o login completo de proposito: um login recusado 3x
-            # por dia e o caminho mais rapido para o Instagram endurecer a conta.
-            # Renovar a sessao e acao humana, e o alerta acima pede isso.
             raise SessaoInvalida(
                 "IG_SESSION_JSON nao autentica. Renove o secret; ate la a coleta "
                 "sai pela Apify.")
-        except Exception as e:
-            print(f"  ⚠ IG_SESSION_JSON inválido ({e}) — tentando arquivo...")
 
     # 2. Sessão via arquivo local — COM proxy, pela mesma razão do caminho 1.
     session_path = Path(IG_SESSION_FILE)
     if session_path.exists():
+        cl = None
         try:
             cl = _novo_cliente(usar_proxy=True)
             cl.load_settings(session_path)
+        except Exception as e:
+            print(f"  ⚠ Erro ao ler {IG_SESSION_FILE} ({e}) — fazendo novo login...")
+            session_path.unlink(missing_ok=True)
+            cl = None
+        if cl is not None:
             if _sessao_viva(cl):
                 print(f"  ✓ Sessão válida de {IG_SESSION_FILE}")
                 return cl
-            print(f"  ⚠ {IG_SESSION_FILE} não autentica — fazendo novo login")
+            # Arquivo local recusado: apaga (é lixo) e para, pela mesma razão.
             session_path.unlink(missing_ok=True)
-        except Exception as e:
-            print(f"  ⚠ Erro ao carregar sessão ({e}) — fazendo novo login...")
-            session_path.unlink(missing_ok=True)
+            raise SessaoInvalida(
+                f"{IG_SESSION_FILE} nao autentica. Gere uma sessao nova.")
 
     # 3. Login completo — com proxy
     if not IG_USERNAME or not IG_PASSWORD:
