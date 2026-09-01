@@ -74,6 +74,71 @@ def _novo_cliente(usar_proxy: bool = True) -> "Client":
     return cl
 
 
+class SessaoInvalida(RuntimeError):
+    """Sessao carregada mas recusada pelo Instagram. Quem chama trata como
+    'Instagrapi indisponivel neste run' e deixa a Apify assumir."""
+
+
+# `criar_cliente` e chamado uma vez por modulo (posts, comentarios, perfis).
+# Sem esta memoria, a sessao morta seria checada tres vezes por run e o alerta
+# tentado tres vezes — a dedup do alerta_suporte cobre o segundo caso, mas a
+# requisicao extra e desperdicio.
+_SESSAO_JA_RECUSADA = False
+
+
+def _sessao_viva(cl) -> bool:
+    """Uma chamada AUTENTICADA para saber se a sessao carregada vale alguma coisa.
+
+    `set_settings` so desserializa cookies e dados de dispositivo — ele nao fala
+    com o Instagram. Por isso o log dizia "Sessao carregada" desde sempre: era
+    "arquivo lido", nao "autenticado". A sessao de 22/06 estava morta havia
+    meses e ninguem soube, porque o efeito era invisivel: v1 respondia
+    LoginRequired, tudo caia no endpoint publico, o publico devolvia 429, a
+    Apify assumia e o run saia VERDE. Custo medido em 01/09/26: ~US$ 17/mes de
+    Apify (58% do teto) para fazer o que a via gratuita deveria fazer.
+
+    Falha que NAO e LoginRequired conta como INCONCLUSIVA e deixa passar: 429 ou
+    queda de rede na propria checagem nao provam sessao morta, e tratar as duas
+    como a mesma coisa e o erro que este projeto ja documentou em outros pontos
+    (falha de consulta nao e ausencia de dado).
+    """
+    try:
+        from instagrapi.exceptions import LoginRequired, ChallengeRequired
+    except Exception:
+        return True
+    try:
+        cl.account_info()
+        return True
+    except (LoginRequired, ChallengeRequired) as e:
+        global _SESSAO_JA_RECUSADA
+        _SESSAO_JA_RECUSADA = True
+        print(f"  ✗ Sessao INVALIDA ({type(e).__name__}): o Instagram nao aceita "
+              f"esta sessao. A coleta vai cair para a Apify (paga).")
+        _avisar_sessao_invalida(type(e).__name__)
+        return False
+    except Exception as e:
+        print(f"  ℹ Nao deu para validar a sessao ({type(e).__name__}) — seguindo")
+        return True
+
+
+def _avisar_sessao_invalida(detalhe: str) -> None:
+    """Alerta de suporte, uma vez por dia. A condicao dura ate alguem gerar uma
+    sessao nova, entao repetir a cada run viraria ruido — mesma janela do aviso
+    de credito da Apify."""
+    try:
+        import alerta_suporte
+        alerta_suporte.disparar(
+            "instagram_sessao_invalida",
+            f"Sessao do Instagram invalida ({detalhe}): o secret IG_SESSION_JSON "
+            f"nao autentica mais. A coleta segue funcionando pela Apify, mas paga: "
+            f"~US$ 17/mes contra um teto de US$ 29. Gere uma sessao nova e atualize "
+            f"o secret.",
+            janela_dedup_min=1440,
+        )
+    except Exception as e:
+        print(f"  (alerta de sessao nao pode ser enviado: {e})")
+
+
 def criar_cliente() -> "Client":
     """
     Cria e autentica o cliente Instagrapi.
@@ -85,6 +150,9 @@ def criar_cliente() -> "Client":
     """
     if not INSTAGRAPI_DISPONIVEL:
         raise ImportError("instagrapi não instalado. Execute: pip install instagrapi")
+
+    if _SESSAO_JA_RECUSADA:
+        raise SessaoInvalida("sessao ja recusada neste run — nao insistindo")
 
     # 1. Sessão via variável de ambiente (GitHub Actions) — COM proxy.
     #
@@ -106,8 +174,16 @@ def criar_cliente() -> "Client":
             cl = _novo_cliente(usar_proxy=True)
             settings = json.loads(IG_SESSION_JSON)
             cl.set_settings(settings)
-            print("  ✓ Sessão carregada via IG_SESSION_JSON")
-            return cl
+            # "Carregada" nao e "autenticada": so a checagem abaixo distingue.
+            if _sessao_viva(cl):
+                print("  ✓ Sessão válida via IG_SESSION_JSON")
+                return cl
+            # NAO cai para o login completo de proposito: um login recusado 3x
+            # por dia e o caminho mais rapido para o Instagram endurecer a conta.
+            # Renovar a sessao e acao humana, e o alerta acima pede isso.
+            raise SessaoInvalida(
+                "IG_SESSION_JSON nao autentica. Renove o secret; ate la a coleta "
+                "sai pela Apify.")
         except Exception as e:
             print(f"  ⚠ IG_SESSION_JSON inválido ({e}) — tentando arquivo...")
 
@@ -117,8 +193,11 @@ def criar_cliente() -> "Client":
         try:
             cl = _novo_cliente(usar_proxy=True)
             cl.load_settings(session_path)
-            print(f"  ✓ Sessão carregada de {IG_SESSION_FILE}")
-            return cl
+            if _sessao_viva(cl):
+                print(f"  ✓ Sessão válida de {IG_SESSION_FILE}")
+                return cl
+            print(f"  ⚠ {IG_SESSION_FILE} não autentica — fazendo novo login")
+            session_path.unlink(missing_ok=True)
         except Exception as e:
             print(f"  ⚠ Erro ao carregar sessão ({e}) — fazendo novo login...")
             session_path.unlink(missing_ok=True)
