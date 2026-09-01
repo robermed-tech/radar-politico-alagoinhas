@@ -86,10 +86,24 @@ def criar_cliente() -> "Client":
     if not INSTAGRAPI_DISPONIVEL:
         raise ImportError("instagrapi não instalado. Execute: pip install instagrapi")
 
-    # 1. Sessão via variável de ambiente (GitHub Actions) — sem proxy, sem verificação
+    # 1. Sessão via variável de ambiente (GitHub Actions) — COM proxy.
+    #
+    # Este caminho desligava o proxy explicitamente, e isso custava caro: medido
+    # em 01/09/26 no log do ÁGORA, a sessão carregava sem erro e os 14 perfis
+    # voltavam 429 (Too Many Requests), porque as requisições saíam do IP do
+    # runner do GitHub — datacenter que o Instagram estrangula na primeira leva.
+    # O ciclo se fechava sozinho: sessão válida -> proxy ignorado -> 429 em tudo
+    # -> zero posts -> Apify assume -> run VERDE. Ninguém era avisado, e os três
+    # atores pagos rodando 3x/dia davam ~US$ 17/mês contra um teto de US$ 29,
+    # com o serviço de proxy contratado e parado.
+    #
+    # Quem decide se há proxy é `_novo_cliente`: `_NO_PROXY` já desliga sozinho
+    # quando IG_PROXY não está configurado no Actions. O 407 histórico que
+    # motivou o `usar_proxy=False` era do HTTPS_PROXY global do workflow, não
+    # deste proxy — está registrado no comentário do `_NO_PROXY` acima.
     if IG_SESSION_JSON:
         try:
-            cl = _novo_cliente(usar_proxy=False)
+            cl = _novo_cliente(usar_proxy=True)
             settings = json.loads(IG_SESSION_JSON)
             cl.set_settings(settings)
             print("  ✓ Sessão carregada via IG_SESSION_JSON")
@@ -97,11 +111,11 @@ def criar_cliente() -> "Client":
         except Exception as e:
             print(f"  ⚠ IG_SESSION_JSON inválido ({e}) — tentando arquivo...")
 
-    # 2. Sessão via arquivo local — sem proxy, sem verificação
+    # 2. Sessão via arquivo local — COM proxy, pela mesma razão do caminho 1.
     session_path = Path(IG_SESSION_FILE)
     if session_path.exists():
         try:
-            cl = _novo_cliente(usar_proxy=False)
+            cl = _novo_cliente(usar_proxy=True)
             cl.load_settings(session_path)
             print(f"  ✓ Sessão carregada de {IG_SESSION_FILE}")
             return cl
