@@ -1,0 +1,54 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "title": "Barra lateral · tema claro",
+      "x": 0,
+      "y": 0,
+      "w": 300,
+      "h": 1120
+    },
+    {
+      "file": "Escura.dc.html",
+      "title": "Barra lateral · tema escuro",
+      "x": 380,
+      "y": 0,
+      "w": 300,
+      "h": 1120
+    },
+    {
+      "file": "NavMobile.dc.html",
+      "title": "Nav mobile · os dois temas",
+      "x": 760,
+      "y": 0,
+      "w": 390,
+      "h": 250
+    }
+  ],
+  "annotations": [
+    {
+      "id": "nota-fonte",
+      "x": 0,
+      "y": -190,
+      "w": 680,
+      "text": "Reprodução fiel do que está em App.tsx hoje (aside w-56 = 224px, p-3, gap-1.5 entre itens) sobre os tokens do index.css.\nVista de ADMIN: os 13 itens, com Divisão da Conversa, Rádio Escuta e Configuração incluídos. Usuário comum vê 10."
+    },
+    {
+      "id": "nota-marca",
+      "x": 760,
+      "y": 320,
+      "w": 390,
+      "text": "Regras que não mudam sem decisão:\n· Wordmark 30px em teal via currentColor no contêiner, nunca a classe .text-brand (ela resolve por --brand-text, escuro no claro).\n· Tinta sobre o teal é #04242F, nunca branco (branco mede 2,08:1 e reprova AA).\n· Marca sozinha: sem tagline e sem anel de varredura desde 26/08."
+    },
+    {
+      "id": "nota-mobile",
+      "x": 760,
+      "y": -190,
+      "w": 390,
+      "text": "Abaixo de 768px a lateral some e vira esta faixa rolável no topo, com os mesmos rótulos em peso 600 e a mesma pílula teal."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}
