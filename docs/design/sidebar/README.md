@@ -30,19 +30,18 @@ rodapé com o Sair e o carimbo de atualização.
 
 ## O que ainda diverge do app
 
-O canvas é editado direto na tela, então ele anda na frente do `App.tsx`.
-Estes fontes vêm de uma extração do canvas publicado e carregam duas propostas
-que **não** estão no app:
+O canvas é editado direto na tela, então ele anda na frente do `App.tsx`. Duas
+coisas que saíram daqui **já foram aplicadas** ao app: a wordmark de 34px e o
+peso dos rótulos (400 no item comum, 600 no aceso). O que sobra de diferença:
 
-- **Peso dos rótulos**: as pranchetas estão em Inter 400 no item comum e 600 no
-  aceso; o `App.tsx` usa `font-extrabold` (800) nos dois. A hierarquia continua
-  de pé (o aceso é o mais pesado), mas o 800 é peso registrado no `CLAUDE.md`
-  na revisão de 26/08 — baixá-lo é decisão de produto, não sincronização.
 - **Posição da wordmark**: as pranchetas empurram a marca 16px (17 no escuro)
   para baixo por `position: relative`; no app ela encosta no topo do contêiner
-  `mb-6 px-2`.
-
-A wordmark de 34px saiu daqui e **já foi aplicada** ao `App.tsx`.
+  `mb-6 px-2`. Os dois valores diferentes entre claro e escuro sugerem ajuste
+  de mão na tela, não medida escolhida.
+- **Peso da linha do usuário no rodapé**: 600 na prancheta clara e 400 na
+  escura. No app é um componente só, renderizado nos dois temas, então esse par
+  é impossível de reproduzir — a divergência entre as duas pranchetas é que
+  precisa ser resolvida antes de virar pedido.
 
 ## Regras que a réplica carrega
 

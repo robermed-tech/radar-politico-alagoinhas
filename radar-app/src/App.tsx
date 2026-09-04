@@ -271,14 +271,18 @@ export default function App() {
         <nav className="flex flex-col gap-1.5">
           {navMain.map((n) => {
             const isCurrent = n.id === page;
+            // Peso 400 no item comum e 600 no aceso (04/09/26, vindo do canvas
+            // da barra lateral). Revoga o 800 de 26/08, mas nao a razao dele: o
+            // aceso continua mais pesado que os vizinhos, entao a hierarquia que
+            // aquela nota protegia segue de pe. O que caiu foi o peso geral.
             return (
               <button
                 key={n.id}
                 onClick={() => setPage(n.id)}
-                className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-extrabold tracking-wide transition-all duration-200 ${
+                className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm tracking-wide transition-all duration-200 ${
                   isCurrent
-                    ? ""
-                    : "text-txt-2 hover:bg-bg-2 hover:text-txt-1"
+                    ? "font-semibold"
+                    : "font-normal text-txt-2 hover:bg-bg-2 hover:text-txt-1"
                 }`}
                 style={isCurrent ? { ...NAV_GLOW, color: "#04242F" } : undefined}
               >
