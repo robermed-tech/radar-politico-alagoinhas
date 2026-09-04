@@ -17,16 +17,32 @@ ferramenta `/design` do Claude Code.
 
 ## O que está reproduzido
 
-Cópia fiel do que `radar-app/src/App.tsx` renderiza hoje, sobre os tokens de
-`radar-app/src/index.css`: `aside` de 224px (`w-56`) com `p-3`, itens com
-`gap-1.5`, rótulos em Inter 800/16px com `tracking-wide`, pílula ativa em
-`var(--brand)` com o `NAV_GLOW` e tinta `#04242F`, wordmark de 30px em teal
-pelo `currentColor` do contêiner. É a vista de **admin** (13 itens); usuário
-comum vê 10, sem Divisão da Conversa, Rádio Escuta e Configuração.
+Base: o que `radar-app/src/App.tsx` renderiza sobre os tokens de
+`radar-app/src/index.css` — `aside` de 224px (`w-56`) com `p-3`, itens com
+`gap-1.5` e `tracking-wide`, pílula ativa em `var(--brand)` com o `NAV_GLOW` e
+tinta `#04242F`, wordmark de 34px em teal pelo `currentColor` do contêiner. É a
+vista de **admin** (13 itens); usuário comum vê 10, sem Divisão da Conversa,
+Rádio Escuta e Configuração.
 
 As pranchetas da lateral têm 1120px de altura de propósito: na coluna de 224px
 os rótulos longos quebram em duas linhas, e uma moldura de 960px cortava o
 rodapé com o Sair e o carimbo de atualização.
+
+## O que ainda diverge do app
+
+O canvas é editado direto na tela, então ele anda na frente do `App.tsx`.
+Estes fontes vêm de uma extração do canvas publicado e carregam duas propostas
+que **não** estão no app:
+
+- **Peso dos rótulos**: as pranchetas estão em Inter 400 no item comum e 600 no
+  aceso; o `App.tsx` usa `font-extrabold` (800) nos dois. A hierarquia continua
+  de pé (o aceso é o mais pesado), mas o 800 é peso registrado no `CLAUDE.md`
+  na revisão de 26/08 — baixá-lo é decisão de produto, não sincronização.
+- **Posição da wordmark**: as pranchetas empurram a marca 16px (17 no escuro)
+  para baixo por `position: relative`; no app ela encosta no topo do contêiner
+  `mb-6 px-2`.
+
+A wordmark de 34px saiu daqui e **já foi aplicada** ao `App.tsx`.
 
 ## Regras que a réplica carrega
 

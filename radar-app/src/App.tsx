@@ -265,7 +265,7 @@ export default function App() {
             a classe .text-brand — ela resolve por --brand-text, escuro no tema
             claro. Mesma regra do painel de marca do Login. */}
         <div className="mb-6 px-2" style={{ color: "var(--brand)" }}>
-          <WordmarkViratempo altura={30} />
+          <WordmarkViratempo altura={34} />
         </div>
 
         <nav className="flex flex-col gap-1.5">
