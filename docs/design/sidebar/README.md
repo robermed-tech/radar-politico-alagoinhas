@@ -28,21 +28,24 @@ As pranchetas da lateral têm 1120px de altura de propósito: na coluna de 224px
 os rótulos longos quebram em duas linhas, e uma moldura de 960px cortava o
 rodapé com o Sair e o carimbo de atualização.
 
-## O que ainda diverge do app
+## Divergências com o app
 
-O canvas é editado direto na tela, então ele anda na frente do `App.tsx`. Duas
-coisas que saíram daqui **já foram aplicadas** ao app: a wordmark de 34px e o
-peso dos rótulos (400 no item comum, 600 no aceso). Sobra uma diferença:
+**Nenhuma em 04/09/26.** O canvas volta a ser retrato do `App.tsx`, e não
+proposta pendente. A rodada daquele dia fechou assim:
 
-- **Posição da wordmark**: as pranchetas empurram a marca 16px (17 no escuro)
-  para baixo por `position: relative`; no app ela encosta no topo do contêiner
-  `mb-6 px-2`. Os dois valores diferentes entre claro e escuro sugerem ajuste
-  de mão na tela, não medida escolhida.
+| O que | Onde nasceu | Desfecho |
+| ----- | ----------- | -------- |
+| Wordmark 34px (era 30) | canvas | aplicado no app |
+| Rótulos em 400, aceso em 600 (eram 800) | canvas | aplicado no app |
+| Rodapé em 600 (a prancheta escura tinha 400) | conferência | corrigido no canvas |
+| Marca empurrada 16px, 17px na escura | edição em tela | removido do canvas |
 
-A linha do usuário no rodapé chegou a divergir entre as duas pranchetas (600 na
-clara, 400 na escura). Ficou **600 nas duas** em 04/09/26, que é o que o
-`App.tsx` já fazia — lá é um componente só, renderizado nos dois temas, então
-um par diferente por tema seria irreproduzível.
+Os dois últimos eram ajuste de mão, não medida escolhida: os valores diferiam
+entre as duas pranchetas, e no app cada um deles é um componente só, renderizado
+nos dois temas. Divergência entre as pranchetas se resolve aqui, não em código.
+
+Quando o canvas voltar a andar na frente do app, é esta seção que registra o
+que está pendente.
 
 ## Regras que a réplica carrega
 
